@@ -51,6 +51,9 @@ Byte   | Name			| Comment
 `0x09` | Write register		|
 `0x0a` | Read register		|
 
+### Checksum
+Each byte in the payload is XOR'ed together, as well as the magic number `0xEF`.
+The result is stored as a zero-padded byte in the 32-bit checksum field in the header.
 
 ## About
 
