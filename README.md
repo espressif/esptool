@@ -56,6 +56,25 @@ Byte   | Name			| Input		| Output
 Each byte in the payload is XOR'ed together, as well as the magic number `0xEF`.
 The result is stored as a zero-padded byte in the 32-bit checksum field in the header.
 
+## Boot log
+The boot rom writes a log to the UART when booting. The timing is a little bit unusual: 75000 baud (at least on my modules, when doing a cold boot)
+
+```
+ets Jan  8 2014,rst cause 1, boot mode:(3,7)
+
+load 0x40100000, len 24236, room 16 
+tail 12
+chksum 0xb7
+ho 0 tail 12 room 4
+load 0x3ffe8000, len 3008, room 12 
+tail 4
+chksum 0x2c
+load 0x3ffe8bc0, len 4816, room 4
+tail 12
+chksum 0x46
+csum 0x46
+```
+
 ## About
 
 This information is collected through research by Fredrik Ahlberg.
