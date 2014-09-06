@@ -41,14 +41,14 @@ Byte   | Name		| Comment
 ### Opcodes
 
 Byte   | Name			| Input		| Output
--------|------------------------|----------------------------------------
-`0x02` | Flash Download Start	|
-`0x03` | Flash Download Data	|
-`0x04` | Flash Download Finish	|
-`0x05` | RAM Download Start	|
-`0x06` | RAM Download Finish	|
-`0x07` | RAM Download Data	|
-`0x08` | Sync Frame		|
+-------|------------------------|---------------|------------------------
+`0x02` | Flash Download Start	|		|
+`0x03` | Flash Download Data	|		|
+`0x04` | Flash Download Finish	|		|
+`0x05` | RAM Download Start	|		|
+`0x06` | RAM Download Finish	|		|
+`0x07` | RAM Download Data	|		|
+`0x08` | Sync Frame		|		|
 `0x09` | Write register		| Four 32-bit words: address, value, mask and delay (in microseconds) | Body is `0x00 0x00` if successful
 `0x0a` | Read register		| Address as 32-bit word | Read data as 32-bit word in `value` field
 
