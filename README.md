@@ -3,7 +3,7 @@
 A cute Python utility to communicate with the ROM bootloader in Espressif ESP8266.
 It is intended to be a simple, platform independent, open source replacement for XTCOM.
 
-This is work in progress, batteries are not yet included.
+This is a work in progress; batteries are not yet included.
 
 ## Usage
 
@@ -12,10 +12,11 @@ This utility does not have a user interface yet. Hack it, like real hackers! ;)
 ## Protocol
 
 The bootloader protocol uses [SLIP](http://en.wikipedia.org/wiki/SLIP) framing.
-Each packet is begin and end with `0xC0`, all occurrences of `0xC0` and `0xDB` inside the packet
+Each packet begin and end with `0xC0`, all occurrences of `0xC0` and `0xDB` inside the packet
 are replaced with `0xDB 0xDC` and `0xDB 0xDD`, respectively.
 
-Inside the framing, the packet consists of a header and a variable-length body.
+Inside the frame, the packet consists of a header and a variable-length body.
+All multi-byte fields are little-endian.
 
 ### Request
 
@@ -39,8 +40,8 @@ Byte   | Name		| Comment
 
 ### Opcodes
 
-Byte   | Name			| Comment
--------|------------------------|-----------------------
+Byte   | Name			| Input		| Output
+-------|------------------------|----------------------------------------
 `0x02` | Flash Download Start	|
 `0x03` | Flash Download Data	|
 `0x04` | Flash Download Finish	|
@@ -48,8 +49,8 @@ Byte   | Name			| Comment
 `0x06` | RAM Download Finish	|
 `0x07` | RAM Download Data	|
 `0x08` | Sync Frame		|
-`0x09` | Write register		|
-`0x0a` | Read register		|
+`0x09` | Write register		| Four 32-bit words: address, value, mask and delay (in microseconds) | Body is `0x00 0x00` if successful
+`0x0a` | Read register		| Address as 32-bit word | Read data as 32-bit word in `value` field
 
 ### Checksum
 Each byte in the payload is XOR'ed together, as well as the magic number `0xEF`.
