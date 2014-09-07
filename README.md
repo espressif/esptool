@@ -11,6 +11,9 @@ This utility does not have a user interface yet. Hack it, like real hackers! ;)
 
 ## Protocol
 
+If GPIO0 and GPIO15 is pulled down and GPIO2 is pulled high when the module leaves reset,
+then the bootloader will enter the UART download mode. It communicates over 115200 8N1.
+
 The bootloader protocol uses [SLIP](http://en.wikipedia.org/wiki/SLIP) framing.
 Each packet begin and end with `0xC0`, all occurrences of `0xC0` and `0xDB` inside the packet
 are replaced with `0xDB 0xDC` and `0xDB 0xDD`, respectively.
@@ -45,10 +48,10 @@ Byte   | Name			| Input		| Output
 `0x02` | Flash Download Start	|		|
 `0x03` | Flash Download Data	|		|
 `0x04` | Flash Download Finish	|		|
-`0x05` | RAM Download Start	|		|
-`0x06` | RAM Download Finish	|		|
-`0x07` | RAM Download Data	|		|
-`0x08` | Sync Frame		|		|
+`0x05` | RAM Download Start	| total size, packet size, number of packets, memory offset |
+`0x06` | RAM Download Finish	| execute flag, entry point |
+`0x07` | RAM Download Data	| size, sequence numer, data. checksum in dedicated field. |
+`0x08` | Sync Frame		| `0x07 0x07 0x12 0x20`, `0x55` 32 times |
 `0x09` | Write register		| Four 32-bit words: address, value, mask and delay (in microseconds) | Body is `0x00 0x00` if successful
 `0x0a` | Read register		| Address as 32-bit word | Read data as 32-bit word in `value` field
 
@@ -56,8 +59,8 @@ Byte   | Name			| Input		| Output
 Each byte in the payload is XOR'ed together, as well as the magic number `0xEF`.
 The result is stored as a zero-padded byte in the 32-bit checksum field in the header.
 
-## Flash image format
-The flash file consists of a header, a variable number of data segments and a footer.
+## Firmware image format
+The firmware file consists of a header, a variable number of data segments and a footer.
 Multi-byte fields are little-endian.
 
 ### File header
