@@ -3,8 +3,6 @@
 # ESP8266 ROM Bootloader Utility
 # Copyright (C) 2014 Fredrik Ahlberg
 #
-# 
-# 
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 2 of the License, or (at your option) any later version.
@@ -21,6 +19,7 @@ import struct
 import serial
 import math
 import time
+import argparse
 
 class ESPROM:
 
@@ -36,8 +35,10 @@ class ESPROM:
 
     ESP_BLOCK_MAX   = 0x1800
 
+    ESP_ROM_BAUD    = 115200
+
     def __init__(self, port = 0):
-        self._port = serial.Serial(port, 115200, timeout=1)
+        self._port = serial.Serial(port, self.ESP_ROM_BAUD)
 
     # Perform SLIP unescaping
     def read(self, length = 1):
@@ -99,18 +100,34 @@ class ESPROM:
         return val, body
 
     def sync(self):
-        self.command(ESPROM.ESP_SYNC,
-                '\x07\x07\x12\x20'+32*'\x55')
+        self.command(ESPROM.ESP_SYNC, '\x07\x07\x12\x20'+32*'\x55')
         for i in xrange(7):
             self.command()
 
+    def connect(self):
+        print 'Connecting...'
+        self._port.timeout = 0.2
+        for i in xrange(10):
+            try:
+                self._port.flushInput()
+                self._port.flushOutput()
+                self.sync()
+                self._port.timeout = 1
+                return
+            except:
+                time.sleep(0.1)
+        raise Exception('Failed to connect')
+
     def read_reg(self, addr):
         res = self.command(ESPROM.ESP_READ_REG, struct.pack('<I', addr))
+        if res[1] != "\0\0":
+            raise Exception('Failed to read target memory')
         return res[0]
 
     def write_reg(self, addr, value, mask, delay_us = 0):
-        res = self.command(ESPROM.ESP_WRITE_REG,
-                struct.pack('<IIII', addr, value, mask, delay_us))
+        if self.command(ESPROM.ESP_WRITE_REG,
+                struct.pack('<IIII', addr, value, mask, delay_us))[1] != "\0\0":
+            raise Exception('Failed to write target memory')
 
     def mem_begin(self, size, blocks, blocksize, offset):
         if self.command(ESPROM.ESP_MEM_BEGIN,
@@ -119,7 +136,7 @@ class ESPROM:
 
     def mem_block(self, data, seq):
         if self.command(ESPROM.ESP_MEM_DATA,
-                struct.pack('<IIII', len(data), seq,0,0)+data, self.checksum(data))[1] != "\0\0":
+                struct.pack('<IIII', len(data), seq, 0, 0)+data, self.checksum(data))[1] != "\0\0":
             raise Exception('Failed to write to target RAM')
 
     def mem_finish(self, entrypoint = 0):
@@ -145,39 +162,78 @@ class ESPFirmwareImage:
                 raise Exception('Suspicious segment %x,%d' % (offset, size))
             self.segments.append((offset, size, f.read(size)))
 
+def arg_auto_int(x):
+    return int(x, 0)
+
 if __name__ == '__main__':
-    f = ESPFirmwareImage('wi07c.rom')
+    parser = argparse.ArgumentParser(description = 'ESP8266 ROM Bootloader Utility', prog = 'esptool')
 
-    esp = ESPROM('/dev/ttyUSB1')
+    parser.add_argument(
+            '--port', '-p',
+            help = 'Serial port device',
+            default = '/dev/ttyUSB0')
 
-    esp.sync()
+    subparsers = parser.add_subparsers(
+            dest = 'operation',
+            help = 'Run esptool {command} -h for additional help')
 
-    print 'RAM boot...'
-    for (offset, size, data) in f.segments:
-        print 'Downloading %d bytes at %08x...' % (size, offset)
-        esp.mem_begin(size, math.ceil(size / float(esp.ESP_BLOCK_MAX)), esp.ESP_BLOCK_MAX, offset)
+    parser_load_ram = subparsers.add_parser(
+            'load_ram',
+            help = 'Download an image to RAM and execute')
+    parser_load_ram.add_argument('filename', help = 'Firmware image')
 
-        seq = 0
-        while len(data) > 0:
-            esp.mem_block(data[0:esp.ESP_BLOCK_MAX], seq)
-            data = data[esp.ESP_BLOCK_MAX:]
-            print '%d' % seq
-            seq += 1
-        print 'done!'
+    parser_dump_mem = subparsers.add_parser(
+            'dump_mem',
+            help = 'Dump arbitrary memory to disk')
+    parser_dump_mem.add_argument('address', help = 'Base address', type = arg_auto_int)
+    parser_dump_mem.add_argument('size', help = 'Size of region to dump', type = arg_auto_int)
+    parser_dump_mem.add_argument('filename', help = 'Name of binary dump')
 
-    print 'Done, executing at %08x' % f.entrypoint
-    esp.mem_finish(f.entrypoint)
+    parser_read_mem = subparsers.add_parser(
+            'read_mem',
+            help = 'Read arbitrary memory location')
+    parser_read_mem.add_argument('address', help = 'Address to read', type = arg_auto_int)
 
-    #f = file('iram1.bin','w')
-    #print '%x' % esp.read_reg(0x40100000)
-    #print '%x' % esp.read_reg(0x40100100)
-    #esp.write_reg(0x40200000, 0xcafebabe, 0xffffffff)
-    #print '%x' % esp.read_reg(0x40200000)
-    #print '%x' % esp.read_reg(0x40200100)
+    parser_write_mem = subparsers.add_parser(
+            'write_mem',
+            help = 'Read-modify-write to arbitrary memory location')
+    parser_write_mem.add_argument('address', help = 'Address to write', type = arg_auto_int)
+    parser_write_mem.add_argument('value', help = 'Value', type = arg_auto_int)
+    parser_write_mem.add_argument('mask', help = 'Mask of bits to write', type = arg_auto_int)
 
-    #for i in xrange(655364/4):
-    #    d = esp.read_reg(0x40100000+(i*4))
-    #    f.write(struct.pack('<I', d))
-    #    if i % 1024 == 0:
-    #        print i
-    #    print '%08x: %08x' % (0x40240000+(i*4), esp.read_reg(0x40240000+(i*4)))
+    args = parser.parse_args()
+
+    esp = ESPROM(args.port)
+
+    esp.connect()
+
+    if args.operation == 'load_ram':
+        image = ESPFirmwareImage(args.filename)
+
+        print 'RAM boot...'
+        for (offset, size, data) in image.segments:
+            print 'Downloading %d bytes at %08x...' % (size, offset),
+            esp.mem_begin(size, math.ceil(size / float(esp.ESP_BLOCK_MAX)), esp.ESP_BLOCK_MAX, offset)
+
+            seq = 0
+            while len(data) > 0:
+                esp.mem_block(data[0:esp.ESP_BLOCK_MAX], seq)
+                data = data[esp.ESP_BLOCK_MAX:]
+                seq += 1
+            print 'done!'
+
+        print 'All segments done, executing at %08x' % image.entrypoint
+        esp.mem_finish(image.entrypoint)
+
+    elif args.operation == 'read_mem':
+        print '0x%08x = 0x%08x' % (args.address, esp.read_reg(args.address))
+
+    elif args.operation == 'write_mem':
+        esp.write_reg(args.address, args.value, args.mask, 0)
+        print 'Wrote %08x, mask %08x to %08x' % (args.value, args.mask, args.address)
+
+    elif args.operation == 'dump_mem':
+        f = file(args.filename, 'wb')
+        for i in xrange(args.size/4):
+            d = esp.read_reg(args.address+(i*4))
+            f.write(struct.pack('<I', d))

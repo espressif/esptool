@@ -7,7 +7,10 @@ This is a work in progress; batteries are not yet included.
 
 ## Usage
 
-This utility does not have a user interface yet. Hack it, like real hackers! ;)
+This utility actually have a user interface! It uses Argparse and is self-documenting.
+Try running it with `-h`.
+
+Or hack the script to your hearts content.
 
 ## Protocol
 
