@@ -56,6 +56,31 @@ Byte   | Name			| Input		| Output
 Each byte in the payload is XOR'ed together, as well as the magic number `0xEF`.
 The result is stored as a zero-padded byte in the 32-bit checksum field in the header.
 
+## Flash image format
+The flash file consists of a header, a variable number of data segments and a footer.
+Multi-byte fields are little-endian.
+
+### File header
+
+Byte	| Description
+--------|-----------------------
+0	| Always `0xE9`
+1	| Number of segments
+2-3	| Padding/unused
+4-7	| Entry point
+8-n	| Segments
+
+### Segment
+
+Byte	| Description
+--------|-----------------------
+0-3	| Memory offset
+4-7	| Segment size
+8...n	| Data
+
+### Footer
+The footer is 16 bytes, function unknown but probably some kind of checksum.
+
 ## Boot log
 The boot rom writes a log to the UART when booting. The timing is a little bit unusual: 75000 baud (at least on my modules, when doing a cold boot)
 
