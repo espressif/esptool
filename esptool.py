@@ -15,6 +15,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import sys
 import struct
 import serial
 import math
@@ -33,7 +34,8 @@ class ESPROM:
     ESP_WRITE_REG   = 0x09
     ESP_READ_REG    = 0x0a
 
-    ESP_BLOCK_MAX   = 0x1800
+    ESP_RAM_BLOCK   = 0x1800
+    ESP_FLASH_BLOCK = 0x400
 
     ESP_ROM_BAUD    = 115200
 
@@ -141,8 +143,27 @@ class ESPROM:
 
     def mem_finish(self, entrypoint = 0):
         if self.command(ESPROM.ESP_MEM_END,
-                struct.pack('<II', 1 if entrypoint == 0 else 0, entrypoint))[1] != "\0\0":
-            raise Exception('Failed to start execution')
+                struct.pack('<II', int(entrypoint == 0), entrypoint))[1] != "\0\0":
+            raise Exception('Failed to leave RAM download mode')
+
+    def flash_begin(self, size, offset):
+        old_tmo = self._port.timeout
+        self._port.timeout = 10
+        if self.command(ESPROM.ESP_FLASH_BEGIN,
+                struct.pack('<IIII', size, 0x200, 0x400, offset))[1] != "\0\0":
+            raise Exception('Failed to enter Flash download mode')
+        self._port.timeout = old_tmo
+
+    def flash_block(self, data, seq):
+        if self.command(ESPROM.ESP_FLASH_DATA,
+                struct.pack('<IIII', len(data), seq, 0, 0)+data, self.checksum(data))[1] != "\0\0":
+            raise Exception('Failed to write to target Flash')
+
+    def flash_finish(self, reboot = False):
+        if self.command(ESPROM.ESP_FLASH_END,
+                struct.pack('<I', int(not reboot)))[1] != "\0\0":
+            raise Exception('Failed to leave Flash mode')
+
 
 class ESPFirmwareImage:
     
@@ -201,6 +222,12 @@ if __name__ == '__main__':
     parser_write_mem.add_argument('value', help = 'Value', type = arg_auto_int)
     parser_write_mem.add_argument('mask', help = 'Mask of bits to write', type = arg_auto_int)
 
+    parser_write_flash = subparsers.add_parser(
+            'write_flash',
+            help = 'Write a binary blob to flash')
+    parser_write_flash.add_argument('address', help = 'Base address, 4KiB-aligned', type = arg_auto_int)
+    parser_write_flash.add_argument('filename', help = 'Binary file to write')
+
     args = parser.parse_args()
 
     esp = ESPROM(args.port)
@@ -213,12 +240,13 @@ if __name__ == '__main__':
         print 'RAM boot...'
         for (offset, size, data) in image.segments:
             print 'Downloading %d bytes at %08x...' % (size, offset),
-            esp.mem_begin(size, math.ceil(size / float(esp.ESP_BLOCK_MAX)), esp.ESP_BLOCK_MAX, offset)
+            sys.stdout.flush()
+            esp.mem_begin(size, math.ceil(size / float(esp.ESP_RAM_BLOCK)), esp.ESP_RAM_BLOCK, offset)
 
             seq = 0
             while len(data) > 0:
-                esp.mem_block(data[0:esp.ESP_BLOCK_MAX], seq)
-                data = data[esp.ESP_BLOCK_MAX:]
+                esp.mem_block(data[0:esp.ESP_RAM_BLOCK], seq)
+                data = data[esp.ESP_RAM_BLOCK:]
                 seq += 1
             print 'done!'
 
@@ -237,3 +265,18 @@ if __name__ == '__main__':
         for i in xrange(args.size/4):
             d = esp.read_reg(args.address+(i*4))
             f.write(struct.pack('<I', d))
+
+    elif args.operation == 'write_flash':
+        image = file(args.filename, 'rb').read()
+        print 'Erasing flash...'
+        esp.flash_begin(len(image), args.address)
+        seq = 0
+        blocks = math.ceil(len(image)/esp.ESP_FLASH_BLOCK)
+        while len(image) > 0:
+            print '\rWriting at 0x%08x... (%d %%)' % (args.address + seq*esp.ESP_FLASH_BLOCK, 100*seq/blocks),
+            sys.stdout.flush()
+            esp.flash_block(image[0:esp.ESP_FLASH_BLOCK], seq)
+            image = image[esp.ESP_FLASH_BLOCK:]
+            seq += 1
+        print '\nLeaving...'
+        esp.flash_finish(False)
