@@ -330,6 +330,10 @@ if __name__ == '__main__':
         for i in xrange(args.size/4):
             d = esp.read_reg(args.address+(i*4))
             f.write(struct.pack('<I', d))
+            if f.tell() % 1024 == 0:
+                print '\r%d bytes read... (%d %%)' % (f.tell(), f.tell()*100/args.size),
+                sys.stdout.flush()
+        print 'Done!'
 
     elif args.operation == 'write_flash':
         image = file(args.filename, 'rb').read()
