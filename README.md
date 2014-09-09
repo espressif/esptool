@@ -7,10 +7,25 @@ This is a work in progress; batteries are not yet included.
 
 ## Usage
 
-This utility actually have a user interface! It uses Argparse and is self-documenting.
-Try running it with `-h`.
-
+This utility actually have a user interface! It uses [Argparse](https://docs.python.org/dev/library/argparse.html)
+and is rather self-documenting. Try running `esptool -h`.
 Or hack the script to your hearts content.
+
+### Examples
+The probably most useful command; writing an application to flash:
+```
+./esptool.py write_flash 0x000000 wi07c.rom
+```
+
+Creating an application image:
+```
+./esptool.py make_image -f app.text.bin -a 0x40100000 -f app.data.bin -a 0x3ffe8000 -f app.rodata.bin -a 0x3ffe8c00 app.flash.bin
+```
+
+Dumping the ROM:
+```
+./esptool.py dump_mem 0x40000000 65536 iram0.bin
+```
 
 ## Protocol
 
@@ -48,9 +63,9 @@ Byte   | Name		| Comment
 
 Byte   | Name			| Input		| Output
 -------|------------------------|---------------|------------------------
-`0x02` | Flash Download Start	|		|
-`0x03` | Flash Download Data	|		|
-`0x04` | Flash Download Finish	|		|
+`0x02` | Flash Download Start	| total size, 0x200, block size, offset	|
+`0x03` | Flash Download Data	| size, sequence number, data. checksum in dedicated field. |
+`0x04` | Flash Download Finish	| reboot flag? |
 `0x05` | RAM Download Start	| total size, packet size, number of packets, memory offset |
 `0x06` | RAM Download Finish	| execute flag, entry point |
 `0x07` | RAM Download Data	| size, sequence numer, data. checksum in dedicated field. |
