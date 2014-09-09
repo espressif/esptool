@@ -3,7 +3,7 @@
 A cute Python utility to communicate with the ROM bootloader in Espressif ESP8266.
 It is intended to be a simple, platform independent, open source replacement for XTCOM.
 
-This is a work in progress; batteries are not yet included.
+This is a work in progress; it is usable but expect some rough edges.
 
 ## Usage
 
