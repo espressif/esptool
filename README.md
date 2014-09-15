@@ -100,7 +100,7 @@ Byte	| Description
 8...n	| Data
 
 ### Footer
-The footer is 16 bytes, function unknown but probably some kind of checksum.
+The file is padded with zeros until its size is one byte less than a multiple of 16 bytes. A last byte (thus making the file size a multiple of 16) is the checksum of the data of all segments. The checksum is defined as the xor-sum of all bytes and the byte `0xEF`.
 
 ## Boot log
 The boot rom writes a log to the UART when booting. The timing is a little bit unusual: 75000 baud (at least on my modules, when doing a cold boot)
