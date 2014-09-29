@@ -340,7 +340,7 @@ if __name__ == '__main__':
         print 'Erasing flash...'
         esp.flash_begin(len(image), args.address)
         seq = 0
-        blocks = math.ceil(len(image)/esp.ESP_FLASH_BLOCK)
+        blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
         while len(image) > 0:
             print '\rWriting at 0x%08x... (%d %%)' % (args.address + seq*esp.ESP_FLASH_BLOCK, 100*seq/blocks),
             sys.stdout.flush()
