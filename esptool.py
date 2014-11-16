@@ -188,6 +188,12 @@ class ESPROM:
         if res[1] not in ("\0\0", "\x01\x06"):
             raise Exception('Failed to leave Flash mode')
 
+    """ Run application code in flash """
+    def run(self, reboot = False):
+        # Fake flash begin immediately followed by flash end
+        self.flash_begin(0, 0)
+        self.flash_finish(reboot)
+
 
 class ESPFirmwareImage:
     
@@ -277,6 +283,10 @@ if __name__ == '__main__':
             help = 'Write a binary blob to flash')
     parser_write_flash.add_argument('addr_filename', nargs = '+', help = 'Address and binary file to write there, separated by space')
 
+    parser_run = subparsers.add_parser(
+            'run',
+            help = 'Run application code in flash')
+
     parser_image_info = subparsers.add_parser(
             'image_info',
             help = 'Dump headers from an application image')
@@ -355,6 +365,9 @@ if __name__ == '__main__':
             print
         print '\nLeaving...'
         esp.flash_finish(False)
+
+    elif args.operation == 'run':
+        esp.run()
 
     elif args.operation == 'image_info':
         image = ESPFirmwareImage(args.filename)
