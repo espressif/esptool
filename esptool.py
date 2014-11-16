@@ -183,8 +183,9 @@ class ESPROM:
 
     """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot = False):
-        if self.command(ESPROM.ESP_FLASH_END,
-                struct.pack('<I', int(not reboot)))[1] != "\0\0":
+        pkt = struct.pack('<I', int(not reboot))
+        res = self.command(ESPROM.ESP_FLASH_END, pkt)
+        if res[1] not in ("\0\0", "\x01\x06"):
             raise Exception('Failed to leave Flash mode')
 
 
