@@ -275,8 +275,7 @@ if __name__ == '__main__':
     parser_write_flash = subparsers.add_parser(
             'write_flash',
             help = 'Write a binary blob to flash')
-    parser_write_flash.add_argument('address', help = 'Base address, 4KiB-aligned', type = arg_auto_int)
-    parser_write_flash.add_argument('filename', help = 'Binary file to write')
+    parser_write_flash.add_argument('addr_filename', nargs = '+', help = 'Address and binary file to write there, separated by space')
 
     parser_image_info = subparsers.add_parser(
             'image_info',
@@ -337,17 +336,23 @@ if __name__ == '__main__':
         print 'Done!'
 
     elif args.operation == 'write_flash':
-        image = file(args.filename, 'rb').read()
-        print 'Erasing flash...'
-        esp.flash_begin(len(image), args.address)
-        seq = 0
-        blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
-        while len(image) > 0:
-            print '\rWriting at 0x%08x... (%d %%)' % (args.address + seq*esp.ESP_FLASH_BLOCK, 100*seq/blocks),
-            sys.stdout.flush()
-            esp.flash_block(image[0:esp.ESP_FLASH_BLOCK], seq)
-            image = image[esp.ESP_FLASH_BLOCK:]
-            seq += 1
+        assert len(args.addr_filename) % 2 == 0
+        while args.addr_filename:
+            address = int(args.addr_filename[0], 0)
+            filename = args.addr_filename[1]
+            args.addr_filename = args.addr_filename[2:]
+            image = file(filename, 'rb').read()
+            print 'Erasing flash...'
+            esp.flash_begin(len(image), address)
+            seq = 0
+            blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
+            while len(image) > 0:
+                print '\rWriting at 0x%08x... (%d %%)' % (address + seq*esp.ESP_FLASH_BLOCK, 100*(seq+1)/blocks),
+                sys.stdout.flush()
+                esp.flash_block(image[0:esp.ESP_FLASH_BLOCK], seq)
+                image = image[esp.ESP_FLASH_BLOCK:]
+                seq += 1
+            print
         print '\nLeaving...'
         esp.flash_finish(False)
 
