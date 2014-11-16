@@ -123,13 +123,13 @@ class ESPROM:
     """ Try connecting repeatedly until successful, or giving up """
     def connect(self):
         print 'Connecting...'
-        self._port.timeout = 0.2
+        self._port.timeout = 0.5
         for i in xrange(10):
             try:
                 self._port.flushInput()
                 self._port.flushOutput()
                 self.sync()
-                self._port.timeout = 1
+                self._port.timeout = 5
                 return
             except:
                 time.sleep(0.1)
