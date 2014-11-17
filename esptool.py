@@ -123,13 +123,13 @@ class ESPROM:
     """ Try connecting repeatedly until successful, or giving up """
     def connect(self):
         print 'Connecting...'
-        self._port.timeout = 0.2
+        self._port.timeout = 0.5
         for i in xrange(10):
             try:
                 self._port.flushInput()
                 self._port.flushOutput()
                 self.sync()
-                self._port.timeout = 1
+                self._port.timeout = 5
                 return
             except:
                 time.sleep(0.1)
@@ -183,9 +183,16 @@ class ESPROM:
 
     """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot = False):
-        if self.command(ESPROM.ESP_FLASH_END,
-                struct.pack('<I', int(not reboot)))[1] != "\0\0":
+        pkt = struct.pack('<I', int(not reboot))
+        res = self.command(ESPROM.ESP_FLASH_END, pkt)
+        if res[1] not in ("\0\0", "\x01\x06"):
             raise Exception('Failed to leave Flash mode')
+
+    """ Run application code in flash """
+    def run(self, reboot = False):
+        # Fake flash begin immediately followed by flash end
+        self.flash_begin(0, 0)
+        self.flash_finish(reboot)
 
 
 class ESPFirmwareImage:
@@ -274,8 +281,11 @@ if __name__ == '__main__':
     parser_write_flash = subparsers.add_parser(
             'write_flash',
             help = 'Write a binary blob to flash')
-    parser_write_flash.add_argument('address', help = 'Base address, 4KiB-aligned', type = arg_auto_int)
-    parser_write_flash.add_argument('filename', help = 'Binary file to write')
+    parser_write_flash.add_argument('addr_filename', nargs = '+', help = 'Address and binary file to write there, separated by space')
+
+    parser_run = subparsers.add_parser(
+            'run',
+            help = 'Run application code in flash')
 
     parser_image_info = subparsers.add_parser(
             'image_info',
@@ -336,19 +346,28 @@ if __name__ == '__main__':
         print 'Done!'
 
     elif args.operation == 'write_flash':
-        image = file(args.filename, 'rb').read()
-        print 'Erasing flash...'
-        esp.flash_begin(len(image), args.address)
-        seq = 0
-        blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
-        while len(image) > 0:
-            print '\rWriting at 0x%08x... (%d %%)' % (args.address + seq*esp.ESP_FLASH_BLOCK, 100*seq/blocks),
-            sys.stdout.flush()
-            esp.flash_block(image[0:esp.ESP_FLASH_BLOCK], seq)
-            image = image[esp.ESP_FLASH_BLOCK:]
-            seq += 1
+        assert len(args.addr_filename) % 2 == 0
+        while args.addr_filename:
+            address = int(args.addr_filename[0], 0)
+            filename = args.addr_filename[1]
+            args.addr_filename = args.addr_filename[2:]
+            image = file(filename, 'rb').read()
+            print 'Erasing flash...'
+            esp.flash_begin(len(image), address)
+            seq = 0
+            blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
+            while len(image) > 0:
+                print '\rWriting at 0x%08x... (%d %%)' % (address + seq*esp.ESP_FLASH_BLOCK, 100*(seq+1)/blocks),
+                sys.stdout.flush()
+                esp.flash_block(image[0:esp.ESP_FLASH_BLOCK], seq)
+                image = image[esp.ESP_FLASH_BLOCK:]
+                seq += 1
+            print
         print '\nLeaving...'
         esp.flash_finish(False)
+
+    elif args.operation == 'run':
+        esp.run()
 
     elif args.operation == 'image_info':
         image = ESPFirmwareImage(args.filename)
