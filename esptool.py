@@ -23,6 +23,8 @@ import serial
 import math
 import time
 import argparse
+import os
+import subprocess
 
 class ESPROM:
 
@@ -223,6 +225,10 @@ class ESPFirmwareImage:
             self.checksum = ord(f.read(1))
 
     def add_segment(self, addr, data):
+        # Data should be aligned on word boundary
+        l = len(data)
+        if l % 4:
+            data += b"\x00" * (4 - l % 4)
         self.segments.append((addr, len(data), data))
 
     def save(self, filename):
@@ -238,6 +244,39 @@ class ESPFirmwareImage:
         align = 15-(f.tell() % 16)
         f.seek(align, 1)
         f.write(struct.pack('B', checksum))
+
+
+class ELFFile:
+
+    def __init__(self, name):
+        self.name = name
+        self.symbols = None
+
+    def _fetch_symbols(self):
+        if self.symbols is not None:
+            return
+        self.symbols = {}
+        try:
+            proc = subprocess.Popen(["xtensa-lx106-elf-nm", self.name], stdout=subprocess.PIPE)
+        except OSError:
+            print "Error calling xtensa-lx106-elf-nm, do you have Xtensa toolchain in PATH?"
+            sys.exit(1)
+        for l in proc.stdout:
+            fields = l.strip().split()
+            self.symbols[fields[2]] = int(fields[0], 16)
+
+    def get_symbol_addr(self, sym):
+        self._fetch_symbols()
+        return self.symbols[sym]
+
+    def load_section(self, section):
+        subprocess.check_call(["xtensa-lx106-elf-objcopy", "--only-section", section, "-Obinary", self.name, ".tmp.section"])
+        f = open(".tmp.section", "rb")
+        data = f.read()
+        f.close()
+        os.remove(".tmp.section")
+        return data
+
 
 def arg_auto_int(x):
     return int(x, 0)
@@ -300,11 +339,16 @@ if __name__ == '__main__':
     parser_make_image.add_argument('--segaddr', '-a', action = 'append', help = 'Segment base address', type = arg_auto_int) 
     parser_make_image.add_argument('--entrypoint', '-e', help = 'Address of entry point', type = arg_auto_int, default = 0)
 
+    parser_elf2image = subparsers.add_parser(
+            'elf2image',
+            help = 'Create an application image from ELF file')
+    parser_elf2image.add_argument('input', help = 'Input ELF file')
+
     args = parser.parse_args()
 
     # Create the ESPROM connection object, if needed
     esp = None
-    if args.operation not in ('image_info','make_image'):
+    if args.operation not in ('image_info','make_image','elf2image'):
         esp = ESPROM(args.port)
         esp.connect()
 
@@ -392,3 +436,18 @@ if __name__ == '__main__':
             image.add_segment(addr, data)
         image.entrypoint = args.entrypoint
         image.save(args.output)
+
+    elif args.operation == 'elf2image':
+        e = ELFFile(args.input)
+        image = ESPFirmwareImage()
+        image.entrypoint = e.get_symbol_addr("call_user_start")
+        for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
+            data = e.load_section(section)
+            image.add_segment(e.get_symbol_addr(start), data)
+        image.save(args.input + "-0x00000.bin")
+        data = e.load_section(".irom0.text")
+        off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
+        assert off >= 0
+        f = open(args.input + "-0x%05x.bin" % off, "wb")
+        f.write(data)
+        f.close()
