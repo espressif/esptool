@@ -55,16 +55,18 @@ Byte   | Name		| Comment
 -------|----------------|-------------------------------
 0      | Direction	| Always `0x01` for responses
 1      | Command	| Same value as in the request packet that trigged the response
-2-3    | Size		| Size of body
+2-3    | Size		| Size of body, normally 2
 4-7    | Value		| Response data for some operations
 8..n   | Body		| Depends on operation
+8      | Status		| Status flag, success(0) or failure(1)
+9      | Error		| Last error code, not reset on success
 
 ### Opcodes
 
 Byte   | Name			| Input		| Output
 -------|------------------------|---------------|------------------------
-`0x02` | Flash Download Start	| total size, 0x200, block size, offset	|
-`0x03` | Flash Download Data	| size, sequence number, data. checksum in dedicated field. |
+`0x02` | Flash Download Start	| total size, number of blocks, block size, offset	|
+`0x03` | Flash Download Data	| size, sequence number, data. checksum in value field. |
 `0x04` | Flash Download Finish	| reboot flag? |
 `0x05` | RAM Download Start	| total size, packet size, number of packets, memory offset |
 `0x06` | RAM Download Finish	| execute flag, entry point |
@@ -72,6 +74,7 @@ Byte   | Name			| Input		| Output
 `0x08` | Sync Frame		| `0x07 0x07 0x12 0x20`, `0x55` 32 times |
 `0x09` | Write register		| Four 32-bit words: address, value, mask and delay (in microseconds) | Body is `0x00 0x00` if successful
 `0x0a` | Read register		| Address as 32-bit word | Read data as 32-bit word in `value` field
+`0x0b` | Configure SPI params	| 24 bytes of unidentified SPI parameters |
 
 ### Checksum
 Each byte in the payload is XOR'ed together, as well as the magic number `0xEF`.

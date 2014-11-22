@@ -171,9 +171,10 @@ class ESPROM:
     """ Start downloading to Flash (performs an erase) """
     def flash_begin(self, size, offset):
         old_tmo = self._port.timeout
+        num_blocks = (size + ESPROM.ESP_FLASH_BLOCK - 1) / ESPROM.ESP_FLASH_BLOCK
         self._port.timeout = 10
         if self.command(ESPROM.ESP_FLASH_BEGIN,
-                struct.pack('<IIII', size, 0x200, 0x400, offset))[1] != "\0\0":
+                struct.pack('<IIII', size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1] != "\0\0":
             raise Exception('Failed to enter Flash download mode')
         self._port.timeout = old_tmo
 
@@ -186,8 +187,7 @@ class ESPROM:
     """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot = False):
         pkt = struct.pack('<I', int(not reboot))
-        res = self.command(ESPROM.ESP_FLASH_END, pkt)
-        if res[1] not in ("\0\0", "\x01\x06"):
+        if self.command(ESPROM.ESP_FLASH_END, pkt)[1] != "\0\0":
             raise Exception('Failed to leave Flash mode')
 
     """ Run application code in flash """
