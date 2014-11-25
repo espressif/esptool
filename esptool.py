@@ -181,8 +181,6 @@ class ESPROM:
 		for seq, chunk in enumerate(chunks(img, esp.ESP_FLASH_BLOCK)):
 			info('\rWriting flash at {:#08x} ({:0f}%)...'.format(offx+seq*self.ESP_FLASH_BLOCK, seq*self.ESP_FLASH_BLOCK/len(img)*100))
 			self.flash_block(chunk, seq)
-#		info('Finishing flashing...')
-#		self.flash_finish(False)
 
 	def write_memory_image(self, sections, entrypoint, info=lambda *args:None):
 		for i, (addr, data) in enumerate(sections):
@@ -208,12 +206,8 @@ class Image:
 
 	def add_segment(self, offx, data):
 		loffx, lsize, _ = self.segments[-1] if self.segments else (0, 0, None)
-#		if offx is None:
-#			offx = loffx+lsize
 #		if offx > 0x40200000 or offx < 0x3ffe0000 or len(data) > 65536: #FIXME document these magic values
 #			raise ValueError('Suspicious segment of {} bytes at {:#x}'.format(len(data), offx))
-#		if offx < loffx:
-#			raise UserWarning('Segments should be ordered by base address')
 		self.segments.append((offx, len(data), data))
 
 	@property
@@ -259,8 +253,13 @@ if __name__ == '__main__':
 	parser_write_mem.add_argument('mask', help='Mask of bits to write', type=_arg_auto_int)
 
 	# write_flash
-	parser_write_flash=subparsers.add_parser('write_flash', help='Write a binary blob to flash')
-	parser_write_flash.add_argument('firmware', help='Address and binary file to write there, separated by space')
+	parser_write_flash=subparsers.add_parser('write_flash', help='Write elf file to flash')
+	parser_write_flash.add_argument('firmware', help='Firmware elf file')
+
+	# make_image
+	parser_make_image=subparsers.add_parser('make_image', help='Create a bootloader-compatible binary image from elf file')
+	parser_make_image.add_argument('firmware', help='Firmware elf file')
+	parser_make_image.add_argument('imageout', help='Output file where the image should be palced')
 
 	# run
 	parser_run=subparsers.add_parser('run', help='Run application code in flash')
@@ -271,9 +270,28 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
+	def readelf(f):
+		elf = ELFFile(f)
+
+		# @0x00000
+		text   = elf.get_section_by_name(b'.text')
+		data   = elf.get_section_by_name(b'.data')
+		rodata = elf.get_section_by_name(b'.rodata')
+
+		img1 = Image(elf.header['e_entry'])
+		img1.add_segment(text['sh_addr'], text.data())
+		img1.add_segment(data['sh_addr'], data.data())
+		img1.add_segment(rodata['sh_addr'], rodata.data())
+
+		# @0x40000
+		ir0text = elf.get_section_by_name(b'.irom0.text')
+		
+		return img1, ir0text
+
+
 	# Create the ESPROM connection object, if needed
 	esp = None
-	if args.operation not in ('image_info'):
+	if args.operation not in ('image_info', 'make_image'):
 		esp = ESPROM(args.port)
 		print('Connecting...', end='')
 		esp.connect()
@@ -306,26 +324,21 @@ if __name__ == '__main__':
 
 	elif args.operation == 'write_flash':
 		with open(args.firmware, 'rb') as f:
-			elf = ELFFile(f)
-
-			# @0x00000
-			text   = elf.get_section_by_name(b'.text')
-			data   = elf.get_section_by_name(b'.data')
-			rodata = elf.get_section_by_name(b'.rodata')
-
-			img1 = Image(elf.header['e_entry'])
-			img1.add_segment(text['sh_addr'], text.data())
-			img1.add_segment(data['sh_addr'], data.data())
-			img1.add_segment(rodata['sh_addr'], rodata.data())
+			img1, ir0text = readelf(f)
 
 			esp.flash_image(0x00000, img1.bytes, info=print)
-
-			# @0x40000
-			ir0text = elf.get_section_by_name(b'.irom0.text')
-
 			esp.flash_image(0x40000, ir0text.data(), info=print)
-
 			esp.flash_finish(True)
+
+	elif args.operation == 'make_image':
+		with open(args.firmware, 'rb') as f:
+			img1, ir0text = readelf(f)
+
+			with open(args.imageout, 'wb') as out:
+				sec0 = img1.bytes
+				out.write(sec0)
+				out.write(b'\0'*(0x40000-len(sec0)))
+				out.write(ir0text.data())
 
 	elif args.operation == 'run':
 		esp.run()
