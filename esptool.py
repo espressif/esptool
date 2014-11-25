@@ -269,18 +269,11 @@ if __name__ == '__main__':
 	parser_image_info=subparsers.add_parser('image_info', help='Dump headers from an application image')
 	parser_image_info.add_argument('filename', help='Image file to parse')
 
-	# make_image
-	parser_make_image=subparsers.add_parser('make_image', help='Create an application image from binary files')
-	parser_make_image.add_argument('output', help='Output image file')
-	parser_make_image.add_argument('--segfile', '-f', action='append', help='Segment input file') 
-	parser_make_image.add_argument('--segaddr', '-a', action='append', help='Segment base address', type=_arg_auto_int) 
-	parser_make_image.add_argument('--entrypoint', '-e', help='Address of entry point', type=_arg_auto_int, default=0)
-
 	args = parser.parse_args()
 
 	# Create the ESPROM connection object, if needed
 	esp = None
-	if args.operation not in ('image_info','make_image'):
+	if args.operation not in ('image_info'):
 		esp = ESPROM(args.port)
 		print('Connecting...', end='')
 		esp.connect()
@@ -296,14 +289,14 @@ if __name__ == '__main__':
 
 			esp.write_memory_image(secs, elf.header['e_entry'], info=print)
 
-	elif args.operation == 'read_ram':
+	elif args.operation == 'read_mem':
 		print('@{:#08x}: {:#08x}'.format(args.address, esp.read_reg(args.address)))
 
-	elif args.operation == 'write_ram':
+	elif args.operation == 'write_mem':
 		esp.write_reg(args.address, args.value, args.mask, 0)
 		print('Wrote {:#08x} with mask {:#08x} to address {:#08x}'.format(args.value, args.mask, args.address))
 
-	elif args.operation == 'dump_ram':
+	elif args.operation == 'dump_mem':
 		with open(args.filename, 'wb') as f:
 			for addr in range(args.address, args.address+args.size, 4):
 				data = esp.read_reg(addr)
