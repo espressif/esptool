@@ -261,6 +261,12 @@ if __name__ == '__main__':
 	parser_make_image.add_argument('firmware', help='Firmware elf file')
 	parser_make_image.add_argument('imageout', help='Output file where the image should be palced')
 
+	# make_split_image
+	parser_make_image=subparsers.add_parser('make_split_image', help='Create a bootloader-compatible split binary image from elf file')
+	parser_make_image.add_argument('firmware', help='Firmware elf file')
+	parser_make_image.add_argument('out0x00000', help='Output file where the image for address 0x00000 should be palced')
+	parser_make_image.add_argument('out0x40000', help='Output file where the image for address 0x40000 should be palced')
+
 	# run
 	parser_run=subparsers.add_parser('run', help='Run application code in flash')
 
@@ -291,7 +297,7 @@ if __name__ == '__main__':
 
 	# Create the ESPROM connection object, if needed
 	esp = None
-	if args.operation not in ('image_info', 'make_image'):
+	if args.operation not in ('image_info', 'make_image', 'make_split_image'):
 		esp = ESPROM(args.port)
 		print('Connecting...', end='')
 		esp.connect()
@@ -338,6 +344,15 @@ if __name__ == '__main__':
 				sec0 = img1.bytes
 				out.write(sec0)
 				out.write(b'\0'*(0x40000-len(sec0)))
+				out.write(ir0text.data())
+
+	elif args.operation == 'make_split_image':
+		with open(args.firmware, 'rb') as f:
+			img1, ir0text = readelf(f)
+
+			with open(args.out0x00000, 'wb') as out:
+				out.write(img1.bytes)
+			with open(args.out0x40000, 'wb') as out:
 				out.write(ir0text.data())
 
 	elif args.operation == 'run':
