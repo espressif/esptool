@@ -24,6 +24,8 @@ import math
 import time
 import argparse
 import operator
+import functools
+from elftools.elf.elffile import ELFFile
 
 def chunks(iterable, n=1):
    l = len(iterable)
@@ -63,14 +65,14 @@ class ESPROM:
 		""" Read bytes from the serial port while performing SLIP unescaping """
 		def slip_read():
 			c = self._port.read(1)[0]
-			if c == '\xdb':
+			if c == 0xdb:
 				try:
-					return {'\xdc': 0xc0,
-							'\xdd': 0xdb
-						}[self._port.read(1)]
+					return {0xdc: 0xc0,
+							0xdd: 0xdb
+						}[self._port.read(1)[0]]
 				except KeyError:
 					raise ValueError('Invalid SLIP escape sequence received from device')
-			return c[0]
+			return c
 		return bytes([slip_read() for _ in range(length)])
 
 	def write(self, packet):
@@ -80,20 +82,21 @@ class ESPROM:
 	@staticmethod
 	def checksum(data, state=ESP_CHECKSUM_MAGIC):
 		""" Calculate the XOR checksum of a blob, as it is defined by the ROM """
-		return state ^ map(data, operator.xor)
+		return state ^ functools.reduce(operator.xor, data)
 
 	def command(self, op=None, data=None, chk=0):
 		""" Send a request and read the response """
 		if op is not None:
 			# Construct and send request
-			pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
+			pkt = struct.pack(b'<BBHI', 0x00, op, len(data), chk) + data
 			self.write(pkt)
 
 		# Read header of response and parse
-		if self._port.read(1) != '\xc0':
-			raise ValueError('Invalid head of packet')
+		c = self._port.read(1)[0]
+		if c != 0xc0:
+			raise ValueError('Invalid head of packet: expected 0xc0, got {:#x}'.format(c))
 		hdr = self.read(8)
-		(resp, op_ret, len_ret, val) = struct.unpack('<BBHI', hdr)
+		(resp, op_ret, len_ret, val) = struct.unpack(b'<BBHI', hdr)
 		if resp != 0x01 or (op and op_ret != op):
 			raise ValueError('Invalid response')
 
@@ -101,8 +104,9 @@ class ESPROM:
 		body = self.read(len_ret)
 
 		# Terminating byte
-		if self._port.read(1) != '\xc0':
-			raise ValueError('Invalid end of packet')
+		c = self._port.read(1)[0]
+		if c != 0xc0:
+			raise ValueError('Invalid end of packet: expected 0xc0, got {:#x}'.format(c))
 
 		return val, body
 
@@ -114,14 +118,14 @@ class ESPROM:
 
 	def sync(self):
 		""" Perform a connection test """
-		self.command(ESPROM.ESP_SYNC, '\x07\x07\x12\x20'+32*'\x55')
+		self.command(ESPROM.ESP_SYNC, b'\x07\x07\x12\x20'+32*b'\x55')
 		for i in range(7):
 			self.command()
 
 	def connect(self):
 		""" Try connecting repeatedly until successful, or giving up """
 		self._port.timeout = 0.5
-		for i in range(10):
+		for _i in range(10):
 			try:
 				self._port.flushInput()
 				self._port.flushOutput()
@@ -134,51 +138,51 @@ class ESPROM:
 
 	def read_reg(self, addr):
 		""" Read memory address in target """
-		return self.simple_command(ESPROM.ESP_READ_REG, struct.pack('<I', addr))
+		return self.simple_command(ESPROM.ESP_READ_REG, struct.pack(b'<I', addr))
 
 	def write_reg(self, addr, value, mask, delay_us = 0):
 		""" Write to memory address in target """
-		return self.simple_command(ESPROM.ESP_WRITE_REG, struct.pack('<IIII', addr, value, mask, delay_us))
+		return self.simple_command(ESPROM.ESP_WRITE_REG, struct.pack(b'<IIII', addr, value, mask, delay_us))
 
 	def mem_begin(self, size, blocks, blocksize, offset):
 		""" Start downloading an application image to RAM """
-		return self.simple_command(ESPROM.ESP_MEM_BEGIN, struct.pack('<IIII', size, blocks, blocksize, offset))
+		return self.simple_command(ESPROM.ESP_MEM_BEGIN, struct.pack(b'<IIII', size, blocks, blocksize, offset))
 
 	def mem_block(self, data, seq):
 		""" Send a block of an image to RAM """
-		return self.simple_command(ESPROM.ESP_MEM_DATA, struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))
+		return self.simple_command(ESPROM.ESP_MEM_DATA, struct.pack(b'<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))
 
 	def mem_finish(self, entrypoint = 0):
 		""" Leave download mode and run the application """
-		return self.simple_command(ESPROM.ESP_MEM_END, struct.pack('<II', int(entrypoint == 0), entrypoint))
+		return self.simple_command(ESPROM.ESP_MEM_END, struct.pack(b'<II', int(entrypoint == 0), entrypoint))
 
 	def flash_begin(self, size, offset):
 		""" Start downloading to Flash (performs an erase) """
 		old_tmo, self._port.timeout = self._port.timeout, 10
 		try:
-			return self.simple_command(ESPROM.ESP_FLASH_BEGIN, struct.pack('<IIII', size, 0x200, 0x400, offset))
+			return self.simple_command(ESPROM.ESP_FLASH_BEGIN, struct.pack(b'<IIII', size, 0x200, 0x400, offset))
 		finally:
 			self._port.timeout = old_tmo
 
 	def flash_block(self, data, seq):
 		""" Write a block to flash """
-		return self.simple_command(ESPROM.ESP_FLASH_DATA, struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))
+		return self.simple_command(ESPROM.ESP_FLASH_DATA, struct.pack(b'<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))
 
 	def flash_finish(self, reboot=False):
 		""" Leave flash mode and run/reboot """
-		pkt = struct.pack('<I', int(not reboot))
+		pkt = struct.pack(b'<I', int(not reboot))
 		rv, body = self.command(ESPROM.ESP_FLASH_END, pkt)
-		if body not in ("\0\0", "\x01\x06"):
-			raise Exception('Failed to leave Flash mode')
+		if body not in (b'\0\0', b'\x01\x06'):
+			raise Exception('Failed to leave Flash mode, expected one of b"\x01\x06", b"\x01\x06"; got ', body)
 
 	def flash_image(self, offx, img, info=lambda *args:None):
 		info('Erasing flash...')
 		self.flash_begin(len(img), offx)
 		for seq, chunk in enumerate(chunks(img, esp.ESP_FLASH_BLOCK)):
-			info('\rWriting flash at {:#08x} ({.0f}%)...'.format(offx, seq*self.ESP_FLASH_BLOCK/len(img)*100))
+			info('\rWriting flash at {:#08x} ({:0f}%)...'.format(offx+seq*self.ESP_FLASH_BLOCK, seq*self.ESP_FLASH_BLOCK/len(img)*100))
 			self.flash_block(chunk, seq)
-		info('Finishing flashing...')
-		self.flash_finish(False)
+#		info('Finishing flashing...')
+#		self.flash_finish(False)
 
 	def write_memory_image(self, sections, entrypoint, info=lambda *args:None):
 		for i, (addr, data) in enumerate(sections):
@@ -190,7 +194,7 @@ class ESPROM:
 		info('All segments done, executing at {:#08x}'.format(entrypoint))
 		self.mem_finish(entrypoint)
 
-	def run(self, reboot = False):
+	def run(self, reboot=False):
 		""" Run application code in flash """
 		# Fake flash begin immediately followed by flash end
 		self.flash_begin(0, 0)
@@ -198,31 +202,34 @@ class ESPROM:
 
 
 class Image:
-	def __init__(self):
+	def __init__(self, entrypoint):
 		self.segments = []
-		self.entrypoint = 0
+		self.entrypoint = entrypoint
 
-	def add_segment(self, data, offx=None):
-		loffx, lsize, _ = segments[-1] if segments else (0, 0, None)
-		if offx is None:
-			offx = loffx+lsize
-		if offx > 0x40200000 or offx < 0x3ffe0000 or len(data) > 65536: #FIXME document these magic values
-			raise ValueError('Suspicious segment of {} bytes at {:x}'.format(size, offx))
-		if offx < loffx:
-			raise UserWarning('Segments should be ordered by base address')
+	def add_segment(self, offx, data):
+		loffx, lsize, _ = self.segments[-1] if self.segments else (0, 0, None)
+#		if offx is None:
+#			offx = loffx+lsize
+#		if offx > 0x40200000 or offx < 0x3ffe0000 or len(data) > 65536: #FIXME document these magic values
+#			raise ValueError('Suspicious segment of {} bytes at {:#x}'.format(len(data), offx))
+#		if offx < loffx:
+#			raise UserWarning('Segments should be ordered by base address')
 		self.segments.append((offx, len(data), data))
 
 	@property
 	def bytes(self):
-		b = struct.pack('<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.segments), 0, 0, self.entrypoint)
+		b = struct.pack(b'<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.segments), 0, 0, self.entrypoint)
 
-		sechdr = lambda offx, size: struct.pack('<II', offx, size)
+		sechdr = lambda offx, size: struct.pack(b'<II', offx, size)
 		for offx, size, data in self.segments:
-			b += sechdr(offx, size) + data
+			data = data + b'\0'*(3-(len(data)-1)%4)
+			b += sechdr(offx, len(data)) + data
 
 		checksum = ESPROM.checksum(b''.join(data for _1,_2,data in self.segments))
 		pad = 15-(len(b)%16)
-		b += '\0'*pad + chr(checksum)
+		b += b'\0'*pad + bytes([checksum])
+
+		return b
 
 if __name__ == '__main__':
 	_arg_auto_int = lambda x: int(x, 0)
@@ -275,17 +282,19 @@ if __name__ == '__main__':
 	esp = None
 	if args.operation not in ('image_info','make_image'):
 		esp = ESPROM(args.port)
-		print('Connecting...')
+		print('Connecting...', end='')
 		esp.connect()
+		print(' Connected.')
 
 	# Do the actual work. Should probably be split into separate functions.
 	if args.operation == 'load_ram':
-		elf = ELFFile(args.firmware)
+		with open(args.firmware, 'rb') as f:
+			elf = ELFFile(f)
 
-		SECTIONS = [b'.text', b'.data', b'.rodata', b'.irom0.text']
-		secs = [ (sec[b'sh_addr'], sec.data()) for sec in (elf.get_section_by_name(section) for section in SECTIONS) ]
+			SECTIONS = [b'.text', b'.data', b'.rodata', b'.irom0.text']
+			secs = [ (sec[b'sh_addr'], sec.data()) for sec in (elf.get_section_by_name(section) for section in SECTIONS) ]
 
-		esp.write_memory_image(secs, elf.header['e_entry'], info=print)
+			esp.write_memory_image(secs, elf.header['e_entry'], info=print)
 
 	elif args.operation == 'read_ram':
 		print('@{:#08x}: {:#08x}'.format(args.address, esp.read_reg(args.address)))
@@ -298,33 +307,32 @@ if __name__ == '__main__':
 		with open(args.filename, 'wb') as f:
 			for addr in range(args.address, args.address+args.size, 4):
 				data = esp.read_reg(addr)
-				f.write(struct.pack('<I', d))
+				f.write(struct.pack(b'<I', d))
 				if f.tell() % 1024 == 0:
-					print('{} bytes read ({:.0f}%)'.format(f.tell(), f.tell()/args.size*100))
+					print('{} bytes read ({:0f}%)'.format(f.tell(), f.tell()/args.size*100))
 
 	elif args.operation == 'write_flash':
+		with open(args.firmware, 'rb') as f:
+			elf = ELFFile(f)
 
-		elf = ELFFile(args.firmware)
+			# @0x00000
+			text   = elf.get_section_by_name(b'.text')
+			data   = elf.get_section_by_name(b'.data')
+			rodata = elf.get_section_by_name(b'.rodata')
 
-		# @0x00000
-		text   = elf.get_section_by_name(b'.text').data()
-		data   = elf.get_section_by_name(b'.data').data()
-		rodata = elf.get_section_by_name(b'.rodata').data()
+			img1 = Image(elf.header['e_entry'])
+			img1.add_segment(text['sh_addr'], text.data())
+			img1.add_segment(data['sh_addr'], data.data())
+			img1.add_segment(rodata['sh_addr'], rodata.data())
 
-		img1 = Image()
-		img1.add_segment(text)
-		img1.add_segment(data)
-		img1.add_segment(rodata)
+			esp.flash_image(0x00000, img1.bytes, info=print)
 
-		esp.flash_image(0x00000, img1.bytes, info=print)
+			# @0x40000
+			ir0text = elf.get_section_by_name(b'.irom0.text')
 
-		# @0x40000
-		ir0text = elf.get_section_by_name(b'.irom0.text').data()
+			esp.flash_image(0x40000, ir0text.data(), info=print)
 
-		img2 = Image()
-		img2.add_segment(ir0text)
-
-		esp.flash_image(0x40000, img2.bytes, info=print)
+			esp.flash_finish(True)
 
 	elif args.operation == 'run':
 		esp.run()
