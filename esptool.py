@@ -25,12 +25,44 @@ import time
 import argparse
 import operator
 import functools
+import subprocess
 from elftools.elf.elffile import ELFFile
 
 def chunks(iterable, n=1):
    l = len(iterable)
    for ndx in range(0, l, n):
 	   yield iterable[ndx:min(ndx+n, l)]
+
+class Constants:
+
+	XCHAL_INSTROM0_VADDR	0x40200000
+	XCHAL_INSTROM0_SIZE		1048576
+
+	XCHAL_INSTRAM0_VADDR	0x40000000
+	XCHAL_INSTRAM0_SIZE		1048576
+
+	XCHAL_INSTRAM1_VADDR	0x40100000
+	XCHAL_INSTRAM1_SIZE		1048576
+
+	XCHAL_DATAROM0_VADDR	0x3FF40000
+	XCHAL_DATAROM0_SIZE		262144
+
+	XCHAL_DATARAM0_VADDR	0x3FFC0000
+	XCHAL_DATARAM0_SIZE		262144
+
+	XCHAL_DATARAM1_VADDR	0x3FF80000
+	XCHAL_DATARAM1_SIZE		262144
+
+	XCHAL_XLMI0_VADDR		0x3FF00000
+	XCHAL_XLMI0_SIZE		262144
+
+	@classmethod
+	def load_constants(kls, path=None):
+		if not path:
+			path = subprocess.check_output(['xtensa-lx106-elf-gcc', '-print-sysroot']).decode().strip() +
+				'/../include/xtensa/config/core-isa.h'
+		with open(path) as f:
+			lines = f.readlines()
 
 class ESPROM:
 
@@ -211,7 +243,7 @@ class Image:
 		self.segments.append((offx, len(data), data))
 
 	@property
-	def bytes(self):
+	def bootloader_bytes(self):
 		b = struct.pack(b'<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.segments), 0, 0, self.entrypoint)
 
 		sechdr = lambda offx, size: struct.pack(b'<II', offx, size)
@@ -222,6 +254,18 @@ class Image:
 		checksum = ESPROM.checksum(b''.join(data for _1,_2,data in self.segments))
 		pad = 15-(len(b)%16)
 		b += b'\0'*pad + bytes([checksum])
+
+		return b
+
+	@property
+	def flash_bytes(self):
+		b = bytes()
+
+		sort(self.segments)
+		base = self.segments[0][0] # take the lowest segment address as image base
+		for addr, size, data in self.segments:
+			b += '\xff'*(addr-base-len(b))
+			b += data
 
 		return b
 
@@ -279,12 +323,24 @@ if __name__ == '__main__':
 	def readelf(f):
 		elf = ELFFile(f)
 
+		img1 = Image(elf.header['e_entry'])
+
+		for seg in elf.iter_segments():
+			if seg['p_type'] == ENUM_P_TYPE.PT_SHLIB:
+				# direct mapping
+
+		for sec in elf.iter_sections():
+			if sec['sh_type'] == ENUM_SH_TYPE.SHT_PROGBITS and (sec['sh_flags'] & SH_FLAGS.SHF_ALLOC):
+				addr = sec['sh_addr']
+				if (addr&0xF0000) < 0x40000:
+					img1.add_segment(addr, sec)
+				else:
+
 		# @0x00000
 		text   = elf.get_section_by_name(b'.text')
 		data   = elf.get_section_by_name(b'.data')
 		rodata = elf.get_section_by_name(b'.rodata')
 
-		img1 = Image(elf.header['e_entry'])
 		img1.add_segment(text['sh_addr'], text.data())
 		img1.add_segment(data['sh_addr'], data.data())
 		img1.add_segment(rodata['sh_addr'], rodata.data())
@@ -343,7 +399,7 @@ if __name__ == '__main__':
 			with open(args.imageout, 'wb') as out:
 				sec0 = img1.bytes
 				out.write(sec0)
-				out.write(b'\0'*(0x40000-len(sec0)))
+				out.write(b'\xFF'*(0x40000-len(sec0)))
 				out.write(ir0text.data())
 
 	elif args.operation == 'make_split_image':
