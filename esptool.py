@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # ESP8266 ROM Bootloader Utility
 # https://github.com/themadinventor/esptool
@@ -19,435 +19,366 @@
 
 import sys
 import struct
-import serial
 import math
 import time
 import argparse
-import os
+import operator
+import functools
 import subprocess
+try:
+	from elftools.elf.elffile import ELFFile
+	from elftools.elf.enums import *
+	from elftools.elf.constants import *
+except:
+	print("Please install the python3 pyelftools")
+	exit(2)
+
+try:
+	import serial
+except:
+	print("Please install the python3 pyserial package")
+	exit(2)
+
+def chunks(iterable, n=1):
+   l = len(iterable)
+   for ndx in range(0, l, n):
+	   yield iterable[ndx:min(ndx+n, l)]
 
 class ESPROM:
 
-    # These are the currently known commands supported by the ROM
-    ESP_FLASH_BEGIN = 0x02
-    ESP_FLASH_DATA  = 0x03
-    ESP_FLASH_END   = 0x04
-    ESP_MEM_BEGIN   = 0x05
-    ESP_MEM_END     = 0x06
-    ESP_MEM_DATA    = 0x07
-    ESP_SYNC        = 0x08
-    ESP_WRITE_REG   = 0x09
-    ESP_READ_REG    = 0x0a
+	# These are the currently known commands supported by the ROM bootloader
+	ESP_FLASH_BEGIN = 0x02
+	ESP_FLASH_DATA	= 0x03
+	ESP_FLASH_END	= 0x04
+	ESP_MEM_BEGIN	= 0x05
+	ESP_MEM_END		= 0x06
+	ESP_MEM_DATA	= 0x07
+	ESP_SYNC		= 0x08
+	ESP_WRITE_REG	= 0x09
+	ESP_READ_REG	= 0x0a
 
-    # Maximum block sized for RAM and Flash writes, respectively.
-    ESP_RAM_BLOCK   = 0x1800
-    ESP_FLASH_BLOCK = 0x400
+	# Maximum block sizes for RAM and Flash writes, respectively.
+	ESP_RAM_BLOCK	= 0x1800
+	ESP_FLASH_BLOCK = 0x400
 
-    # Default baudrate used by the ROM. Don't know if it is possible to change.
-    ESP_ROM_BAUD    = 115200
+	# Default baudrate used by the ROM. Don't know if this can be changed.
+	ESP_ROM_BAUD	= 115200
 
-    # First byte of the application image
-    ESP_IMAGE_MAGIC = 0xe9
+	# First byte of the application image
+	ESP_IMAGE_MAGIC = 0xe9
 
-    # Initial state for the checksum routine
-    ESP_CHECKSUM_MAGIC = 0xef
+	# Initial state for the checksum routine
+	ESP_CHECKSUM_MAGIC = 0xef
 
-    def __init__(self, port = 0):
-        self._port = serial.Serial(port, self.ESP_ROM_BAUD)
+	# Base address of the SPI mapping
+	ESP_FLASH_BASE = 0x40200000
 
-    """ Read bytes from the serial port while performing SLIP unescaping """
-    def read(self, length = 1):
-        b = ''
-        while len(b) < length:
-            c = self._port.read(1)
-            if c == '\xdb':
-                c = self._port.read(1)
-                if c == '\xdc':
-                    b = b + '\xc0'
-                elif c == '\xdd':
-                    b = b + '\xdb'
-                else:
-                    raise Exception('Invalid SLIP escape')
-            else:
-                b = b + c
-        return b
+	def __init__(self, port=0):
+		self._port = serial.Serial(port, self.ESP_ROM_BAUD)
 
-    """ Write bytes to the serial port while performing SLIP escaping """
-    def write(self, packet):
-        buf = '\xc0'
-        for b in packet:
-            if b == '\xc0':
-                buf += '\xdb\xdc'
-            elif b == '\xdb':
-                buf += '\xdb\xdd'
-            else:
-                buf += b
-        buf += '\xc0'
-        self._port.write(buf)
+	def read(self, length=1):
+		""" Read bytes from the serial port while performing SLIP unescaping """
+		def slip_read():
+			c = self._port.read(1)[0]
+			if c == 0xdb:
+				try:
+					return {0xdc: 0xc0,
+							0xdd: 0xdb
+						}[self._port.read(1)[0]]
+				except KeyError:
+					raise ValueError('Invalid SLIP escape sequence received from device')
+			return c
+		return bytes([slip_read() for _ in range(length)])
 
-    """ Calculate checksum of a blob, as it is defined by the ROM """
-    @staticmethod
-    def checksum(data, state = ESP_CHECKSUM_MAGIC):
-        for b in data:
-            state ^= ord(b)
-        return state
+	def write(self, packet):
+		""" Write bytes to the serial port while performing SLIP escaping """
+		self._port.write(b'\xc0'+packet.replace(b'\xdb', b'\xdb\xdd').replace(b'\xc0', b'\xdb\xdc')+b'\xc0')
 
-    """ Send a request and read the response """
-    def command(self, op = None, data = None, chk = 0):
-        if op:
-            # Construct and send request
-            pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
-            self.write(pkt)
+	@staticmethod
+	def checksum(data, state=ESP_CHECKSUM_MAGIC):
+		""" Calculate the XOR checksum of a blob, as it is defined by the ROM """
+		return state ^ functools.reduce(operator.xor, data)
 
-        # Read header of response and parse
-        if self._port.read(1) != '\xc0':
-            raise Exception('Invalid head of packet')
-        hdr = self.read(8)
-        (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', hdr)
-        if resp != 0x01 or (op and op_ret != op):
-            raise Exception('Invalid response')
+	def command(self, op=None, data=None, chk=0):
+		""" Send a request and read the response """
+		if op is not None:
+			# Construct and send request
+			pkt = struct.pack(b'<BBHI', 0x00, op, len(data), chk) + data
+			self.write(pkt)
 
-        # The variable-length body
-        body = self.read(len_ret)
+		# Read header of response and parse
+		c = self._port.read(1)[0]
+		if c != 0xc0:
+			raise ValueError('Invalid head of packet: expected 0xc0, got {:#x}'.format(c))
+		hdr = self.read(8)
+		(resp, op_ret, len_ret, val) = struct.unpack(b'<BBHI', hdr)
+		if resp != 0x01 or (op and op_ret != op):
+			raise ValueError('Invalid response')
 
-        # Terminating byte
-        if self._port.read(1) != chr(0xc0):
-            raise Exception('Invalid end of packet')
+		# The variable-length body
+		body = self.read(len_ret)
 
-        return val, body
+		# Terminating byte
+		c = self._port.read(1)[0]
+		if c != 0xc0:
+			raise ValueError('Invalid end of packet: expected 0xc0, got {:#x}'.format(c))
 
-    """ Perform a connection test """
-    def sync(self):
-        self.command(ESPROM.ESP_SYNC, '\x07\x07\x12\x20'+32*'\x55')
-        for i in xrange(7):
-            self.command()
+		return val, body
 
-    """ Try connecting repeatedly until successful, or giving up """
-    def connect(self):
-        print 'Connecting...'
-        self._port.timeout = 0.5
-        for i in xrange(10):
-            try:
-                self._port.flushInput()
-                self._port.flushOutput()
-                self.sync()
-                self._port.timeout = 5
-                return
-            except:
-                time.sleep(0.1)
-        raise Exception('Failed to connect')
+	def simple_command(self, op=None, data=None, chk=0):
+		rv, body = self.command(op, data, chk)
+		if body != b'\0\0':
+			raise ValueError('Invalid command response from device')
+		return rv
 
-    """ Read memory address in target """
-    def read_reg(self, addr):
-        res = self.command(ESPROM.ESP_READ_REG, struct.pack('<I', addr))
-        if res[1] != "\0\0":
-            raise Exception('Failed to read target memory')
-        return res[0]
+	def sync(self):
+		""" Perform a connection test """
+		self.command(ESPROM.ESP_SYNC, b'\x07\x07\x12\x20'+32*b'\x55')
+		for i in range(7):
+			self.command()
 
-    """ Write to memory address in target """
-    def write_reg(self, addr, value, mask, delay_us = 0):
-        if self.command(ESPROM.ESP_WRITE_REG,
-                struct.pack('<IIII', addr, value, mask, delay_us))[1] != "\0\0":
-            raise Exception('Failed to write target memory')
+	def connect(self):
+		""" Try connecting repeatedly until successful, or giving up """
+		self._port.timeout = 0.5
+		for _i in range(10):
+			try:
+				self._port.flushInput()
+				self._port.flushOutput()
+				self.sync()
+				self._port.timeout = 5
+				return
+			except:
+				time.sleep(0.1)
+		raise Exception('Failed to connect')
 
-    """ Start downloading an application image to RAM """
-    def mem_begin(self, size, blocks, blocksize, offset):
-        if self.command(ESPROM.ESP_MEM_BEGIN,
-                struct.pack('<IIII', size, blocks, blocksize, offset))[1] != "\0\0":
-            raise Exception('Failed to enter RAM download mode')
+	def read_reg(self, addr):
+		""" Read memory address in target """
+		return self.simple_command(ESPROM.ESP_READ_REG, struct.pack(b'<I', addr))
 
-    """ Send a block of an image to RAM """
-    def mem_block(self, data, seq):
-        if self.command(ESPROM.ESP_MEM_DATA,
-                struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))[1] != "\0\0":
-            raise Exception('Failed to write to target RAM')
+	def write_reg(self, addr, value, mask, delay_us = 0):
+		""" Write to memory address in target """
+		return self.simple_command(ESPROM.ESP_WRITE_REG, struct.pack(b'<IIII', addr, value, mask, delay_us))
 
-    """ Leave download mode and run the application """
-    def mem_finish(self, entrypoint = 0):
-        if self.command(ESPROM.ESP_MEM_END,
-                struct.pack('<II', int(entrypoint == 0), entrypoint))[1] != "\0\0":
-            raise Exception('Failed to leave RAM download mode')
+	def mem_begin(self, size, blocks, blocksize, offset):
+		""" Start downloading an application image to RAM """
+		return self.simple_command(ESPROM.ESP_MEM_BEGIN, struct.pack(b'<IIII', size, blocks, blocksize, offset))
 
-    """ Start downloading to Flash (performs an erase) """
-    def flash_begin(self, size, offset):
-        old_tmo = self._port.timeout
-        self._port.timeout = 10
-        if self.command(ESPROM.ESP_FLASH_BEGIN,
-                struct.pack('<IIII', size, 0x200, 0x400, offset))[1] != "\0\0":
-            raise Exception('Failed to enter Flash download mode')
-        self._port.timeout = old_tmo
+	def mem_block(self, data, seq):
+		""" Send a block of an image to RAM """
+		return self.simple_command(ESPROM.ESP_MEM_DATA, struct.pack(b'<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))
 
-    """ Write block to flash """
-    def flash_block(self, data, seq):
-        if self.command(ESPROM.ESP_FLASH_DATA,
-                struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))[1] != "\0\0":
-            raise Exception('Failed to write to target Flash')
+	def mem_finish(self, entrypoint = 0):
+		""" Leave download mode and run the application """
+		return self.simple_command(ESPROM.ESP_MEM_END, struct.pack(b'<II', int(entrypoint == 0), entrypoint))
 
-    """ Leave flash mode and run/reboot """
-    def flash_finish(self, reboot = False):
-        pkt = struct.pack('<I', int(not reboot))
-        res = self.command(ESPROM.ESP_FLASH_END, pkt)
-        if res[1] not in ("\0\0", "\x01\x06"):
-            raise Exception('Failed to leave Flash mode')
+	def flash_begin(self, size, offset):
+		""" Start downloading to Flash (performs an erase) """
+		old_tmo, self._port.timeout = self._port.timeout, 10
+		try:
+			return self.simple_command(ESPROM.ESP_FLASH_BEGIN, struct.pack(b'<IIII', size, 0x200, 0x400, offset))
+		finally:
+			self._port.timeout = old_tmo
 
-    """ Run application code in flash """
-    def run(self, reboot = False):
-        # Fake flash begin immediately followed by flash end
-        self.flash_begin(0, 0)
-        self.flash_finish(reboot)
+	def flash_block(self, data, seq):
+		""" Write a block to flash """
+		return self.simple_command(ESPROM.ESP_FLASH_DATA, struct.pack(b'<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))
 
+	def flash_finish(self, reboot=False):
+		""" Leave flash mode and run/reboot """
+		pkt = struct.pack(b'<I', int(not reboot))
+		rv, body = self.command(ESPROM.ESP_FLASH_END, pkt)
+		if body not in (b'\0\0', b'\x01\x06'):
+			raise Exception('Failed to leave Flash mode, expected one of b"\x01\x06", b"\x01\x06"; got ', body)
 
-class ESPFirmwareImage:
-    
-    def __init__(self, filename = None):
-        self.segments = []
-        self.entrypoint = 0
+	def flash_image(self, offx, img, info=lambda *args:None):
+		info('Erasing flash...')
+		self.flash_begin(len(img), offx)
+		for seq, chunk in enumerate(chunks(img, esp.ESP_FLASH_BLOCK)):
+			info('\rWriting flash at {:#08x} ({:0f}%)...'.format(offx+seq*self.ESP_FLASH_BLOCK, seq*self.ESP_FLASH_BLOCK/len(img)*100))
+			self.flash_block(chunk, seq)
 
-        if filename is not None:
-            f = file(filename, 'rb')
-            (magic, segments, _, _, self.entrypoint) = struct.unpack('<BBBBI', f.read(8))
-            
-            # some sanity check
-            if magic != ESPROM.ESP_IMAGE_MAGIC or segments > 16:
-                raise Exception('Invalid firmware image')
-        
-            for i in xrange(segments):
-                (offset, size) = struct.unpack('<II', f.read(8))
-                if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
-                    raise Exception('Suspicious segment %x,%d' % (offset, size))
-                self.segments.append((offset, size, f.read(size)))
+	def write_memory_image(self, sections, entrypoint, info=lambda *args:None):
+		for i, (addr, data) in enumerate(sections):
+			info('Uploading section {}: {} bytes @{:#08x}'.format(i, len(data), addr))
+			self.mem_begin(size, math.ceil(size/float(self.ESP_RAM_BLOCK)), self.ESP_RAM_BLOCK, addr)
+			for seq, chunk in enumerate(chunks(data, self.ESP_RAM_BLOCK)):
+				self.mem_block(chunk, seq)
+			info('done!')
+		info('All sections done, executing at {:#08x}'.format(entrypoint))
+		self.mem_finish(entrypoint)
 
-            # Skip the padding. The checksum is stored in the last byte so that the
-            # file is a multiple of 16 bytes.
-            align = 15-(f.tell() % 16)
-            f.seek(align, 1)
-
-            self.checksum = ord(f.read(1))
-
-    def add_segment(self, addr, data):
-        # Data should be aligned on word boundary
-        l = len(data)
-        if l % 4:
-            data += b"\x00" * (4 - l % 4)
-        self.segments.append((addr, len(data), data))
-
-    def save(self, filename):
-        f = file(filename, 'wb')
-        f.write(struct.pack('<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.segments), 0, 0, self.entrypoint))
-
-        checksum = ESPROM.ESP_CHECKSUM_MAGIC
-        for (offset, size, data) in self.segments:
-            f.write(struct.pack('<II', offset, size))
-            f.write(data)
-            checksum = ESPROM.checksum(data, checksum)
-
-        align = 15-(f.tell() % 16)
-        f.seek(align, 1)
-        f.write(struct.pack('B', checksum))
+	def run(self, reboot=False):
+		""" Run application code in flash """
+		# Fake flash begin immediately followed by flash end
+		self.flash_begin(0, 0)
+		self.flash_finish(reboot)
 
 
-class ELFFile:
+class Image:
+	def __init__(self, elffile=None, entrypoint=None, flash_base=ESPROM.ESP_FLASH_BASE):
+		# Sections initially loaded by the bootloader into RAM
+		self.loaded_sections = []
+		# Sections directly memory-mapped from flash
+		self.static_sections = []
+		self.entrypoint = entrypoint
+		self.flash_base = flash_base
 
-    def __init__(self, name):
-        self.name = name
-        self.symbols = None
+		if elffile:
+			with open(elffile, 'rb') as f:
+				self.load_elf(f)
 
-    def _fetch_symbols(self):
-        if self.symbols is not None:
-            return
-        self.symbols = {}
-        try:
-            proc = subprocess.Popen(["xtensa-lx106-elf-nm", self.name], stdout=subprocess.PIPE)
-        except OSError:
-            print "Error calling xtensa-lx106-elf-nm, do you have Xtensa toolchain in PATH?"
-            sys.exit(1)
-        for l in proc.stdout:
-            fields = l.strip().split()
-            self.symbols[fields[2]] = int(fields[0], 16)
+	def load_elf(self, f):
+		elf = ELFFile(f)
 
-    def get_symbol_addr(self, sym):
-        self._fetch_symbols()
-        return self.symbols[sym]
+		self.entrypoint = elf.header['e_entry']
 
-    def load_section(self, section):
-        subprocess.check_call(["xtensa-lx106-elf-objcopy", "--only-section", section, "-Obinary", self.name, ".tmp.section"])
-        f = open(".tmp.section", "rb")
-        data = f.read()
-        f.close()
-        os.remove(".tmp.section")
-        return data
+		for sec in elf.iter_sections():
+			if sec['sh_type'] == 'SHT_PROGBITS' and (sec['sh_flags'] & SH_FLAGS.SHF_ALLOC):
+				addr = sec['sh_addr']
+				data = sec.data()
+				self.add_section(addr, data)
 
+	def add_section(self, addr, data):
+		if addr < self.flash_base:
+			self.loaded_sections.append((addr, data))
+		else:
+			self.static_sections.append((addr, data))
 
-def arg_auto_int(x):
-    return int(x, 0)
+	def loader_image(self):
+		b = struct.pack(b'<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.loaded_sections), 0, 0, self.entrypoint)
+
+		sechdr = lambda addr, size: struct.pack(b'<II', addr, size)
+		for addr, data in self.loaded_sections:
+			data = data + b'\0'*(3-(len(data)-1)%4)
+			b += sechdr(addr, len(data)) + data
+
+		checksum = ESPROM.checksum(b''.join(data for _1,data in self.loaded_sections))
+		pad = 15-(len(b)%16)
+		b += b'\0'*pad + bytes([checksum]) #FIXME 0xff-pad here?
+
+		return b
+
+	def static_image(self):
+		b = bytes()
+
+		self.static_sections.sort()
+		base = self.static_sections[0][0] # take the lowest section's address as image base
+		for addr, data in self.static_sections:
+			b += b'\xff'*(addr-base-len(b))
+			b += data
+
+		return (base-self.flash_base), b
+
+	def combined_image(self):
+		limg = self.loader_image()
+		sbase, simg = self.static_image()
+		return limg + b'\xff'*(sbase-len(limg)) + simg
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description = 'ESP8266 ROM Bootloader Utility', prog = 'esptool')
+	_arg_auto_int = lambda x: int(x, 0)
 
-    parser.add_argument(
-            '--port', '-p',
-            help = 'Serial port device',
-            default = '/dev/ttyUSB0')
+	parser = argparse.ArgumentParser(description='ESP8266 ROM Bootloader Utility', prog='esptool')
+	subparsers = parser.add_subparsers(dest='operation', help='Run esptool {command} -h for additional help')
 
-    subparsers = parser.add_subparsers(
-            dest = 'operation',
-            help = 'Run esptool {command} -h for additional help')
+	# load_ram
+	parser_load_ram = subparsers.add_parser('load_ram', help='Download an image to RAM and execute')
+	parser_load_ram.add_argument('port', help='Serial port where the ESP can be found')
+	parser_load_ram.add_argument('filename', help='Firmware image')
 
-    parser_load_ram = subparsers.add_parser(
-            'load_ram',
-            help = 'Download an image to RAM and execute')
-    parser_load_ram.add_argument('filename', help = 'Firmware image')
+	# dump_mem
+	parser_dump_mem = subparsers.add_parser('dump_mem', help='Dump arbitrary memory to disk')
+	parser_dump_mem.add_argument('port', help='Serial port where the ESP can be found')
+	parser_dump_mem.add_argument('address', help='Base address', type=_arg_auto_int)
+	parser_dump_mem.add_argument('size', help='Size of region to dump', type=_arg_auto_int)
+	parser_dump_mem.add_argument('filename', help='Name of binary dump')
 
-    parser_dump_mem = subparsers.add_parser(
-            'dump_mem',
-            help = 'Dump arbitrary memory to disk')
-    parser_dump_mem.add_argument('address', help = 'Base address', type = arg_auto_int)
-    parser_dump_mem.add_argument('size', help = 'Size of region to dump', type = arg_auto_int)
-    parser_dump_mem.add_argument('filename', help = 'Name of binary dump')
+	# read_mem
+	parser_read_mem = subparsers.add_parser('read_mem', help='Read arbitrary memory location')
+	parser_read_mem.add_argument('port', help='Serial port where the ESP can be found')
+	parser_read_mem.add_argument('address', help='Address to read', type=_arg_auto_int)
 
-    parser_read_mem = subparsers.add_parser(
-            'read_mem',
-            help = 'Read arbitrary memory location')
-    parser_read_mem.add_argument('address', help = 'Address to read', type = arg_auto_int)
+	# write_mem
+	parser_write_mem = subparsers.add_parser('write_mem', help='Read-modify-write to arbitrary memory location')
+	parser_write_mem.add_argument('port', help='Serial port where the ESP can be found')
+	parser_write_mem.add_argument('address', help='Address to write', type=_arg_auto_int)
+	parser_write_mem.add_argument('value', help='Value', type=_arg_auto_int)
+	parser_write_mem.add_argument('mask', help='Mask of bits to write', type=_arg_auto_int)
 
-    parser_write_mem = subparsers.add_parser(
-            'write_mem',
-            help = 'Read-modify-write to arbitrary memory location')
-    parser_write_mem.add_argument('address', help = 'Address to write', type = arg_auto_int)
-    parser_write_mem.add_argument('value', help = 'Value', type = arg_auto_int)
-    parser_write_mem.add_argument('mask', help = 'Mask of bits to write', type = arg_auto_int)
+	# write_flash
+	parser_write_flash = subparsers.add_parser('write_flash', help='Write elf file to flash')
+	parser_write_flash.add_argument('port', help='Serial port where the ESP can be found')
+	parser_write_flash.add_argument('firmware', help='Firmware elf file')
 
-    parser_write_flash = subparsers.add_parser(
-            'write_flash',
-            help = 'Write a binary blob to flash')
-    parser_write_flash.add_argument('addr_filename', nargs = '+', help = 'Address and binary file to write there, separated by space')
+	# make_image
+	parser_make_image = subparsers.add_parser('make_image', help='Create a bootloader-compatible combined binary flash image from elf file')
+	parser_make_image.add_argument('firmware', help='Firmware elf file')
+	parser_make_image.add_argument('imageout', help='Output file where the image should be palced')
 
-    parser_run = subparsers.add_parser(
-            'run',
-            help = 'Run application code in flash')
+	# make_split_image
+	parser_make_image = subparsers.add_parser('make_split_image', help='Create a bootloader-compatible split binary flash image from elf file')
+	parser_make_image.add_argument('firmware', help='Firmware elf file')
+	parser_make_image.add_argument('loaderout', help='Output file where the image for bootloaded sections should be palced')
+	parser_make_image.add_argument('staticout', help='Output file where the image for statically mapped sections should be palced')
 
-    parser_image_info = subparsers.add_parser(
-            'image_info',
-            help = 'Dump headers from an application image')
-    parser_image_info.add_argument('filename', help = 'Image file to parse')
+	# run
+	parser_run = subparsers.add_parser('run', help='Run application code in flash')
 
-    parser_make_image = subparsers.add_parser(
-            'make_image',
-            help = 'Create an application image from binary files')
-    parser_make_image.add_argument('output', help = 'Output image file')
-    parser_make_image.add_argument('--segfile', '-f', action = 'append', help = 'Segment input file') 
-    parser_make_image.add_argument('--segaddr', '-a', action = 'append', help = 'Segment base address', type = arg_auto_int) 
-    parser_make_image.add_argument('--entrypoint', '-e', help = 'Address of entry point', type = arg_auto_int, default = 0)
+	# image_info
+	parser_image_info=subparsers.add_parser('image_info', help='Dump headers from an application image')
+	parser_image_info.add_argument('filename', help='Image file to parse')
 
-    parser_elf2image = subparsers.add_parser(
-            'elf2image',
-            help = 'Create an application image from ELF file')
-    parser_elf2image.add_argument('input', help = 'Input ELF file')
+	args = parser.parse_args()
 
-    args = parser.parse_args()
 
-    # Create the ESPROM connection object, if needed
-    esp = None
-    if args.operation not in ('image_info','make_image','elf2image'):
-        esp = ESPROM(args.port)
-        esp.connect()
+	# Create the ESPROM connection object, if needed
+	if 'port' in args:
+		esp = ESPROM(args.port)
+		print('Connecting...', end='')
+		esp.connect()
+		print(' Connected.')
 
-    # Do the actual work. Should probably be split into separate functions.
-    if args.operation == 'load_ram':
-        image = ESPFirmwareImage(args.filename)
+	# Do the actual work. Should probably be split into separate functions.
+	if args.operation == 'load_ram':
+		img = Image(args.firmware)
+		esp.write_memory_image(img.loaded_sections + img.static_sections, img.entrypoint, info=print)
 
-        print 'RAM boot...'
-        for (offset, size, data) in image.segments:
-            print 'Downloading %d bytes at %08x...' % (size, offset),
-            sys.stdout.flush()
-            esp.mem_begin(size, math.ceil(size / float(esp.ESP_RAM_BLOCK)), esp.ESP_RAM_BLOCK, offset)
+	elif args.operation == 'read_mem':
+		print('@{:#08x}: {:#08x}'.format(args.address, esp.read_reg(args.address)))
 
-            seq = 0
-            while len(data) > 0:
-                esp.mem_block(data[0:esp.ESP_RAM_BLOCK], seq)
-                data = data[esp.ESP_RAM_BLOCK:]
-                seq += 1
-            print 'done!'
+	elif args.operation == 'write_mem':
+		esp.write_reg(args.address, args.value, args.mask, 0)
+		print('Wrote {:#08x} with mask {:#08x} to address {:#08x}'.format(args.value, args.mask, args.address))
 
-        print 'All segments done, executing at %08x' % image.entrypoint
-        esp.mem_finish(image.entrypoint)
+	elif args.operation == 'dump_mem':
+		with open(args.filename, 'wb') as f:
+			for addr in range(args.address, args.address+args.size, 4):
+				data = esp.read_reg(addr)
+				f.write(struct.pack(b'<I', d))
+				if f.tell() % 1024 == 0:
+					print('{} bytes read ({:0f}%)'.format(f.tell(), f.tell()/args.size*100))
 
-    elif args.operation == 'read_mem':
-        print '0x%08x = 0x%08x' % (args.address, esp.read_reg(args.address))
+	elif args.operation == 'write_flash':
+		img = Image(args.firmware)
 
-    elif args.operation == 'write_mem':
-        esp.write_reg(args.address, args.value, args.mask, 0)
-        print 'Wrote %08x, mask %08x to %08x' % (args.value, args.mask, args.address)
+		esp.flash_image(0x00000, img.loader_image(), info=print)
+		base, data = img.static_image()
+		esp.flash_image(base, data, info=print)
+		esp.flash_finish(True)
 
-    elif args.operation == 'dump_mem':
-        f = file(args.filename, 'wb')
-        for i in xrange(args.size/4):
-            d = esp.read_reg(args.address+(i*4))
-            f.write(struct.pack('<I', d))
-            if f.tell() % 1024 == 0:
-                print '\r%d bytes read... (%d %%)' % (f.tell(), f.tell()*100/args.size),
-                sys.stdout.flush()
-        print 'Done!'
+	elif args.operation == 'make_image':
+		img = Image(args.firmware)
+		with open(args.imageout, 'wb') as out:
+			out.write(img.combined_image())
 
-    elif args.operation == 'write_flash':
-        assert len(args.addr_filename) % 2 == 0
-        while args.addr_filename:
-            address = int(args.addr_filename[0], 0)
-            filename = args.addr_filename[1]
-            args.addr_filename = args.addr_filename[2:]
-            image = file(filename, 'rb').read()
-            print 'Erasing flash...'
-            esp.flash_begin(len(image), address)
-            seq = 0
-            blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
-            while len(image) > 0:
-                print '\rWriting at 0x%08x... (%d %%)' % (address + seq*esp.ESP_FLASH_BLOCK, 100*(seq+1)/blocks),
-                sys.stdout.flush()
-                esp.flash_block(image[0:esp.ESP_FLASH_BLOCK], seq)
-                image = image[esp.ESP_FLASH_BLOCK:]
-                seq += 1
-            print
-        print '\nLeaving...'
-        esp.flash_finish(False)
+	elif args.operation == 'make_split_image':
+		img = Image(args.firmware)
+		with open(args.loaderout, 'wb') as out:
+			out.write(img.loader_image())
+		with open(args.staticout, 'wb') as out:
+			base, data = img.static_image()
+			out.write(data)
+			print('Static image flash offset: {:#x}'.format(base))
 
-    elif args.operation == 'run':
-        esp.run()
+	elif args.operation == 'run':
+		esp.run()
 
-    elif args.operation == 'image_info':
-        image = ESPFirmwareImage(args.filename)
-        print ('Entry point: %08x' % image.entrypoint) if image.entrypoint != 0 else 'Entry point not set'
-        print '%d segments' % len(image.segments)
-        print
-        checksum = ESPROM.ESP_CHECKSUM_MAGIC
-        for (idx, (offset, size, data)) in enumerate(image.segments):
-            print 'Segment %d: %5d bytes at %08x' % (idx+1, size, offset)
-            checksum = ESPROM.checksum(data, checksum)
-        print
-        print 'Checksum: %02x (%s)' % (image.checksum, 'valid' if image.checksum == checksum else 'invalid!')
-
-    elif args.operation == 'make_image':
-        image = ESPFirmwareImage()
-        if len(args.segfile) == 0:
-            raise Exception('No segments specified')
-        if len(args.segfile) != len(args.segaddr):
-            raise Exception('Number of specified files does not match number of specified addresses')
-        for (seg, addr) in zip(args.segfile, args.segaddr):
-            data = file(seg, 'rb').read()
-            image.add_segment(addr, data)
-        image.entrypoint = args.entrypoint
-        image.save(args.output)
-
-    elif args.operation == 'elf2image':
-        e = ELFFile(args.input)
-        image = ESPFirmwareImage()
-        image.entrypoint = e.get_symbol_addr("call_user_start")
-        for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
-            data = e.load_section(section)
-            image.add_segment(e.get_symbol_addr(start), data)
-        image.save(args.input + "-0x00000.bin")
-        data = e.load_section(".irom0.text")
-        off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
-        assert off >= 0
-        f = open(args.input + "-0x%05x.bin" % off, "wb")
-        f.write(data)
-        f.close()
