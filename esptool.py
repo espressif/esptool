@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # ESP8266 ROM Bootloader Utility
 # https://github.com/themadinventor/esptool
@@ -19,16 +19,25 @@
 
 import sys
 import struct
-import serial
 import math
 import time
 import argparse
 import operator
 import functools
 import subprocess
-from elftools.elf.elffile import ELFFile
-from elftools.elf.enums import *
-from elftools.elf.constants import *
+try:
+	from elftools.elf.elffile import ELFFile
+	from elftools.elf.enums import *
+	from elftools.elf.constants import *
+except:
+	print("Please install the python3 pyelftools")
+	exit(2)
+
+try:
+	import serial
+except:
+	print("Please install the python3 pyserial package")
+	exit(2)
 
 def chunks(iterable, n=1):
    l = len(iterable)
