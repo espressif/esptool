@@ -43,7 +43,7 @@ class ESPROM:
     ESP_RAM_BLOCK   = 0x1800
     ESP_FLASH_BLOCK = 0x400
 
-    # Default baudrate used by the ROM. Don't know if it is possible to change.
+    # Default baudrate. The ROM auto-bauds, so we can use more or less whatever we want.
     ESP_ROM_BAUD    = 115200
 
     # First byte of the application image
@@ -52,8 +52,8 @@ class ESPROM:
     # Initial state for the checksum routine
     ESP_CHECKSUM_MAGIC = 0xef
 
-    def __init__(self, port = 0):
-        self._port = serial.Serial(port, self.ESP_ROM_BAUD)
+    def __init__(self, port = 0, baud = ESP_ROM_BAUD):
+        self._port = serial.Serial(port, baud)
 
     """ Read bytes from the serial port while performing SLIP unescaping """
     def read(self, length = 1):
@@ -289,6 +289,12 @@ if __name__ == '__main__':
             help = 'Serial port device',
             default = '/dev/ttyUSB0')
 
+    parser.add_argument(
+            '--baud', '-b',
+            help = 'Serial port baud rate',
+            type = arg_auto_int,
+            default = ESPROM.ESP_ROM_BAUD)
+
     subparsers = parser.add_subparsers(
             dest = 'operation',
             help = 'Run esptool {command} -h for additional help')
@@ -349,7 +355,7 @@ if __name__ == '__main__':
     # Create the ESPROM connection object, if needed
     esp = None
     if args.operation not in ('image_info','make_image','elf2image'):
-        esp = ESPROM(args.port)
+        esp = ESPROM(args.port, args.baud)
         esp.connect()
 
     # Do the actual work. Should probably be split into separate functions.
