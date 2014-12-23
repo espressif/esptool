@@ -12,25 +12,39 @@ and is rather self-documenting. Try running `esptool -h`.
 Or hack the script to your hearts content.
 
 ### Examples
-The probably most useful command; writing an application to flash:
+Typical usage:
+
+Converting an ELF file to the two binary blobs to be flashed:
 ```
-./esptool.py write_flash 0x000000 wi07c.rom
+./esptool.py elf2image my_app.elf
+```
+This creates `my_app.elf-0x00000.bin` and `my_app.elf-0x40000.bin`.
+
+Writing those binaries to flash:
+```
+./esptool.py write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
 ```
 
-Creating an application image:
+You can also create a bootable application image from binary blobs:
 ```
 ./esptool.py make_image -f app.text.bin -a 0x40100000 -f app.data.bin -a 0x3ffe8000 -f app.rodata.bin -a 0x3ffe8c00 app.flash.bin
 ```
 
-Dumping the ROM:
+Dumping the ROM (64 KiB) from the chip:
 ```
 ./esptool.py dump_mem 0x40000000 65536 iram0.bin
 ```
 
+Note that this document may be out of date. Use the built-in usage (`esptool -h`) when in doubt.
+
 ## Protocol
 
 If GPIO0 and GPIO15 is pulled down and GPIO2 is pulled high when the module leaves reset,
-then the bootloader will enter the UART download mode. It communicates over 115200 8N1.
+then the bootloader will enter the UART download mode. The ROM auto-bauds, that is, it will
+automagically detect which baud rate you are using. esptool defaults to 115200.
+
+esptool uses the RTS and DTR modem status lines to automatically enter the bootloader.
+Connect RTS to CH_PD (which is used as active-low reset) and DTR to GPIO0.
 
 The bootloader protocol uses [SLIP](http://en.wikipedia.org/wiki/SLIP) framing.
 Each packet begin and end with `0xC0`, all occurrences of `0xC0` and `0xDB` inside the packet
@@ -106,7 +120,7 @@ Byte	| Description
 The file is padded with zeros until its size is one byte less than a multiple of 16 bytes. A last byte (thus making the file size a multiple of 16) is the checksum of the data of all segments. The checksum is defined as the xor-sum of all bytes and the byte `0xEF`.
 
 ## Boot log
-The boot rom writes a log to the UART when booting. The timing is a little bit unusual: 75000 baud (at least on my modules, when doing a cold boot)
+The boot rom writes a log to the UART when booting. The timing is a little bit unusual: 74880 baud
 
 ```
 ets Jan  8 2014,rst cause 1, boot mode:(3,7)
@@ -126,8 +140,7 @@ csum 0x46
 
 ## About
 
-This information is collected through research by Fredrik Ahlberg.
-Feel free to contact me on [GitHub](https://github.com/themadinventor) or through fredrik at z80 dot se.
+esptool was initially created by Fredrik Ahlberg (themadinventor, kongo), but has since received improvements from several members of the ESP8266 community, including pfalcon, tommie, 0ff and george-hopkins.
 
 This document and the attached source code is released under GPLv2.
 
