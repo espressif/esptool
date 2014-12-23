@@ -125,6 +125,15 @@ class ESPROM:
     """ Try connecting repeatedly until successful, or giving up """
     def connect(self):
         print 'Connecting...'
+
+        # RTS = CH_PD (i.e reset)
+        # DTR = GPIO0
+        self._port.setRTS(True)
+        self._port.setDTR(True)
+        self._port.setRTS(False)
+        time.sleep(0.1)
+        self._port.setDTR(False)
+
         self._port.timeout = 0.5
         for i in xrange(10):
             try:
