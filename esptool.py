@@ -358,6 +358,7 @@ if __name__ == '__main__':
             'elf2image',
             help = 'Create an application image from ELF file')
     parser_elf2image.add_argument('input', help = 'Input ELF file')
+    parser_elf2image.add_argument('--output', '-o', help = 'Output filename prefix', type = str)
 
     args = parser.parse_args()
 
@@ -453,16 +454,18 @@ if __name__ == '__main__':
         image.save(args.output)
 
     elif args.operation == 'elf2image':
+        if args.output is None:
+            args.output = args.input + '-'
         e = ELFFile(args.input)
         image = ESPFirmwareImage()
         image.entrypoint = e.get_symbol_addr("call_user_start")
         for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
             data = e.load_section(section)
             image.add_segment(e.get_symbol_addr(start), data)
-        image.save(args.input + "-0x00000.bin")
+        image.save(args.output + "0x00000.bin")
         data = e.load_section(".irom0.text")
         off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
         assert off >= 0
-        f = open(args.input + "-0x%05x.bin" % off, "wb")
+        f = open(args.output + "0x%05x.bin" % off, "wb")
         f.write(data)
         f.close()
