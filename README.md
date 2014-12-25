@@ -72,7 +72,7 @@ Byte   | Name		| Comment
 2-3    | Size		| Size of body, normally 2
 4-7    | Value		| Response data for some operations
 8..n   | Body		| Depends on operation
-8      | Status		| Status flag, success(0) or failure(1)
+8      | Status		| Status flag, success (`0`) or failure (`1`)
 9      | Error		| Last error code, not reset on success
 
 ### Opcodes
@@ -104,7 +104,8 @@ Byte	| Description
 --------|-----------------------
 0	| Always `0xE9`
 1	| Number of segments
-2-3	| Padding/unused
+2	| SPI Flash type (`0` = 512K, `1` = 256K, `2` = 1M, `3` = 2M, `4` = 4M, unconfirmed)
+3	| Padding/unused
 4-7	| Entry point
 8-n	| Segments
 
