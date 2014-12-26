@@ -52,6 +52,10 @@ class ESPROM:
     # Initial state for the checksum routine
     ESP_CHECKSUM_MAGIC = 0xef
 
+    # OTP ROM addresses
+    ESP_OTP_MAC0    = 0x3ff00050
+    ESP_OTP_MAC1    = 0x3ff00054
+
     def __init__(self, port = 0, baud = ESP_ROM_BAUD):
         self._port = serial.Serial(port, baud)
 
@@ -360,6 +364,10 @@ if __name__ == '__main__':
     parser_elf2image.add_argument('input', help = 'Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help = 'Output filename prefix', type = str)
 
+    parser_read_mac = subparsers.add_parser(
+            'read_mac',
+            help = 'Read MAC address from OTP ROM')
+
     args = parser.parse_args()
 
     # Create the ESPROM connection object, if needed
@@ -469,3 +477,8 @@ if __name__ == '__main__':
         f = open(args.output + "0x%05x.bin" % off, "wb")
         f.write(data)
         f.close()
+
+    elif args.operation == 'read_mac':
+        mac0 = esp.read_reg(esp.ESP_OTP_MAC0)
+        mac1 = esp.read_reg(esp.ESP_OTP_MAC1)
+        print 'MAC: 18:fe:34:%02x:%02x:%02x' % ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
