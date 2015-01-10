@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 #
 # ESP8266 ROM Bootloader Utility
 # https://github.com/themadinventor/esptool
