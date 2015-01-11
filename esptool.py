@@ -209,6 +209,12 @@ class ESPROM:
         self.flash_begin(0, 0)
         self.flash_finish(reboot)
 
+    """ Read MAC from OTP ROM """
+    def read_mac(self):
+        mac0 = esp.read_reg(esp.ESP_OTP_MAC0)
+        mac1 = esp.read_reg(esp.ESP_OTP_MAC1)
+        return (0x18, 0xfe, 0x34, (mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
+
 
 class ESPFirmwareImage:
     
@@ -487,6 +493,5 @@ if __name__ == '__main__':
         f.close()
 
     elif args.operation == 'read_mac':
-        mac0 = esp.read_reg(esp.ESP_OTP_MAC0)
-        mac1 = esp.read_reg(esp.ESP_OTP_MAC1)
-        print 'MAC: 18:fe:34:%02x:%02x:%02x' % ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
+        mac = esp.read_mac()
+        print 'MAC: %s' % ':'.join(map(lambda x: '%02x'%x, mac))
