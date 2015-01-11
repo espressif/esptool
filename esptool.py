@@ -215,6 +215,14 @@ class ESPROM:
         mac1 = esp.read_reg(esp.ESP_OTP_MAC1)
         return (0x18, 0xfe, 0x34, (mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
 
+    """ Read SPI flash manufacturer and device id """
+    def flash_id(self):
+        self.flash_begin(0, 0)
+        self.write_reg(0x60000240, 0x0, 0xffffffff)
+        self.write_reg(0x60000200, 0x10000000, 0xffffffff)
+        flash_id = esp.read_reg(0x60000240)
+        self.flash_finish(False)
+        return flash_id
 
 class ESPFirmwareImage:
     
@@ -380,6 +388,10 @@ if __name__ == '__main__':
             'read_mac',
             help = 'Read MAC address from OTP ROM')
 
+    parser_read_mac = subparsers.add_parser(
+            'flash_id',
+            help = 'Read SPI flash manufacturer and device ID')
+
     args = parser.parse_args()
 
     # Create the ESPROM connection object, if needed
@@ -495,3 +507,8 @@ if __name__ == '__main__':
     elif args.operation == 'read_mac':
         mac = esp.read_mac()
         print 'MAC: %s' % ':'.join(map(lambda x: '%02x'%x, mac))
+
+    elif args.operation == 'flash_id':
+        flash_id = esp.flash_id()
+        print 'Manufacturer: %02x' % (flash_id & 0xff)
+        print 'Device: %02x%02x' % ((flash_id >> 8) & 0xff, (flash_id >> 16) & 0xff)
