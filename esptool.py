@@ -227,10 +227,12 @@ class ESPFirmwareImage:
     def __init__(self, filename = None):
         self.segments = []
         self.entrypoint = 0
+        self.flash_mode = 0
+        self.flash_size_freq = 0
 
         if filename is not None:
             f = file(filename, 'rb')
-            (magic, segments, _, _, self.entrypoint) = struct.unpack('<BBBBI', f.read(8))
+            (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', f.read(8))
             
             # some sanity check
             if magic != ESPROM.ESP_IMAGE_MAGIC or segments > 16:
@@ -258,7 +260,8 @@ class ESPFirmwareImage:
 
     def save(self, filename):
         f = file(filename, 'wb')
-        f.write(struct.pack('<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.segments), 0, 0, self.entrypoint))
+        f.write(struct.pack('<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.segments),
+            self.flash_mode, self.flash_size_freq, self.entrypoint))
 
         checksum = ESPROM.ESP_CHECKSUM_MAGIC
         for (offset, size, data) in self.segments:
@@ -381,6 +384,12 @@ if __name__ == '__main__':
             help = 'Create an application image from ELF file')
     parser_elf2image.add_argument('input', help = 'Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help = 'Output filename prefix', type = str)
+    parser_elf2image.add_argument('--flash_freq', '-ff', help = 'SPI Flash frequency',
+            choices = ['40m', '26m', '20m', '80m'], default = '40m')
+    parser_elf2image.add_argument('--flash_mode', '-fm', help = 'SPI Flash mode',
+            choices = ['qio', 'qout', 'dio', 'dout'], default = 'qio')
+    parser_elf2image.add_argument('--flash_size', '-fs', help = 'SPI Flash size',
+            choices = ['4m', '2m', '8m', '16m', '32m'], default = '4m')
 
     parser_read_mac = subparsers.add_parser(
             'read_mac',
@@ -494,6 +503,9 @@ if __name__ == '__main__':
         for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
             data = e.load_section(section)
             image.add_segment(e.get_symbol_addr(start), data)
+        image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
+        image.flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40}[args.flash_size]
+        image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
         image.save(args.output + "0x00000.bin")
         data = e.load_section(".irom0.text")
         off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
