@@ -78,15 +78,7 @@ class ESPROM:
 
     """ Write bytes to the serial port while performing SLIP escaping """
     def write(self, packet):
-        buf = '\xc0'
-        for b in packet:
-            if b == '\xc0':
-                buf += '\xdb\xdc'
-            elif b == '\xdb':
-                buf += '\xdb\xdd'
-            else:
-                buf += b
-        buf += '\xc0'
+        buf = '\xc0'+(packet.replace('\xdb','\xdb\xdd').replace('\xc0','\xdb\xdc'))+'\xc0'
         self._port.write(buf)
 
     """ Calculate checksum of a blob, as it is defined by the ROM """
