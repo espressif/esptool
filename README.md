@@ -11,6 +11,13 @@ This utility actually have a user interface! It uses [Argparse](https://docs.pyt
 and is rather self-documenting. Try running `esptool -h`.
 Or hack the script to your hearts content.
 
+### Ports
+
+The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (on unixen like Linux and OSX) or `-p COM1`
+(on Windows). The perhaps not so obvious corner case here is when you run esptool in Cygwin on Windows, where you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on).
+
+The baudrate may be set using `-b 921600` (or another baudrate of your choice) to speed up large transfers.
+
 ### Examples
 Typical usage:
 
@@ -33,6 +40,16 @@ You can also create a bootable application image from binary blobs:
 Dumping the ROM (64 KiB) from the chip:
 ```
 ./esptool.py dump_mem 0x40000000 65536 iram0.bin
+```
+
+Reading the MAC Address:
+```
+./esptool.py read_mac
+```
+
+Reading the SPI Flash ID:
+```
+./esptool.py flash_id
 ```
 
 Note that this document may be out of date. Use the built-in usage (`esptool -h`) when in doubt.
