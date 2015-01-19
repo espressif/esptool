@@ -5,6 +5,19 @@ It is intended to be a simple, platform independent, open source replacement for
 
 This is a work in progress; it is usable but expect some rough edges.
 
+## Installation / dependencies
+
+esptool depends on [pySerial](http://pyserial.sourceforge.net/) for serial communication
+with the target device.
+
+If you choose to install esptool system-wide by running `python setup.py install`, then
+this will be taken care of automatically.
+
+If not using `setup.py`, then you'll have to install pySerial manually
+by running something like `pip install pyserial`, `easy_install pyserial` or `apt-get install python-serial`,
+depending on your platform. (The official pySerial installation instructions are
+[here](http://pyserial.sourceforge.net/pyserial.html#installation)).
+
 ## Usage
 
 This utility actually have a user interface! It uses [Argparse](https://docs.python.org/dev/library/argparse.html)
