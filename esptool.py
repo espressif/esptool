@@ -205,7 +205,13 @@ class ESPROM:
     def read_mac(self):
         mac0 = esp.read_reg(esp.ESP_OTP_MAC0)
         mac1 = esp.read_reg(esp.ESP_OTP_MAC1)
-        return (0x18, 0xfe, 0x34, (mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
+        if ((mac1 >> 16) & 0xff) == 0:
+            oui = (0x18, 0xfe, 0x34)
+        elif ((mac1 >> 16) & 0xff) == 1:
+            oui = (0xac, 0xd0, 0x74)
+        else:
+            raise Exception("Unknown OUI")
+        return oui + ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
 
     """ Read SPI flash manufacturer and device id """
     def flash_id(self):
