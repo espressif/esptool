@@ -41,7 +41,7 @@ class ESPROM:
 
     # Maximum block sized for RAM and Flash writes, respectively.
     ESP_RAM_BLOCK   = 0x1800
-    ESP_FLASH_BLOCK = 0x100
+    ESP_FLASH_BLOCK = 0x400
 
     # Default baudrate. The ROM auto-bauds, so we can use more or less whatever we want.
     ESP_ROM_BAUD    = 115200
@@ -459,6 +459,7 @@ if __name__ == '__main__':
                 print '\rWriting at 0x%08x... (%d %%)' % (address + seq*esp.ESP_FLASH_BLOCK, 100*(seq+1)/blocks),
                 sys.stdout.flush()
                 block = image[0:esp.ESP_FLASH_BLOCK]
+                # Pad the last block
                 block = block + '\xe0' * (esp.ESP_FLASH_BLOCK-len(block))
                 esp.flash_block(block, seq)
                 image = image[esp.ESP_FLASH_BLOCK:]
