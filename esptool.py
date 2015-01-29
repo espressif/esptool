@@ -56,6 +56,13 @@ class ESPROM:
     ESP_OTP_MAC0    = 0x3ff00050
     ESP_OTP_MAC1    = 0x3ff00054
 
+    # Sflash stub: an assembly routine to read from spi flash and send to host
+    SFLASH_STUB     = (
+        0x80, 0x3C, 0x00, 0x40, 0x1C, 0x4B, 0x00, 0x40, 0x21, 0x11, 0x00, 0x40, 0x00, 0x80, 0xFE, 0x3F,
+        0xC1, 0xFB, 0xFF, 0xD1, 0xF8, 0xFF, 0x2D, 0x0D, 0x31, 0xFD, 0xFF, 0x41, 0xF7, 0xFF, 0x4A, 0xDD,
+        0x51, 0xF9, 0xFF, 0xC0, 0x05, 0x00, 0x21, 0xF9, 0xFF, 0x31, 0xF3, 0xFF, 0x41, 0xF5, 0xFF, 0xC0,
+        0x04, 0x00, 0x0B, 0xCC, 0x56, 0xEC, 0xFD, 0x06, 0xFF, 0xFF, 0x00, 0x00 )
+
     def __init__(self, port = 0, baud = ESP_ROM_BAUD):
         self._port = serial.Serial(port, baud)
 
@@ -221,6 +228,46 @@ class ESPROM:
         flash_id = esp.read_reg(0x60000240)
         self.flash_finish(False)
         return flash_id
+
+    """ Read SPI flash """
+    def flash_read(self, offset, size, count = 1):
+        # Create a custom stub
+        stub = struct.pack('<III', offset, size, count) + ''.join(map(chr,self.SFLASH_STUB))
+
+        # Trick ROM to initialize SFlash
+        self.flash_begin(0, 0)
+
+        # Download stub
+        self.mem_begin(len(stub), 1, len(stub), 0x40100000)
+        self.mem_block(stub, 0)
+        self.mem_finish(0x4010001c)
+
+        # Fetch the data
+        data = ''
+        for _ in xrange(count):
+            if self._port.read(1) != '\xc0':
+                raise Exception('Invalid head of packet (sflash read)')
+
+            data += self.read(size)
+
+            if self._port.read(1) != chr(0xc0):
+                raise Exception('Invalid end of packet (sflash read)')
+
+        return data
+
+    """ Perform a chip erase of SPI flash """
+    def flash_erase(self):
+        # Trick ROM to initialize SFlash
+        self.flash_begin(0, 0)
+
+        # This is hacky: we don't have a custom stub, instead we trick
+        # the bootloader to jump to the SPIEraseChip() routine and then halt/crash
+        # when it tries to boot an unconfigured system.
+        self.mem_begin(0,0,0,0x40100000)
+        self.mem_finish(0x40004984)
+
+        # Yup - there's no good way to detect if we succeeded.
+        # It it on the other hand unlikely to fail.
 
 class ESPFirmwareImage:
     
@@ -399,6 +446,17 @@ if __name__ == '__main__':
             'flash_id',
             help = 'Read SPI flash manufacturer and device ID')
 
+    parser_read_flash = subparsers.add_parser(
+            'read_flash',
+            help = 'Read SPI flash content')
+    parser_read_flash.add_argument('address', help = 'Start address', type = arg_auto_int)
+    parser_read_flash.add_argument('size', help = 'Size of region to dump', type = arg_auto_int)
+    parser_read_flash.add_argument('filename', help = 'Name of binary dump')
+
+    parser_erase_flash = subparsers.add_parser(
+            'erase_flash',
+            help = 'Perform Chip Erase on SPI flash')
+
     args = parser.parse_args()
 
     # Create the ESPROM connection object, if needed
@@ -523,3 +581,10 @@ if __name__ == '__main__':
         flash_id = esp.flash_id()
         print 'Manufacturer: %02x' % (flash_id & 0xff)
         print 'Device: %02x%02x' % ((flash_id >> 8) & 0xff, (flash_id >> 16) & 0xff)
+
+    elif args.operation == 'read_flash':
+        print 'Please wait...'
+        file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, int(math.ceil(args.size / 1024.)))[:args.size])
+
+    elif args.operation == 'erase_flash':
+        esp.flash_erase()
