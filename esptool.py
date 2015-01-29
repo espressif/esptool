@@ -57,11 +57,10 @@ class ESPROM:
     ESP_OTP_MAC1    = 0x3ff00054
 
     # Sflash stub: an assembly routine to read from spi flash and send to host
-    SFLASH_STUB     = (
-        0x80, 0x3C, 0x00, 0x40, 0x1C, 0x4B, 0x00, 0x40, 0x21, 0x11, 0x00, 0x40, 0x00, 0x80, 0xFE, 0x3F,
-        0xC1, 0xFB, 0xFF, 0xD1, 0xF8, 0xFF, 0x2D, 0x0D, 0x31, 0xFD, 0xFF, 0x41, 0xF7, 0xFF, 0x4A, 0xDD,
-        0x51, 0xF9, 0xFF, 0xC0, 0x05, 0x00, 0x21, 0xF9, 0xFF, 0x31, 0xF3, 0xFF, 0x41, 0xF5, 0xFF, 0xC0,
-        0x04, 0x00, 0x0B, 0xCC, 0x56, 0xEC, 0xFD, 0x06, 0xFF, 0xFF, 0x00, 0x00 )
+    SFLASH_STUB     = "\x80\x3c\x00\x40\x1c\x4b\x00\x40\x21\x11\x00\x40\x00\x80" \
+            "\xfe\x3f\xc1\xfb\xff\xd1\xf8\xff\x2d\x0d\x31\xfd\xff\x41\xf7\xff\x4a" \
+            "\xdd\x51\xf9\xff\xc0\x05\x00\x21\xf9\xff\x31\xf3\xff\x41\xf5\xff\xc0" \
+            "\x04\x00\x0b\xcc\x56\xec\xfd\x06\xff\xff\x00\x00"
 
     def __init__(self, port = 0, baud = ESP_ROM_BAUD):
         self._port = serial.Serial(port, baud)
@@ -232,7 +231,7 @@ class ESPROM:
     """ Read SPI flash """
     def flash_read(self, offset, size, count = 1):
         # Create a custom stub
-        stub = struct.pack('<III', offset, size, count) + ''.join(map(chr,self.SFLASH_STUB))
+        stub = struct.pack('<III', offset, size, count) + self.SFLASH_STUB
 
         # Trick ROM to initialize SFlash
         self.flash_begin(0, 0)
