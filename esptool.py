@@ -460,7 +460,7 @@ if __name__ == '__main__':
                 sys.stdout.flush()
                 block = image[0:esp.ESP_FLASH_BLOCK]
                 # Pad the last block
-                block = block + '\xe0' * (esp.ESP_FLASH_BLOCK-len(block))
+                block = block + '\xff' * (esp.ESP_FLASH_BLOCK-len(block))
                 esp.flash_block(block, seq)
                 image = image[esp.ESP_FLASH_BLOCK:]
                 seq += 1
