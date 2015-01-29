@@ -408,6 +408,12 @@ if __name__ == '__main__':
             'write_flash',
             help = 'Write a binary blob to flash')
     parser_write_flash.add_argument('addr_filename', nargs = '+', help = 'Address and binary file to write there, separated by space')
+    parser_write_flash.add_argument('--flash_freq', '-ff', help = 'SPI Flash frequency',
+            choices = ['40m', '26m', '20m', '80m'], default = '40m')
+    parser_write_flash.add_argument('--flash_mode', '-fm', help = 'SPI Flash mode',
+            choices = ['qio', 'qout', 'dio', 'dout'], default = 'qio')
+    parser_write_flash.add_argument('--flash_size', '-fs', help = 'SPI Flash size in Mbit',
+            choices = ['4m', '2m', '8m', '16m', '32m'], default = '4m')
 
     parser_run = subparsers.add_parser(
             'run',
@@ -435,14 +441,14 @@ if __name__ == '__main__':
             choices = ['40m', '26m', '20m', '80m'], default = '40m')
     parser_elf2image.add_argument('--flash_mode', '-fm', help = 'SPI Flash mode',
             choices = ['qio', 'qout', 'dio', 'dout'], default = 'qio')
-    parser_elf2image.add_argument('--flash_size', '-fs', help = 'SPI Flash size',
+    parser_elf2image.add_argument('--flash_size', '-fs', help = 'SPI Flash size in Mbit',
             choices = ['4m', '2m', '8m', '16m', '32m'], default = '4m')
 
     parser_read_mac = subparsers.add_parser(
             'read_mac',
             help = 'Read MAC address from OTP ROM')
 
-    parser_read_mac = subparsers.add_parser(
+    parser_flash_id = subparsers.add_parser(
             'flash_id',
             help = 'Read SPI flash manufacturer and device ID')
 
@@ -504,6 +510,12 @@ if __name__ == '__main__':
 
     elif args.operation == 'write_flash':
         assert len(args.addr_filename) % 2 == 0
+
+        flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
+        flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40}[args.flash_size]
+        flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
+        flash_info = struct.pack('BB', flash_mode, flash_size_freq)
+
         while args.addr_filename:
             address = int(args.addr_filename[0], 0)
             filename = args.addr_filename[1]
@@ -517,6 +529,9 @@ if __name__ == '__main__':
                 print '\rWriting at 0x%08x... (%d %%)' % (address + seq*esp.ESP_FLASH_BLOCK, 100*(seq+1)/blocks),
                 sys.stdout.flush()
                 block = image[0:esp.ESP_FLASH_BLOCK]
+                # Fix sflash config data
+                if address == 0 and seq == 0 and block[0] == '\xe9':
+                    block = block[0:2] + flash_info + block[4:]
                 # Pad the last block
                 block = block + '\xff' * (esp.ESP_FLASH_BLOCK-len(block))
                 esp.flash_block(block, seq)
@@ -562,9 +577,11 @@ if __name__ == '__main__':
         for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
             data = e.load_section(section)
             image.add_segment(e.get_symbol_addr(start), data)
+
         image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
         image.flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40}[args.flash_size]
         image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
+
         image.save(args.output + "0x00000.bin")
         data = e.load_section(".irom0.text")
         off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
