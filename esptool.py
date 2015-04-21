@@ -128,12 +128,14 @@ class ESPROM:
     def connect(self):
         print 'Connecting...'
 
-        # RTS = CH_PD (i.e reset)
-        # DTR = GPIO0
+        # RTS = either CH_PD or nRESET (both active low = chip in reset)
+        # DTR = GPIO0 (active low = boot to flasher)
+        self._port.setDTR(False)
         self._port.setRTS(True)
+        time.sleep(0.05)
         self._port.setDTR(True)
         self._port.setRTS(False)
-        time.sleep(0.1)
+        time.sleep(0.05)
         self._port.setDTR(False)
 
         self._port.timeout = 0.5
