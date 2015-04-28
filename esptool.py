@@ -128,26 +128,28 @@ class ESPROM:
     def connect(self):
         print 'Connecting...'
 
-        # RTS = either CH_PD or nRESET (both active low = chip in reset)
-        # DTR = GPIO0 (active low = boot to flasher)
-        self._port.setDTR(False)
-        self._port.setRTS(True)
-        time.sleep(0.05)
-        self._port.setDTR(True)
-        self._port.setRTS(False)
-        time.sleep(0.05)
-        self._port.setDTR(False)
+        for _ in xrange(4):
+            # issue reset-to-bootloader:
+            # RTS = either CH_PD or nRESET (both active low = chip in reset)
+            # DTR = GPIO0 (active low = boot to flasher)
+            self._port.setDTR(False)
+            self._port.setRTS(True)
+            time.sleep(0.05)
+            self._port.setDTR(True)
+            self._port.setRTS(False)
+            time.sleep(0.05)
+            self._port.setDTR(False)
 
-        self._port.timeout = 0.5
-        for i in xrange(10):
-            try:
-                self._port.flushInput()
-                self._port.flushOutput()
-                self.sync()
-                self._port.timeout = 5
-                return
-            except:
-                time.sleep(0.1)
+            self._port.timeout = 0.3 # worst-case latency timer should be 255ms (probably <20ms)
+            for _ in xrange(4):
+                try:
+                    self._port.flushInput()
+                    self._port.flushOutput()
+                    self.sync()
+                    self._port.timeout = 5
+                    return
+                except:
+                    time.sleep(0.05)
         raise Exception('Failed to connect')
 
     """ Read memory address in target """
