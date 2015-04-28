@@ -150,6 +150,10 @@ class ESPROM:
                     return
                 except:
                     time.sleep(0.05)
+            # this is a workaround for the CH340 serial driver on current versions of Linux,
+            # which seems to sometimes set the serial port up with wrong parameters
+            self._port.close()
+            self._port.open()
         raise Exception('Failed to connect')
 
     """ Read memory address in target """
