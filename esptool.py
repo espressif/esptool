@@ -25,6 +25,7 @@ import time
 import argparse
 import os
 import subprocess
+import tempfile
 
 class ESPROM:
 
@@ -358,11 +359,13 @@ class ELFFile:
         tool_objcopy = "xtensa-lx106-elf-objcopy"
         if os.getenv('XTENSA_CORE')=='lx106':
             tool_objcopy = "xt-objcopy"
-        subprocess.check_call([tool_objcopy, "--only-section", section, "-Obinary", self.name, ".tmp.section"])
-        f = open(".tmp.section", "rb")
-        data = f.read()
-        f.close()
-        os.remove(".tmp.section")
+        tmpsection = tempfile.mktemp(suffix=".section")
+        try:
+            subprocess.check_call([tool_objcopy, "--only-section", section, "-Obinary", self.name, tmpsection])
+            with open(tmpsection, "rb") as f:
+                data = f.read()
+        finally:
+            os.remove(tmpsection)
         return data
 
 
