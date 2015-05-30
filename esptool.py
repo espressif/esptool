@@ -64,7 +64,12 @@ class ESPROM:
             "\x04\x00\x0b\xcc\x56\xec\xfd\x06\xff\xff\x00\x00"
 
     def __init__(self, port = 0, baud = ESP_ROM_BAUD):
-        self._port = serial.Serial(port, baud)
+        self._port = serial.Serial(port)
+        # setting baud rate in a separate step is a workaround for
+        # CH341 driver on some Linux versions (this opens at 9600 then
+        # sets), shouldn't matter for other platforms/drivers. See
+        # https://github.com/themadinventor/esptool/issues/44#issuecomment-107094446
+        self._port.baudrate = baud
 
     """ Read bytes from the serial port while performing SLIP unescaping """
     def read(self, length = 1):
@@ -151,10 +156,6 @@ class ESPROM:
                     return
                 except:
                     time.sleep(0.05)
-            # this is a workaround for the CH340 serial driver on current versions of Linux,
-            # which seems to sometimes set the serial port up with wrong parameters
-            self._port.close()
-            self._port.open()
         raise Exception('Failed to connect')
 
     """ Read memory address in target """
