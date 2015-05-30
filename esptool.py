@@ -558,6 +558,8 @@ if __name__ == '__main__':
             blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
             esp.flash_begin(blocks*esp.ESP_FLASH_BLOCK, address)
             seq = 0
+            written = 0
+            t = time.time()
             while len(image) > 0:
                 print '\rWriting at 0x%08x... (%d %%)' % (address + seq*esp.ESP_FLASH_BLOCK, 100*(seq+1)/blocks),
                 sys.stdout.flush()
@@ -570,7 +572,9 @@ if __name__ == '__main__':
                 esp.flash_block(block, seq)
                 image = image[esp.ESP_FLASH_BLOCK:]
                 seq += 1
-            print
+                written += len(block)
+            t = time.time() - t
+            print '\nWritten %d bytes in %.2f seconds (%.2f kbit/s)...' % (written, t, written / t * 8 / 1000)
         print '\nLeaving...'
         if args.flash_mode == 'dio':
             esp.flash_unlock_dio()
