@@ -189,12 +189,34 @@ class ESPROM:
             raise Exception('Failed to leave RAM download mode')
 
     """ Start downloading to Flash (performs an erase) """
-    def flash_begin(self, size, offset):
+    def flash_begin(self, _size, offset):
         old_tmo = self._port.timeout
-        num_blocks = (size + ESPROM.ESP_FLASH_BLOCK - 1) / ESPROM.ESP_FLASH_BLOCK
         self._port.timeout = 10
+	area_len = int(_size)
+	sector_no = offset/4096;
+	sector_num_per_block = 16;
+	#total_sector_num = (0== (area_len%4096))? area_len/4096 :  1+(area_len/4096);
+	if 0== (area_len%4096):
+	    total_sector_num = area_len/4096
+	else:
+	    total_sector_num = 1+(area_len/4096)
+	#check if erase area reach over block boundary
+	head_sector_num = sector_num_per_block - (sector_no%sector_num_per_block);
+	#head_sector_num = (head_sector_num>=total_sector_num)? total_sector_num : head_sector_num;
+	if head_sector_num>=total_sector_num :
+	    head_sector_num = total_sector_num
+	else:
+	    head_sector_num = head_sector_num
+	if (total_sector_num - 2 * head_sector_num)> 0:
+	    size = (total_sector_num-head_sector_num)*4096
+	    print "head: ",head_sector_num,";total:",total_sector_num
+	    print "erase size : ",size
+	else:
+	    size = int( math.ceil( total_sector_num/2.0) * 4096 )
+	    print "head:",head_sector_num,";total:",total_sector_num
+	    print "erase size :",size
         if self.command(ESPROM.ESP_FLASH_BEGIN,
-                struct.pack('<IIII', size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1] != "\0\0":
+                struct.pack('<IIII', size, 0x200, ESPROM.ESP_FLASH_BLOCK, offset))[1] != "\0\0":
             raise Exception('Failed to enter Flash download mode')
         self._port.timeout = old_tmo
 
@@ -206,9 +228,10 @@ class ESPROM:
 
     """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot = False):
-        pkt = struct.pack('<I', int(not reboot))
-        if self.command(ESPROM.ESP_FLASH_END, pkt)[1] != "\0\0":
-            raise Exception('Failed to leave Flash mode')
+        res = self.command(ESPROM.ESP_FLASH_END,
+                struct.pack('<I', int(not reboot)))[1]
+        if res[1] != "\0\0":
+            pass
 
     """ Run application code in flash """
     def run(self, reboot = False):
@@ -297,7 +320,8 @@ class ESPFirmwareImage:
                 (offset, size) = struct.unpack('<II', f.read(8))
                 if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
                     raise Exception('Suspicious segment %x,%d' % (offset, size))
-                self.segments.append((offset, size, f.read(size)))
+                if size > 0:
+                    self.segments.append((offset, size, f.read(size)))
 
             # Skip the padding. The checksum is stored in the last byte so that the
             # file is a multiple of 16 bytes.
@@ -309,6 +333,7 @@ class ESPFirmwareImage:
     def add_segment(self, addr, data):
         # Data should be aligned on word boundary
         l = len(data)
+        if l > 0:
         if l % 4:
             data += b"\x00" * (4 - l % 4)
         self.segments.append((addr, len(data), data))
