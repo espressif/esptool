@@ -329,6 +329,25 @@ class ESPFirmwareImage:
         f.write(struct.pack('B', checksum))
 
 
+def run_tool(toolname, *args):
+    """ Execute a toolchain tool (either from xtensa toolchain or gcc binutils,
+        return a list of stdout lines of output"""
+    if os.getenv('XTENSA_CORE')=='lx106':
+        tool = "xt-%s" % toolname
+    else:
+        tool = "xtensa-lx106-elf-%s" % toolname
+    try:
+        proc = subprocess.Popen([tool]+list(args), stdout=subprocess.PIPE)
+        stdout = proc.stdout.readlines()
+        proc.stdout.close()
+        exitcode = proc.wait()
+        if exitcode != 0:
+            print "WARNING: %s returned error code %d. Arguments were %s" % (tool, exitcode, args)
+        return stdout
+    except OSError:
+        print "Error calling "+tool+", do you have Xtensa toolchain in PATH?"
+        sys.exit(1)
+
 class ELFFile:
 
     def __init__(self, name):
@@ -339,15 +358,7 @@ class ELFFile:
         if self.symbols is not None:
             return
         self.symbols = {}
-        try:
-            tool_nm = "xtensa-lx106-elf-nm"
-            if os.getenv('XTENSA_CORE')=='lx106':
-                tool_nm = "xt-nm"
-            proc = subprocess.Popen([tool_nm, self.name], stdout=subprocess.PIPE)
-        except OSError:
-            print "Error calling "+tool_nm+", do you have Xtensa toolchain in PATH?"
-            sys.exit(1)
-        for l in proc.stdout:
+        for l in run_tool("nm", self.name):
             fields = l.strip().split()
             self.symbols[fields[2]] = int(fields[0], 16)
 
@@ -356,18 +367,22 @@ class ELFFile:
         return self.symbols[sym]
 
     def load_section(self, section):
-        tool_objcopy = "xtensa-lx106-elf-objcopy"
-        if os.getenv('XTENSA_CORE')=='lx106':
-            tool_objcopy = "xt-objcopy"
         tmpsection = tempfile.mktemp(suffix=".section")
         try:
-            subprocess.check_call([tool_objcopy, "--only-section", section, "-Obinary", self.name, tmpsection])
+            run_tool("objcopy", "--only-section", section, "-Obinary", self.name, tmpsection)
             with open(tmpsection, "rb") as f:
                 data = f.read()
         finally:
             os.remove(tmpsection)
         return data
 
+    def get_start_address(self):
+        headers = [ l for l in run_tool("objdump", "-f", self.name) if l.startswith("start address ") ]
+        if len(headers) == 0:
+            print("WARNING: ELF headers don't contain a start address?!? Trying with 'call_user_start' instead...")
+            return self.get_symbol_address("call_user_start")
+        words = headers[0].strip().split()
+        return int(words[2], 16)
 
 def arg_auto_int(x):
     return int(x, 0)
@@ -583,7 +598,7 @@ if __name__ == '__main__':
             args.output = args.input + '-'
         e = ELFFile(args.input)
         image = ESPFirmwareImage()
-        image.entrypoint = e.get_symbol_addr("call_user_start")
+        image.entrypoint = e.get_start_address()
         for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
             data = e.load_section(section)
             image.add_segment(e.get_symbol_addr(start), data)
