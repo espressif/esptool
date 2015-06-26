@@ -192,9 +192,24 @@ class ESPROM:
     def flash_begin(self, size, offset):
         old_tmo = self._port.timeout
         num_blocks = (size + ESPROM.ESP_FLASH_BLOCK - 1) / ESPROM.ESP_FLASH_BLOCK
+
+        sectors_per_block = 16
+        sector_size = 4096
+        num_sectors = (size + sector_size - 1) / sector_size
+        start_sector = offset / sector_size
+
+        head_sectors = sectors_per_block - (start_sector % sectors_per_block)
+        if num_sectors < head_sectors:
+            head_sectors = num_sectors
+
+        if num_sectors < 2 * head_sectors:
+            erase_size = (num_sectors + 1) / 2 * sector_size
+        else:
+            erase_size = (num_sectors - head_sectors) * sector_size
+
         self._port.timeout = 10
         if self.command(ESPROM.ESP_FLASH_BEGIN,
-                struct.pack('<IIII', size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1] != "\0\0":
+                struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1] != "\0\0":
             raise Exception('Failed to enter Flash download mode')
         self._port.timeout = old_tmo
 
@@ -575,6 +590,7 @@ if __name__ == '__main__':
         if args.flash_mode == 'dio':
             esp.flash_unlock_dio()
         else:
+            esp.flash_begin(0, 0)
             esp.flash_finish(False)
 
     elif args.operation == 'run':
