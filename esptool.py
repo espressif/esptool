@@ -443,6 +443,7 @@ if __name__ == '__main__':
     parser_run = subparsers.add_parser(
             'run',
             help = 'Run application code in flash')
+    parser_run.add_argument('--terminal', '-t', help = 'Start serial terminal', action = 'store_true', default = False)
 
     parser_image_info = subparsers.add_parser(
             'image_info',
@@ -569,6 +570,10 @@ if __name__ == '__main__':
 
     elif args.operation == 'run':
         esp.run()
+        if args.terminal:
+            from terminal import terminal
+            print 'Press ^C twice to exit'
+            terminal(esp._port)
 
     elif args.operation == 'image_info':
         image = ESPFirmwareImage(args.filename)
