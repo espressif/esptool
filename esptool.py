@@ -263,6 +263,15 @@ class ESPROM:
 
         return data
 
+    """ Abuse the loader protocol to force flash to be left in write mode """
+    def flash_unlock_dio(self):
+        # Enable flash write mode
+        self.flash_begin(0, 0)
+        # Reset the chip rather than call flash_finish(), which would have
+        # write protected the chip again (why oh why does it do that?!)
+        self.mem_begin(0,0,0,0x40100000)
+        self.mem_finish(0x40000080)
+
     """ Perform a chip erase of SPI flash """
     def flash_erase(self):
         # Trick ROM to initialize SFlash
@@ -354,6 +363,20 @@ class ELFFile:
     def get_symbol_addr(self, sym):
         self._fetch_symbols()
         return self.symbols[sym]
+
+    def get_entry_point(self):
+        tool_readelf = "xtensa-lx106-elf-readelf"
+        if os.getenv('XTENSA_CORE')=='lx106':
+            tool_objcopy = "xt-readelf"
+        try:
+            proc = subprocess.Popen([tool_readelf, "-h", self.name], stdout=subprocess.PIPE)
+        except OSError:
+            print "Error calling "+tool_readelf+", do you have Xtensa toolchain in PATH?"
+            sys.exit(1)
+        for l in proc.stdout:
+            fields = l.strip().split()
+            if fields[0] == "Entry":
+                return int(fields[3], 0);
 
     def load_section(self, section):
         tool_objcopy = "xtensa-lx106-elf-objcopy"
@@ -549,7 +572,10 @@ if __name__ == '__main__':
                 seq += 1
             print
         print '\nLeaving...'
-        esp.flash_finish(False)
+        if args.flash_mode == 'dio':
+            esp.flash_unlock_dio()
+        else:
+            esp.flash_finish(False)
 
     elif args.operation == 'run':
         esp.run()
@@ -583,7 +609,7 @@ if __name__ == '__main__':
             args.output = args.input + '-'
         e = ELFFile(args.input)
         image = ESPFirmwareImage()
-        image.entrypoint = e.get_symbol_addr("call_user_start")
+        image.entrypoint = e.get_entry_point()
         for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
             data = e.load_section(section)
             image.add_segment(e.get_symbol_addr(start), data)
