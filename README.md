@@ -21,7 +21,7 @@ depending on your platform. (The official pySerial installation instructions are
 ## Usage
 
 This utility actually have a user interface! It uses [Argparse](https://docs.python.org/dev/library/argparse.html)
-and is rather self-documenting. Try running `esptool -h`.
+and is rather self-documenting. Try running `esptool -h`, `esptool write_flash -h`, etc.
 Or hack the script to your hearts content.
 
 ### Ports
@@ -64,6 +64,8 @@ Reading the SPI Flash ID:
 ```
 ./esptool.py flash_id
 ```
+
+Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/HEAD/trunk/flashchips.h) for flash chip manufacturer name and part number.
 
 Note that this document may be out of date. Use the built-in usage (`esptool -h`) when in doubt.
 
@@ -138,6 +140,8 @@ Byte	| Description
 3	| High four bits: `0` = 512K, `1` = 256K, `2` = 1M, `3` = 2M, `4` = 4M, Low four bits: `0` = 40MHz, `1`= 26MHz, `2` = 20MHz, `0xf` = 80MHz
 4-7	| Entry point
 8-n	| Segments
+
+esptool overrides the 2nd and 3rd (start from 0) bytes according to the SPI flash info provided through command line option, regardless of corresponding bytes from the input .bin file that will be written to address 0x00000. So you must provide SPI flash info when running `esptool write_flash` command. For example `esptool write_flash -ff 80m -fm qio -fs 8m 0x00000 boot.bin 0x01000 user1.bin`
 
 ### Segment
 
