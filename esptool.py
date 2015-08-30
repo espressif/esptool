@@ -335,7 +335,8 @@ class ESPFirmwareImage:
         l = len(data)
         if l % 4:
             data += b"\x00" * (4 - l % 4)
-        self.segments.append((addr, len(data), data))
+        if l > 0:
+            self.segments.append((addr, len(data), data))
 
     def save(self, filename):
         f = file(filename, 'wb')
