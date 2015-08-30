@@ -387,7 +387,7 @@ class ELFFile:
     def get_entry_point(self):
         tool_readelf = "xtensa-lx106-elf-readelf"
         if os.getenv('XTENSA_CORE')=='lx106':
-            tool_objcopy = "xt-readelf"
+            tool_readelf = "xt-readelf"
         try:
             proc = subprocess.Popen([tool_readelf, "-h", self.name], stdout=subprocess.PIPE)
         except OSError:
