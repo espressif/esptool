@@ -415,6 +415,13 @@ class ELFFile:
 def arg_auto_int(x):
     return int(x, 0)
 
+def div_roundup(a, b):
+    """ Return a/b rounded up to nearest integer,
+    equivalent result to int(math.ceil(float(int(a)) / float(int(b))), only
+    without possible floating point accuracy errors.
+    """
+    return (int(a) + int(b) - 1) / int(b)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'ESP8266 ROM Bootloader Utility', prog = 'esptool')
 
@@ -532,7 +539,7 @@ if __name__ == '__main__':
         for (offset, size, data) in image.segments:
             print 'Downloading %d bytes at %08x...' % (size, offset),
             sys.stdout.flush()
-            esp.mem_begin(size, math.ceil(size / float(esp.ESP_RAM_BLOCK)), esp.ESP_RAM_BLOCK, offset)
+            esp.mem_begin(size, div_roundup(size, esp.ESP_RAM_BLOCK), esp.ESP_RAM_BLOCK, offset)
 
             seq = 0
             while len(data) > 0:
@@ -575,7 +582,7 @@ if __name__ == '__main__':
             args.addr_filename = args.addr_filename[2:]
             image = file(filename, 'rb').read()
             print 'Erasing flash...'
-            blocks = math.ceil(len(image)/float(esp.ESP_FLASH_BLOCK))
+            blocks = div_roundup(len(image), esp.ESP_FLASH_BLOCK)
             esp.flash_begin(blocks*esp.ESP_FLASH_BLOCK, address)
             seq = 0
             while len(image) > 0:
@@ -658,7 +665,7 @@ if __name__ == '__main__':
 
     elif args.operation == 'read_flash':
         print 'Please wait...'
-        file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, int(math.ceil(args.size / 1024.)))[:args.size])
+        file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024))[:args.size])
 
     elif args.operation == 'erase_flash':
         esp.flash_erase()
