@@ -75,6 +75,12 @@ class ESPROM:
     def read(self, length = 1):
         b = ''
         while len(b) < length:
+            
+            count = 0
+            while( count < 9 and self._port.inWaiting() == 0):
+                count = count +1;
+                time.sleep(0.01)
+                
             c = self._port.read(1)
             if c == '\xdb':
                 c = self._port.read(1)
@@ -106,6 +112,11 @@ class ESPROM:
             # Construct and send request
             pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
             self.write(pkt)
+            
+        count = 0
+        while( count < 15 and self._port.inWaiting() < 9):
+            count = count +1;
+            time.sleep(0.15)
 
         # Read header of response and parse
         if self._port.read(1) != '\xc0':
@@ -115,6 +126,11 @@ class ESPROM:
         if resp != 0x01 or (op and op_ret != op):
             raise Exception('Invalid response')
 
+        count = 0
+        while( count < 15 and self._port.inWaiting() < len_ret):
+            count = count +1;
+            time.sleep(0.2)   
+                
         # The variable-length body
         body = self.read(len_ret)
 
@@ -269,6 +285,12 @@ class ESPROM:
         # Fetch the data
         data = ''
         for _ in xrange(count):
+            
+            count = 0
+            while( count < 9 and self._port.inWaiting() < (size+2)):
+                count = count +1;
+                time.sleep(0.01)
+                
             if self._port.read(1) != '\xc0':
                 raise Exception('Invalid head of packet (sflash read)')
 
