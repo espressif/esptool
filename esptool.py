@@ -100,11 +100,13 @@ class ESPROM:
             state ^= ord(b)
         return state
 
+    """ Send a request """
     def sendRequest(self, op, data, chk):
         # Construct and send request
         pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
         self.write(pkt)
 
+    """ Receive a response """
     def recvResponse(self):
         # Read header of response and parse
         if self._port.read(1) != '\xc0':
@@ -133,6 +135,10 @@ class ESPROM:
         if op:
             self.sendRequest(op, data, chk)
 
+        # tries to get a response until that response has the
+        # same operation as the request or a retries limit has
+        # exceeded. This is needed for some esp8266s that
+        # reply with more sync responses than expected.
         valid = False
         retries = 100
         while not valid and retries > 0:
