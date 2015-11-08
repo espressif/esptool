@@ -101,9 +101,9 @@ class ESPROM:
         return state
 
     def sendRequest(self, op, data, chk):
-            # Construct and send request
-            pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
-            self.write(pkt)
+        # Construct and send request
+        pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
+        self.write(pkt)
 
     def recvResponse(self):
         # Read header of response and parse
@@ -133,12 +133,21 @@ class ESPROM:
         if op:
             self.sendRequest(op, data, chk)
 
-        (op_ret, val, body) = self.recvResponse()
+        valid = False
+        retries = 100
+        while not valid and retries > 0:
+            (op_ret, val, body) = self.recvResponse()
+            if not op:
+                valid = True # responses without requests are always valid
+            else:
+                valid = (op_ret == op)
+                print "op=%d op_ret=%d" % (op, op_ret)
+            retries = retries - 1
 
-        if op and op_ret != op:
-            raise Exception("response doesn't match request")
-
-        return val, body
+        if not valid:
+            raise Exception("response doesn't match request")                
+        else:
+            return val, body
 
     """ Perform a connection test """
     def sync(self):
