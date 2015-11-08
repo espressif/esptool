@@ -99,13 +99,14 @@ class ESPROM:
             state ^= ord(b)
         return state
 
-    """ Send a request and read the response """
-    def command(self, op = None, data = None, chk = 0):
-        if op:
-            # Construct and send request
-            pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
-            self.write(pkt)
+    """ Send a request """
+    def sendRequest(self, op, data, chk):
+        # Construct and send request
+        pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
+        self.write(pkt)
 
+    """ Receive a response """
+    def recvResponse(self):
         # Read header of response and parse
         if self._port.read(1) != '\xc0':
             raise FatalError('Invalid head of packet')
@@ -113,8 +114,6 @@ class ESPROM:
         (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', hdr)
         if resp != 0x01:
             raise FatalError('Invalid response 0x%02x" to command' % resp)
-        if op and op_ret != op:
-            raise FatalError('Invalid response operation 0x%02x (expected 0x%02x)' % op_ret, op)
 
         # The variable-length body
         body = self.read(len_ret)
@@ -123,7 +122,32 @@ class ESPROM:
         if self._port.read(1) != chr(0xc0):
             raise FatalError('Invalid end of packet')
 
-        return val, body
+        return op_ret, val, body
+
+
+    """ Send a request and read the response """
+    def command(self, op = None, data = None, chk = 0):
+        if op:
+            self.sendRequest(op, data, chk)
+
+        # tries to get a response until that response has the
+        # same operation as the request or a retries limit has
+        # exceeded. This is needed for some esp8266s that
+        # reply with more sync responses than expected.
+        valid = False
+        retries = 100
+        while not valid and retries > 0:
+            (op_ret, val, body) = self.recvResponse()
+            if not op:
+                valid = True # responses without requests are always valid
+            else:
+                valid = (op_ret == op)
+            retries = retries - 1
+
+        if not valid:
+            raise Exception("response doesn't match request")                
+        else:
+            return val, body
 
     """ Perform a connection test """
     def sync(self):
