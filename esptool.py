@@ -112,9 +112,6 @@ class ESPROM:
         if self._port.read(1) != '\xc0':
             raise Exception('Invalid head of packet')
         hdr = self.read(8)
-        hdr_hex = ":".join("{:02x}".format(ord(c)) for c in hdr)
-        print "response header: %s" % (hdr_hex)
-
         (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', hdr)
 
         if resp != 0x01:
@@ -147,7 +144,6 @@ class ESPROM:
                 valid = True # responses without requests are always valid
             else:
                 valid = (op_ret == op)
-                print "op=%d op_ret=%d" % (op, op_ret)
             retries = retries - 1
 
         if not valid:
