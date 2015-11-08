@@ -209,16 +209,17 @@ class ESPROM:
             erase_size = (num_sectors - head_sectors) * sector_size
 
         self._port.timeout = 10
-        if self.command(ESPROM.ESP_FLASH_BEGIN,
-                struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1] != "\0\0":
-            raise Exception('Failed to enter Flash download mode')
+        result = self.command(ESPROM.ESP_FLASH_BEGIN,
+                              struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1]
+        if result != "\0\0":
+            fail_with_result('Failed to enter Flash download mode (result "%s")', result)
         self._port.timeout = old_tmo
 
     """ Write block to flash """
     def flash_block(self, data, seq):
-        if self.command(ESPROM.ESP_FLASH_DATA,
-                struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))[1] != "\0\0":
-            raise Exception('Failed to write to target Flash')
+        result = self.command(ESPROM.ESP_FLASH_DATA, struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))[1]
+        if result != "\0\0":
+            fail_with_result('Failed to write to target Flash after seq %d (got result %%s)' % seq, result)
 
     """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot = False):
@@ -378,7 +379,12 @@ class ELFFile:
             sys.exit(1)
         for l in proc.stdout:
             fields = l.strip().split()
-            self.symbols[fields[2]] = int(fields[0], 16)
+            try:
+                if fields[0] == "U":
+                    raise Exception("ELF binary has undefined symbol %s" % fields[1])
+                self.symbols[fields[2]] = int(fields[0], 16)
+            except ValueError:
+                raise Exception("Failed to strip symbol output from nm: %s" % fields)
 
     def get_symbol_addr(self, sym):
         self._fetch_symbols()
@@ -421,6 +427,11 @@ def div_roundup(a, b):
     without possible floating point accuracy errors.
     """
     return (int(a) + int(b) - 1) / int(b)
+
+def fail_with_result(message, result):
+    """ Throw a fatal exception but include the hex values of 'result' as a string
+    format argument """
+    raise Exception(message %  ", ".join(hex(ord(x)) for x in result))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'ESP8266 ROM Bootloader Utility', prog = 'esptool')
