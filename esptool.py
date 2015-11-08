@@ -100,19 +100,22 @@ class ESPROM:
             state ^= ord(b)
         return state
 
-    """ Send a request and read the response """
-    def command(self, op = None, data = None, chk = 0):
-        if op:
+    def sendRequest(self, op, data, chk):
             # Construct and send request
             pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
             self.write(pkt)
 
+    def recvResponse(self):
         # Read header of response and parse
         if self._port.read(1) != '\xc0':
             raise Exception('Invalid head of packet')
         hdr = self.read(8)
+        hdr_hex = ":".join("{:02x}".format(ord(c)) for c in hdr)
+        print "response header: %s" % (hdr_hex)
+
         (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', hdr)
-        if resp != 0x01 or (op and op_ret != op):
+
+        if resp != 0x01:
             raise Exception('Invalid response')
 
         # The variable-length body
@@ -121,6 +124,19 @@ class ESPROM:
         # Terminating byte
         if self._port.read(1) != chr(0xc0):
             raise Exception('Invalid end of packet')
+
+        return op_ret, val, body
+
+
+    """ Send a request and read the response """
+    def command(self, op = None, data = None, chk = 0):
+        if op:
+            self.sendRequest(op, data, chk)
+
+        (op_ret, val, body) = self.recvResponse()
+
+        if op and op_ret != op:
+            raise Exception("response doesn't match request")
 
         return val, body
 
