@@ -83,7 +83,7 @@ class ESPROM:
                 elif c == '\xdd':
                     b = b + '\xdb'
                 else:
-                    raise Exception('Invalid SLIP escape')
+                    raise FatalError('Invalid SLIP escape')
             else:
                 b = b + c
         return b
@@ -109,18 +109,20 @@ class ESPROM:
 
         # Read header of response and parse
         if self._port.read(1) != '\xc0':
-            raise Exception('Invalid head of packet')
+            raise FatalError('Invalid head of packet')
         hdr = self.read(8)
         (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', hdr)
-        if resp != 0x01 or (op and op_ret != op):
-            raise Exception('Invalid response')
+        if resp != 0x01:
+            raise FatalError('Invalid response 0x%02x" to command' % resp)
+        if op and op_ret != op:
+            raise FatalError('Invalid response operation 0x%02x (expected 0x%02x)' % op_ret, op)
 
         # The variable-length body
         body = self.read(len_ret)
 
         # Terminating byte
         if self._port.read(1) != chr(0xc0):
-            raise Exception('Invalid end of packet')
+            raise FatalError('Invalid end of packet')
 
         return val, body
 
@@ -156,38 +158,38 @@ class ESPROM:
                     return
                 except:
                     time.sleep(0.05)
-        raise Exception('Failed to connect')
+        raise FatalError('Failed to connect to ESP8266')
 
     """ Read memory address in target """
     def read_reg(self, addr):
         res = self.command(ESPROM.ESP_READ_REG, struct.pack('<I', addr))
         if res[1] != "\0\0":
-            raise Exception('Failed to read target memory')
+            raise FatalError('Failed to read target memory')
         return res[0]
 
     """ Write to memory address in target """
     def write_reg(self, addr, value, mask, delay_us = 0):
         if self.command(ESPROM.ESP_WRITE_REG,
                 struct.pack('<IIII', addr, value, mask, delay_us))[1] != "\0\0":
-            raise Exception('Failed to write target memory')
+            raise FatalError('Failed to write target memory')
 
     """ Start downloading an application image to RAM """
     def mem_begin(self, size, blocks, blocksize, offset):
         if self.command(ESPROM.ESP_MEM_BEGIN,
                 struct.pack('<IIII', size, blocks, blocksize, offset))[1] != "\0\0":
-            raise Exception('Failed to enter RAM download mode')
+            raise FatalError('Failed to enter RAM download mode')
 
     """ Send a block of an image to RAM """
     def mem_block(self, data, seq):
         if self.command(ESPROM.ESP_MEM_DATA,
                 struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))[1] != "\0\0":
-            raise Exception('Failed to write to target RAM')
+            raise FatalError('Failed to write to target RAM')
 
     """ Leave download mode and run the application """
     def mem_finish(self, entrypoint = 0):
         if self.command(ESPROM.ESP_MEM_END,
                 struct.pack('<II', int(entrypoint == 0), entrypoint))[1] != "\0\0":
-            raise Exception('Failed to leave RAM download mode')
+            raise FatalError('Failed to leave RAM download mode')
 
     """ Start downloading to Flash (performs an erase) """
     def flash_begin(self, size, offset):
@@ -212,20 +214,20 @@ class ESPROM:
         result = self.command(ESPROM.ESP_FLASH_BEGIN,
                               struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1]
         if result != "\0\0":
-            fail_with_result('Failed to enter Flash download mode (result "%s")', result)
+            raise FatalError.WithResult('Failed to enter Flash download mode (result "%s")', result)
         self._port.timeout = old_tmo
 
     """ Write block to flash """
     def flash_block(self, data, seq):
         result = self.command(ESPROM.ESP_FLASH_DATA, struct.pack('<IIII', len(data), seq, 0, 0)+data, ESPROM.checksum(data))[1]
         if result != "\0\0":
-            fail_with_result('Failed to write to target Flash after seq %d (got result %%s)' % seq, result)
+            raise FatalError.WithResult('Failed to write to target Flash after seq %d (got result %%s)' % seq, result)
 
     """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot = False):
         pkt = struct.pack('<I', int(not reboot))
         if self.command(ESPROM.ESP_FLASH_END, pkt)[1] != "\0\0":
-            raise Exception('Failed to leave Flash mode')
+            raise FatalError('Failed to leave Flash mode')
 
     """ Run application code in flash """
     def run(self, reboot = False):
@@ -242,7 +244,7 @@ class ESPROM:
         elif ((mac1 >> 16) & 0xff) == 1:
             oui = (0xac, 0xd0, 0x74)
         else:
-            raise Exception("Unknown OUI")
+            raise FatalError("Unknown OUI")
         return oui + ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
 
     """ Read SPI flash manufacturer and device id """
@@ -271,12 +273,12 @@ class ESPROM:
         data = ''
         for _ in xrange(count):
             if self._port.read(1) != '\xc0':
-                raise Exception('Invalid head of packet (sflash read)')
+                raise FatalError('Invalid head of packet (sflash read)')
 
             data += self.read(size)
 
             if self._port.read(1) != chr(0xc0):
-                raise Exception('Invalid end of packet (sflash read)')
+                raise FatalError('Invalid end of packet (sflash read)')
 
         return data
 
@@ -317,15 +319,15 @@ class ESPFirmwareImage:
             
             # some sanity check
             if magic != ESPROM.ESP_IMAGE_MAGIC or segments > 16:
-                raise Exception('Invalid firmware image')
+                raise FatalError('Invalid firmware image')
         
             for i in xrange(segments):
                 (offset, size) = struct.unpack('<II', f.read(8))
                 if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
-                    raise Exception('Suspicious segment 0x%x, length %d' % (offset, size))
+                    raise FatalError('Suspicious segment 0x%x, length %d' % (offset, size))
                 segment_data = f.read(size)
                 if len(segment_data) < size:
-                    raise Exception('End of file reading segment 0x%x, length %d (actual length %d)' % (offset, size, len(segment_data)))
+                    raise FatalError('End of file reading segment 0x%x, length %d (actual length %d)' % (offset, size, len(segment_data)))
                 self.segments.append((offset, size, segment_data))
 
             # Skip the padding. The checksum is stored in the last byte so that the
@@ -381,10 +383,10 @@ class ELFFile:
             fields = l.strip().split()
             try:
                 if fields[0] == "U":
-                    raise Exception("ELF binary has undefined symbol %s" % fields[1])
+                    raise FatalError("ELF binary has undefined symbol %s" % fields[1])
                 self.symbols[fields[2]] = int(fields[0], 16)
             except ValueError:
-                raise Exception("Failed to strip symbol output from nm: %s" % fields)
+                raise FatalError("Failed to strip symbol output from nm: %s" % fields)
 
     def get_symbol_addr(self, sym):
         self._fetch_symbols()
@@ -428,12 +430,23 @@ def div_roundup(a, b):
     """
     return (int(a) + int(b) - 1) / int(b)
 
-def fail_with_result(message, result):
-    """ Throw a fatal exception but include the hex values of 'result' as a string
-    format argument """
-    raise Exception(message %  ", ".join(hex(ord(x)) for x in result))
+class FatalError(RuntimeError):
+    """
+    Wrapper class for runtime errors that aren't caused by internal bugs, but by
+    ESP8266 responses or input content.
+    """
+    def __init__(self, message):
+        RuntimeError.__init__(self, message)
 
-if __name__ == '__main__':
+    @staticmethod
+    def WithResult(message, result):
+        """
+        Return a fatal error object that includes the hex values of
+        'result' as a string formatted argument.
+        """
+        return FatalError(message %  ", ".join(hex(ord(x)) for x in result))
+
+def main():
     parser = argparse.ArgumentParser(description = 'ESP8266 ROM Bootloader Utility', prog = 'esptool')
 
     parser.add_argument(
@@ -638,9 +651,9 @@ if __name__ == '__main__':
     elif args.operation == 'make_image':
         image = ESPFirmwareImage()
         if len(args.segfile) == 0:
-            raise Exception('No segments specified')
+            raise FatalError('No segments specified')
         if len(args.segfile) != len(args.segaddr):
-            raise Exception('Number of specified files does not match number of specified addresses')
+            raise FatalError('Number of specified files does not match number of specified addresses')
         for (seg, addr) in zip(args.segfile, args.segaddr):
             data = file(seg, 'rb').read()
             image.add_segment(addr, data)
@@ -684,3 +697,10 @@ if __name__ == '__main__':
 
     elif args.operation == 'erase_flash':
         esp.flash_erase()
+
+if __name__ == '__main__':
+    try:
+        main()
+    except FatalError as e:
+        print '\nA fatal error occurred: %s' % e
+        sys.exit(2)
