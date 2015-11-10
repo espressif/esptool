@@ -1,0 +1,14 @@
+language: python
+sudo: false
+
+python:
+  - "2.7"
+
+install:
+  - pip install pyflakes
+  - pip install pep8
+
+script:
+  - python setup.py build
+  - pyflakes *.py
+  - pep8 --max-line-length=160 --ignore=E231,E221 *.py
