@@ -20,7 +20,6 @@
 import sys
 import struct
 import serial
-import math
 import time
 import argparse
 import os
@@ -237,8 +236,8 @@ class ESPROM:
 
     """ Read MAC from OTP ROM """
     def read_mac(self):
-        mac0 = esp.read_reg(esp.ESP_OTP_MAC0)
-        mac1 = esp.read_reg(esp.ESP_OTP_MAC1)
+        mac0 = self.read_reg(self.ESP_OTP_MAC0)
+        mac1 = self.read_reg(self.ESP_OTP_MAC1)
         if ((mac1 >> 16) & 0xff) == 0:
             oui = (0x18, 0xfe, 0x34)
         elif ((mac1 >> 16) & 0xff) == 1:
@@ -252,7 +251,7 @@ class ESPROM:
         self.flash_begin(0, 0)
         self.write_reg(0x60000240, 0x0, 0xffffffff)
         self.write_reg(0x60000200, 0x10000000, 0xffffffff)
-        flash_id = esp.read_reg(0x60000240)
+        flash_id = self.read_reg(0x60000240)
         self.flash_finish(False)
         return flash_id
 
