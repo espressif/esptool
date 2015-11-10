@@ -498,9 +498,9 @@ def main():
     parser_write_flash.add_argument('--flash_size', '-fs', help = 'SPI Flash size in Mbit',
             choices = ['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'], default = '4m')
 
-    parser_run = subparsers.add_parser(
-            'run',
-            help = 'Run application code in flash')
+    subparsers.add_parser(
+        'run',
+        help = 'Run application code in flash')
 
     parser_image_info = subparsers.add_parser(
             'image_info',
@@ -527,11 +527,11 @@ def main():
     parser_elf2image.add_argument('--flash_size', '-fs', help = 'SPI Flash size in Mbit',
             choices = ['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'], default = '4m')
 
-    parser_read_mac = subparsers.add_parser(
+    subparsers.add_parser(
             'read_mac',
             help = 'Read MAC address from OTP ROM')
 
-    parser_flash_id = subparsers.add_parser(
+    subparsers.add_parser(
             'flash_id',
             help = 'Read SPI flash manufacturer and device ID')
 
@@ -542,7 +542,7 @@ def main():
     parser_read_flash.add_argument('size', help = 'Size of region to dump', type = arg_auto_int)
     parser_read_flash.add_argument('filename', help = 'Name of binary dump')
 
-    parser_erase_flash = subparsers.add_parser(
+    subparsers.add_parser(
             'erase_flash',
             help = 'Perform Chip Erase on SPI flash')
 
