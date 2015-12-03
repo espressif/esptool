@@ -395,7 +395,8 @@ class ELFFile:
             fields = l.strip().split()
             try:
                 if fields[0] == "U":
-                    raise FatalError("ELF binary has undefined symbol %s" % fields[1])
+                    print "Warning: ELF binary has undefined symbol %s" % fields[1]
+                    continue
                 self.symbols[fields[2]] = int(fields[0], 16)
             except ValueError:
                 raise FatalError("Failed to strip symbol output from nm: %s" % fields)
