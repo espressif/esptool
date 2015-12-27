@@ -225,7 +225,7 @@ class ESPROM:
         else:
             erase_size = (num_sectors - head_sectors) * sector_size
 
-        self._port.timeout = 10
+        self._port.timeout = 20
         result = self.command(ESPROM.ESP_FLASH_BEGIN,
                               struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1]
         if result != "\0\0":
