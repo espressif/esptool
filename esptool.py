@@ -226,8 +226,11 @@ class ESPROM:
             erase_size = (num_sectors - head_sectors) * sector_size
 
         self._port.timeout = 20
+        t = time.time()
         result = self.command(ESPROM.ESP_FLASH_BEGIN,
                               struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1]
+        if size != 0:
+            print "Took %.2fs to erase flash block" % (time.time() - t)
         if result != "\0\0":
             raise FatalError.WithResult('Failed to enter Flash download mode (result "%s")', result)
         self._port.timeout = old_tmo
