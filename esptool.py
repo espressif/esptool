@@ -583,6 +583,13 @@ def main():
     parser_read_flash.add_argument('size', help='Size of region to dump', type=arg_auto_int)
     parser_read_flash.add_argument('filename', help='Name of binary dump')
 
+    parser_verify_flash = subparsers.add_parser(
+        'verify_flash',
+        help='Verify a binary blob against flash')
+    parser_verify_flash.add_argument('addr_filename', nargs='+', help='Address and binary file to verify there, separated by space')
+    parser_verify_flash.add_argument('--diff', '-d', help='Show differences',
+                                     choices=['no', 'yes'], default='no')
+
     subparsers.add_parser(
         'erase_flash',
         help='Perform Chip Erase on SPI flash')
@@ -734,6 +741,28 @@ def main():
     elif args.operation == 'read_flash':
         print 'Please wait...'
         file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024))[:args.size])
+
+    elif args.operation == 'verify_flash':
+        assert len(args.addr_filename) % 2 == 0
+
+        while args.addr_filename:
+            address = int(args.addr_filename[0], 0)
+            filename = args.addr_filename[1]
+            args.addr_filename = args.addr_filename[2:]
+            image = file(filename, 'rb').read()
+            image_size = len(image)
+            print 'Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, filename)
+            flash = esp.flash_read(address, 1024, div_roundup(image_size, 1024))[:image_size]
+            if flash == image:
+                print '-- verify OK'
+            else:
+                diff = [i for i in xrange(image_size) if flash[i] != image[i]]
+                print '-- verify FAILED: %d differences, first @ 0x%08x' % (len(diff), address + diff[0])
+                if args.diff == 'yes':
+                    for d in diff:
+                        print '   %08x %02x %02x' % (address + d, ord(flash[d]), ord(image[d]))
+            if args.addr_filename:
+                esp.connect()
 
     elif args.operation == 'erase_flash':
         esp.flash_erase()
