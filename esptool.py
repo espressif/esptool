@@ -383,7 +383,7 @@ class ESPFirmwareImage:
 class ELFFile:
 
     def __init__(self, name):
-        self.name = name
+        self.name = binutils_safe_path(name)
         self.symbols = None
 
     def _fetch_symbols(self):
@@ -430,7 +430,7 @@ class ELFFile:
         tool_objcopy = "xtensa-lx106-elf-objcopy"
         if os.getenv('XTENSA_CORE') == 'lx106':
             tool_objcopy = "xt-objcopy"
-        tmpsection = tempfile.mktemp(suffix=".section")
+        tmpsection = binutils_safe_path(tempfile.mktemp(suffix=".section"))
         try:
             subprocess.check_call([tool_objcopy, "--only-section", section, "-Obinary", self.name, tmpsection])
             with open(tmpsection, "rb") as f:
@@ -450,6 +450,22 @@ def div_roundup(a, b):
     without possible floating point accuracy errors.
     """
     return (int(a) + int(b) - 1) / int(b)
+
+
+def binutils_safe_path(p):
+    """Returns a 'safe' version of path 'p' to pass to binutils
+
+    Only does anything under Cygwin Python, where cygwin paths need to
+    be translated to Windows paths if the binutils wasn't compiled
+    using Cygwin (should also work with binutils compiled using
+    Cygwin, see #73.)
+    """
+    if sys.platform == "cygwin":
+        try:
+            return subprocess.check_output(["cygpath", "-w", p]).rstrip('\n')
+        except subprocess.CalledProcessError:
+            print "WARNING: Failed to call cygpath to sanitise Cygwin path."
+    return p
 
 
 class FatalError(RuntimeError):
