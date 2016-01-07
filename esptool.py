@@ -700,7 +700,8 @@ def main():
         image.save(args.output + "0x00000.bin")
         data = e.load_section(".irom0.text")
         off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
-        assert off >= 0
+        if off < 0:
+            raise FatalError('Address of symbol _irom0_text_start in ELF is located before flash mapping address. Bad linker script?')
         f = open(args.output + "0x%05x.bin" % off, "wb")
         f.write(data)
         f.close()
