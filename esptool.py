@@ -514,7 +514,8 @@ def main():
     parser_write_flash = subparsers.add_parser(
         'write_flash',
         help='Write a binary blob to flash')
-    parser_write_flash.add_argument('addr_filename', nargs='+', help='Address and binary file to write there, separated by space')
+    parser_write_flash.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
+                                    action=AddrFilenamePairAction)
     parser_write_flash.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
                                     choices=['40m', '26m', '20m', '80m'], default='40m')
     parser_write_flash.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
@@ -617,8 +618,6 @@ def main():
         print 'Done!'
 
     elif args.operation == 'write_flash':
-        assert len(args.addr_filename) % 2 == 0
-
         flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
         flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40, '16m-c1': 0x50, '32m-c1':0x60, '32m-c2':0x70}[args.flash_size]
         flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
@@ -721,6 +720,29 @@ def main():
 
     elif args.operation == 'erase_flash':
         esp.flash_erase()
+
+
+class AddrFilenamePairAction(argparse.Action):
+    """ Custom parser class for the address/filename pairs passed as arguments """
+    def __init__(self, option_strings, dest, nargs='+', **kwargs):
+        super(AddrFilenamePairAction, self).__init__(option_strings, dest, nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if len(values) % 2 != 0:
+            raise argparse.ArgumentError(self,'Must be pairs of an address and the binary filename to write there')
+        # validate pair arguments
+        for i in range(0,len(values),2):
+            try:
+                int(values[i],0)
+            except ValueError as e:
+                raise argparse.ArgumentError(self,'Address "%s" must be a number' % values[i])
+            try:
+                with open(values[i + 1], 'r'):
+                    pass
+            except IOError as e:
+                raise argparse.ArgumentError(self, e)
+        setattr(namespace, self.dest, values)
+
 
 if __name__ == '__main__':
     try:
