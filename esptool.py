@@ -773,8 +773,6 @@ class AddrFilenamePairAction(argparse.Action):
         super(AddrFilenamePairAction, self).__init__(option_strings, dest, nargs, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
-        if len(values) % 2 != 0:
-            raise argparse.ArgumentError(self,'Must be pairs of an address and the binary filename to write there')
         # validate pair arguments
         for i in range(0,len(values),2):
             try:
@@ -786,8 +784,9 @@ class AddrFilenamePairAction(argparse.Action):
                     pass
             except IOError as e:
                 raise argparse.ArgumentError(self, e)
+            except IndexError:
+                raise argparse.ArgumentError(self,'Must be pairs of an address and the binary filename to write there')
         setattr(namespace, self.dest, values)
-
 
 if __name__ == '__main__':
     try:
