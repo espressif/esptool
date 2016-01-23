@@ -70,6 +70,7 @@ class ESPROM:
         # sets), shouldn't matter for other platforms/drivers. See
         # https://github.com/themadinventor/esptool/issues/44#issuecomment-107094446
         self._port.baudrate = baud
+        self.in_bootloader = False # actually unknown, but assume not
 
     """ Read bytes from the serial port while performing SLIP unescaping """
     def read(self, length=1):
@@ -145,6 +146,7 @@ class ESPROM:
         self.command(ESPROM.ESP_SYNC, '\x07\x07\x12\x20' + 32 * '\x55')
         for i in xrange(7):
             self.command()
+        self.in_bootloader = True
 
     """ Try connecting repeatedly until successful, or giving up """
     def connect(self):
@@ -206,6 +208,7 @@ class ESPROM:
         if self.command(ESPROM.ESP_MEM_END,
                         struct.pack('<II', int(entrypoint == 0), entrypoint))[1] != "\0\0":
             raise FatalError('Failed to leave RAM download mode')
+        self.in_bootloader = False
 
     """ Start downloading to Flash (performs an erase) """
     def flash_begin(self, size, offset):
@@ -247,6 +250,7 @@ class ESPROM:
         pkt = struct.pack('<I', int(not reboot))
         if self.command(ESPROM.ESP_FLASH_END, pkt)[1] != "\0\0":
             raise FatalError('Failed to leave Flash mode')
+        self.in_bootloader = False
 
     """ Run application code in flash """
     def run(self, reboot=False):
@@ -538,11 +542,9 @@ def write_flash(esp, args):
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
     flash_info = struct.pack('BB', flash_mode, flash_size_freq)
 
-    while args.addr_filename:
-        address = int(args.addr_filename[0], 0)
-        filename = args.addr_filename[1]
-        args.addr_filename = args.addr_filename[2:]
-        image = file(filename, 'rb').read()
+    for address, argfile in args.addr_filename:
+        image = argfile.read()
+        argfile.seek(0) # in case we need it again
         print 'Erasing flash...'
         blocks = div_roundup(len(image), esp.ESP_FLASH_BLOCK)
         esp.flash_begin(blocks * esp.ESP_FLASH_BLOCK, address)
@@ -570,6 +572,9 @@ def write_flash(esp, args):
     else:
         esp.flash_begin(0, 0)
         esp.flash_finish(False)
+    if args.verify:
+        print 'Verifying just-written flash...'
+        verify_flash(esp, args)
 
 
 def image_info(args):
@@ -647,24 +652,25 @@ def read_flash(esp, args):
 
 
 def verify_flash(esp, args):
-    while args.addr_filename:
-        address = int(args.addr_filename[0], 0)
-        filename = args.addr_filename[1]
-        args.addr_filename = args.addr_filename[2:]
-        image = file(filename, 'rb').read()
+    for address, argfile in args.addr_filename:
+        if not esp.in_bootloader:
+            esp.connect()
+        image = argfile.read()
+        argfile.seek(0) # rewind in case we need it again
         image_size = len(image)
-        print 'Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, filename)
+        print 'Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name)
         flash = esp.flash_read(address, 1024, div_roundup(image_size, 1024))[:image_size]
         if flash == image:
             print '-- verify OK'
         else:
             diff = [i for i in xrange(image_size) if flash[i] != image[i]]
             print '-- verify FAILED: %d differences, first @ 0x%08x' % (len(diff), address + diff[0])
-            if args.diff == 'yes':
-                for d in diff:
-                    print '   %08x %02x %02x' % (address + d, ord(flash[d]), ord(image[d]))
-        if args.addr_filename:
-            esp.connect()
+            try:
+                if args.diff == 'yes':
+                    for d in diff:
+                        print '   %08x %02x %02x' % (address + d, ord(flash[d]), ord(image[d]))
+            except AttributeError:
+                pass # args for write_flash --verify has no .diff attribute
 
 # End of operations functions
 
@@ -722,6 +728,7 @@ def main():
                                     choices=['qio', 'qout', 'dio', 'dout'], default='qio')
     parser_write_flash.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=str.lower,
                                     choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'], default='4m')
+    parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
 
     subparsers.add_parser(
         'run',
@@ -805,19 +812,20 @@ class AddrFilenamePairAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         # validate pair arguments
+        pairs = []
         for i in range(0,len(values),2):
             try:
-                int(values[i],0)
+                address = int(values[i],0)
             except ValueError as e:
                 raise argparse.ArgumentError(self,'Address "%s" must be a number' % values[i])
             try:
-                with open(values[i + 1], 'r'):
-                    pass
+                argfile = open(values[i + 1], 'r')
             except IOError as e:
                 raise argparse.ArgumentError(self, e)
             except IndexError:
                 raise argparse.ArgumentError(self,'Must be pairs of an address and the binary filename to write there')
-        setattr(namespace, self.dest, values)
+            pairs.append((address, argfile))
+        setattr(namespace, self.dest, pairs)
 
 if __name__ == '__main__':
     try:
