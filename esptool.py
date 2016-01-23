@@ -586,7 +586,8 @@ def main():
     parser_verify_flash = subparsers.add_parser(
         'verify_flash',
         help='Verify a binary blob against flash')
-    parser_verify_flash.add_argument('addr_filename', nargs='+', help='Address and binary file to verify there, separated by space')
+    parser_verify_flash.add_argument('addr_filename', help='Address and binary file to verify there, separated by space',
+                                     action=AddrFilenamePairAction)
     parser_verify_flash.add_argument('--diff', '-d', help='Show differences',
                                      choices=['no', 'yes'], default='no')
 
@@ -743,8 +744,6 @@ def main():
         file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024))[:args.size])
 
     elif args.operation == 'verify_flash':
-        assert len(args.addr_filename) % 2 == 0
-
         while args.addr_filename:
             address = int(args.addr_filename[0], 0)
             filename = args.addr_filename[1]
