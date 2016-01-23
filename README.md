@@ -67,7 +67,14 @@ Reading the SPI Flash ID:
 
 Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/HEAD/trunk/flashchips.h) for flash chip manufacturer name and part number.
 
-Note that this document may be out of date. Use the built-in usage (`esptool -h`) when in doubt.
+Verifying flash that was already written
+```
+./esptool.py verify_flash 0x40000 my_app.elf-0x40000.bin
+```
+
+NOTE: esptool.py may update the first 16 bytes (offset 0) of the ESP8266 flash when writing, to reflect the provided flash mode and flash size parameters. If this happens then the verify may fail on these bytes.
+
+For more information and options, view the built-in usage message (`esptool -h`).
 
 ## Protocol
 

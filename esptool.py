@@ -70,7 +70,7 @@ class ESPROM:
         # sets), shouldn't matter for other platforms/drivers. See
         # https://github.com/themadinventor/esptool/issues/44#issuecomment-107094446
         self._port.baudrate = baud
-        self.in_bootloader = False # actually unknown, but assume not
+        self.in_bootloader = False  # actually unknown, but assume not
 
     """ Read bytes from the serial port while performing SLIP unescaping """
     def read(self, length=1):
@@ -544,7 +544,7 @@ def write_flash(esp, args):
 
     for address, argfile in args.addr_filename:
         image = argfile.read()
-        argfile.seek(0) # in case we need it again
+        argfile.seek(0)  # in case we need it again
         print 'Erasing flash...'
         blocks = div_roundup(len(image), esp.ESP_FLASH_BLOCK)
         esp.flash_begin(blocks * esp.ESP_FLASH_BLOCK, address)
@@ -652,17 +652,19 @@ def read_flash(esp, args):
 
 
 def verify_flash(esp, args):
+    differences = False
     for address, argfile in args.addr_filename:
         if not esp.in_bootloader:
             esp.connect()
         image = argfile.read()
-        argfile.seek(0) # rewind in case we need it again
+        argfile.seek(0)  # rewind in case we need it again
         image_size = len(image)
         print 'Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name)
         flash = esp.flash_read(address, 1024, div_roundup(image_size, 1024))[:image_size]
         if flash == image:
             print '-- verify OK'
         else:
+            differences = True
             diff = [i for i in xrange(image_size) if flash[i] != image[i]]
             print '-- verify FAILED: %d differences, first @ 0x%08x' % (len(diff), address + diff[0])
             try:
@@ -670,9 +672,13 @@ def verify_flash(esp, args):
                     for d in diff:
                         print '   %08x %02x %02x' % (address + d, ord(flash[d]), ord(image[d]))
             except AttributeError:
-                pass # args for write_flash --verify has no .diff attribute
+                pass  # if performing write_flash --verify, there is no .diff attribute
+    if differences:
+        raise FatalError("Verify failed.")
 
+#
 # End of operations functions
+#
 
 
 def main():
