@@ -825,7 +825,7 @@ class AddrFilenamePairAction(argparse.Action):
             except ValueError as e:
                 raise argparse.ArgumentError(self,'Address "%s" must be a number' % values[i])
             try:
-                argfile = open(values[i + 1], 'r')
+                argfile = open(values[i + 1], 'rb')
             except IOError as e:
                 raise argparse.ArgumentError(self, e)
             except IndexError:
