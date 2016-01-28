@@ -177,6 +177,11 @@ class ESPROM:
                     time.sleep(0.05)
         raise FatalError('Failed to connect to ESP8266')
 
+    def disconnect(self):
+        print 'Disconnecting...'
+        self._port.setRTS(True)
+        self._port.setDTR(True)
+        
     """ Read memory address in target """
     def read_reg(self, addr):
         res = self.command(ESPROM.ESP_READ_REG, struct.pack('<I', addr))
@@ -807,6 +812,7 @@ def main():
         esp = ESPROM(args.port, args.baud)
         esp.connect()
         operation_func(esp, args)
+        esp.disconnect()
     else:
         operation_func(args)
 
