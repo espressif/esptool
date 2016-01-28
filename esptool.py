@@ -181,7 +181,7 @@ class ESPROM:
         print 'Disconnecting...'
         self._port.setRTS(True)
         self._port.setDTR(True)
-        
+
     """ Read memory address in target """
     def read_reg(self, addr):
         res = self.command(ESPROM.ESP_READ_REG, struct.pack('<I', addr))
