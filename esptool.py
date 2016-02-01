@@ -633,6 +633,7 @@ def read_mac(esp, args):
 
 
 def erase_flash(esp, args):
+    print 'Erasing flash (this may take a while)...'
     esp.flash_erase()
 
 
