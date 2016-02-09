@@ -56,6 +56,7 @@ class ESPROM:
     # OTP ROM addresses
     ESP_OTP_MAC0    = 0x3ff00050
     ESP_OTP_MAC1    = 0x3ff00054
+    ESP_OTP_MAC3    = 0x3ff0005c
 
     # Sflash stub: an assembly routine to read from spi flash and send to host
     SFLASH_STUB     = "\x80\x3c\x00\x40\x1c\x4b\x00\x40\x21\x11\x00\x40\x00\x80" \
@@ -262,7 +263,10 @@ class ESPROM:
     def read_mac(self):
         mac0 = self.read_reg(self.ESP_OTP_MAC0)
         mac1 = self.read_reg(self.ESP_OTP_MAC1)
-        if ((mac1 >> 16) & 0xff) == 0:
+        mac3 = self.read_reg(self.ESP_OTP_MAC3)
+        if (mac3 != 0):
+            oui = ((mac3 >> 16) & 0xff, (mac3 >> 8) & 0xff, mac3 & 0xff)
+        elif ((mac1 >> 16) & 0xff) == 0:
             oui = (0x18, 0xfe, 0x34)
         elif ((mac1 >> 16) & 0xff) == 1:
             oui = (0xac, 0xd0, 0x74)
