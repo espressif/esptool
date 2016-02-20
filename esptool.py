@@ -274,6 +274,12 @@ class ESPROM:
             raise FatalError("Unknown OUI")
         return oui + ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
 
+    """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
+    def chip_id(self):
+        id0 = self.read_reg(self.ESP_OTP_MAC0)
+        id1 = self.read_reg(self.ESP_OTP_MAC1)
+        return (id0 >> 24) | ((id1 & 0xffffff) << 8)
+
     """ Read SPI flash manufacturer and device id """
     def flash_id(self):
         self.flash_begin(0, 0)
@@ -636,6 +642,11 @@ def read_mac(esp, args):
     print 'MAC: %s' % ':'.join(map(lambda x: '%02x' % x, mac))
 
 
+def chip_id(esp, args):
+    chipid = esp.chip_id()
+    print 'Chip ID: 0x%08x' % chipid
+
+
 def erase_flash(esp, args):
     print 'Erasing flash (this may take a while)...'
     esp.flash_erase()
@@ -773,6 +784,10 @@ def main():
     subparsers.add_parser(
         'read_mac',
         help='Read MAC address from OTP ROM')
+
+    subparsers.add_parser(
+        'chip_id',
+        help='Read Chip ID from OTP ROM')
 
     subparsers.add_parser(
         'flash_id',
