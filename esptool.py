@@ -409,6 +409,8 @@ class ELFFile:
                 if fields[0] == "U":
                     print "Warning: ELF binary has undefined symbol %s" % fields[1]
                     continue
+                if fields[0] == "w":
+                    continue # can skip weak symbols, I think?
                 self.symbols[fields[2]] = int(fields[0], 16)
             except ValueError:
                 raise FatalError("Failed to strip symbol output from nm: %s" % fields)
