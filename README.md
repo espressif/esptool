@@ -76,90 +76,22 @@ NOTE: esptool.py may update the first 16 bytes (offset 0) of the ESP8266 flash w
 
 For more information and options, view the built-in usage message (`esptool -h`).
 
-## Protocol
+## Entering the Bootloader
 
 If GPIO0 and GPIO15 is pulled down and GPIO2 is pulled high when the module leaves reset,
 then the bootloader will enter the UART download mode. The ROM auto-bauds, that is, it will
 automagically detect which baud rate you are using. esptool defaults to 115200.
 
-esptool uses the RTS and DTR modem status lines to automatically enter the bootloader.
+esptool.py uses the RTS and DTR modem status lines to automatically enter the bootloader.
 Connect RTS to CH_PD (which is used as active-low reset) and DTR to GPIO0.
 
-The bootloader protocol uses [SLIP](http://en.wikipedia.org/wiki/SLIP) framing.
-Each packet begin and end with `0xC0`, all occurrences of `0xC0` and `0xDB` inside the packet
-are replaced with `0xDB 0xDC` and `0xDB 0xDD`, respectively.
+## Internal Technical Documentation
 
-Inside the frame, the packet consists of a header and a variable-length body.
-All multi-byte fields are little-endian.
+The [repository wiki](https://github.com/themadinventor/esptool/wiki) contains some technical documentation regarding the protocol and file formats used by the ROM bootloader. This may be useful if you're developing `esptool.py`:
 
-### Request
+* [Firmware Image Format](https://github.com/themadinventor/esptool/wiki/Firmware-Image-Format)
+* [Serial Protocol](https://github.com/themadinventor/esptool/wiki/Serial-Protocol)
 
-Byte   | Name		| Comment
--------|----------------|-------------------------------
-0      | Direction	| Always `0x00` for requests
-1      | Command	| Requested operation, according to separate table
-2-3    | Size		| Size of body
-4-7    | Checksum	| XOR checksum of payload, only used in block transfer packets
-8..n   | Body		| Depends on operation
-
-### Response
-
-Byte   | Name		| Comment
--------|----------------|-------------------------------
-0      | Direction	| Always `0x01` for responses
-1      | Command	| Same value as in the request packet that trigged the response
-2-3    | Size		| Size of body, normally 2
-4-7    | Value		| Response data for some operations
-8..n   | Body		| Depends on operation
-8      | Status		| Status flag, success (`0`) or failure (`1`)
-9      | Error		| Last error code, not reset on success
-
-### Opcodes
-
-Byte   | Name			| Input		| Output
--------|------------------------|---------------|------------------------
-`0x02` | Flash Download Start	| total size, number of blocks, block size, offset	|
-`0x03` | Flash Download Data	| size, sequence number, data. checksum in value field. |
-`0x04` | Flash Download Finish	| reboot flag? |
-`0x05` | RAM Download Start	| total size, packet size, number of packets, memory offset |
-`0x06` | RAM Download Finish	| execute flag, entry point |
-`0x07` | RAM Download Data	| size, sequence numer, data. checksum in dedicated field. |
-`0x08` | Sync Frame		| `0x07 0x07 0x12 0x20`, `0x55` 32 times |
-`0x09` | Write register		| Four 32-bit words: address, value, mask and delay (in microseconds) | Body is `0x00 0x00` if successful
-`0x0a` | Read register		| Address as 32-bit word | Read data as 32-bit word in `value` field
-`0x0b` | Configure SPI params	| 24 bytes of unidentified SPI parameters |
-
-### Checksum
-Each byte in the payload is XOR'ed together, as well as the magic number `0xEF`.
-The result is stored as a zero-padded byte in the 32-bit checksum field in the header.
-
-## Firmware image format
-The firmware file consists of a header, a variable number of data segments and a footer.
-Multi-byte fields are little-endian.
-
-### File header
-
-Byte	| Description
---------|-----------------------
-0	| Always `0xE9`
-1	| Number of segments
-2	| SPI Flash Interface (`0` = QIO, `1` = QOUT, `2` = DIO, `0x3` = DOUT)
-3	| High four bits: `0` = 512K, `1` = 256K, `2` = 1M, `3` = 2M, `4` = 4M, Low four bits: `0` = 40MHz, `1`= 26MHz, `2` = 20MHz, `0xf` = 80MHz
-4-7	| Entry point
-8-n	| Segments
-
-esptool overrides the 2nd and 3rd (start from 0) bytes according to the SPI flash info provided through command line option, regardless of corresponding bytes from the input .bin file that will be written to address 0x00000. So you must provide SPI flash info when running `esptool write_flash` command. For example `esptool write_flash -ff 80m -fm qio -fs 8m 0x00000 boot.bin 0x01000 user1.bin`
-
-### Segment
-
-Byte	| Description
---------|-----------------------
-0-3	| Memory offset
-4-7	| Segment size
-8...n	| Data
-
-### Footer
-The file is padded with zeros until its size is one byte less than a multiple of 16 bytes. A last byte (thus making the file size a multiple of 16) is the checksum of the data of all segments. The checksum is defined as the xor-sum of all bytes and the byte `0xEF`.
 
 ## Boot log
 The boot rom writes a log to the UART when booting. The timing is a little bit unusual: 74880 baud
