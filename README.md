@@ -192,23 +192,23 @@ Note that some serial terminal programs (not esptool.py) will assert both RTS an
 
 When flashing at offset 0x0, the first sector of the ESP8266 flash is updated automatically using the arguments passed in.
 
-### Flash Mode (--flash_mode)
+### Flash Mode (--flash_mode, -fm)
 
-These set Quad Flash I/O or Dual Flash I/O modes. Valid values are qio, qout, dio, dout. The default is `qio`.
+These set Quad Flash I/O or Dual Flash I/O modes. Valid values are `qio`, `qout`, `dio`, `dout`. The default is `qio`.
 
 Some ESP8266 modules, including the ESP-12E modules on some (not all) NodeMCU boards, are dual I/O and will only work with `--flash_mode dio`.
 
-In `qio` mode, GPIOs 9 and 10 are used for SPI flash communications. If flash_mode is set to `dio` then these pins are available for other purposes.
+In `qio` mode, GPIOs 9 and 10 are used for SPI flash communications. If flash mode is set to `dio` then these pins are available for other purposes.
 
-### Flash Size (--flash_size)
+### Flash Size (--flash_size, -fs)
 
-Size of the SPI flash. Valid values are 4m,2m,8m,16m,32m,16m-c1,32m-c1,32m-c2 (megabits). The default is 4m (4 megabits, 512 kilobytes.)
+Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). The default is `4m` (4 megabits, 512 kilobytes.)
 
-The ESP8266 SDK stores wifi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
+The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
 
-ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 32 megabit (32m) flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)).
+ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 32 megabit (`32m` i.e. 4MB) flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)).
 
-### Flash Frequency (--flash_freq)
+### Flash Frequency (--flash_freq, -ff)
 
 Clock frequency for SPI flash interactions. Valid values are 40m, 26m, 20m, 80m (MHz). The default is 40m (40MHz).
 
