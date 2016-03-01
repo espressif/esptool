@@ -705,13 +705,13 @@ def main():
     parser.add_argument(
         '--port', '-p',
         help='Serial port device',
-        default='/dev/ttyUSB0')
+        default=os.environ.get('ESPTOOL_PORT', '/dev/ttyUSB0'))
 
     parser.add_argument(
         '--baud', '-b',
         help='Serial port baud rate',
         type=arg_auto_int,
-        default=ESPROM.ESP_ROM_BAUD)
+        default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
 
     subparsers = parser.add_subparsers(
         dest='operation',
@@ -747,11 +747,14 @@ def main():
     parser_write_flash.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
                                     action=AddrFilenamePairAction)
     parser_write_flash.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
-                                    choices=['40m', '26m', '20m', '80m'], default='40m')
+                                    choices=['40m', '26m', '20m', '80m'],
+                                    default=os.environ.get('ESPTOOL_FF', '40m'))
     parser_write_flash.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
-                                    choices=['qio', 'qout', 'dio', 'dout'], default='qio')
+                                    choices=['qio', 'qout', 'dio', 'dout'],
+                                    default=os.environ.get('ESPTOOL_FM', 'qio'))
     parser_write_flash.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=str.lower,
-                                    choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'], default='4m')
+                                    choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'],
+                                    default=os.environ.get('ESPTOOL_FS', '4m'))
     parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
 
     subparsers.add_parser(

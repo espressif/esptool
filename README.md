@@ -30,7 +30,7 @@ If using Cygwin on Windows, you have to convert the Windows-style name into an U
 
 ### Baud rate
 
-The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baudrate of your choice). This can speed up data transfers.
+The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baudrate of your choice). Baudrate can also be specified using `ESPTOOL_BAUD` environment variable. This can speed up data transfers.
 
 The ESP8266 bootloader auto-bauds, so it will automatically match the baud rate used by esptool.py.
 
@@ -194,7 +194,7 @@ When flashing at offset 0x0, the first sector of the ESP8266 flash is updated au
 
 ### Flash Mode (--flash_mode, -fm)
 
-These set Quad Flash I/O or Dual Flash I/O modes. Valid values are `qio`, `qout`, `dio`, `dout`. The default is `qio`.
+These set Quad Flash I/O or Dual Flash I/O modes. Valid values are `qio`, `qout`, `dio`, `dout`. The default is `qio`. This parameter can also be specified using the environment variable `ESPTOOL_FM`.
 
 Some ESP8266 modules, including the ESP-12E modules on some (not all) NodeMCU boards, are dual I/O and will only work with `--flash_mode dio`.
 
@@ -202,7 +202,7 @@ In `qio` mode, GPIOs 9 and 10 are used for SPI flash communications. If flash mo
 
 ### Flash Size (--flash_size, -fs)
 
-Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). The default is `4m` (4 megabits, 512 kilobytes.)
+Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). The default is `4m` (4 megabits, 512 kilobytes.) This parameter can also be specified using the environment variable `ESPTOOL_FS`.
 
 The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
 
@@ -210,7 +210,7 @@ ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, H
 
 ### Flash Frequency (--flash_freq, -ff)
 
-Clock frequency for SPI flash interactions. Valid values are 40m, 26m, 20m, 80m (MHz). The default is 40m (40MHz).
+Clock frequency for SPI flash interactions. Valid values are 40m, 26m, 20m, 80m (MHz). The default is 40m (40MHz). This parameter can also be specified using the environment variable `ESPTOOL_FF`.
 
 The flash chip on most ESP8266 modules works with 40MHz clock speeds, but you can try lower values if the device won't boot.
 
