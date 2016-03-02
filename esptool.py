@@ -290,7 +290,7 @@ class ESPROM:
         return flash_id
 
     """ Read SPI flash """
-    def flash_read(self, offset, size, count=1):
+    def flash_read(self, offset, size, count=1, progress=False):
         # Create a custom stub
         stub = struct.pack('<III', offset, size, count) + self.SFLASH_STUB
 
@@ -309,9 +309,18 @@ class ESPROM:
                 raise FatalError('Invalid head of packet (sflash read)')
 
             data += self.read(size)
+            if progress:
+                if len(data) % 4096 == 0:
+                    sys.stdout.write(".")
+                    if len(data) % 204800 == 0:
+                        sys.stdout.write(" %4d KiB\n" % (len(data) / 1024))
+                    sys.stdout.flush()
 
             if self._port.read(1) != chr(0xc0):
                 raise FatalError('Invalid end of packet (sflash read)')
+        if progress and len(data) % 204800 != 0:
+            sys.stdout.write(" %4d kiB\n" % (len(data) / 1024))
+            sys.stdout.flush()
 
         return data
 
@@ -666,7 +675,7 @@ def flash_id(esp, args):
 
 def read_flash(esp, args):
     print 'Please wait...'
-    file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024))[:args.size])
+    file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024), args.progress)[:args.size])
 
 
 def verify_flash(esp, args):
@@ -804,6 +813,7 @@ def main():
     parser_read_flash.add_argument('address', help='Start address', type=arg_auto_int)
     parser_read_flash.add_argument('size', help='Size of region to dump', type=arg_auto_int)
     parser_read_flash.add_argument('filename', help='Name of binary dump')
+    parser_read_flash.add_argument('--progress', '-p', help='Show progression', action="store_true")
 
     parser_verify_flash = subparsers.add_parser(
         'verify_flash',
