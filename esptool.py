@@ -290,7 +290,7 @@ class ESPROM:
         return flash_id
 
     """ Read SPI flash """
-    def flash_read(self, offset, size, count=1, progress=False):
+    def flash_read(self, offset, size, count=1):
         # Create a custom stub
         stub = struct.pack('<III', offset, size, count) + self.SFLASH_STUB
 
@@ -309,18 +309,9 @@ class ESPROM:
                 raise FatalError('Invalid head of packet (sflash read)')
 
             data += self.read(size)
-            if progress:
-                if len(data) % 4096 == 0:
-                    sys.stdout.write(".")
-                    if len(data) % 204800 == 0:
-                        sys.stdout.write(" %4d KiB\n" % (len(data) / 1024))
-                    sys.stdout.flush()
 
             if self._port.read(1) != chr(0xc0):
                 raise FatalError('Invalid end of packet (sflash read)')
-        if progress and len(data) % 204800 != 0:
-            sys.stdout.write(" %4d kiB\n" % (len(data) / 1024))
-            sys.stdout.flush()
 
         return data
 
@@ -344,6 +335,16 @@ class ESPROM:
         self.mem_begin(0,0,0,0x40100000)
         self.mem_finish(0x40004984)
 
+    """Reset ESP after flashing"""
+    def reset(self):
+        print "Reset ESP."
+        self._port.setRTS(True)
+        time.sleep(0.05)
+        self._port.setRTS(False)
+        time.sleep(3)
+        print "Ready"
+
+    
         # Yup - there's no good way to detect if we succeeded.
         # It it on the other hand unlikely to fail.
 
@@ -596,7 +597,8 @@ def write_flash(esp, args):
     if args.verify:
         print 'Verifying just-written flash...'
         verify_flash(esp, args)
-
+    
+    esp.reset()
 
 def image_info(args):
     image = ESPFirmwareImage(args.filename)
@@ -675,7 +677,7 @@ def flash_id(esp, args):
 
 def read_flash(esp, args):
     print 'Please wait...'
-    file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024), args.progress)[:args.size])
+    file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024))[:args.size])
 
 
 def verify_flash(esp, args):
@@ -714,13 +716,13 @@ def main():
     parser.add_argument(
         '--port', '-p',
         help='Serial port device',
-        default=os.environ.get('ESPTOOL_PORT', '/dev/ttyUSB0'))
+        default='/dev/ttyUSB0')
 
     parser.add_argument(
         '--baud', '-b',
         help='Serial port baud rate',
         type=arg_auto_int,
-        default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
+        default=ESPROM.ESP_ROM_BAUD)
 
     subparsers = parser.add_subparsers(
         dest='operation',
@@ -756,14 +758,11 @@ def main():
     parser_write_flash.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
                                     action=AddrFilenamePairAction)
     parser_write_flash.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
-                                    choices=['40m', '26m', '20m', '80m'],
-                                    default=os.environ.get('ESPTOOL_FF', '40m'))
+                                    choices=['40m', '26m', '20m', '80m'], default='40m')
     parser_write_flash.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
-                                    choices=['qio', 'qout', 'dio', 'dout'],
-                                    default=os.environ.get('ESPTOOL_FM', 'qio'))
+                                    choices=['qio', 'qout', 'dio', 'dout'], default='qio')
     parser_write_flash.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=str.lower,
-                                    choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'],
-                                    default=os.environ.get('ESPTOOL_FS', '4m'))
+                                    choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'], default='4m')
     parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
 
     subparsers.add_parser(
@@ -813,7 +812,6 @@ def main():
     parser_read_flash.add_argument('address', help='Start address', type=arg_auto_int)
     parser_read_flash.add_argument('size', help='Size of region to dump', type=arg_auto_int)
     parser_read_flash.add_argument('filename', help='Name of binary dump')
-    parser_read_flash.add_argument('--progress', '-p', help='Show progression', action="store_true")
 
     parser_verify_flash = subparsers.add_parser(
         'verify_flash',
