@@ -344,6 +344,16 @@ class ESPROM:
         self.mem_begin(0,0,0,0x40100000)
         self.mem_finish(0x40004984)
 
+    """Reset ESP after flashing"""
+    def reset(self):
+        print "Reset ESP."
+        self._port.setRTS(True)
+        time.sleep(0.05)
+        self._port.setRTS(False)
+        time.sleep(3)
+        print "Ready"
+
+    
         # Yup - there's no good way to detect if we succeeded.
         # It it on the other hand unlikely to fail.
 
@@ -596,7 +606,8 @@ def write_flash(esp, args):
     if args.verify:
         print 'Verifying just-written flash...'
         verify_flash(esp, args)
-
+    
+    esp.reset()
 
 def image_info(args):
     image = ESPFirmwareImage(args.filename)
