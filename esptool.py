@@ -64,7 +64,7 @@ class ESPROM:
                       "\xdd\x51\xf9\xff\xc0\x05\x00\x21\xf9\xff\x31\xf3\xff\x41\xf5\xff\xc0" \
                       "\x04\x00\x0b\xcc\x56\xec\xfd\x06\xff\xff\x00\x00"
 
-    def __init__(self, port=0, baud=ESP_ROM_BAUD):
+    def __init__(self, port=0, baud=ESP_ROM_BAUD, flash_block_size=ESP_FLASH_BLOCK):
         self._port = serial.Serial(port)
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
@@ -72,6 +72,7 @@ class ESPROM:
         # https://github.com/themadinventor/esptool/issues/44#issuecomment-107094446
         self._port.baudrate = baud
         self.in_bootloader = False  # actually unknown, but assume not
+        self._flash_block_size = flash_block_size
 
     """ Read bytes from the serial port while performing SLIP unescaping """
     def read(self, length=1):
@@ -214,7 +215,7 @@ class ESPROM:
     """ Start downloading to Flash (performs an erase) """
     def flash_begin(self, size, offset):
         old_tmo = self._port.timeout
-        num_blocks = (size + ESPROM.ESP_FLASH_BLOCK - 1) / ESPROM.ESP_FLASH_BLOCK
+        num_blocks = (size + self._flash_block_size - 1) / self._flash_block_size
 
         sectors_per_block = 16
         sector_size = 4096
@@ -233,7 +234,7 @@ class ESPROM:
         self._port.timeout = 20
         t = time.time()
         result = self.command(ESPROM.ESP_FLASH_BEGIN,
-                              struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))[1]
+                              struct.pack('<IIII', erase_size, num_blocks, self._flash_block_size, offset))[1]
         if size != 0:
             print "Took %.2fs to erase flash block" % (time.time() - t)
         if result != "\0\0":
@@ -562,27 +563,28 @@ def write_flash(esp, args):
     flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40, '16m-c1': 0x50, '32m-c1':0x60, '32m-c2':0x70}[args.flash_size]
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
     flash_info = struct.pack('BB', flash_mode, flash_size_freq)
+    flash_block_size = args.flash_block_size
 
     for address, argfile in args.addr_filename:
         image = argfile.read()
         argfile.seek(0)  # in case we need it again
         print 'Erasing flash...'
-        blocks = div_roundup(len(image), esp.ESP_FLASH_BLOCK)
-        esp.flash_begin(blocks * esp.ESP_FLASH_BLOCK, address)
+        blocks = div_roundup(len(image), flash_block_size)
+        esp.flash_begin(blocks * flash_block_size, address)
         seq = 0
         written = 0
         t = time.time()
         while len(image) > 0:
-            print '\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.ESP_FLASH_BLOCK, 100 * (seq + 1) / blocks),
+            print '\rWriting at 0x%08x... (%d %%)' % (address + seq * flash_block_size, 100 * (seq + 1) / blocks),
             sys.stdout.flush()
-            block = image[0:esp.ESP_FLASH_BLOCK]
+            block = image[0:flash_block_size]
             # Fix sflash config data
             if address == 0 and seq == 0 and block[0] == '\xe9':
                 block = block[0:2] + flash_info + block[4:]
             # Pad the last block
-            block = block + '\xff' * (esp.ESP_FLASH_BLOCK - len(block))
+            block = block + '\xff' * (flash_block_size - len(block))
             esp.flash_block(block, seq)
-            image = image[esp.ESP_FLASH_BLOCK:]
+            image = image[flash_block_size:]
             seq += 1
             written += len(block)
         t = time.time() - t
@@ -722,6 +724,12 @@ def main():
         type=arg_auto_int,
         default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
 
+    parser.add_argument(
+        '--flash_block_size', '-fb',
+        help='block size in bytes for writing to flash',
+        type=arg_auto_int,
+        default=os.environ.get('ESPTOOL_FB', ESPROM.ESP_FLASH_BLOCK))
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run esptool {command} -h for additional help')
@@ -839,7 +847,7 @@ def main():
     operation_func = globals()[args.operation]
     operation_args,_,_,_ = inspect.getargspec(operation_func)
     if len(operation_args) == 2:  # operation function takes an ESPROM connection object
-        esp = ESPROM(args.port, args.baud)
+        esp = ESPROM(args.port, args.baud, args.flash_block_size)
         esp.connect()
         operation_func(esp, args)
     else:
