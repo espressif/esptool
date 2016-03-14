@@ -725,8 +725,8 @@ def main():
         default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
 
     parser.add_argument(
-        '--flash_block_size', '-fb', 
-        help='block size in bytes for writing to flash', 
+        '--flash_block_size', '-fb',
+        help='block size in bytes for writing to flash',
         type=arg_auto_int,
         default=os.environ.get('ESPTOOL_FB', ESPROM.ESP_FLASH_BLOCK))
 
