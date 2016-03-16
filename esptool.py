@@ -77,17 +77,25 @@ class ESPROM:
     def read(self, length=1):
         b = ''
         while len(b) < length:
-            c = self._port.read(1)
-            if c == '\xdb':
-                c = self._port.read(1)
-                if c == '\xdc':
-                    b = b + '\xc0'
-                elif c == '\xdd':
-                    b = b + '\xdb'
+            d = self._port.read(length - len(b))
+            pos = 0
+            while pos < len(d):
+                c = d[pos]
+                pos = pos + 1
+                if c == '\xdb':
+                    if pos >= len(d):
+                        d = self._port.read(length - len(b))
+                        pos = 0
+                    c = d[pos]
+                    pos = pos + 1
+                    if c == '\xdc':
+                        b = b + '\xc0'
+                    elif c == '\xdd':
+                        b = b + '\xdb'
+                    else:
+                        raise FatalError('Invalid SLIP escape')
                 else:
-                    raise FatalError('Invalid SLIP escape')
-            else:
-                b = b + c
+                    b = b + c
         return b
 
     """ Write bytes to the serial port while performing SLIP escaping """
