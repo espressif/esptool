@@ -73,7 +73,7 @@ You can verify an image in the flash by passing the `--verify` option to the `wr
 
 Verification is not always necessary, the bootloader serial protocol includes a checksum and this is usually enough to guarantee accurate flashing.
 
-NOTE: esptool.py may update the first 16 bytes (offset 0) of the ESP8266 flash when writing (see [Flash modes](#flash-modes)), to set the provided flash mode and flash size parameters. If this happens then the verify may fail on these bytes.
+NOTE: esptool.py may update the first 16 bytes (offset 0) of the ESP8266 flash when writing (see [Flash modes](#flash-modes)), to set the provided flash mode and flash size parameters. If this happens then the standalone `verify_flash` command may fail on these bytes (`write_flash --verify` accounts for this).
 
 ### Manually assembling a firmware image
 

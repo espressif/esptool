@@ -572,6 +572,7 @@ def write_flash(esp, args):
         seq = 0
         written = 0
         t = time.time()
+        header_block = None
         while len(image) > 0:
             print '\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.ESP_FLASH_BLOCK, 100 * (seq + 1) / blocks),
             sys.stdout.flush()
@@ -581,7 +582,7 @@ def write_flash(esp, args):
             # Fix sflash config data
             if address == 0 and seq == 0 and block[0] == '\xe9':
                 block = block[0:2] + flash_info + block[4:]
-                args.block0 = block
+                header_block = block
             esp.flash_block(block, seq)
             image = image[esp.ESP_FLASH_BLOCK:]
             seq += 1
@@ -596,7 +597,7 @@ def write_flash(esp, args):
         esp.flash_finish(False)
     if args.verify:
         print 'Verifying just-written flash...'
-        verify_flash(esp, args)
+        verify_flash(esp, args, header_block)
 
 
 def image_info(args):
@@ -679,15 +680,14 @@ def read_flash(esp, args):
     file(args.filename, 'wb').write(esp.flash_read(args.address, 1024, div_roundup(args.size, 1024), args.progress)[:args.size])
 
 
-def verify_flash(esp, args):
+def verify_flash(esp, args, header_block=None):
     differences = False
     for address, argfile in args.addr_filename:
         if not esp.in_bootloader:
             esp.connect()
         image = argfile.read()
-        if address == 0 and hasattr(args, 'block0') and image[:esp.ESP_FLASH_BLOCK] != args.block0:
-            print 'Comparing using commandline overrides for size/mode/freq'
-            image = args.block0 + image[esp.ESP_FLASH_BLOCK:]
+        if address == 0 and header_block is not None and image[:esp.ESP_FLASH_BLOCK] != header_block:
+            image = header_block + image[esp.ESP_FLASH_BLOCK:]
         argfile.seek(0)  # rewind in case we need it again
         image_size = len(image)
         print 'Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name)
@@ -842,7 +842,7 @@ def main():
 
     operation_func = globals()[args.operation]
     operation_args,_,_,_ = inspect.getargspec(operation_func)
-    if len(operation_args) == 2:  # operation function takes an ESPROM connection object
+    if operation_args[0] == 'esp':  # operation function takes an ESPROM connection object
         esp = ESPROM(args.port, args.baud)
         esp.connect()
         operation_func(esp, args)
