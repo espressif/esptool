@@ -576,11 +576,12 @@ def write_flash(esp, args):
             print '\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.ESP_FLASH_BLOCK, 100 * (seq + 1) / blocks),
             sys.stdout.flush()
             block = image[0:esp.ESP_FLASH_BLOCK]
+            # Pad the last block
+            block = block + '\xff' * (esp.ESP_FLASH_BLOCK - len(block))
             # Fix sflash config data
             if address == 0 and seq == 0 and block[0] == '\xe9':
                 block = block[0:2] + flash_info + block[4:]
-            # Pad the last block
-            block = block + '\xff' * (esp.ESP_FLASH_BLOCK - len(block))
+                args.block0 = block
             esp.flash_block(block, seq)
             image = image[esp.ESP_FLASH_BLOCK:]
             seq += 1
@@ -684,6 +685,9 @@ def verify_flash(esp, args):
         if not esp.in_bootloader:
             esp.connect()
         image = argfile.read()
+        if address == 0 and hasattr(args, 'block0') and image[:esp.ESP_FLASH_BLOCK] != args.block0:
+            print 'Comparing using commandline overrides for size/mode/freq'
+            image = args.block0 + image[esp.ESP_FLASH_BLOCK:]
         argfile.seek(0)  # rewind in case we need it again
         image_size = len(image)
         print 'Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name)
