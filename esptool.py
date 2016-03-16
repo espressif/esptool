@@ -600,7 +600,7 @@ def write_flash(esp, args):
 
 def image_info(args):
     image = ESPFirmwareImage(args.filename)
-    print ('Entry point: %08x' % image.entrypoint) if image.entrypoint != 0 else 'Entry point not set'
+    print('Entry point: %08x' % image.entrypoint) if image.entrypoint != 0 else 'Entry point not set'
     print '%d segments' % len(image.segments)
     print
     checksum = ESPROM.ESP_CHECKSUM_MAGIC
