@@ -762,20 +762,24 @@ def main():
     parser_write_mem.add_argument('value', help='Value', type=arg_auto_int)
     parser_write_mem.add_argument('mask', help='Mask of bits to write', type=arg_auto_int)
 
+    def add_spi_flash_subparsers(parent):
+        """ Add common parser arguments for SPI flash properties """
+        parent.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
+                            choices=['40m', '26m', '20m', '80m'],
+                            default=os.environ.get('ESPTOOL_FF', '40m'))
+        parent.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
+                            choices=['qio', 'qout', 'dio', 'dout'],
+                            default=os.environ.get('ESPTOOL_FM', 'qio'))
+        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=str.lower,
+                            choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'],
+                            default=os.environ.get('ESPTOOL_FS', '4m'))
+
     parser_write_flash = subparsers.add_parser(
         'write_flash',
         help='Write a binary blob to flash')
     parser_write_flash.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
                                     action=AddrFilenamePairAction)
-    parser_write_flash.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
-                                    choices=['40m', '26m', '20m', '80m'],
-                                    default=os.environ.get('ESPTOOL_FF', '40m'))
-    parser_write_flash.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
-                                    choices=['qio', 'qout', 'dio', 'dout'],
-                                    default=os.environ.get('ESPTOOL_FM', 'qio'))
-    parser_write_flash.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=str.lower,
-                                    choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'],
-                                    default=os.environ.get('ESPTOOL_FS', '4m'))
+    add_spi_flash_subparsers(parser_write_flash)
     parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
 
     subparsers.add_parser(
@@ -800,12 +804,7 @@ def main():
         help='Create an application image from ELF file')
     parser_elf2image.add_argument('input', help='Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix', type=str)
-    parser_elf2image.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
-                                  choices=['40m', '26m', '20m', '80m'], default='40m')
-    parser_elf2image.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
-                                  choices=['qio', 'qout', 'dio', 'dout'], default='qio')
-    parser_elf2image.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit',
-                                  choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'], default='4m')
+    add_spi_flash_subparsers(parser_elf2image)
 
     subparsers.add_parser(
         'read_mac',
