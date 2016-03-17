@@ -3,7 +3,7 @@
 # ESP8266 ROM Bootloader Utility
 # https://github.com/themadinventor/esptool
 #
-# Copyright (C) 2014 Fredrik Ahlberg
+# Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, other contributors as noted.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
