@@ -388,7 +388,7 @@ class BaseFirmwareImage(object):
         self.segments = []
         self.entrypoint = 0
 
-    def add_segment(self, addr, data, pad_to = 4):
+    def add_segment(self, addr, data, pad_to=4):
         """ Add a segment to the image, with specified address & data
         (padded to a boundary of pad_to size) """
         # Data should be aligned on word boundary
@@ -615,10 +615,12 @@ def binutils_safe_path(p):
             print "WARNING: Failed to call cygpath to sanitise Cygwin path."
     return p
 
+
 def align_file_position(f, size):
     """ Align the position in the file to the next block of specified size """
     align = (size - 1) - (f.tell() % size)
     f.seek(align, 1)
+
 
 class FatalError(RuntimeError):
     """
