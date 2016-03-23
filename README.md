@@ -49,7 +49,13 @@ esptool.py elf2image my_app.elf
 
 This command does not require a serial connection.
 
-The command output is two binary files: `my_app.elf-0x00000.bin` and `my_app.elf-0x40000.bin`. You can alter the firmware file name prefix using the `--output/-o` option.
+The default command output is two binary files: `my_app.elf-0x00000.bin` and `my_app.elf-0x40000.bin`. You can alter the firmware file name prefix using the `--output/-o` option.
+
+`elf2image` can also produce a "version 2" image file suitable for use with a software bootloader stub such as [rboot](https://github.com/raburton/rboot) or the Espressif bootloader program. You can't flash a "version 2" image without also flashing a suitable bootloader.
+
+```
+esptool.py elf2image --version=2 -o my_app-ota.bin my_app.elf
+```
 
 ### Writing binaries to flash
 
@@ -59,7 +65,13 @@ The binaries from elf2image or make_image can be sent to the ESP8266 via the ser
 esptool.py write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
 ```
 
-The arguments are one or more pairs of offset (address) and file name. The file names created by elf2image include the flash offsets.
+Or, for a "version 2" image, a single argument:
+
+```
+esptool.py write_flash 0x2000 my_app-ota.bin
+```
+
+The arguments are one or more pairs of offset (address) and file name. The file names created by elf2image include the flash offsets for version 1. For version 2, the bootloader and linker script you are using determines the flash offset.
 
 See the [Flash Modes](#flash-modes) and [Troubleshooting](#troubleshooting) sections for more useful information about this command.
 

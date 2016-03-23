@@ -356,64 +356,178 @@ class ESPROM:
         # It it on the other hand unlikely to fail.
 
 
-class ESPFirmwareImage:
+class ESPBOOTLOADER:
+    """ These are constants related to software ESP bootloader, working with 'v2' image files """
 
-    def __init__(self, filename=None):
+    # First byte of the "v2" application image
+    IMAGE_V2_MAGIC = 0xea
+
+    # First 'segment' value in a "v2" application image, appears to be a constant version value?
+    IMAGE_V2_SEGMENT = 4
+
+
+def LoadFirmwareImage(filename):
+    """ Load a firmware image, without knowing what kind of file (v1 or v2) it is.
+
+        Returns a BaseFirmwareImage subclass, either ESPFirmwareImage (v1) or OTAFirmwareImage (v2).
+    """
+    with open(filename, 'rb') as f:
+        magic = ord(f.read(1))
+        f.seek(0)
+        if magic == ESPROM.ESP_IMAGE_MAGIC:
+            return ESPFirmwareImage(f)
+        elif magic == ESPBOOTLOADER.IMAGE_V2_MAGIC:
+            return OTAFirmwareImage(f)
+        else:
+            raise FatalError("Invalid image magic number: %d" % magic)
+
+
+class BaseFirmwareImage(object):
+    """ Base class with common firmware image functions """
+    def __init__(self):
         self.segments = []
         self.entrypoint = 0
-        self.flash_mode = 0
-        self.flash_size_freq = 0
 
-        if filename is not None:
-            f = file(filename, 'rb')
-            (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', f.read(8))
-
-            # some sanity check
-            if magic != ESPROM.ESP_IMAGE_MAGIC or segments > 16:
-                raise FatalError('Invalid firmware image')
-
-            for i in xrange(segments):
-                (offset, size) = struct.unpack('<II', f.read(8))
-                if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
-                    raise FatalError('Suspicious segment 0x%x, length %d' % (offset, size))
-                segment_data = f.read(size)
-                if len(segment_data) < size:
-                    raise FatalError('End of file reading segment 0x%x, length %d (actual length %d)' % (offset, size, len(segment_data)))
-                self.segments.append((offset, size, segment_data))
-
-            # Skip the padding. The checksum is stored in the last byte so that the
-            # file is a multiple of 16 bytes.
-            align = 15 - (f.tell() % 16)
-            f.seek(align, 1)
-
-            self.checksum = ord(f.read(1))
-
-    def add_segment(self, addr, data):
+    def add_segment(self, addr, data, pad_to = 4):
+        """ Add a segment to the image, with specified address & data
+        (padded to a boundary of pad_to size) """
         # Data should be aligned on word boundary
         l = len(data)
-        if l % 4:
-            data += b"\x00" * (4 - l % 4)
+        if l % pad_to:
+            data += b"\x00" * (pad_to - l % pad_to)
         if l > 0:
             self.segments.append((addr, len(data), data))
 
-    def save(self, filename):
-        f = file(filename, 'wb')
-        f.write(struct.pack('<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(self.segments),
+    def load_segment(self, f, is_irom_segment=False):
+        """ Load the next segment from the image file """
+        (offset, size) = struct.unpack('<II', f.read(8))
+        if not is_irom_segment:
+            if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
+                raise FatalError('Suspicious segment 0x%x, length %d' % (offset, size))
+        segment_data = f.read(size)
+        if len(segment_data) < size:
+            raise FatalError('End of file reading segment 0x%x, length %d (actual length %d)' % (offset, size, len(segment_data)))
+        segment = (offset, size, segment_data)
+        self.segments.append(segment)
+        return segment
+
+    def save_segment(self, f, segment, checksum=None):
+        """ Save the next segment to the image file, return next checksum value if provided """
+        (offset, size, data) = segment
+        f.write(struct.pack('<II', offset, size))
+        f.write(data)
+        if checksum:
+            return ESPROM.checksum(data, checksum)
+
+    def read_checksum(self, f):
+        """ Return ESPROM checksum from end of just-read image """
+        # Skip the padding. The checksum is stored in the last byte so that the
+        # file is a multiple of 16 bytes.
+        align_file_position(f, 16)
+        return ord(f.read(1))
+
+    def append_checksum(self, f, checksum):
+        """ Append ESPROM checksum to the just-written image """
+        align_file_position(f, 16)
+        f.write(struct.pack('B', checksum))
+
+    def write_v1_header(self, f, segments):
+        f.write(struct.pack('<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(segments),
                             self.flash_mode, self.flash_size_freq, self.entrypoint))
 
-        checksum = ESPROM.ESP_CHECKSUM_MAGIC
-        for (offset, size, data) in self.segments:
-            f.write(struct.pack('<II', offset, size))
-            f.write(data)
-            checksum = ESPROM.checksum(data, checksum)
 
-        align = 15 - (f.tell() % 16)
-        f.seek(align, 1)
-        f.write(struct.pack('B', checksum))
+class ESPFirmwareImage(BaseFirmwareImage):
+    """ 'Version 1' firmware image, segments loaded directly by the ROM bootloader. """
+    def __init__(self, load_file=None):
+        super(ESPFirmwareImage, self).__init__()
+        self.flash_mode = 0
+        self.flash_size_freq = 0
+        self.version = 1
+
+        if load_file is not None:
+            (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
+
+            # some sanity check
+            if magic != ESPROM.ESP_IMAGE_MAGIC or segments > 16:
+                raise FatalError('Invalid firmware image magic=%d segments=%d' % (magic, segments))
+
+            for i in xrange(segments):
+                self.load_segment(load_file)
+            self.checksum = self.read_checksum(load_file)
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            self.write_v1_header(f, self.segments)
+            checksum = ESPROM.ESP_CHECKSUM_MAGIC
+            for segment in self.segments:
+                checksum = self.save_segment(f, segment, checksum)
+            self.append_checksum(f, checksum)
+
+
+class OTAFirmwareImage(BaseFirmwareImage):
+    """ 'Version 2' firmware image, segments loaded by software bootloader stub
+        (ie Espressif bootloader or rboot)
+    """
+    def __init__(self, load_file=None):
+        super(OTAFirmwareImage, self).__init__()
+        self.version = 2
+        if load_file is not None:
+            (magic, segments, first_flash_mode, first_flash_size_freq, first_entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
+
+            # some sanity check
+            if magic != ESPBOOTLOADER.IMAGE_V2_MAGIC:
+                raise FatalError('Invalid V2 image magic=%d' % (magic))
+            if segments != 4:
+                # segment count is not really segment count here, but we expect to see '4'
+                print 'Warning: V2 header has unexpected "segment" count %d (usually 4)' % segments
+
+            # irom segment comes before the second header
+            self.load_segment(load_file, True)
+
+            (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
+
+            if first_flash_mode != self.flash_mode:
+                print('WARNING: Flash mode value in first header (0x%02x) disagrees with second (0x%02x). Using second value.'
+                      % (first_flash_mode, self.flash_mode))
+            if first_flash_size_freq != self.flash_size_freq:
+                print('WARNING: Flash size/freq value in first header (0x%02x) disagrees with second (0x%02x). Using second value.'
+                      % (first_flash_size_freq, self.flash_size_freq))
+            if first_entrypoint != self.entrypoint:
+                print('WARNING: Enterypoint address in first header (0x%08x) disagrees with second header (0x%08x). Using second value.'
+                      % (first_entrypoint, self.entrypoint))
+
+            if magic != ESPROM.ESP_IMAGE_MAGIC or segments > 16:
+                raise FatalError('Invalid V2 second header magic=%d segments=%d' % (magic, segments))
+
+            # load all the usual segments
+            for _ in xrange(segments):
+                self.load_segment(load_file)
+            self.checksum = self.read_checksum(load_file)
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            # Save first header for irom0 segment
+            f.write(struct.pack('<BBBBI', ESPBOOTLOADER.IMAGE_V2_MAGIC, ESPBOOTLOADER.IMAGE_V2_SEGMENT,
+                                self.flash_mode, self.flash_size_freq, self.entrypoint))
+
+            # irom0 segment identified by load address zero
+            irom_segments = [segment for segment in self.segments if segment[0] == 0]
+            if len(irom_segments) != 1:
+                raise FatalError('Found %d segments that could be irom0. Bad ELF file?' % len(irom_segments))
+            # save irom0 segment
+            irom_segment = irom_segments[0]
+            self.save_segment(f, irom_segment)
+
+            # second header, matches V1 header and contains loadable segments
+            normal_segments = [s for s in self.segments if s != irom_segment]
+            self.write_v1_header(f, normal_segments)
+            checksum = ESPROM.ESP_CHECKSUM_MAGIC
+            for segment in normal_segments:
+                checksum = self.save_segment(f, segment, checksum)
+            self.append_checksum(f, checksum)
 
 
 class ELFFile:
-
     def __init__(self, name):
         self.name = binutils_safe_path(name)
         self.symbols = None
@@ -501,6 +615,10 @@ def binutils_safe_path(p):
             print "WARNING: Failed to call cygpath to sanitise Cygwin path."
     return p
 
+def align_file_position(f, size):
+    """ Align the position in the file to the next block of specified size """
+    align = (size - 1) - (f.tell() % size)
+    f.seek(align, 1)
 
 class FatalError(RuntimeError):
     """
@@ -525,7 +643,7 @@ class FatalError(RuntimeError):
 # argument.
 
 def load_ram(esp, args):
-    image = ESPFirmwareImage(args.filename)
+    image = LoadFirmwareImage(args.filename)
 
     print 'RAM boot...'
     for (offset, size, data) in image.segments:
@@ -609,14 +727,18 @@ def write_flash(esp, args):
 
 
 def image_info(args):
-    image = ESPFirmwareImage(args.filename)
+    image = LoadFirmwareImage(args.filename)
+    print('Image version: %d' % image.version)
     print('Entry point: %08x' % image.entrypoint) if image.entrypoint != 0 else 'Entry point not set'
     print '%d segments' % len(image.segments)
     print
     checksum = ESPROM.ESP_CHECKSUM_MAGIC
     for (idx, (offset, size, data)) in enumerate(image.segments):
-        print 'Segment %d: %5d bytes at %08x' % (idx + 1, size, offset)
-        checksum = ESPROM.checksum(data, checksum)
+        if image.version == 2 and idx == 0:
+            print 'Segment 1: %d bytes IROM0 (no load address)' % size
+        else:
+            print 'Segment %d: %5d bytes at %08x' % (idx + 1, size, offset)
+            checksum = ESPROM.checksum(data, checksum)
     print
     print 'Checksum: %02x (%s)' % (image.checksum, 'valid' if image.checksum == checksum else 'invalid!')
 
@@ -638,7 +760,14 @@ def elf2image(args):
     if args.output is None:
         args.output = args.input + '-'
     e = ELFFile(args.input)
-    image = ESPFirmwareImage()
+    if args.version == '1':
+        image = ESPFirmwareImage()
+    else:
+        image = OTAFirmwareImage()
+        irom_data = e.load_section('.irom0.text')
+        if len(irom_data) == 0:
+            raise FatalError(".irom0.text section not found in ELF file - can't create V2 image.")
+        image.add_segment(0, irom_data, 16)
     image.entrypoint = e.get_entry_point()
     for section, start in ((".text", "_text_start"), (".data", "_data_start"), (".rodata", "_rodata_start")):
         data = e.load_section(section)
@@ -648,14 +777,17 @@ def elf2image(args):
     image.flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40, '16m-c1': 0x50, '32m-c1':0x60, '32m-c2':0x70}[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
 
-    image.save(args.output + "0x00000.bin")
-    data = e.load_section(".irom0.text")
-    off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
-    if off < 0:
-        raise FatalError('Address of symbol _irom0_text_start in ELF is located before flash mapping address. Bad linker script?')
-    f = open(args.output + "0x%05x.bin" % off, "wb")
-    f.write(data)
-    f.close()
+    if args.version == '1':
+        image.save(args.output + "0x00000.bin")
+        data = e.load_section(".irom0.text")
+        off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
+        if off < 0:
+            raise FatalError('Address of symbol _irom0_text_start in ELF is located before flash mapping address. Bad linker script?')
+        with open(args.output + "0x%05x.bin" % off, "wb") as f:
+            f.write(data)
+            f.close()
+    else:  # V2 OTA image
+        image.save(args.output)
 
 
 def read_mac(esp, args):
@@ -803,7 +935,8 @@ def main():
         'elf2image',
         help='Create an application image from ELF file')
     parser_elf2image.add_argument('input', help='Input ELF file')
-    parser_elf2image.add_argument('--output', '-o', help='Output filename prefix', type=str)
+    parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
+    parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1','2'], default='1')
     add_spi_flash_subparsers(parser_elf2image)
 
     subparsers.add_parser(
