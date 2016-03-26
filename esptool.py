@@ -165,14 +165,14 @@ class ESPROM:
             # issue reset-to-bootloader:
             # RTS = either CH_PD or nRESET (both active low = chip in reset)
             # DTR = GPIO0 (active low = boot to flasher)
-            self._port.setDTR(False)
-            self._port.setRTS(True)
-            time.sleep(0.05)
-            self._port.setDTR(True)
-            self._port.setRTS(False)
-            time.sleep(0.05)
-            self._port.setDTR(False)
-
+            if(!args.no_flow_control):
+                self._port.setDTR(False)
+                self._port.setRTS(True)
+                time.sleep(0.05)
+                self._port.setDTR(True)
+                self._port.setRTS(False)
+                time.sleep(0.05)
+                self._port.setDTR(False)
             # worst-case latency timer should be 255ms (probably <20ms)
             self._port.timeout = 0.3
             for _ in xrange(4):
@@ -867,6 +867,8 @@ def main():
         help='Serial port baud rate',
         type=arg_auto_int,
         default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
+
+    parser.add_argument('--no_flow_control', help='Do not toggle DST/RST lines (this sometimes puts serial ports in broken states)', action='store_true')
 
     subparsers = parser.add_subparsers(
         dest='operation',
