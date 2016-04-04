@@ -114,7 +114,7 @@ class ESPROM:
 
     """ Send a request and read the response """
     def command(self, op=None, data=None, chk=0):
-        if op:
+        if op is not None:
             pkt = struct.pack('<BBHI', 0x00, op, len(data), chk) + data
             self.write(pkt)
 
@@ -416,7 +416,7 @@ class BaseFirmwareImage(object):
         (offset, size, data) = segment
         f.write(struct.pack('<II', offset, size))
         f.write(data)
-        if checksum:
+        if checksum is not None:
             return ESPROM.checksum(data, checksum)
 
     def read_checksum(self, f):
