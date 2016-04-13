@@ -1,0 +1,10 @@
+.pypirc
+*.pyc
+*~
+GPATH
+GRTAGS
+GTAGS
+esptool.egg-info
+build
+dist
+
