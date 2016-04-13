@@ -28,6 +28,9 @@ import tempfile
 import inspect
 
 
+__version__ = "1.0.0"
+
+
 class ESPROM:
     # These are the currently known commands supported by the ROM
     ESP_FLASH_BEGIN = 0x02
@@ -849,13 +852,17 @@ def verify_flash(esp, args, header_block=None):
     if differences:
         raise FatalError("Verify failed.")
 
+
+def version(args):
+    print __version__
+
 #
 # End of operations functions
 #
 
 
 def main():
-    parser = argparse.ArgumentParser(description='ESP8266 ROM Bootloader Utility', prog='esptool')
+    parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
     parser.add_argument(
         '--port', '-p',
@@ -973,11 +980,16 @@ def main():
         'erase_flash',
         help='Perform Chip Erase on SPI flash')
 
+    subparsers.add_parser(
+        'version', help='Print esptool version')
+
     # internal sanity check - every operation matches a module function of the same name
     for operation in subparsers.choices.keys():
         assert operation in globals(), "%s should be a module function" % operation
 
     args = parser.parse_args()
+
+    print 'esptool.py v%s' % __version__
 
     # operation function can take 1 arg (args), 2 args (esp, arg)
     # or be a member function of the ESPROM class.
