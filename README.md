@@ -30,7 +30,7 @@ If using Cygwin on Windows, you have to convert the Windows-style name into an U
 
 ### Baud rate
 
-The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baudrate of your choice). Baudrate can also be specified using `ESPTOOL_BAUD` environment variable. This can speed up data transfers.
+The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921760` (or another baudrate of your choice). Baudrate can also be specified using `ESPTOOL_BAUD` environment variable. This can speed up data transfers.
 
 The ESP8266 bootloader auto-bauds, so it will automatically match the baud rate used by esptool.py.
 
