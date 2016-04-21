@@ -49,7 +49,7 @@ esptool can be installed via pip:
 Usage
 -----
 
-Please see the `Usage section of the README.md file <https://github.com/themadinventor/esptool/tree/pypi#usage>`_.
+Please see the `Usage section of the README.md file <https://github.com/themadinventor/esptool#usage>`_.
 
 You can also get help information by running `esptool.py --help`.
 
