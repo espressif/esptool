@@ -8,6 +8,7 @@ import sys
 if sys.version_info[0] > 2:
     raise RuntimeError("esptool.py only supports Python 2.x")
 
+
 # Example code to pull version from esptool.py with regex, taken from
 # http://python-packaging-user-guide.readthedocs.org/en/latest/single_source_version/
 def read(*names, **kwargs):
