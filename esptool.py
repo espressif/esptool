@@ -161,21 +161,21 @@ class ESPROM:
         self.in_bootloader = True
 
     """ Try connecting repeatedly until successful, or giving up """
-    def connect(self):
+    def connect(self, manual_reset=False):
         print 'Connecting...'
 
         for _ in xrange(4):
             # issue reset-to-bootloader:
             # RTS = either CH_PD or nRESET (both active low = chip in reset)
             # DTR = GPIO0 (active low = boot to flasher)
-            self._port.setDTR(False)
-            self._port.setRTS(True)
-            time.sleep(0.05)
-            self._port.setDTR(True)
-            self._port.setRTS(False)
-            time.sleep(0.05)
-            self._port.setDTR(False)
-
+            if manual_reset==False:
+                self._port.setDTR(False)
+                self._port.setRTS(True)
+                time.sleep(0.05)
+                self._port.setDTR(True)
+                self._port.setRTS(False)
+                time.sleep(0.05)
+                self._port.setDTR(False)
             # worst-case latency timer should be 255ms (probably <20ms)
             self._port.timeout = 0.3
             for _ in xrange(4):
@@ -875,6 +875,8 @@ def main():
         type=arg_auto_int,
         default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
 
+    parser.add_argument('--manual_reset', help='Do not toggle DTR/RTS lines (this sometimes puts serial ports in broken states). Using this requires that the ESP8266 be manually reset into bootloader mode', action='store_true')
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run esptool {command} -h for additional help')
@@ -998,7 +1000,7 @@ def main():
     operation_args,_,_,_ = inspect.getargspec(operation_func)
     if operation_args[0] == 'esp':  # operation function takes an ESPROM connection object
         esp = ESPROM(args.port, args.baud)
-        esp.connect()
+        esp.connect(args.manual_reset)
         operation_func(esp, args)
     else:
         operation_func(args)
