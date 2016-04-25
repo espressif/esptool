@@ -68,6 +68,7 @@ class ESPROM(object):
 
     def __init__(self, port=0, baud=ESP_ROM_BAUD):
         self._port = serial.Serial(port)
+        self._slip_reader = slip_reader(port)
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
         # sets), shouldn't matter for other platforms/drivers. See
@@ -76,27 +77,7 @@ class ESPROM(object):
 
     """ Read a SLIP packet from the serial port """
     def read(self):
-        b = ''
-        while True:
-            c = self._port.read(1)
-            if c != '\xc0':
-                raise FatalError('Invalid head of packet (%s)' % repr(c))
-            break
-        while True:
-            c = self._port.read(1)
-            if c == '\xc0':
-                break
-            if c == '\xdb':
-                c = self._port.read(1)
-                if c == '\xdc':
-                    b = b + '\xc0'
-                elif c == '\xdd':
-                    b = b + '\xdb'
-                else:
-                    raise FatalError('Invalid SLIP escape')
-            else:
-                b = b + c
-        return b
+        return self._slip_reader.next()
 
     """ Write bytes to the serial port while performing SLIP escaping """
     def write(self, packet):
@@ -122,24 +103,18 @@ class ESPROM(object):
         # same operation as the request or a retries limit has
         # exceeded. This is needed for some esp8266s that
         # reply with more sync responses than expected.
-        retries = 100
-        while retries > 0:
-            (op_ret, val, body) = self.receive_response()
+        for retry in xrange(100):
+            p = self.read()
+            if len(p) < 8:
+                continue
+            (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', p[:8])
+            if resp != 1:
+                continue
+            body = p[8:]
             if op is None or op_ret == op:
                 return val, body  # valid response received
-            retries = retries - 1
 
         raise FatalError("Response doesn't match request")
-
-    """ Receive a response to a command """
-    def receive_response(self):
-        p = self.read()
-
-        (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', p[:8])
-        if resp != 0x01:
-            raise FatalError('Invalid response 0x%02x" to command' % resp)
-
-        return op_ret, val, p[8:]
 
     """ Perform a connection test """
     def sync(self):
@@ -168,6 +143,7 @@ class ESPROM(object):
             for _ in xrange(4):
                 try:
                     self._port.flushInput()
+                    self._slip_reader = slip_reader(self._port)
                     self._port.flushOutput()
                     self.sync()
                     self._port.timeout = 5
@@ -697,6 +673,44 @@ class CesantaFlasher(object):
         status_code = struct.unpack('<B', p)[0]
         if status_code != 0:
             raise FatalError('Boot failure, status: %x' % status_code)
+
+
+def slip_reader(port):
+    """Generator to read SLIP packets from a serial port.
+    Yields one full SLIP packet at a time, raises exception on timeout or invalid data.
+
+    Designed to avoid too many calls to serial.read(1), which can bog
+    down on slow systems.
+    """
+    partial_packet = None
+    in_escape = False
+    while True:
+        waiting = port.inWaiting()
+        read_bytes = port.read(1 if waiting == 0 else waiting)
+        if read_bytes == '':
+            raise FatalError("Timed out waiting for packet %s" % ("header" if partial_packet is None else "content"))
+
+        for b in read_bytes:
+            if partial_packet is None:  # waiting for packet header
+                if b == '\xc0':
+                    partial_packet = ""
+                else:
+                    raise FatalError('Invalid head of packet (%r)' % b)
+            elif in_escape:  # part-way through escape sequence
+                in_escape = False
+                if b == '\xdc':
+                    partial_packet += '\xc0'
+                elif b == '\xdd':
+                    partial_packet += '\xdb'
+                else:
+                    raise FatalError('Invalid SLIP escape (%r%r)' % ('\xdb', b))
+            elif b == '\xdb':  # start of escape sequence
+                in_escape = True
+            elif b == '\xc0':  # end of packet
+                yield partial_packet
+                partial_packet = None
+            else:  # normal byte in packet
+                partial_packet += b
 
 
 def arg_auto_int(x):
