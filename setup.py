@@ -60,6 +60,7 @@ Please see the `CONTRIBUTING.md file on github <https://github.com/themadinvento
 
 setup(
     name='esptool',
+    py_modules=['esptool'],
     version=find_version('esptool.py'),
     description='A utility to communicate with the ROM bootloader in Espressif ESP8266.',
     long_description=long_description,
