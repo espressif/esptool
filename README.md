@@ -280,7 +280,7 @@ The 3.3V power supply for the ESP8266 has to supply large amounts of current (up
 
 If you're using a premade development board or module then the built-in power regulator is usually good enough, provided the input power supply is adequate.
 
-It is possible to have a power supply that supplies enough current for the serial bootloader stage, but not enough for normal operation. You may see the 3.3V VCC voltage droop down if you measure it with a multimeter, but you can have problems even if this isn't happening.
+It is possible to have a power supply that supplies enough current for the serial bootloader stage with esptool.py, but not enough for normal firmware operation. You may see the 3.3V VCC voltage droop down if you measure it with a multimeter, but you can have problems even if this isn't happening.
 
 Try swapping in a 3.3V supply with a higher current rating, add capacitors to the power line, and/or shorten any 3.3V power wires.
 
@@ -288,9 +288,21 @@ The 3.3V output from FTDI FT232R chips/adapters or Arduino boards *do not* suppl
 
 #### Missing bootloader
 
-Recent Espressif SDKs use a small software bootloader program. The bootloader in ROM loads this software bootloader from flash, and then it runs the program. This bootloader image has to be flashed at offset 0. If this bootloader is missing then the ESP8266 will not boot.
+Recent Espressif SDKs use a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program. This firmware bootloader image (with a filename like `boot_v1.x.bin`) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot.
 
 Refer to your SDK documentation for details regarding which binaries need to be flashed at which offsets.
+
+#### SPI Pins which must be disconnected
+
+Compared to the ROM bootloader that esptool.py talks to, a running firmware uses more of the ESP8266's pins to access the SPI flash.
+
+If you set "Quad I/O" mode (`-fm qio`, the esptool.py default) then GPIOs 7, 8, 9 & 10 are used for reading the SPI flash and must be otherwise disconnected.
+
+If you set "Dual I/O" mode (`-fm dio`) then GPIOs 7 & 8 are used for reading the SPI flash and must be otherwise disconnected.
+
+Try disconnecting anything from those pins (and/or swap to Dual I/O mode if you were previously using Quad I/O mode but want to attach things to GPIOs 9 & 10).
+
+In addition to these pins, GPIOs 6 & 11 are also used to access the SPI flash (in all modes). However flashing will usually fail completely if these pins are connected incorrectly.
 
 ### Early stage crash
 
