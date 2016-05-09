@@ -18,19 +18,11 @@
 #ifndef ROM_FUNCTIONS_H_
 #define ROM_FUNCTIONS_H_
 
-#include <inttypes.h>
-
-int uart_rx_one_char(uint8_t *ch);
-uint8_t uart_rx_one_char_block();
-int uart_tx_one_char(char ch);
-void uart_div_modify(uint32_t uart_no, uint32_t baud_div);
-
-int SendMsg(uint8_t *msg, uint8_t size);
-int send_packet(const void *packet, uint32_t size);
-
-void _putc1(char *ch);
+#include <stdint.h>
 
 void ets_delay_us(uint32_t us);
+void ets_isr_mask(uint32_t ints);
+void ets_isr_unmask(uint32_t ints);
 
 uint32_t SPILock();
 uint32_t SPIUnlock();
@@ -53,20 +45,14 @@ void memset(void *addr, uint8_t c, uint32_t len);
 
 void ets_delay_us(uint32_t delay_micros);
 
-void ets_isr_mask(uint32_t ints);
-void ets_isr_unmask(uint32_t ints);
 typedef void (*int_handler_t)(void *arg);
 int_handler_t ets_isr_attach(uint32_t int_num, int_handler_t handler,
                              void *arg);
-void ets_intr_lock();
-void ets_intr_unlock();
 void ets_set_user_start(void (*user_start_fn)());
 
 uint32_t rtc_get_reset_reason();
 void software_reset();
 void rom_phy_reset_req();
-
-void uart_rx_intr_handler(void *arg);
 
 void _ResetVector();
 

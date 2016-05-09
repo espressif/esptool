@@ -287,7 +287,7 @@ class ESPROM(object):
         # Yup - there's no good way to detect if we succeeded.
         # It it on the other hand unlikely to fail.
 
-    def run_stub(self, stub, params, read_output=True):
+    def run_stub(self, stub, params, read_output=False):
         stub = dict(stub)
         stub['code'] = unhexify(stub['code'])
         if 'data' in stub:
@@ -562,7 +562,7 @@ class CesantaFlasher(object):
         if baud_rate <= ESPROM.ESP_ROM_BAUD:  # don't change baud rates if we already synced at that rate
             baud_rate = 0
         self._esp = esp
-        esp.run_stub(json.loads(_CESANTA_FLASHER_STUB), [baud_rate], read_output=False)
+        esp.run_stub(json.loads(_CESANTA_FLASHER_STUB), [baud_rate])
         if baud_rate > 0:
             esp._port.baudrate = baud_rate
         # Read the greeting.

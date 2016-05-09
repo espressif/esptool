@@ -15,10 +15,28 @@
  * Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <esp/uart.h>
 #include "rom_functions.h"
 
 void SLIP_send(const void *pkt, uint32_t size) {
-  send_packet(pkt, size);
+  uart_putc(0, '\xc0');
+  for(int i = 0; i < size; i++) {
+	uint8_t c = ((uint8_t *)pkt)[i];
+	switch(c) {
+	case '\xc0':
+	  uart_putc(0, '\xdb');
+	  uart_putc(0, '\xdc');
+	  break;
+	case '\xdb':
+	  uart_putc(0, '\xdb');
+	  uart_putc(0, '\xdd');
+	  break;
+	default:
+	  uart_putc(0, c);
+	  break;
+	}
+  }
+  uart_putc(0, '\xc0');
 }
 
 uint32_t SLIP_recv(void *pkt, uint32_t max_len) {
@@ -26,13 +44,13 @@ uint32_t SLIP_recv(void *pkt, uint32_t max_len) {
   uint32_t len = 0;
   uint8_t *p = (uint8_t *) pkt;
   do {
-    c = uart_rx_one_char_block();
+    c = uart_getc(0);
   } while (c != '\xc0');
   while (len < max_len) {
-    c = uart_rx_one_char_block();
+    c = uart_getc(0);
     if (c == '\xc0') return len;
     if (c == '\xdb') {
-      c = uart_rx_one_char_block();
+      c = uart_getc(0);
       if (c == '\xdc') {
         c = '\xc0';
       } else if (c == '\xdd') {
@@ -46,7 +64,7 @@ uint32_t SLIP_recv(void *pkt, uint32_t max_len) {
     len++;
   }
   do {
-    c = uart_rx_one_char_block();
+    c = uart_getc(0);
   } while (c != '\xc0');
   return len;
 }

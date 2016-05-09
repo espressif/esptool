@@ -28,9 +28,6 @@
 
 # Override these variables on the command line
 
-# Path to the Espressif SDK root dir
-SDK_DIR ?= ../../esp_iot_sdk_v1.5.1
-
 # Prefix for the cross compiler (can include a directory path)
 CROSS ?= xtensa-lx106-elf-
 
@@ -60,7 +57,7 @@ $(BUILD_DIR):
 
 $(STUB_ELF): $(STUB) $(LIBS) | $(BUILD_DIR)
 	@echo "  CC   $^ -> $@"
-	$(Q) $(CROSS)gcc -I$(SDK_DIR) -std=c99 -Wall -Werror -Os \
+	$(Q) $(CROSS)gcc -Iinclude -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin \
          -Wl,-static -Tstub.ld -o $@ $^
 
