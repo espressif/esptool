@@ -5,6 +5,8 @@
 # https://github.com/themadinventor/esptool
 #
 # Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, other contributors as noted.
+# ESP31/32 support Copyright (C) 2016 Angus Gratton, based in part on work Copyright
+# (C) 2015-2016 Espressif Systems.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -34,7 +36,20 @@ import time
 __version__ = "1.2-dev"
 
 
+MAX_UINT32 = 0xffffffff
+MAX_UINT24 = 0xffffff
+
 class ESPROM(object):
+    """ Base class providing access to ESP ROM bootloader. Subclasses provide
+    ESP8266, ESP31 & ESP32 specific functionality.
+
+    Don't instantiate this base class directly, either instantiate a subclass or call ESPROM.detect_chip() which will interrogate the chip and return the appropriate subclass instance.
+
+    """
+    CHIP_NAME = "Espressif device"
+
+    DEFAULT_PORT = "/dev/ttyUSB0"
+
     # These are the currently known commands supported by the ROM
     ESP_FLASH_BEGIN = 0x02
     ESP_FLASH_DATA  = 0x03
@@ -59,22 +74,52 @@ class ESPROM(object):
     # Initial state for the checksum routine
     ESP_CHECKSUM_MAGIC = 0xef
 
-    # OTP ROM addresses
-    ESP_OTP_MAC0    = 0x3ff00050
-    ESP_OTP_MAC1    = 0x3ff00054
-    ESP_OTP_MAC3    = 0x3ff0005c
-
     # Flash sector size, minimum unit of erase.
     ESP_FLASH_SECTOR = 0x1000
 
-    def __init__(self, port=0, baud=ESP_ROM_BAUD):
+    UART_DATA_REG_ADDR = 0x60000078
+
+    # SPI peripheral "command" bitmasks
+    SPI_CMD_READ_ID = 0x10000000
+
+
+    def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, do_connect=True):
+        """Base constructor for ESPROM objects
+
+        Don't call this constructor, either instantiate ESP8266ROM,
+        ESP31ROM, or ESP32ROM, or use ESPROM.detect_chip().
+
+        """
         self._port = serial.Serial(port)
-        self._slip_reader = slip_reader(port)
+        self._slip_reader = slip_reader(self._port)
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
         # sets), shouldn't matter for other platforms/drivers. See
         # https://github.com/themadinventor/esptool/issues/44#issuecomment-107094446
         self._port.baudrate = baud
+        if do_connect:
+            self.connect()
+
+    @staticmethod
+    def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD):
+        """Use serial access to detect the chip type.
+
+        We use the UART's datecode register for this, it's mapped at
+        the same address on ESP8266 & ESP31/32 so we can use one
+        memory read and compare to the datecode register for each chip
+        type.
+
+        """
+        detect_port = ESPROM(port, baud, True)
+        sys.stdout.write('Detecting chip type... ')
+        date_reg = detect_port.read_reg(ESPROM.UART_DATA_REG_ADDR)
+        for cls in [ESP8266ROM, ESP31ROM, ESP32ROM]:
+            if date_reg == cls.DATE_REG_VALUE:
+                inst = cls(port, baud, False)  # don't connect a second time
+                print '%s' % inst.CHIP_NAME
+                return inst
+        print ''
+        raise FatalError("Unexpected UART datecode value 0x%08x. Failed to autodetect chip type." % date_reg)
 
     """ Read a SLIP packet from the serial port """
     def read(self):
@@ -151,7 +196,7 @@ class ESPROM(object):
                     return
                 except:
                     time.sleep(0.05)
-        raise FatalError('Failed to connect to ESP8266')
+        raise FatalError('Failed to connect to %s' % self.CHIP_NAME)
 
     """ Read memory address in target """
     def read_reg(self, addr):
@@ -234,33 +279,12 @@ class ESPROM(object):
         self.flash_begin(0, 0)
         self.flash_finish(reboot)
 
-    """ Read MAC from OTP ROM """
-    def read_mac(self):
-        mac0 = self.read_reg(self.ESP_OTP_MAC0)
-        mac1 = self.read_reg(self.ESP_OTP_MAC1)
-        mac3 = self.read_reg(self.ESP_OTP_MAC3)
-        if (mac3 != 0):
-            oui = ((mac3 >> 16) & 0xff, (mac3 >> 8) & 0xff, mac3 & 0xff)
-        elif ((mac1 >> 16) & 0xff) == 0:
-            oui = (0x18, 0xfe, 0x34)
-        elif ((mac1 >> 16) & 0xff) == 1:
-            oui = (0xac, 0xd0, 0x74)
-        else:
-            raise FatalError("Unknown OUI")
-        return oui + ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
-
-    """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
-    def chip_id(self):
-        id0 = self.read_reg(self.ESP_OTP_MAC0)
-        id1 = self.read_reg(self.ESP_OTP_MAC1)
-        return (id0 >> 24) | ((id1 & 0xffffff) << 8)
-
     """ Read SPI flash manufacturer and device id """
     def flash_id(self):
         self.flash_begin(0, 0)
-        self.write_reg(0x60000240, 0x0, 0xffffffff)
-        self.write_reg(0x60000200, 0x10000000, 0xffffffff)
-        flash_id = self.read_reg(0x60000240)
+        self.write_reg(self.SPI_W0_REG_ADDR, 0x0, MAX_UINT32)
+        self.write_reg(self.SPI_CMD_REG_ADDR, self.SPI_CMD_READ_ID, MAX_UINT32)
+        flash_id = self.read_reg(self.SPI_W0_REG_ADDR)
         self.flash_finish(False)
         return flash_id
 
@@ -315,6 +339,88 @@ class ESPROM(object):
                 print hexify(p)
                 if p == '':
                     return
+
+
+class ESP8266ROM(ESPROM):
+    """ Access class for ESP8266 ROM bootloader
+    """
+    CHIP_NAME = "ESP8266EX"
+
+    DATE_REG_VALUE = 0x00062000
+
+    # OTP ROM addresses
+    ESP_OTP_MAC0    = 0x3ff00050
+    ESP_OTP_MAC1    = 0x3ff00054
+    ESP_OTP_MAC3    = 0x3ff0005c
+
+    SPI_CMD_REG_ADDR = 0x60000200
+    SPI_W0_REG_ADDR = 0x60000240
+
+    def chip_id(self):
+        """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
+        id0 = self.read_reg(self.ESP_OTP_MAC0)
+        id1 = self.read_reg(self.ESP_OTP_MAC1)
+        return (id0 >> 24) | ((id1 & MAX_UINT24) << 8)
+
+    def read_mac(self):
+        """ Read MAC from OTP ROM """
+        mac0 = self.read_reg(self.ESP_OTP_MAC0)
+        mac1 = self.read_reg(self.ESP_OTP_MAC1)
+        mac3 = self.read_reg(self.ESP_OTP_MAC3)
+        if (mac3 != 0):
+            oui = ((mac3 >> 16) & 0xff, (mac3 >> 8) & 0xff, mac3 & 0xff)
+        elif ((mac1 >> 16) & 0xff) == 0:
+            oui = (0x18, 0xfe, 0x34)
+        elif ((mac1 >> 16) & 0xff) == 1:
+            oui = (0xac, 0xd0, 0x74)
+        else:
+            raise FatalError("Unknown OUI")
+        return oui + ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
+
+
+class ESP31ROM(ESPROM):
+    """ Access class for ESP31 ROM bootloader
+    """
+    CHIP_NAME = "ESP31"
+
+    DATE_REG_VALUE = 0x15052100
+
+    SPI_CMD_REG_ADDR = 0x60003000
+    SPI_W0_REG_ADDR = 0x60003040
+
+    def read_efuse(self, n):
+        """ Read the nth word of the ESP3x EFUSE region. """
+        return 0x6001a000 + (4 * n)
+
+    def chip_id(self):
+        word16 = self.read_efuse(16)
+        word17 = self.read_efuse(17)
+        return ((word17 & MAX_UINT24) << 24) | (word16 >> 8) & MAX_UINT24
+
+    def read_mac(self):
+        """ Read MAC from EFUSE region """
+        word16 = self.read_efuse(16)
+        word17 = self.read_efuse(17)
+        word18 = self.read_efuse(18)
+        word19 = self.read_efuse(19)
+        wifi_mac = (((word17 >> 16) & 0xff), ((word17 >> 8) & 0xff), ((word17 >> 0) & 0xff),
+                    ((word16 >> 24) & 0xff), ((word16 >> 16) & 0xff), ((word16 >> 8) & 0xff))
+        bt_mac = (((word19 >> 16) & 0xff), ((word19 >> 8) & 0xff), ((word19 >> 0) & 0xff),
+                  ((word18 >> 24) & 0xff), ((word18 >> 16) & 0xff), ((word18 >> 8) & 0xff))
+        return (wifi_mac,bt_mac)
+
+
+class ESP32ROM(ESP31ROM):
+    """Access class for ESP32 ROM bootloader
+
+    ESP32 is currently not available, so this class is based on a UART
+    date register value given by Espressif and the assumption that
+    ESP31 code will otherwise work.
+
+    """
+    CHIP_NAME = "ESP32"
+
+    DATE_REG_VALUE = 0x15122500
 
 
 class ESPBOOTLOADER(object):
@@ -1004,10 +1110,15 @@ def version(args):
 def main():
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
+    parser.add_argument('--chip', '-c',
+                        help='Target chip type',
+                        choices=['auto', 'esp8266', 'esp31', 'esp32'],
+                        default=os.environ.get('ESPTOOL_CHIP', 'auto'))
+
     parser.add_argument(
         '--port', '-p',
         help='Serial port device',
-        default=os.environ.get('ESPTOOL_PORT', '/dev/ttyUSB0'))
+        default=os.environ.get('ESPTOOL_PORT', ESPROM.DEFAULT_PORT))
 
     parser.add_argument(
         '--baud', '-b',
@@ -1139,8 +1250,13 @@ def main():
     operation_args,_,_,_ = inspect.getargspec(operation_func)
     if operation_args[0] == 'esp':  # operation function takes an ESPROM connection object
         initial_baud = min(ESPROM.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
-        esp = ESPROM(args.port, initial_baud)
-        esp.connect()
+        chip_constructor_fun = {
+            'auto': ESPROM.detect_chip,
+            'esp8266': ESP8266ROM,
+            'esp31': ESP31ROM,
+            'esp32': ESP32ROM,
+        }[args.chip]
+        esp = chip_constructor_fun(args.port, initial_baud)
         operation_func(esp, args)
     else:
         operation_func(args)
