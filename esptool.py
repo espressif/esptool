@@ -297,20 +297,6 @@ class ESPROM(object):
         self.mem_begin(0,0,0,0x40100000)
         self.mem_finish(0x40000080)
 
-    """ Perform a chip erase of SPI flash """
-    def flash_erase(self):
-        # Trick ROM to initialize SFlash
-        self.flash_begin(0, 0)
-
-        # This is hacky: we don't have a custom stub, instead we trick
-        # the bootloader to jump to the SPIEraseChip() routine and then halt/crash
-        # when it tries to boot an unconfigured system.
-        self.mem_begin(0,0,0,0x40100000)
-        self.mem_finish(0x40004984)
-
-        # Yup - there's no good way to detect if we succeeded.
-        # It it on the other hand unlikely to fail.
-
     def run_stub(self, stub, params, read_output=False):
         stub = dict(stub)
         stub['code'] = unhexify(stub['code'])
@@ -661,6 +647,7 @@ class CesantaFlasher(object):
     CMD_FLASH_WRITE = 1
     CMD_FLASH_READ = 2
     CMD_FLASH_DIGEST = 3
+    CMD_FLASH_ERASE_CHIP = 5
     CMD_BOOT_FW = 6
 
     def __init__(self, esp, baud_rate=0):
@@ -781,6 +768,14 @@ class CesantaFlasher(object):
         if status_code != 0:
             raise FatalError('Boot failure, status: %x' % status_code)
 
+    def flash_erase(self):
+        self._esp.write(struct.pack('<B', self.CMD_FLASH_ERASE_CHIP))
+        p = self._esp.read()
+        if len(p) != 1:
+            raise FatalError('Expected status, got: %s' % hexify(p))
+        status_code = struct.unpack('<B', p)[0]
+        if status_code != 0:
+            raise FatalError('Chip erase failure, status: %x' % status_code)
 
 def slip_reader(port):
     """Generator to read SLIP packets from a serial port.
@@ -1039,7 +1034,9 @@ def chip_id(esp, args):
 
 def erase_flash(esp, args):
     print 'Erasing flash (this may take a while)...'
-    esp.flash_erase()
+    flasher = CesantaFlasher(esp, args.baud)
+    flasher.flash_erase()
+    print 'Erase completed successfully.'
 
 
 def run(esp, args):
