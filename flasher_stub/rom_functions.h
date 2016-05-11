@@ -19,17 +19,14 @@
 #define ROM_FUNCTIONS_H_
 
 #include <stdint.h>
+#include <common_macros.h>
 
 void ets_delay_us(uint32_t us);
 void ets_isr_mask(uint32_t ints);
 void ets_isr_unmask(uint32_t ints);
 
-uint32_t SPILock();
-uint32_t SPIUnlock();
 uint32_t SPIRead(uint32_t addr, void *dst, uint32_t size);
 uint32_t SPIWrite(uint32_t addr, const uint8_t *src, uint32_t size);
-uint32_t SPIEraseChip();
-uint32_t SPIEraseBlock(uint32_t block_num);
 uint32_t SPIEraseSector(uint32_t sector_num);
 uint32_t SPI_read_status();
 uint32_t Wait_SPI_Idle();
@@ -56,11 +53,8 @@ void rom_phy_reset_req();
 
 void _ResetVector();
 
-/* Crypto functions are from wpa_supplicant. */
-int md5_vector(uint32_t num_msgs, const uint8_t *msgs[],
-               const uint32_t *msg_lens, uint8_t *digest);
-int sha1_vector(uint32_t num_msgs, const uint8_t *msgs[],
-                const uint32_t *msg_lens, uint8_t *digest);
+#ifdef ESP8266
+/* Some ROM functions are only present on ESP8266 */
 
 struct MD5Context {
   uint32_t buf[4];
@@ -71,5 +65,20 @@ struct MD5Context {
 void MD5Init(struct MD5Context *ctx);
 void MD5Update(struct MD5Context *ctx, void *buf, uint32_t len);
 void MD5Final(uint8_t digest[16], struct MD5Context *ctx);
+
+/* Documented ESP31/32 ROM functions don't include these */
+uint32_t SPIEraseChip();
+uint32_t SPIEraseBlock(uint32_t block_num);
+uint32_t SPILock();
+uint32_t SPIUnlock();
+
+#endif
+
+#ifdef ESP32
+/* Some ESP31/32 ROM functions */
+
+inline static int SPIUnlock(void) { return 0; /* no-op */ }
+
+#endif
 
 #endif /* ROM_FUNCTIONS_H_ */

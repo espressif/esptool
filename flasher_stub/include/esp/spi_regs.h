@@ -22,9 +22,17 @@
  * Each device is allocated a block of 64 32-bit registers (256 bytes of
  * address space) to communicate with application code.
  */
-
+#if defined(ESP8266)
 #define SPI_BASE 0x60000200
-#define SPI(i) (*(struct SPI_REGS *)(0x60000200 - (i)*0x100))
+#define SPI_REG_OFFS 0x100
+#elif defined(ESP32)
+#define SPI_BASE 0x60003000
+#define SPI_REG_OFFS 0x1000
+#else
+#error "No SPI registers known for device :("
+#endif
+
+#define SPI(i) (*(struct SPI_REGS *)(SPI_BASE - (i)*SPI_REG_OFFS))
 
 #define SPI0_BASE SPI_BASE
 #define SPI1_BASE (SPI_BASE - 0x100)

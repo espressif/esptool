@@ -17,14 +17,16 @@
 
 import json
 import os
+import os.path
 import sys
 
 sys.path.append('..')
 import esptool
 
-
-if __name__ == '__main__':
-    e = esptool.ELFFile(sys.argv[1])
+def wrap_stub(elf_file):
+    """ Wrap an ELF file into a stub 'dict' """
+    print 'Wrapping ELF file %s...' % elf_file
+    e = esptool.ELFFile(elf_file)
     entry = 'stub_main'
 
     stub = {
@@ -53,8 +55,24 @@ if __name__ == '__main__':
             len(stub.get('data', '')), stub.get('data_start', 0),
             entry, stub['entry']))
 
-    jstub = dict(stub)
-    jstub['code'] = esptool.hexify(stub['code'])
+    stub['code'] = esptool.hexify(stub['code'])
     if 'data' in stub:
-        jstub['data'] = esptool.hexify(stub['data'])
-    json.dump(jstub, open(sys.argv[2], 'w'))
+        stub['data'] = esptool.hexify(stub['data'])
+    return stub
+
+def stub_name(filename):
+    """ Return a dictionary key for the stub with filename 'filename' """
+    return os.path.splitext(os.path.basename(filename))[0]
+
+if __name__ == '__main__':
+    stubs = dict( (stub_name(elf_file),wrap_stub(elf_file)) for elf_file in sys.argv[1:-1] )
+    print 'Dumping to JSON file %s.' % sys.argv[-1]
+
+    as_json = json.dumps(stubs)
+    # split into 110 character lines
+    LINE_LEN = 110
+    lines = [as_json[i:i+LINE_LEN] for i in xrange(0, len(as_json), LINE_LEN)]
+    with open(sys.argv[-1], 'w') as f:
+        for line in lines:
+            f.write(line)
+            f.write('\\\n')

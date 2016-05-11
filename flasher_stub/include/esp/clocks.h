@@ -2,9 +2,7 @@
  *
  * ESP8266 internal clock values
  *
- * At the moment there's not a lot known about varying clock speeds
- * apart from doubling the CPU clock. It may be possible to set clock
- * domains differently somehow.
+ * Adapted for use in bootloader stub!
  *
  * Part of esp-open-rtos
  * Copyright (C) 2015 Superhouse Automation Pty Ltd
@@ -12,9 +10,17 @@
  */
 #ifndef _ESP_CLOCKS_H
 #define _ESP_CLOCKS_H
+#include <common_macros.h>
 
-/* CPU clock, can be overclocked to 160MHz via a dport register setting */
+/* CPU clock, is 2x crystal frequency inside bootloader
+ */
+#if defined(ESP8266)
+#define CPU_CLK_FREQ 52*1000000
+#elif defined(ESP32)
 #define CPU_CLK_FREQ 80*1000000
+#else
+#error "Unknown SoC target?"
+#endif
 
 /* Main peripheral clock
 

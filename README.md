@@ -345,4 +345,6 @@ csum 0x46
 
 esptool.py was initially created by Fredrik Ahlberg (themadinventor, kongo), and is currently maintained by Fredrik and Angus Gratton (@projectgus). It has also received improvements from many members of the ESP8266 community - including pfalcon, tommie, 0ff and george-hopkins.
 
+A special thank you to [Cesanta Systems](http://cesanta.com/) who wrote a high performance "flasher stub" and helped to get it merged back into esptool.py.
+
 This document and the attached source code is released under GPLv2.

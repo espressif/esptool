@@ -2,15 +2,30 @@
  *
  * Not esp8266-specific.
  *
- * Part of esp-open-rtos
- * Copyright (C) 2015 Superhouse Automation Pty Ltd
+ * Part of esp-open-rtos, modifications made for ESP31/32
+ * Copyright (C) 2015-2016 Superhouse Automation Pty Ltd & Angus Gratton
  * BSD Licensed as described in the file LICENSE
  */
 
 #ifndef _COMMON_MACROS_H
 #define _COMMON_MACROS_H
 
+#include <sys/config.h> /* needed for core-isa.h and XCHAL_HAVE_CALL4AND12 */
 #include <sys/cdefs.h>
+
+/* Additions for ESP31/32 support */
+
+/* Detect windowing support in the Xtensa HAL (part of libc) as indication that we're compiling for ESP32.
+
+   This is pretty hacky, someone can probably find a better way.
+*/
+#if XCHAL_HAVE_CALL4AND12 == 1
+#define ESP32 1
+#else
+#define ESP8266 1
+#endif
+
+/* End of additions */
 
 #define UNUSED __attributed((unused))
 

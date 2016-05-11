@@ -114,8 +114,8 @@ static inline void uart_flush_rxfifo(int uart_num) {
 /* Set uart baud rate to the desired value */
 static inline void uart_set_baud(int uart_num, int bps)
 {
-    uint32_t divider = APB_CLK_FREQ / bps;
-    UART(uart_num).CLOCK_DIVIDER = divider;
+  uint32_t divider = (APB_CLK_FREQ + bps / 2) / bps;
+  UART(uart_num).CLOCK_DIVIDER = divider;
 }
 
 /* Returns the current baud rate for the UART */
