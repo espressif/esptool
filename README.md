@@ -86,7 +86,7 @@ esptool.py write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000
 Or, for a "version 2" image, a single argument:
 
 ```
-esptool.py write_flash 0x2000 my_app-ota.bin
+esptool.py write_flash 0x1000 my_app-0x01000.bin
 ```
 
 The arguments are one or more pairs of offset (address) and file name. The file names created by elf2image include the flash offsets for version 1. For version 2, the bootloader and linker script you are using determines the flash offset.

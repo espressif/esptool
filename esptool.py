@@ -883,8 +883,6 @@ def make_image(args):
 
 
 def elf2image(args):
-    if args.output is None:
-        args.output = args.input + '-'
     e = ELFFile(args.input)
     if args.version == '1':
         image = ESPFirmwareImage()
@@ -903,16 +901,23 @@ def elf2image(args):
     image.flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40, '16m-c1': 0x50, '32m-c1':0x60, '32m-c2':0x70}[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
 
+    irom_offs = e.get_symbol_addr("_irom0_text_start") - 0x40200000
+
     if args.version == '1':
+        if args.output is None:
+            args.output = args.input + '-'
         image.save(args.output + "0x00000.bin")
         data = e.load_section(".irom0.text")
-        off = e.get_symbol_addr("_irom0_text_start") - 0x40200000
-        if off < 0:
+        if irom_offs < 0:
             raise FatalError('Address of symbol _irom0_text_start in ELF is located before flash mapping address. Bad linker script?')
-        with open(args.output + "0x%05x.bin" % off, "wb") as f:
+        if (irom_offs & 0xFFF) != 0:  # irom0 isn't flash sector aligned
+            print "WARNING: irom0 section offset is 0x%08x. ELF is probably linked for 'elf2image --version=2'" % irom_offs
+        with open(args.output + "0x%05x.bin" % irom_offs, "wb") as f:
             f.write(data)
             f.close()
     else:  # V2 OTA image
+        if args.output is None:
+            args.output = "%s-0x%05x.bin" % (os.path.splitext(args.input)[0], irom_offs & ~(ESPROM.ESP_FLASH_SECTOR - 1))
         image.save(args.output)
 
 
