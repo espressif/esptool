@@ -44,7 +44,9 @@ class ESPROM(object):
     """ Base class providing access to ESP ROM bootloader. Subclasses provide
     ESP8266, ESP31 & ESP32 specific functionality.
 
-    Don't instantiate this base class directly, either instantiate a subclass or call ESPROM.detect_chip() which will interrogate the chip and return the appropriate subclass instance.
+    Don't instantiate this base class directly, either instantiate a subclass or
+    call ESPROM.detect_chip() which will interrogate the chip and return the
+    appropriate subclass instance.
 
     """
     CHIP_NAME = "Espressif device"
@@ -401,7 +403,7 @@ class ESP31ROM(ESPROM):
         '4MB':0x20,
         '8MB':0x30,
         '16MB':0x40
-        }
+    }
 
     def read_efuse(self, n):
         """ Read the nth word of the ESP3x EFUSE region. """
@@ -1196,7 +1198,8 @@ def main():
         parent.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
                             choices=['qio', 'qout', 'dio', 'dout'],
                             default=os.environ.get('ESPTOOL_FM', 'qio'))
-        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M) plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1, 4MB-2)',
+        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M)'
+                            ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1, 4MB-2)',
                             action=FlashSizeAction,
                             default=os.environ.get('ESPTOOL_FS', '1MB'))
 
@@ -1307,22 +1310,24 @@ class FlashSizeAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         try:
             value = {
-                '2m' : '256KB',
-                '4m' : '512KB',
-                '8m' : '1MB',
-                '16m' : '2MB',
-                '32m' : '4MB',
-                '16m-c1' : '2MB-c1',
-                '32m-c1' : '4MB-c1',
-                '32m-c2' : '4MB-c2'
+                '2m': '256KB',
+                '4m': '512KB',
+                '8m': '1MB',
+                '16m': '2MB',
+                '32m': '4MB',
+                '16m-c1': '2MB-c1',
+                '32m-c1': '4MB-c1',
+                '32m-c2': '4MB-c2'
             }[values[0]]
-            print("WARNING: Flash size arguments in megabits like '%s' are deprecated. Please use the equivalent size '%s'. Megabit arguments may be removed in a future release." % (values[0], value))
+            print("WARNING: Flash size arguments in megabits like '%s' are deprecated." % (values[0]))
+            print("Please use the equivalent size '%s'." % (value))
+            print("Megabit arguments may be removed in a future release.")
         except KeyError:
             values = values[0]
 
         known_sizes = dict(ESP8266ROM.FLASH_SIZES)
         known_sizes.update(ESP32ROM.FLASH_SIZES)
-        if not value in known_sizes:
+        if value not in known_sizes:
             raise argparse.ArgumentError(self, '%s is not a known flash size. Known sizes: %s' % (value, ", ".join(known_sizes.keys())))
         setattr(namespace, self.dest, value)
 
