@@ -81,7 +81,7 @@ setup(
         'Programming Language :: Python :: 2.7',
     ],
     setup_requires=[
-        'flake8',
+        'flake8<3.0.0',
     ],
     install_requires=[
         'pyserial',
