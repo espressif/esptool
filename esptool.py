@@ -288,6 +288,13 @@ class ESPROM(object):
         self.flash_finish(False)
         return flash_id
 
+    def parse_flash_size_arg(self, arg):
+        try:
+            return self.FLASH_SIZES[arg]
+        except KeyError:
+            raise FatalError("Flash size '%s' is not supported by this chip type. Supported sizes: %s"
+                             % (arg, ", ".join(self.FLASH_SIZES.keys())))
+
     """ Abuse the loader protocol to force flash to be left in write mode """
     def flash_unlock_dio(self):
         # Enable flash write mode
@@ -345,6 +352,16 @@ class ESP8266ROM(ESPROM):
     SPI_CMD_REG_ADDR = 0x60000200
     SPI_W0_REG_ADDR = 0x60000240
 
+    FLASH_SIZES = {
+        '512KB':0x00,
+        '256KB':0x10,
+        '1MB':0x20,
+        '2MB':0x30,
+        '4MB':0x40,
+        '2MB-c1': 0x50,
+        '4MB-c1':0x60,
+        '4MB-c2':0x70}
+
     def chip_id(self):
         """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
         id0 = self.read_reg(self.ESP_OTP_MAC0)
@@ -377,6 +394,14 @@ class ESP31ROM(ESPROM):
 
     SPI_CMD_REG_ADDR = 0x60003000
     SPI_W0_REG_ADDR = 0x60003040
+
+    FLASH_SIZES = {
+        '1MB':0x00,
+        '2MB':0x10,
+        '4MB':0x20,
+        '8MB':0x30,
+        '16MB':0x40
+        }
 
     def read_efuse(self, n):
         """ Read the nth word of the ESP3x EFUSE region. """
@@ -937,7 +962,7 @@ def dump_mem(esp, args):
 
 def write_flash(esp, args):
     flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
-    flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40, '16m-c1': 0x50, '32m-c1':0x60, '32m-c2':0x70}[args.flash_size]
+    flash_size_freq = esp.parse_flash_size_arg(args.flash_size)
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
     flash_params = struct.pack('BB', flash_mode, flash_size_freq)
 
@@ -1011,7 +1036,7 @@ def elf2image(args):
         image.add_segment(e.get_symbol_addr(start), data)
 
     image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
-    image.flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40, '16m-c1': 0x50, '32m-c1':0x60, '32m-c2':0x70}[args.flash_size]
+    image.flash_size_freq = ESP8266ROM.FLASH_SIZES[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
 
     irom_offs = e.get_symbol_addr("_irom0_text_start") - 0x40200000
@@ -1171,9 +1196,9 @@ def main():
         parent.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
                             choices=['qio', 'qout', 'dio', 'dout'],
                             default=os.environ.get('ESPTOOL_FM', 'qio'))
-        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=str.lower,
-                            choices=['4m', '2m', '8m', '16m', '32m', '16m-c1', '32m-c1', '32m-c2'],
-                            default=os.environ.get('ESPTOOL_FS', '4m'))
+        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M) plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1, 4MB-2)',
+                            action=FlashSizeAction,
+                            default=os.environ.get('ESPTOOL_FS', '1MB'))
 
     parser_write_flash = subparsers.add_parser(
         'write_flash',
@@ -1269,6 +1294,37 @@ def main():
         operation_func(esp, args)
     else:
         operation_func(args)
+
+
+class FlashSizeAction(argparse.Action):
+    """ Custom flash size parser class to support backwards compatibility with megabit size arguments.
+
+    (At next major relase, remove deprecated sizes and this can become a 'normal' choices= argument again.)
+    """
+    def __init__(self, option_strings, dest, nargs=1, **kwargs):
+        super(FlashSizeAction, self).__init__(option_strings, dest, nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            value = {
+                '2m' : '256KB',
+                '4m' : '512KB',
+                '8m' : '1MB',
+                '16m' : '2MB',
+                '32m' : '4MB',
+                '16m-c1' : '2MB-c1',
+                '32m-c1' : '4MB-c1',
+                '32m-c2' : '4MB-c2'
+            }[values[0]]
+            print("WARNING: Flash size arguments in megabits like '%s' are deprecated. Please use the equivalent size '%s'. Megabit arguments may be removed in a future release." % (values[0], value))
+        except KeyError:
+            values = values[0]
+
+        known_sizes = dict(ESP8266ROM.FLASH_SIZES)
+        known_sizes.update(ESP32ROM.FLASH_SIZES)
+        if not value in known_sizes:
+            raise argparse.ArgumentError(self, '%s is not a known flash size. Known sizes: %s' % (value, ", ".join(known_sizes.keys())))
+        setattr(namespace, self.dest, value)
 
 
 class AddrFilenamePairAction(argparse.Action):
