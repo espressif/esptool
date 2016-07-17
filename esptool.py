@@ -69,7 +69,7 @@ class ESPROM(object):
 
     def __init__(self, port=0, baud=ESP_ROM_BAUD):
         self._port = serial.Serial(port)
-        self._slip_reader = slip_reader(port)
+        self._slip_reader = slip_reader(self._port)
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
         # sets), shouldn't matter for other platforms/drivers. See
