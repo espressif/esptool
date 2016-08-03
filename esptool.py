@@ -269,20 +269,7 @@ class ESPROM(object):
     def flash_begin(self, size, offset):
         old_tmo = self._port.timeout
         num_blocks = (size + ESPROM.ESP_FLASH_BLOCK - 1) / ESPROM.ESP_FLASH_BLOCK
-
-        sectors_per_block = 16
-        sector_size = self.ESP_FLASH_SECTOR
-        num_sectors = (size + sector_size - 1) / sector_size
-        start_sector = offset / sector_size
-
-        head_sectors = sectors_per_block - (start_sector % sectors_per_block)
-        if num_sectors < head_sectors:
-            head_sectors = num_sectors
-
-        if num_sectors < 2 * head_sectors:
-            erase_size = (num_sectors + 1) / 2 * sector_size
-        else:
-            erase_size = (num_sectors - head_sectors) * sector_size
+        erase_size = self.get_erase_size(size)
 
         self._port.timeout = 20
         t = time.time()
@@ -411,6 +398,24 @@ class ESP8266ROM(ESPROM):
             raise FatalError("Unknown OUI")
         return oui + ((mac1 >> 8) & 0xff, mac1 & 0xff, (mac0 >> 24) & 0xff)
 
+    def get_erase_size(self, size):
+        """ Calculate an erase size given a specific size in bytes.
+
+        Provides a workaround for the bootloader erase bug."""
+
+        sectors_per_block = 16
+        sector_size = self.ESP_FLASH_SECTOR
+        num_sectors = (size + sector_size - 1) / sector_size
+        start_sector = offset / sector_size
+
+        head_sectors = sectors_per_block - (start_sector % sectors_per_block)
+        if num_sectors < head_sectors:
+            head_sectors = num_sectors
+
+        if num_sectors < 2 * head_sectors:
+            return (num_sectors + 1) / 2 * sector_size
+        else:
+            return (num_sectors - head_sectors) * sector_size
 
 class ESP31ROM(ESPROM):
     """ Access class for ESP31 ROM bootloader
@@ -453,6 +458,8 @@ class ESP31ROM(ESPROM):
                   ((word18 >> 24) & 0xff), ((word18 >> 16) & 0xff), ((word18 >> 8) & 0xff))
         return (wifi_mac,bt_mac)
 
+    def get_erase_size(self, size):
+        return size
 
 class ESP32ROM(ESP31ROM):
     """Access class for ESP32 ROM bootloader
