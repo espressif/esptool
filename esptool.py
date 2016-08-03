@@ -598,19 +598,25 @@ def LoadFirmwareImage(chip, filename):
 class ImageSegment(object):
     """ Wrapper class for a segment in an ESP image
     (very similar to a section in an ELFImage also) """
-    def __init__(self, addr, data):
+    def __init__(self, addr, data, file_offs=None):
         self.addr = addr
         # pad all ImageSegments to at least 4 bytes length
         pad_mod = len(data) % 4
         if pad_mod != 0:
             data += "\x00" * (4 - pad_mod)
         self.data = data
+        self.file_offs = file_offs
 
     def copy_with_new_addr(self, new_addr):
         """ Return a new ImageSegment with same data, but mapped at
         a new address. """
         return ImageSegment(new_addr, self.data, 0)
 
+    def __repr__(self):
+        r = "len 0x%05x load 0x%08x" % (len(self.data), self.addr)
+        if self.file_offs is not None:
+            r += " file_offs 0x%08x" % (self.file_offs)
+        return r
 
 class ELFSection(ImageSegment):
     """ Wrapper class for a section in an ELF image, has a section
@@ -618,6 +624,9 @@ class ELFSection(ImageSegment):
     def __init__(self, name, addr, data):
         super(ELFSection, self).__init__(addr, data)
         self.name = name
+
+    def __repr__(self):
+        return "%s %s" % (self.name, super(ELFSection, self).__repr__())
 
 
 class BaseFirmwareImage(object):
@@ -635,14 +644,15 @@ class BaseFirmwareImage(object):
 
     def load_segment(self, f, is_irom_segment=False):
         """ Load the next segment from the image file """
+        file_offs = f.tell()
         (offset, size) = struct.unpack('<II', f.read(8))
         if not is_irom_segment:
             if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
-                raise FatalError('Suspicious segment 0x%x, length %d' % (offset, size))
+                print('WARNING: Suspicious segment 0x%x, length %d' % (offset, size))
         segment_data = f.read(size)
         if len(segment_data) < size:
             raise FatalError('End of file reading segment 0x%x, length %d (actual length %d)' % (offset, size, len(segment_data)))
-        segment = ImageSegment(offset, segment_data)
+        segment = ImageSegment(offset, segment_data, file_offs)
         self.segments.append(segment)
         return segment
 
@@ -814,7 +824,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
         if load_file is not None:
             segments = self.load_common_header(load_file, ESPROM.ESP_IMAGE_MAGIC)
-            self.additional_header = self.read(16)
+            self.additional_header = load_file.read(16)
 
             for i in xrange(segments):
                 self.load_segment(load_file)
@@ -1170,7 +1180,7 @@ class FatalError(RuntimeError):
 # argument.
 
 def load_ram(esp, args):
-    image = LoadFirmwareImage(args.filename)
+    image = LoadFirmwareImage(esp, args.filename)
 
     print 'RAM boot...'
     for (offset, size, data) in image.segments:
@@ -1341,18 +1351,17 @@ def write_flash_no_stub(esp, args):
 
 
 def image_info(args):
-    image = LoadFirmwareImage(args.filename)
+    image = LoadFirmwareImage(args.chip, args.filename)
     print('Image version: %d' % image.version)
     print('Entry point: %08x' % image.entrypoint) if image.entrypoint != 0 else 'Entry point not set'
     print '%d segments' % len(image.segments)
     print
     checksum = ESPROM.ESP_CHECKSUM_MAGIC
-    for (idx, (offset, size, data)) in enumerate(image.segments):
-        if image.version == 2 and idx == 0:
-            print 'Segment 1: %d bytes IROM0 (no load address)' % size
-        else:
-            print 'Segment %d: %5d bytes at %08x' % (idx + 1, size, offset)
-            checksum = ESPROM.checksum(data, checksum)
+    idx = 0
+    for seg in image.segments:
+        idx += 1
+        print 'Segment %d: %r' % (idx, seg)
+        checksum = ESPROM.checksum(seg.data, checksum)
     print
     print 'Checksum: %02x (%s)' % (image.checksum, 'valid' if image.checksum == checksum else 'invalid!')
 
