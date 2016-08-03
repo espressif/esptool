@@ -481,11 +481,8 @@ class ESP32ROM(ESP31ROM):
 
     ESP_SPI_FLASH_MD5    = 0x13
 
-    # TODO: These values are wrong and should be 0x400d0000 (IROM) /
-    # ??? (DROM) for IROM mapping, however for now it's better to test
-    # the code using an address we actually map to!
-    IROM_MAP_START = 0x40080000
-    IROM_MAP_END   = 0x40080000
+    IROM_MAP_START = 0x400d0000
+    IROM_MAP_END   = 0x40400000
     DROM_MAP_START = 0x3F400000
     DROM_MAP_END   = 0x3F700000
 
@@ -630,6 +627,8 @@ class ELFSection(ImageSegment):
 
 
 class BaseFirmwareImage(object):
+    SEG_HEADER_LEN = 8
+
     """ Base class with common firmware image functions """
     def __init__(self):
         self.segments = []
@@ -839,32 +838,53 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         return "%s.bin" % (os.path.splitext(input_file)[0])
 
     def save(self, filename):
+        padding_segments = 0
         with open(filename, 'wb') as f:
             self.write_common_header(f, self.segments)
             f.write(self.additional_header)
 
             checksum = ESPROM.ESP_CHECKSUM_MAGIC
             for segment in self.segments:
+                #print("Writing %s file @ 0x%x" % (segment, f.tell()))
 
-                # IROM/DROM segments need to align on 64kB boundaries.
+                # IROM/DROM segment flash mappings need to align on
+                # 64kB boundaries.
                 #
                 # TODO: intelligently order segments to reduce wastage
                 # by squeezing smaller DRAM/IRAM segments into the
                 # 64kB padding space.
                 IROM_ALIGN = 65536
-                if self.is_flash_addr(segment.addr) and f.tell() % IROM_ALIGN != 0:
+
+                if self.is_flash_addr(segment.addr):
                     #print("Padding from offset %08x" % f.tell())
-                    pad_len = IROM_ALIGN - (f.tell() % IROM_ALIGN) - 8
+                    # Actual alignment required for the segment header: positioned so that
+                    # after we write the next 8 byte header, file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
+                    #
+                    # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
+                    # IROM_ALIGN+0x10 to account for longest possible header.
+                    align_past = (segment.addr % IROM_ALIGN) - self.SEG_HEADER_LEN
+                    #print "segment starts 0x%x so aligning header at +0x%x" % (segment.addr, align_past)
+                    assert (align_past + self.SEG_HEADER_LEN) == (segment.addr % IROM_ALIGN)
+
+                    # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
+                    pad_len = ( IROM_ALIGN - (f.tell() % IROM_ALIGN) ) + align_past - self.SEG_HEADER_LEN
                     if pad_len < 0:
                         pad_len += IROM_ALIGN
-                    #print("Calculated pad length %08x" % pad_len)
-                    null = ImageSegment(0, '\x00' * pad_len)
-                    #print("padding segment length %08x" % len(null.data))
-                    checksum = self.save_segment(f, null, checksum)
-                    #print("After padding, at length %08x" % f.tell())
-                    assert f.tell() % IROM_ALIGN == 0
+                    if pad_len > 0:
+                        #print("Calculated pad length %08x to place next header @ %08x" % (pad_len, f.tell()+pad_len))
+                        null = ImageSegment(0, '\x00' * pad_len, f.tell())
+                        checksum = self.save_segment(f, null, checksum)
+                        #print("After padding, at file offset %08x" % f.tell())
+                        padding_segments += 1
+                    #print "Comparing file offs %x (data @ %x) with segment load addr %x" % (f.tell(), f.tell() + 8, segment.addr)
+                    # verify that after the 8 byte header is added, were are at the correct offset relative to the segment's vaddr
+                    assert (f.tell() + 8) % IROM_ALIGN == segment.addr % IROM_ALIGN
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
+            # kinda hacky: go back to the initial header and write the new segment count
+            # that includes padding segments. Luckily(?) this header is not checksummed
+            f.seek(1)
+            f.write(chr(len(self.segments) + padding_segments))
 
 
 class ELFFile(object):
