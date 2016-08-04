@@ -80,18 +80,28 @@ esptool.py elf2image --version=2 -o my_app-ota.bin my_app.elf
 The binaries from elf2image or make_image can be sent to the ESP8266 via the serial `write_flash` command:
 
 ```
-esptool.py write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
+esptool.py --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
 ```
 
 Or, for a "version 2" image, a single argument:
 
 ```
-esptool.py write_flash 0x1000 my_app-0x01000.bin
+esptool.py --port COM4 write_flash 0x1000 my_app-0x01000.bin
 ```
 
-The arguments are one or more pairs of offset (address) and file name. The file names created by elf2image include the flash offsets for version 1. For version 2, the bootloader and linker script you are using determines the flash offset.
+The --port argument specifies the serial port. This may take the form of something like COMx (Windows), /dev/ttyUSBx (Linux) or /dev/cu.xxxUART (OS X) or similar names.
 
-See the [Flash Modes](#flash-modes) and [Troubleshooting](#troubleshooting) sections for more useful information about this command.
+The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For "version 2" images, the bootloader and linker script you are using determines the flash offset.
+
+You may need to specify arguments for [flash mode and flash size](#flash-modes) as well. For example:
+
+```
+esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
+```
+
+The [Flash Modes](#flash-modes) section below explains the meaning of these additional arguments.
+
+See the [Troubleshooting](#troubleshooting) section if the write_flash command is failing, or the flashed module fails to boot.
 
 ### Verifying flash
 
@@ -220,13 +230,19 @@ Note that some serial terminal programs (not esptool.py) will assert both RTS an
 
 `write_flash` and some other comands accept command line arguments to set flash mode, flash size and flash clock frequency. The ESP8266 needs correct mode, frequency and size settings in order to run correctly - although there is some flexibility.
 
+These arguments must appear after `write_flash` on the command line, for example:
+
+```
+esptool.py --port /dev/ttyUSB1 write_flash --flash_mode dio --flash_size 32m 0x0 bootloader.bin
+```
+
 When flashing at offset 0x0, the first sector of the ESP8266 flash is updated automatically using the arguments passed in.
 
 ### Flash Mode (--flash_mode, -fm)
 
 These set Quad Flash I/O or Dual Flash I/O modes. Valid values are `qio`, `qout`, `dio`, `dout`. The default is `qio`. This parameter can also be specified using the environment variable `ESPTOOL_FM`.
 
-Some ESP8266 modules, including the ESP-12E modules on some (not all) NodeMCU boards, are dual I/O and will only work with `--flash_mode dio`.
+Most boards use the default `qio`. Some ESP8266 modules, including the ESP-12E modules on some (not all) NodeMCU boards, are dual I/O and the firmware will only boot when flashed with `--flash_mode dio`.
 
 In `qio` mode, GPIOs 9 and 10 are used for SPI flash communications. If flash mode is set to `dio` then these pins are available for other purposes.
 
