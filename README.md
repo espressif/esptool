@@ -89,7 +89,7 @@ Or, for a "version 2" image, a single argument:
 esptool.py --port COM4 write_flash 0x1000 my_app-0x01000.bin
 ```
 
-The --port argument specifies the serial port. This may take the form of something like COMx (Windows), /dev/ttyUSBx (Linux) or /dev/cu.xxxUART (OS X) or similar names.
+The --port argument specifies the serial port. This may take the form of something like COMx (Windows), /dev/ttyUSBx (Linux) or /dev/tty.usbserial (OS X) or similar names.
 
 The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For "version 2" images, the bootloader and linker script you are using determines the flash offset.
 
@@ -280,7 +280,7 @@ If you see errors like "Failed to connect to ESP8266" then your ESP8266 is proba
 
 If flashing fails with random errors part way through, retry with a lower baud rate.
 
-Power stability problems may also cause tihs (see [Insufficient Power](#insufficient-power).)
+Power stability problems may also cause this (see [Insufficient Power](#insufficient-power).)
 
 ### write_flash succeeds but ESP8266 doesn't run
 
