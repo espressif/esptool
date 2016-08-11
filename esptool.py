@@ -844,7 +844,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             f.write(self.additional_header)
 
             checksum = ESPROM.ESP_CHECKSUM_MAGIC
-            for segment in self.segments:
+            last_addr = None
+            for segment in sorted(self.segments, key=lambda s:s.addr):
                 #print("Writing %s file @ 0x%x" % (segment, f.tell()))
 
                 # IROM/DROM segment flash mappings need to align on
@@ -854,6 +855,17 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 # by squeezing smaller DRAM/IRAM segments into the
                 # 64kB padding space.
                 IROM_ALIGN = 65536
+
+                # check for multiple ELF sections that live in the same flash mapping region.
+                # this is usually a sign of a broken linker script, but if you have a legitimate
+                # use case then let us know (we can merge segments here, but as a rule you probably
+                # want to merge them in your linker script.)
+                if last_addr is not None and self.is_flash_addr(last_addr) \
+                   and self.is_flash_addr(segment.addr) and segment.addr // IROM_ALIGN == last_addr // IROM_ALIGN:
+                    raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. "+
+                                     "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
+                                     (segment.addr, last_addr))
+                last_addr = segment.addr
 
                 if self.is_flash_addr(segment.addr):
                     #print("Padding from offset %08x" % f.tell())
