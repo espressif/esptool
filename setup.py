@@ -3,7 +3,9 @@ import io
 import os
 import re
 import sys
+import subprocess
 
+from setuptools.command.test import test as TestCommand
 
 if sys.version_info[0] > 2:
     raise RuntimeError("esptool.py only supports Python 2.x")
@@ -26,6 +28,13 @@ def find_version(*file_paths):
     if version_match:
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
+
+
+class EspToolTests(TestCommand):
+    def run_tests(self):
+        # lazy test implementation for now, just run the test script standalone
+        errno = subprocess.check_call([ sys.executable, "./test/test_elf2image.py" ])
+        sys.exit(errno)
 
 long_description = """
 ==========
@@ -86,6 +95,10 @@ setup(
     install_requires=[
         'pyserial',
     ],
+    tests_require=[
+        'pyelftools',
+    ],
+    cmdclass = {'test': EspToolTests},
     scripts=[
         'esptool.py',
     ],

@@ -6,4 +6,5 @@ python:
 
 script:
   - python setup.py build
+  - python setup.py test
   - python setup.py flake8

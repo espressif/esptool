@@ -1,0 +1,11 @@
+esptool.py v1.2-dev
+Image version: 2
+Entry point: 40100004
+4 segments
+
+Segment 1: 376736 bytes IROM0 (no load address)
+Segment 2: 31320 bytes at 40100000
+Segment 3:  2156 bytes at 3ffe8000
+Segment 4:  8580 bytes at 3ffe8870
+
+Checksum: 54 (valid)
