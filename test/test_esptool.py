@@ -20,12 +20,15 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(os.path.dirname(__file__))
 ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool.py")
 
+global default_baudrate, chip, serialport
 default_baudrate = 115200 # can override on command line
+chip = None # set on command line
+serialport = None # set on command line
 
 def run_esptool(args, baud=None):
     if baud is None:
         baud = default_baudrate
-    cmd = [sys.executable, ESPTOOL_PY, "--port", serialport, "--baud", baud ] + args.split(" ")
+    cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "--port", serialport, "--baud", baud ] + args.split(" ")
     subprocess.check_call([str(s) for s in cmd], cwd=TEST_DIR)
 
 class TestFlashing(unittest.TestCase):
@@ -101,7 +104,6 @@ class TestFlashing(unittest.TestCase):
         self.assertEqual(last_sector, ct)
 
 if __name__ == '__main__':
-    global serialport, chip
     if len(sys.argv) < 3:
         print "Usage: %s <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0]
         sys.exit(1)
