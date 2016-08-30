@@ -915,6 +915,12 @@ class ELFFile(object):
         with open(self.name, 'rb') as f:
             self._read_elf_file(f)
 
+    def get_section(self, section_name):
+        for s in self.sections:
+            if s.name == section_name:
+                return s
+        raise ValueError("No section %s in ELF file" % section_name)
+
     def _read_elf_file(self, f):
         # read the ELF file header
         LEN_FILE_HEADER = 0x34

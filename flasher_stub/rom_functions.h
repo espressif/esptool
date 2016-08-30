@@ -18,7 +18,7 @@
 #ifndef ROM_FUNCTIONS_H_
 #define ROM_FUNCTIONS_H_
 
-#include <inttypes.h>
+#include <c_types.h>
 
 int uart_rx_one_char(uint8_t *ch);
 uint8_t uart_rx_one_char_block();

@@ -27,17 +27,19 @@ if __name__ == '__main__':
     e = esptool.ELFFile(sys.argv[1])
     entry = 'stub_main'
 
+    params_section = e.get_section('.params')
+    code_section = e.get_section('.code')
+    data_section = e.get_section('.data')
     stub = {
-        'params_start': e.get_symbol_addr('_params_start'),
-        'code': e.load_section('.code'),
-        'code_start': e.get_symbol_addr('_code_start'),
-        'entry': e.get_symbol_addr(entry),
+        'params_start': params_section.addr,
+        'code': code_section.data,
+        'code_start': code_section.addr,
+        'entry': e.entrypoint,
     }
-    data = e.load_section('.data')
-    if len(data) > 0:
-        stub['data'] = data
-        stub['data_start'] = e.get_symbol_addr('_data_start')
-    params_len = e.get_symbol_addr('_params_end') - stub['params_start']
+    if len(data_section.data) > 0:
+        stub['data'] = data_section.data
+        stub['data_start'] = data_section.addr
+    params_len = len(params_section.data)
     if params_len % 4 != 0:
         raise FatalError('Params must be dwords')
     stub['num_params'] = params_len / 4

@@ -60,7 +60,7 @@ $(BUILD_DIR):
 
 $(STUB_ELF): $(STUB) $(LIBS) | $(BUILD_DIR)
 	@echo "  CC   $^ -> $@"
-	$(Q) $(CROSS)gcc -I$(SDK_DIR) -std=c99 -Wall -Werror -Os \
+	$(Q) $(CROSS)gcc -I$(SDK_DIR) -I$(SDK_DIR)/include -L$(SDK_DIR)/ld -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin \
          -Wl,-static -Tstub.ld -o $@ $^
 
