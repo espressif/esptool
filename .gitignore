@@ -5,6 +5,7 @@ GPATH
 GRTAGS
 GTAGS
 esptool.egg-info
+.eggs
 build
 dist
 
