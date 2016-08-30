@@ -18,7 +18,10 @@ import time
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(os.path.dirname(__file__))
-ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool.py")
+try:
+    ESPTOOL_PY = os.environ["ESPTOOL_PY"]
+except KeyError:
+    ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool.py")
 
 global default_baudrate, chip, serialport
 default_baudrate = 115200 # can override on command line
