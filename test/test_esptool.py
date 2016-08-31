@@ -31,19 +31,25 @@ serialport = None # set on command line
 class EsptoolTestCase(unittest.TestCase):
 
     def run_esptool(self, args, baud=None):
+        """ Run esptool with the specified arguments. --chip, --port and --baud
+        are filled in automatically from the command line. (can override default baud rate with baud param.)
+
+        Additional args passed in args parameter as a string.
+
+        Returns output from esptool.py if there is anything. Raises an exception if esptool.py fails.
+        """
         if baud is None:
             baud = default_baudrate
         cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "--port", serialport, "--baud", str(baud) ] + args.split(" ")
         print("Running %s..." % (" ".join(cmd)))
         try:
             output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR)
-            print(output)
+            print(output)  # for more complete stdout logs on failure
+            return output
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise e
 
-
-class TestFlashing(EsptoolTestCase):
     def get_tempfile(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -80,9 +86,10 @@ class TestFlashing(EsptoolTestCase):
         print("Readback %d bytes" % len(rb))
         for rb_b,ct_b,offs in zip(rb,ct,range(len(rb))):
             if rb_b != ct_b:
-                self.fail("First difference at offset 0x%x Expected %c got %c" % (offs, ct_b, rb_b))
+                self.fail("First difference at offset 0x%x Expected %r got %r" % (offs, ct_b, rb_b))
 
-    # actual test cases start here
+
+class TestFlashing(EsptoolTestCase):
 
     def test_short_flash(self):
         self.run_esptool("write_flash 0x0 images/one_kb.bin")
@@ -114,6 +121,22 @@ class TestFlashing(EsptoolTestCase):
         with open("images/sector.bin") as f:
             ct = f.read()
         self.assertEqual(last_sector, ct)
+
+class TestFlashDetection(EsptoolTestCase):
+    def test_correct_offset(self):
+        """ Verify writing at an offset actually writes to that offset. """
+        res = self.run_esptool("flash_id")
+        self.assertTrue("Manufacturer:" in res)
+        self.assertTrue("Device:" in res)
+
+class TestErase(EsptoolTestCase):
+
+    def test_chip_erase(self):
+        self.run_esptool("write_flash 0x10000 images/one_kb.bin")
+        self.verify_readback(0x10000, 0x400, "images/one_kb.bin")
+        self.run_esptool("erase_flash")
+        empty = self.readback(0x10000, 0x400)
+        self.assertTrue(empty == '\xFF'*0x400)
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:

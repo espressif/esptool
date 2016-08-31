@@ -419,7 +419,12 @@ class ESPROM(object):
         self.flush_input()
 
     def erase_flash(self):
-        self.check_command("erase flash", self.ESP_ERASE_FLASH)
+        oldtimeout = self._port.timeout
+        self._port.timeout = 10
+        try:
+            self.check_command("erase flash", self.ESP_ERASE_FLASH)
+        finally:
+            self._port.timeout = oldtimeout
 
     def read_flash(self, offset, length, progress_fn=None):
         # issue a standard bootloader command to trigger the read
