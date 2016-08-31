@@ -426,6 +426,13 @@ class ESPROM(object):
         finally:
             self._port.timeout = oldtimeout
 
+    def erase_region(self, offset, size):
+        if offset % ESPROM.ESP_FLASH_SECTOR != 0:
+            raise FatalError("Offset to erase from must be a multiple of 4096")
+        if size % ESPROM.ESP_FLASH_SECTOR != 0:
+            raise FatalError("Size of data to erase must be a multiple of 4096")
+        self.check_command("erase region", self.ESP_ERASE_REGION, struct.pack('<II', offset, size))
+
     def read_flash(self, offset, length, progress_fn=None):
         # issue a standard bootloader command to trigger the read
         self.check_command("read flash", self.ESP_READ_FLASH, struct.pack('<IIII',
@@ -502,6 +509,9 @@ class ESP8266ROM(ESPROM):
     def erase_flash(self):
         raise NotImplementedInROMError(self)
 
+    def erase_region(self):
+        raise NotImplementedInROMError(self)
+
     def read_flash(self, *args):
         raise NotImplementedInROMError(self)
 
@@ -566,6 +576,9 @@ class ESP8266StubLoader(ESP8266ROM):
     def erase_flash(self):
         return ESPROM.erase_flash(self)
 
+    def erase_region(self, offset, size):
+        return ESPROM.erase_region(self, offset, size)
+
     def read_flash(self, *args):
         return ESPROM.read_flash(self, *args)
 
@@ -618,6 +631,9 @@ class ESP31ROM(ESPROM):
     def erase_flash(self):
         raise NotImplementedInROMError(self)
 
+    def erase_region(self):
+        raise NotImplementedInROMError(self)
+    
 class ESP32ROM(ESP31ROM):
     """Access class for ESP32 ROM bootloader
 
@@ -1386,6 +1402,10 @@ def erase_flash(esp, args):
     esp.erase_flash()
     print 'Erase completed successfully.'
 
+def erase_region(esp, args):
+    print 'Erasing region (may be slow depending on size)...'
+    esp.erase_region(args.address, args.size)
+    print 'Erase completed successfully.'
 
 def run(esp, args):
     esp.run()
@@ -1588,6 +1608,12 @@ def main():
     subparsers.add_parser(
         'erase_flash',
         help='Perform Chip Erase on SPI flash')
+
+    parser_erase_region = subparsers.add_parser(
+        'erase_region',
+        help='Erase a region of the flash')
+    parser_erase_region.add_argument('address', help='Start address (must be multiple of 4096)', type=arg_auto_int)
+    parser_erase_region.add_argument('size', help='Size of region to erase (must be multiple of 4096)', type=arg_auto_int)
 
     subparsers.add_parser(
         'version', help='Print esptool version')

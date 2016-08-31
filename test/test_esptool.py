@@ -138,6 +138,17 @@ class TestErase(EsptoolTestCase):
         empty = self.readback(0x10000, 0x400)
         self.assertTrue(empty == '\xFF'*0x400)
 
+    def test_region_erase(self):
+        self.run_esptool("write_flash 0x10000 images/one_kb.bin")
+        self.run_esptool("write_flash 0x11000 images/sector.bin")
+        self.verify_readback(0x10000, 0x400, "images/one_kb.bin")
+        self.verify_readback(0x11000, 0x1000, "images/sector.bin")
+        # erase only the flash sector containing one_kb.bin
+        self.run_esptool("erase_region 0x10000 0x1000")
+        self.verify_readback(0x11000, 0x1000, "images/sector.bin")
+        empty = self.readback(0x10000, 0x1000)
+        self.assertTrue(empty == '\xFF'*0x1000)
+
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print "Usage: %s <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0]
