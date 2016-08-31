@@ -33,11 +33,24 @@
 
 #include "stub_flasher.h"
 
+#ifdef ESP8266
 #include "rom_functions.h"
-
 #include "eagle_soc.h"
 #include "ets_sys.h"
 #include "examples/driver_lib/include/driver/uart_register.h"
+#include "examples/driver_lib/include/driver/spi_register.h"
+#else
+#include <stdint.h>
+#include <stdbool.h>
+#define NULL ((void *)0) /*FIXME*/
+
+#include "soc/soc.h"
+#include "soc/uart_register.h"
+#include "rom/ets_sys.h"
+#include "rom/spi_flash.h"
+#include "rom/md5_hash.h"
+#include "rom/uart.h"
+#endif
 
 #include "slip.h"
 
@@ -45,22 +58,22 @@
 #define FLASH_SECTOR_SIZE 4096
 #define FLASH_BLOCK_SIZE 65536
 #define SECTORS_PER_BLOCK (FLASH_BLOCK_SIZE / FLASH_SECTOR_SIZE)
-#define UART_CLKDIV_26MHZ(B) (52000000 + B / 2) / B
 
-#define UART_BUF_SIZE 6144
-#define SPI_WRITE_SIZE 1024
+#define UART_CLKDIV_26MHZ(B) (52000000 + B / 2) / B
 
 #define UART_RX_INTS (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA)
 
-/* From spi_register.h */
-#define REG_SPI_BASE(i) (0x60000200 - i * 0x100)
-
-#define SPI_CMD(i) (REG_SPI_BASE(i) + 0x0)
-#define SPI_RDID (BIT(28))
-
-#define SPI_W0(i) (REG_SPI_BASE(i) + 0x40)
-
 #define MAX_WRITE_BLOCK 8192
+
+#ifdef ESP32
+/* ESP32 register naming is a bit more consistent */
+#define UART_INT_CLR(X) UART_INT_CLR_REG(X)
+#define UART_INT_ST(X) UART_INT_ST_REG(X)
+#define UART_INT_ENA(X) UART_INT_ENA_REG(X)
+#define UART_STATUS(X) UART_STATUS_REG(X)
+#define UART_FIFO(X) UART_FIFO_REG(X)
+#endif
+
 
 int handle_flash_erase(uint32_t addr, uint32_t len) {
   if (addr % FLASH_SECTOR_SIZE != 0) return 0x32;
@@ -222,10 +235,10 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
     while (num_sent < len && num_sent - num_acked < max_in_flight) {
       uint32_t n = len - num_sent;
       if (n > block_size) n = block_size;
-      if (SPIRead(addr, buf, n) != 0) {
+      if (SPIRead(addr, (uint32_t *)buf, n) != 0) {
 		break;
 	  }
-      send_packet(buf, n);
+      SLIP_send(buf, n);
       MD5Update(&ctx, buf, n);
       addr += n;
       num_sent += n;
@@ -236,7 +249,7 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
 	}
   }
   MD5Final(digest, &ctx);
-  send_packet(digest, sizeof(digest));
+  SLIP_send(digest, sizeof(digest));
 
   /* Go back to async UART */
   ets_isr_unmask(1 << ETS_UART_INUM);
@@ -250,7 +263,7 @@ int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
   while (len > 0) {
     uint32_t n = len;
     if (n > FLASH_SECTOR_SIZE) n = FLASH_SECTOR_SIZE;
-    if (SPIRead(addr, buf, n) != 0) return 0x63;
+    if (SPIRead(addr, (uint32_t *)buf, n) != 0) return 0x63;
     MD5Update(&ctx, buf, n);
     addr += n;
     len -= n;
@@ -263,8 +276,8 @@ int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
 
 int handle_flash_read_chip_id() {
   uint32_t chip_id = 0;
-  WRITE_PERI_REG(SPI_CMD(0), SPI_RDID);
-  while (READ_PERI_REG(SPI_CMD(0)) & SPI_RDID) {
+  WRITE_PERI_REG(SPI_CMD(0), SPI_FLASH_RDID);
+  while (READ_PERI_REG(SPI_CMD(0)) & SPI_FLASH_RDID) {
   }
   chip_id = READ_PERI_REG(SPI_W0(0)) & 0xFFFFFF;
   SLIP_send_frame_data_buf(&chip_id, sizeof(chip_id));
@@ -405,11 +418,19 @@ void stub_main() {
   SET_PERI_REG_MASK(UART_INT_ENA(0), UART_RX_INTS);
   ets_isr_unmask(1 << ETS_UART_INUM);
 
+#ifdef ESP8266
   /* This points at us right now, reset for next boot. */
   ets_set_user_start(NULL);
+#else
+  // TODO for ESP32
+#endif
 
   /* Selects SPI functions for flash pins. */
+#ifdef ESP8266
   SelectSpiFunction();
+#else
+  // TODO for ESP32
+#endif
 
   last_cmd = cmd_loop();
 
@@ -434,7 +455,8 @@ void stub_main() {
     __asm volatile("nop.n");
     return; /* To 0x400010a8 */
   } else {
-    _ResetVector();
+	// TODO
+    //_ResetVector();
   }
   /* Not reached */
 }

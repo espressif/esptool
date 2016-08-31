@@ -18,7 +18,11 @@
 #ifndef STUB_FLASHER_H_
 #define STUB_FLASHER_H_
 
+#ifdef ESP8266
 #include <c_types.h>
+#else
+#include <stdint.h>
+#endif
 
 typedef enum {
   /* Commands supported by the ESP8266 & ESP32 bootloaders */

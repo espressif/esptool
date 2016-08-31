@@ -42,7 +42,9 @@ void SLIP_send_frame_data_buf(const void *buf, uint32_t size) {
 }
 
 void SLIP_send(const void *pkt, uint32_t size) {
-  send_packet(pkt, size);
+  SLIP_send_frame_delimiter();
+  SLIP_send_frame_data_buf(pkt, size);
+  SLIP_send_frame_delimiter();
 }
 
 int16_t SLIP_recv_byte(char byte, slip_state_t *state)

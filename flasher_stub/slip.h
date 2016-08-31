@@ -18,7 +18,11 @@
 #ifndef SLIP_H_
 #define SLIP_H_
 
+#ifdef ESP8266
 #include <c_types.h>
+#else
+#include <stdint.h>
+#endif
 
 /* Send the SLIP frame begin/end delimiter. */
 void SLIP_send_frame_delimiter(void);

@@ -18,7 +18,11 @@
 #ifndef ROM_FUNCTIONS_H_
 #define ROM_FUNCTIONS_H_
 
+#ifdef ESP8266
 #include <c_types.h>
+#else
+#include <stdint.h>
+#endif
 
 int uart_rx_one_char(uint8_t *ch);
 uint8_t uart_rx_one_char_block();
