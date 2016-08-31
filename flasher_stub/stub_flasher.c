@@ -44,6 +44,7 @@
 /* TODO(rojer): read sector and block sizes from device ROM. */
 #define FLASH_SECTOR_SIZE 4096
 #define FLASH_BLOCK_SIZE 65536
+#define SECTORS_PER_BLOCK (FLASH_BLOCK_SIZE / FLASH_SECTOR_SIZE)
 #define UART_CLKDIV_26MHZ(B) (52000000 + B / 2) / B
 
 #define UART_BUF_SIZE 6144
@@ -142,7 +143,9 @@ void uart_isr(void *arg) {
 typedef struct {
   bool in_flash_mode;
   uint32_t next_write;
+  int next_erase_sector;
   uint32_t remaining;
+  int remaining_erase_sector;
   esp_command_error last_error;
 } flashing_state_t;
 flashing_state_t flashing_state;
@@ -153,7 +156,9 @@ esp_command_error handle_flash_begin(uint32_t erase_size, uint32_t num_blocks, u
 
   flashing_state.in_flash_mode = true;
   flashing_state.next_write = offset;
+  flashing_state.next_erase_sector = offset / FLASH_SECTOR_SIZE;
   flashing_state.remaining = num_blocks * block_size;
+  flashing_state.remaining_erase_sector = (flashing_state.remaining + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
   flashing_state.last_error = ESP_OK;
 
   if (SPIUnlock() != 0) {
@@ -164,13 +169,19 @@ esp_command_error handle_flash_begin(uint32_t erase_size, uint32_t num_blocks, u
 }
 
 void handle_flash_data(void *data_buf, uint32_t length) {
-  /* This code for finding what we need to erase is very lazy,
-	 can be made less lazy and a bit faster! */
-  for(uint32_t o = flashing_state.next_write; o < flashing_state.next_write + length; o++) {
-	if (o % FLASH_SECTOR_SIZE == 0) {
-	  if (SPIEraseSector(o / FLASH_SECTOR_SIZE)) {
-		flashing_state.last_error = ESP_FAILED_SPI_OP;
-	  }
+  /* what sector is this write going to end in?
+	 make sure we've erased at least that far.
+   */
+  int last_sector = (flashing_state.next_write + length + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
+  while(flashing_state.next_erase_sector < last_sector) {
+	if(flashing_state.next_erase_sector % SECTORS_PER_BLOCK == 0
+	   && flashing_state.remaining_erase_sector > SECTORS_PER_BLOCK) {
+	  SPIEraseBlock(flashing_state.next_erase_sector / SECTORS_PER_BLOCK);
+	  flashing_state.next_erase_sector += SECTORS_PER_BLOCK;
+	  flashing_state.remaining_erase_sector -= SECTORS_PER_BLOCK;
+	} else {
+	  SPIEraseSector(flashing_state.next_erase_sector++);
+	  flashing_state.remaining_erase_sector--;
 	}
   }
 
@@ -178,6 +189,7 @@ void handle_flash_data(void *data_buf, uint32_t length) {
 	flashing_state.last_error = ESP_FAILED_SPI_OP;
   }
   flashing_state.next_write += length;
+  flashing_state.remaining -= length;
 }
 
 esp_command_error handle_flash_end(void)
