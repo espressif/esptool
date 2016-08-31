@@ -27,36 +27,32 @@ if __name__ == '__main__':
     e = esptool.ELFFile(sys.argv[1])
     entry = 'stub_main'
 
-    params_section = e.get_section('.params')
-    code_section = e.get_section('.code')
-    data_section = e.get_section('.data')
+    text_section = e.get_section('.text')
+    try:
+        data_section = e.get_section('.data')
+    except ValueError:
+        data_section = None
     stub = {
-        'params_start': params_section.addr,
-        'code': code_section.data,
-        'code_start': code_section.addr,
+        'text': text_section.data,
+        'text_start': text_section.addr,
         'entry': e.entrypoint,
     }
-    if len(data_section.data) > 0:
+    if data_section is not None:
         stub['data'] = data_section.data
         stub['data_start'] = data_section.addr
-    params_len = len(params_section.data)
-    if params_len % 4 != 0:
-        raise FatalError('Params must be dwords')
-    stub['num_params'] = params_len / 4
 
-    # Pad code with NOPs to mod 4.
-    if len(stub['code']) % 4 != 0:
-        stub['code'] += (4 - (len(stub['code']) % 4)) * '\0'
+    # Pad text with NOPs to mod 4.
+    if len(stub['text']) % 4 != 0:
+        stub['text'] += (4 - (len(stub['text']) % 4)) * '\0'
 
     print >>sys.stderr, (
-        'Stub params: %d @ 0x%08x, code: %d @ 0x%08x, data: %d @ 0x%08x, entry: %s @ 0x%x' % (
-            params_len, stub['params_start'],
-            len(stub['code']), stub['code_start'],
+        'Stub text: %d @ 0x%08x, data: %d @ 0x%08x, entry: %s @ 0x%x' % (
+            len(stub['text']), stub['text_start'],
             len(stub.get('data', '')), stub.get('data_start', 0),
             entry, stub['entry']))
 
     jstub = dict(stub)
-    jstub['code'] = esptool.hexify(stub['code'])
+    jstub['text'] = esptool.hexify(stub['text'])
     if 'data' in stub:
         jstub['data'] = esptool.hexify(stub['data'])
     json.dump(jstub, open(sys.argv[2], 'w'))

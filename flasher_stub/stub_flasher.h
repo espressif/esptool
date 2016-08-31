@@ -18,93 +18,76 @@
 #ifndef STUB_FLASHER_H_
 #define STUB_FLASHER_H_
 
-enum stub_cmd {
-  /*
-   * Erase a region of SPI flash.
-   *
-   * Args: addr, len; must be FLASH_SECTOR_SIZE-aligned.
-   * Input: None.
-   * Output: None.
-   */
-  CMD_FLASH_ERASE = 0,
+#include <c_types.h>
 
-  /*
-   * Write to the SPI flash.
-   *
-   * Args: addr, len, erase; addr and len must be SECTOR_SIZE-aligned.
-   *       If erase != 0, perform erase before writing.
-   * Input: Stream of data to be written, note: no SLIP encapsulation here.
-   * Output: SLIP packets with number of bytes written after every write.
-   *         This can (and should) be used for flow control. Flasher will
-   *         write in 1K chunks but will buffer up to 4K of data
-   *         Use this feedback to keep buffer above 1K but below 4K.
-   *         Final packet will contain MD5 digest of the data written.
-   */
-  CMD_FLASH_WRITE = 1,
+typedef enum {
+  /* Commands supported by the ESP8266 & ESP32 bootloaders */
+  ESP_FLASH_BEGIN = 0x02,
+  ESP_FLASH_DATA = 0x03,
+  ESP_FLASH_END = 0x04,
+  ESP_MEM_BEGIN = 0x05,
+  ESP_MEM_END = 0x06,
+  ESP_MEM_DATA = 0x07,
+  ESP_SYNC = 0x08,
+  ESP_WRITE_REG = 0x09,
+  ESP_READ_REG = 0x0a,
 
-  /*
-   * Read from the SPI flash.
-   *
-   * Args: addr, len, block_size; no alignment requirements, block_size <= 4K.
-   * Input: None.
-   * Output: Packets of up to block_size with data.
-   *         Last packet is the MD5 digest of the data.
-   *
-   * Note: No flow control is performed, it is assumed that the host can cope
-   * with the inbound stream.
-   */
-  CMD_FLASH_READ = 2,
+  /* Commands supported by the ESP32 bootloader */
+  ESP_SPI_CFG = 0x0b,
+  ESP_PIN_READ = 0x0c, /* ??? */
+  ESP_SPI_ATTACH = 0x0d,
+  ESP_SPI_READ = 0x0e,
+  ESP_SET_BAUD = 0x0f,
+  ESP_FLASH_DEFLATED_BEGIN = 0x10,
+  ESP_FLASH_DEFLATED_DATA = 0x11,
+  ESP_FLASH_DEFLATED_END = 0x12,
+  ESP_FLASH_VERIFY_MD5 = 0x13,
 
-  /*
-   * Compute MD5 digest of the specified flash region.
-   *
-   * Args: addr, len, digest_block_size; no alignment requirements.
-   * Input: None.
-   * Output: If block digests are not enabled (digest_block_size == 0),
-   *         only overall digest is produced.
-   *         Otherwise, there will be a separate digest for each block,
-   *         the remainder (if any) and the overall digest at the end.
-   */
-  CMD_FLASH_DIGEST = 3,
+  /* Stub-only commands */
+  ESP_ERASE_FLASH = 0xD0,
+  ESP_ERASE_REGION = 0xD1,
+  ESP_READ_FLASH = 0xD2,
+  ESP_GET_FLASH_ID = 0xD3,
+} esp_command;
 
-  /*
-   * Read flash chip ID.
-   * This is the JEDEC ID, containinf manufactirer, SPI mode and capacity.
-   *
-   * Args: None.
-   * Input: None.
-   * Output: 32 bit chip id (only 24 bits are meaningful).
-   */
-  CMD_FLASH_READ_CHIP_ID = 4,
+/* Command request header */
+typedef struct __attribute__((packed)) {
+  uint8_t zero;
+  uint8_t op; /* maps to esp_command enum */
+  uint16_t data_len;
+  int32_t checksum;
+  uint8_t data_buf[32]; /* actually variable length, determined by data_len */
+} esp_command_req_t;
 
-  /*
-   * Zap the whole chip at once.
-   *
-   * Args: None.
-   * Input: None.
-   * Output: None.
-   */
-  CMD_FLASH_ERASE_CHIP = 5,
+/* Command response header */
+typedef struct __attribute__((packed)) {
+  uint8_t resp; /* should be '1' */
+  uint8_t op_ret; /* Should match 'op' */
+  uint16_t len_ret; /* Length of result data (can be ignored as SLIP framing helps) */
+  int32_t value; /* 32-bit response used by some commands */
+} esp_command_response_t;
 
-  /*
-   * Boots the firmware from flash.
-   *
-   * Args: None.
-   * Input: None.
-   * Output: None.
-   */
-  CMD_BOOT_FW = 6,
 
-  /*
-   * Reboot the CPU.
-   * Since strapping settings are not reset, this will reboot into whatever mode
-   * got us here, most likely UART loader.
-   *
-   * Args: None.
-   * Input: None.
-   * Output: None.
-   */
-  CMD_REBOOT = 7,
-};
+/* command response has some (optional) data after it, then 2 (or 4 on ESP32 ROM)
+   bytes of status.
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t error; /* non-zero = failed */
+  uint8_t status; /* status of a failure */
+} esp_command_data_status_t;
+
+/* Error codes */
+typedef enum {
+  ESP_OK = 0,
+
+  ESP_BAD_DATA_LEN = 0xC0,
+  ESP_BAD_BLOCKSIZE = 0xC1,
+  ESP_INVALID_COMMAND = 0xC2,
+  ESP_FAILED_SPI_OP = 0xC3,
+  ESP_FAILED_SPI_UNLOCK = 0xC4,
+  ESP_NOT_IN_FLASH_MODE = 0xC5,
+
+  ESP_CMD_NOT_IMPLEMENTED = 0xFF,
+} esp_command_error;
 
 #endif /* STUB_FLASHER_H_ */

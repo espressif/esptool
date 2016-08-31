@@ -11,7 +11,7 @@
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 2 of the License, or (at your option) any later version.
 #
-import sys, os.path
+import sys, os.path, json
 
 THIS_DIR=os.path.dirname(sys.argv[0])
 
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     import esptool
     with open("%s/build/stub_flasher.json" % THIS_DIR) as f:
         stub = f.read()
-    esptool._CESANTA_FLASHER_STUB = stub
+    esptool.ESP8266ROM.STUB_CODE = json.loads(stub)
     esptool.main()
 
 

@@ -23,21 +23,19 @@ MEMORY {
 ENTRY(stub_main)
 
 SECTIONS {
-  .params 0x40100000 : {
-    _params_start = ABSOLUTE(.);
-    *(.params)
-    _params_end = ABSOLUTE(.);
-  } > iram
-
-  .code : ALIGN(4) {
-    _code_start = ABSOLUTE(.);
+  .text : ALIGN(4) {
     *(.literal)
     *(.text .text.*)
   } > iram
 
-  .data : {
-    _data_start = ABSOLUTE(.);
-    *(.bss .data)
+  .bss : ALIGN(4) {
+     _bss_start = ABSOLUTE(.);
+    *(.bss)
+	_bss_end = ABSOLUTE(.);
+  } > dram
+
+  .data : ALIGN(4) {
+    *(.data)
     *(.rodata .rodata.*)
   } > dram
 }
