@@ -1684,7 +1684,7 @@ class FlashSizeAction(argparse.Action):
             print("Please use the equivalent size '%s'." % (value))
             print("Megabit arguments may be removed in a future release.")
         except KeyError:
-            values = values[0]
+            value = values[0]
 
         known_sizes = dict(ESP8266ROM.FLASH_SIZES)
         known_sizes.update(ESP32ROM.FLASH_SIZES)
