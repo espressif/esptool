@@ -678,6 +678,9 @@ class ESP32ROM(ESPROM):
     def erase_region(self):
         raise NotImplementedInROMError(self)
 
+    def flash_id(self):
+        raise NotImplementedInROMError(self)
+
 class ESP32StubLoader(ESP32ROM):
     """ Access class for ESP32 stub loader, runs on top of ROM.
     """
@@ -1491,6 +1494,11 @@ def main():
         type=arg_auto_int,
         default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
 
+    parser.add_argument(
+        '--no-stub',
+        help="Disable launching the flasher stub, only talk to ROM bootloader. Some features will not be available.",
+        action='store_true')
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run esptool {command} -h for additional help')
@@ -1632,9 +1640,8 @@ def main():
         }[args.chip]
         esp = chip_constructor_fun(args.port, initial_baud)
 
-        # run the stub
-        esp = esp.run_stub()
-        # TODO: handle --no-stub option
+        if not args.no_stub:
+            esp = esp.run_stub()
 
         if args.baud > initial_baud:
             esp.change_baud(args.baud)
