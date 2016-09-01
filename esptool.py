@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # NB: Before sending a PR to change the above line to '#!/usr/bin/env python2', please read https://github.com/themadinventor/esptool/issues/21
 #
-# ESP8266 ROM Bootloader Utility
+# ESP8266 & ESP32 ROM Bootloader Utility
 # https://github.com/themadinventor/esptool
 #
-# Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, other contributors as noted.
-# ESP31/32 support Copyright (C) 2016 Angus Gratton, based in part on work Copyright
-# (C) 2015-2016 Espressif Systems.
+# Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) PTE LTD, other contributors as noted.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -26,7 +24,6 @@ import inspect
 import os
 import serial
 import struct
-import subprocess
 import sys
 import time
 import base64
@@ -41,7 +38,7 @@ MAX_UINT24 = 0xffffff
 
 class ESPROM(object):
     """ Base class providing access to ESP ROM bootloader. Subclasses provide
-    ESP8266, ESP31 & ESP32 specific functionality.
+    ESP8266 & ESP32 specific functionality.
 
     Don't instantiate this base class directly, either instantiate a subclass or
     call ESPROM.detect_chip() which will interrogate the chip and return the
@@ -112,8 +109,8 @@ class ESPROM(object):
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, do_connect=True):
         """Base constructor for ESPROM bootloader interaction
 
-        Don't call this constructor, either instantiate ESP8266ROM,
-        ESP31ROM, or ESP32ROM, or use ESPROM.detect_chip().
+        Don't call this constructor, either instantiate ESP8266ROM
+        or ESP32ROM, or use ESPROM.detect_chip().
 
         This base class has all of the instance methods for bootloader
         functionality supported across various chips & stub
@@ -139,7 +136,7 @@ class ESPROM(object):
         """Use serial access to detect the chip type.
 
         We use the UART's datecode register for this, it's mapped at
-        the same address on ESP8266 & ESP31/32 so we can use one
+        the same address on ESP8266 & ESP32 so we can use one
         memory read and compare to the datecode register for each chip
         type.
 
@@ -148,7 +145,7 @@ class ESPROM(object):
         sys.stdout.write('Detecting chip type... ')
         date_reg = detect_port.read_reg(ESPROM.UART_DATA_REG_ADDR)
 
-        for cls in [ESP8266ROM, ESP31ROM, ESP32ROM]:
+        for cls in [ESP8266ROM, ESP32ROM]:
             if date_reg == cls.DATE_REG_VALUE:
                 # don't connect a second time
                 inst = cls(detect_port._port, baud, False)
@@ -622,12 +619,21 @@ class ESP8266StubLoader(ESP8266ROM):
 
 ESP8266ROM.STUB_CLASS = ESP8266StubLoader
 
-class ESP31ROM(ESPROM):
-    """ Access class for ESP31 ROM bootloader
-    """
-    CHIP_NAME = "ESP31"
+class ESP32ROM(ESPROM):
+    """Access class for ESP32 ROM bootloader
 
-    DATE_REG_VALUE = 0x15052100
+    """
+    CHIP_NAME = "ESP32"
+
+    DATE_REG_VALUE = 0x15122500
+
+    IROM_MAP_START = 0x400d0000
+    IROM_MAP_END   = 0x40400000
+    DROM_MAP_START = 0x3F400000
+    DROM_MAP_END   = 0x3F700000
+
+    # ESP32 uses a 4 byte status reply
+    STATUS_BYTES_LENGTH = 4
 
     SPI_CMD_REG_ADDR = 0x60003000
     SPI_W0_REG_ADDR = 0x60003040
@@ -671,22 +677,6 @@ class ESP31ROM(ESPROM):
 
     def erase_region(self):
         raise NotImplementedInROMError(self)
-    
-class ESP32ROM(ESP31ROM):
-    """Access class for ESP32 ROM bootloader
-
-    """
-    CHIP_NAME = "ESP32"
-
-    DATE_REG_VALUE = 0x15122500
-
-    IROM_MAP_START = 0x400d0000
-    IROM_MAP_END   = 0x40400000
-    DROM_MAP_START = 0x3F400000
-    DROM_MAP_END   = 0x3F700000
-
-    # ESP32 uses a 4 byte status reply
-    STATUS_BYTES_LENGTH = 4
 
 class ESP32StubLoader(ESP32ROM):
     """ Access class for ESP32 stub loader, runs on top of ROM.
@@ -1178,22 +1168,6 @@ def div_roundup(a, b):
     return (int(a) + int(b) - 1) / int(b)
 
 
-def binutils_safe_path(p):
-    """Returns a 'safe' version of path 'p' to pass to binutils
-
-    Only does anything under Cygwin Python, where cygwin paths need to
-    be translated to Windows paths if the binutils wasn't compiled
-    using Cygwin (should also work with binutils compiled using
-    Cygwin, see #73.)
-    """
-    if sys.platform == "cygwin":
-        try:
-            return subprocess.check_output(["cygpath", "-w", p]).rstrip('\n')
-        except subprocess.CalledProcessError:
-            print "WARNING: Failed to call cygpath to sanitise Cygwin path."
-    return p
-
-
 def align_file_position(f, size):
     """ Align the position in the file to the next block of specified size """
     align = (size - 1) - (f.tell() % size)
@@ -1393,9 +1367,7 @@ def elf2image(args):
         print "Creating image for ESP8266..."
         args.chip == 'esp8266'
 
-    if args.chip == 'esp31':
-        raise FatalError("No elf2image support for ESP31. Use gen_appimage.py from the ESP31 SDK")
-    elif args.chip == 'esp32':
+    if args.chip == 'esp32':
         image = ESP32FirmwareImage()
     elif args.version == '1':  # ESP8266
         image = ESPFirmwareImage()
@@ -1656,7 +1628,6 @@ def main():
         chip_constructor_fun = {
             'auto': ESPROM.detect_chip,
             'esp8266': ESP8266ROM,
-            'esp31': ESP31ROM,
             'esp32': ESP32ROM,
         }[args.chip]
         esp = chip_constructor_fun(args.port, initial_baud)
