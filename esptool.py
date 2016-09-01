@@ -427,7 +427,7 @@ class ESPROM(object):
 
     def erase_flash(self):
         oldtimeout = self._port.timeout
-        self._port.timeout = 10
+        self._port.timeout = 128 # depending on brand flash erase may take this long or longer
         try:
             self.check_command("erase flash", self.ESP_ERASE_FLASH)
         finally:
@@ -1429,8 +1429,9 @@ def chip_id(esp, args):
 
 def erase_flash(esp, args):
     print 'Erasing flash (this may take a while)...'
+    t = time.time()
     esp.erase_flash()
-    print 'Erase completed successfully.'
+    print 'Chip erase completed successfully in %.1fs' % (time.time() - t)
 
 def erase_region(esp, args):
     print 'Erasing region (may be slow depending on size)...'
