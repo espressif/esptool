@@ -149,6 +149,21 @@ class TestErase(EsptoolTestCase):
         empty = self.readback(0x10000, 0x1000)
         self.assertTrue(empty == '\xFF'*0x1000)
 
+class TestVerifyCommand(EsptoolTestCase):
+
+    def test_verify_success(self):
+        self.run_esptool("write_flash 0x5000 images/one_kb.bin")
+        self.run_esptool("verify_flash 0x5000 images/one_kb.bin")
+
+    def test_verify_failure(self):
+        self.run_esptool("write_flash 0x6000 images/sector.bin")
+        with self.assertRaises(subprocess.CalledProcessError) as fail:
+            self.run_esptool("verify_flash --diff=yes 0x6000 images/one_kb.bin")
+        failure = fail.exception
+        self.assertIn("verify FAILED", failure.output)
+        self.assertIn("first @ 0x00006000", failure.output)
+
+
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print "Usage: %s <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0]

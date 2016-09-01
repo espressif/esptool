@@ -1461,7 +1461,7 @@ def read_flash(esp, args):
     file(args.filename, 'wb').write(data)
 
 
-def _verify_flash(flasher, args, flash_params=None):
+def verify_flash(esp, args, flash_params=None):
     differences = False
     for address, argfile in args.addr_filename:
         image = argfile.read()
@@ -1471,9 +1471,8 @@ def _verify_flash(flasher, args, flash_params=None):
         image_size = len(image)
         print 'Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name)
         # Try digest first, only read if there are differences.
-        digest, _ = flasher.flash_digest(address, image_size)
-        digest = hexify(digest).upper()
-        expected_digest = hashlib.md5(image).hexdigest().upper()
+        digest = esp.flash_md5sum(address, image_size)
+        expected_digest = hashlib.md5(image).hexdigest()
         if digest == expected_digest:
             print '-- verify OK (digest matched)'
             continue
@@ -1483,7 +1482,7 @@ def _verify_flash(flasher, args, flash_params=None):
                 print '-- verify FAILED (digest mismatch)'
                 continue
 
-        flash = flasher.flash_read(address, image_size)
+        flash = esp.read_flash(address, image_size)
         assert flash != image
         diff = [i for i in xrange(image_size) if flash[i] != image[i]]
         print '-- verify FAILED: %d differences, first @ 0x%08x' % (len(diff), address + diff[0])
@@ -1491,11 +1490,6 @@ def _verify_flash(flasher, args, flash_params=None):
             print '   %08x %02x %02x' % (address + d, ord(flash[d]), ord(image[d]))
     if differences:
         raise FatalError("Verify failed.")
-
-
-def verify_flash(esp, args, flash_params=None):
-    flasher = CesantaFlasher(esp)
-    _verify_flash(flasher, args, flash_params)
 
 
 def version(args):
