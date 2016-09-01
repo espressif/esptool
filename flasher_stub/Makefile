@@ -66,7 +66,7 @@ $(BUILD_DIR):
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin \
-         -Wl,-static
+         -Wl,-static -g
 
 CFLAGS_8266 = $(CFLAGS) -I$(SDK_PATH) -I$(SDK_PATH)/include -L$(SDK_PATH)/ld
 CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -L$(IDF_PATH)

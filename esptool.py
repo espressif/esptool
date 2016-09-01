@@ -64,6 +64,9 @@ class ESPROM(object):
     ESP_READ_REG    = 0x0a
 
     # Some comands supported by ESP32 ROM bootloader (or -8266 w/ stub)
+    ESP_SPI_SET_PARAMS = 0x0B
+    ESP_SPI_ATTACH     = 0x0D
+
     ESP_CHANGE_BAUDRATE = 0x0F
     ESP_FLASH_DEFL_BEGIN = 0x10
     ESP_FLASH_DEFL_DATA  = 0x11
@@ -118,7 +121,10 @@ class ESPROM(object):
         with ones which throw NotImplementedInROMError().
 
         """
-        self._port = serial.Serial(port)
+        if isinstance(port, serial.Serial):
+            self._port = port
+        else:
+            self._port = serial.Serial(port)
         self._slip_reader = slip_reader(self._port)
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
@@ -141,9 +147,11 @@ class ESPROM(object):
         detect_port = ESPROM(port, baud, True)
         sys.stdout.write('Detecting chip type... ')
         date_reg = detect_port.read_reg(ESPROM.UART_DATA_REG_ADDR)
+
         for cls in [ESP8266ROM, ESP31ROM, ESP32ROM]:
             if date_reg == cls.DATE_REG_VALUE:
-                inst = cls(port, baud, False)  # don't connect a second time
+                # don't connect a second time
+                inst = cls(detect_port._port, baud, False)
                 print '%s' % inst.CHIP_NAME
                 return inst
         print ''
@@ -204,7 +212,7 @@ class ESPROM(object):
 
         # the status bytes are the last 2/4 bytes in the data (depending on chip)
         if len(data) < self.STATUS_BYTES_LENGTH:
-            raise FatalError("Failed to %s. Only got %d byte status response." % op_description, len(data))
+            raise FatalError("Failed to %s. Only got %d byte status response." % (op_description, len(data)))
         status_bytes = data[-self.STATUS_BYTES_LENGTH:]
         # we only care if the first one is non-zero. If it is, the second byte is a reason.
         if status_bytes[0] != '\0':
@@ -269,7 +277,7 @@ class ESPROM(object):
         return val
 
     """ Write to memory address in target """
-    def write_reg(self, addr, value, mask, delay_us=0):
+    def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0):
         return self.check_command("write target memory", ESPROM.ESP_WRITE_REG,
                                   struct.pack('<IIII', addr, value, mask, delay_us))
 
@@ -355,7 +363,6 @@ class ESPROM(object):
         print "Uploading stub..."
         for field in [ 'text', 'data' ]:
             if field in stub:
-                print field
                 self.mem_begin(len(stub[field]), 1, len(stub[field]),
                                stub[field+"_start"])
                 self.mem_block(stub[field], 0)
@@ -462,6 +469,36 @@ class ESPROM(object):
             raise FatalError('Digest mismatch: expected %s, got %s' % (expected_digest, digest))
         return data
 
+    def flash_spi_attach(self,is_hspi,is_legacy):
+        """Send SPI attach command to enable the SPI flash pins
+
+        ESP8266 ROM does this when you send flash_begin, ESP32 ROM
+        has it as a SPI command.
+        """
+        # last 3 bytes in ESP_SPI_ATTACH argument are reserved values
+        arg = struct.pack('<IBBBB', 1 if is_hspi else 0, 1 if is_legacy else 0, 0, 0, 0)
+        self.check_command("configure SPI flash pins", ESP32ROM.ESP_SPI_ATTACH, arg)
+
+    def flash_set_parameters(self, size):
+        """Tell the ESP bootloader the parameters of the chip
+
+        Corresponds to the "flashchip" data structure that the ROM
+        has in RAM.
+
+        'size' is in bytes.
+
+        All other flash parameters are currently hardcoded (on ESP8266
+        these are mostly ignored by ROM code, on ESP32 I'm not sure.)
+        """
+        fl_id = 0
+        total_size = size
+        block_size = 64 * 1024
+        sector_size = 4 * 1024
+        page_size = 256
+        status_mask = 0xffff
+        self.check_command("set SPI params", ESP32ROM.ESP_SPI_SET_PARAMS,
+                           struct.pack('<IIIIII', fl_id, total_size, block_size, sector_size, page_size, status_mask))
+
 class ESP8266ROM(ESPROM):
     """ Access class for ESP8266 ROM bootloader
     """
@@ -514,6 +551,12 @@ class ESP8266ROM(ESPROM):
 
     def read_flash(self, *args):
         raise NotImplementedInROMError(self)
+
+    def flash_spi_attach(self, is_spi, is_legacy):
+        pass # not implemented in ROM, but OK to silently skip
+
+    def flash_set_parameters(self, size):
+        pass # not implemented in ROM, but OK to silently skip
 
     def chip_id(self):
         """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
@@ -642,11 +685,6 @@ class ESP32ROM(ESP31ROM):
 
     DATE_REG_VALUE = 0x15122500
 
-    # ESP32-only commands
-    ESP_SPI_FLASH_SET = 0xb
-
-    ESP_SPI_ATTACH_REQ = 0xD
-
     IROM_MAP_START = 0x400d0000
     IROM_MAP_END   = 0x40400000
     DROM_MAP_START = 0x3F400000
@@ -655,36 +693,35 @@ class ESP32ROM(ESP31ROM):
     # ESP32 uses a 4 byte status reply
     STATUS_BYTES_LENGTH = 4
 
-    def flash_spi_attach_req(self,ucIsHspi,ucIsLegacy):
-        """Send SPI attach command
+class ESP32StubLoader(ESP32ROM):
+    """ Access class for ESP32 stub loader, runs on top of ROM.
+    """
+    FLASH_WRITE_SIZE = 8192  # matches MAX_WRITE_BLOCK in stub_loader.c
+    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
 
-        Internal Espressif function. Deprecate?
-        """
-        print "SEND ESP SPI ATTACH CMD"
-        # last 3 bytes in ESP_SPI_ATTACH_REQ argument are reserved values
-        arg = struct.pack('<IBBBB', ucIsHspi, ucIsLegacy, 0, 0, 0)
-        self.check_command("configure SPI Flash attachment", ESP32ROM.ESP_SPI_ATTACH_REQ,
-                           arg)
+    def __init__(self, rom_loader):
+        self._port = rom_loader._port
+        self.flush_input() # resets _slip_reader
 
-    def flash_spi_param_set(self):
-        """Set the flash params for ESP booter
+    def change_baud(self, baud):
+        return ESPROM.change_baud(self, baud)
 
-        I think this means writing a "flash_chip" type structure to RAM, so the ESP32 knows we have a larger flash size.
-        """
-        # FOR ESP32, SET FLASH INFO FOR ROM CODE, DEFAULT IS 16Mbits, WE NEED TO RE-SET IT TO A BIGGER SIZE.
-        print("SET FLASH PARAMS")
-        fl_id = 0
-        total_size = (128 / 8) * 1024 * 1024
-        block_size = 64 * 1024
-        sector_size = 4 * 1024
-        page_size = 256
-        status_mask = 0xffff
+    def flash_md5sum(self, addr, size):
+        return ESPROM.flash_md5sum(self, addr, size)
 
-        err = self.command(ESP32ROM.ESP_SPI_FLASH_SET,
-                           struct.pack('<IIIIII', fl_id, total_size, block_size, sector_size, page_size, status_mask))[1]
-        if err:  # Should be checking one part of this tuple or the other, I think
-            raise FatalError.WithResult('Failed to config flash', err)
+    def flash_id(self):
+        return ESPROM.flash_id(self)
 
+    def erase_flash(self):
+        return ESPROM.erase_flash(self)
+
+    def erase_region(self, offset, size):
+        return ESPROM.erase_region(self, offset, size)
+
+    def read_flash(self, *args):
+        return ESPROM.read_flash(self, *args)
+
+ESP32ROM.STUB_CLASS = ESP32StubLoader
 
 class ESPBOOTLOADER(object):
     """ These are constants related to software ESP bootloader, working with 'v2' image files """
@@ -1167,6 +1204,16 @@ def align_file_position(f, size):
     align = (size - 1) - (f.tell() % size)
     f.seek(align, 1)
 
+def flash_size_bytes(size):
+    """ Given a flash size of the type passed in args.flash_size
+    (ie 512KB or 1MB) then return the size in bytes.
+    """
+    if "MB" in size:
+        return int(size[:size.index("MB")]) * 1024 * 1024
+    elif "KB" in size:
+        return int(size[:size.index("KB")]) * 1024
+    else:
+        raise FatalError("Unknown size %s" % size)
 
 def hexify(s):
     return ''.join('%02X' % ord(c) for c in s)
@@ -1249,7 +1296,6 @@ def dump_mem(esp, args):
         sys.stdout.flush()
     print 'Done!'
 
-
 def write_flash(esp, args):
     """Write data to flash
     """
@@ -1257,22 +1303,6 @@ def write_flash(esp, args):
     flash_size_freq = esp.parse_flash_size_arg(args.flash_size)
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
     flash_info = struct.pack('BB', flash_mode, flash_size_freq)
-
-    if hasattr(esp, "flash_spi_attach_req"):
-        # TODO: this hack should go away
-        print "\n\n"
-        print "********************************"
-        uc_is_hspi = int(args.ucIsHspi,16)
-        uc_is_legacy = int(args.ucIsLegacy,16) & 0xff
-        print "IS HSPI: 0x%08x" % (uc_is_hspi),type(uc_is_hspi)
-        print "--------------------------"
-        print "IS LEGACY: 0x%02x" % uc_is_legacy,type(uc_is_legacy)
-        print "*********************************"
-        print "SENDING SPI ATTACH COMMAND"
-        print "--------------"
-        esp.flash_spi_attach_req(uc_is_hspi,uc_is_legacy)
-    print "START DOWNLOADING..."
-
     for address, argfile in args.addr_filename:
         print 'Erasing flash...'
         if args.compress:
@@ -1539,6 +1569,8 @@ def main():
                             ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1, 4MB-2)',
                             action=FlashSizeAction,
                             default=os.environ.get('ESPTOOL_FS', '1MB'))
+        parent.add_argument('--ucIsHspi', '-ih', help='Config SPI PORT/PINS (Espressif internal feature)',action='store_true')
+        parent.add_argument('--ucIsLegacy', '-il', help='Config SPI LEGACY (Espressif internal feature)',action='store_true')
 
     parser_write_flash = subparsers.add_parser(
         'write_flash',
@@ -1548,8 +1580,6 @@ def main():
     add_spi_flash_subparsers(parser_write_flash)
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
     parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
-    parser_write_flash.add_argument('--ucIsHspi', '-ih', help='Config SPI PORT/PINS (Espressif internal feature)',default='0')
-    parser_write_flash.add_argument('--ucIsLegacy', '-il', help='Config SPI LEGACY (Espressif internal feature)',default='0')
     parser_write_flash.add_argument('--compress', '-z', help='Compress data in transfer',action="store_true")
 
     subparsers.add_parser(
@@ -1648,6 +1678,14 @@ def main():
         if args.baud > initial_baud:
             esp.change_baud(args.baud)
             # TODO: handle a NotImplementedInROMError
+
+        # override common SPI flash parameter stuff as required
+        if hasattr(args, "ucIsHspi"):
+            print "Attaching SPI flash..."
+            esp.flash_spi_attach(args.ucIsHspi,args.ucIsLegacy)
+        if hasattr(args, "flash_size"):
+            print "Configuring flash size..."
+            esp.flash_set_parameters(flash_size_bytes(args.flash_size))
 
         operation_func(esp, args)
     else:

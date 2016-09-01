@@ -37,7 +37,7 @@ typedef enum {
   ESP_READ_REG = 0x0a,
 
   /* Commands supported by the ESP32 bootloader */
-  ESP_SPI_CFG = 0x0b,
+  ESP_SPI_SET_PARAMS = 0x0b,
   ESP_PIN_READ = 0x0c, /* ??? */
   ESP_SPI_ATTACH = 0x0d,
   ESP_SPI_READ = 0x0e,

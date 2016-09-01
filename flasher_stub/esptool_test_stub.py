@@ -20,7 +20,9 @@ if __name__ == "__main__":
     import esptool
     with open("%s/build/stub_flasher.json" % THIS_DIR) as f:
         stub = f.read()
-    esptool.ESP8266ROM.STUB_CODE = json.loads(stub)
+    stub = json.loads(stub)
+    esptool.ESP8266ROM.STUB_CODE = stub["stub_flasher_8266"]
+    esptool.ESP32ROM.STUB_CODE = stub["stub_flasher_32"]
     esptool.main()
 
 

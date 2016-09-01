@@ -43,7 +43,7 @@ class EsptoolTestCase(unittest.TestCase):
         cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "--port", serialport, "--baud", str(baud) ] + args.split(" ")
         print("Running %s..." % (" ".join(cmd)))
         try:
-            output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR)
+            output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT)
             print(output)  # for more complete stdout logs on failure
             return output
         except subprocess.CalledProcessError as e:

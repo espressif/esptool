@@ -32,9 +32,9 @@
  */
 
 #include "stub_flasher.h"
+#include "rom_functions.h"
 
 #ifdef ESP8266
-#include "rom_functions.h"
 #include "eagle_soc.h"
 #include "ets_sys.h"
 #include "examples/driver_lib/include/driver/uart_register.h"
@@ -43,23 +43,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 #define NULL ((void *)0) /*FIXME*/
-
 #include "soc/soc.h"
 #include "soc/uart_register.h"
-#include "rom/ets_sys.h"
-#include "rom/spi_flash.h"
-#include "rom/md5_hash.h"
-#include "rom/uart.h"
 #endif
 
 #include "slip.h"
 
-/* TODO(rojer): read sector and block sizes from device ROM. */
 #define FLASH_SECTOR_SIZE 4096
 #define FLASH_BLOCK_SIZE 65536
+#define FLASH_PAGE_SIZE 256
+#define FLASH_STATUS_MASK 0xFFFF
 #define SECTORS_PER_BLOCK (FLASH_BLOCK_SIZE / FLASH_SECTOR_SIZE)
-
-#define UART_CLKDIV_26MHZ(B) (52000000 + B / 2) / B
 
 #define UART_RX_INTS (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA)
 
@@ -151,6 +145,17 @@ void uart_isr(void *arg) {
     }
   }
   WRITE_PERI_REG(UART_INT_CLR(0), int_st);
+}
+
+static uint32_t baud_rate_to_divider(uint32_t baud_rate) {
+  uint32_t master_freq;
+#ifdef ESP8266
+  master_freq = 52*1000*1000;
+#else
+  master_freq = ets_get_detected_xtal_freq()<<4;
+#endif
+  master_freq += (baud_rate / 2);
+  return master_freq / baud_rate;
 }
 
 typedef struct {
@@ -284,6 +289,27 @@ int handle_flash_read_chip_id() {
   return 0;
 }
 
+esp_command_error handle_spi_set_params(uint32_t *args, int *status)
+{
+  *status = SPIParamCfg(args[0], args[1], args[2], args[3], args[4], args[5]);
+  return *status ? ESP_FAILED_SPI_OP : ESP_OK;
+}
+
+esp_command_error handle_spi_attach(bool isHspi, bool isLegacy)
+{
+#ifdef ESP8266
+	    /* ESP8266 doesn't yet support SPI flash on HSPI, but could:
+		 see https://github.com/themadinventor/esptool/issues/98 */
+	    SelectSpiFunction();
+#else
+		/* spi_flash_attach calls SelectSpiFunction() and another
+		   function to initialise SPI flash interface. */
+		spi_flash_attach(isHspi, isLegacy);
+#endif
+		return ESP_OK; /* neither function/attach command takes an arg */
+}
+
+
 static esp_command_error verify_data_len(esp_command_req_t *command, uint8_t len)
 {
   return (command->data_len == len) ? ESP_OK : ESP_BAD_DATA_LEN;
@@ -320,6 +346,7 @@ uint8_t cmd_loop() {
 	   between here and when we send the end of the frame */
 
 	esp_command_error error = ESP_CMD_NOT_IMPLEMENTED;
+	int status = 0;
 
 	/* First stage of command processing - before sending error/status */
 	switch (command->op) {
@@ -368,10 +395,18 @@ uint8_t cmd_loop() {
 	case ESP_FLASH_END:
 	  error = handle_flash_end();
 	  break;
+	case ESP_SPI_SET_PARAMS:
+	  /* data params: fl_id, total_size, block_size, sector_Size, page_size, status_mask */
+	  error = verify_data_len(command, 24) || handle_spi_set_params(data_words, &status);
+	  break;
+	case ESP_SPI_ATTACH:
+	  /* params are isHSPI, isLegacy */
+	  error = verify_data_len(command, 8) || handle_spi_attach(data_words[0], data_words[1] & 0xFF);
+	  break;
 	}
 
 	SLIP_send_frame_data(error);
-	SLIP_send_frame_data(0);
+	SLIP_send_frame_data(status);
 	SLIP_send_frame_delimiter();
 
 	/* Some commands need to do things after after sending this response */
@@ -379,7 +414,7 @@ uint8_t cmd_loop() {
 	  switch(command->op) {
 	  case ESP_SET_BAUD:
 		ets_delay_us(10000);
-		uart_div_modify(0, UART_CLKDIV_26MHZ(data_words[0]));
+		uart_div_modify(0, baud_rate_to_divider(data_words[0]));
 		ets_delay_us(1000);
 		break;
 	  case ESP_READ_FLASH:
@@ -425,12 +460,15 @@ void stub_main() {
   // TODO for ESP32
 #endif
 
-  /* Selects SPI functions for flash pins. */
+  /* Configure default SPI flash functionality.
+	 Can be changed later by esptool.py. */
 #ifdef ESP8266
-  SelectSpiFunction();
+	    SelectSpiFunction();
 #else
-  // TODO for ESP32
+		spi_flash_attach(0, 0);
 #endif
+		SPIParamCfg(0, 16*1024*1024, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
+					FLASH_PAGE_SIZE, FLASH_STATUS_MASK);
 
   last_cmd = cmd_loop();
 

@@ -43,3 +43,4 @@ SECTIONS {
 INCLUDE "eagle.rom.addr.v6.ld"
 
 PROVIDE(SPIFlashModeConfig = 0x40004568);
+PROVIDE(SPIParamCfg = 0x40004c2c);
