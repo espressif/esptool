@@ -18,11 +18,9 @@ THIS_DIR=os.path.dirname(sys.argv[0])
 if __name__ == "__main__":
     sys.path.append("..")
     import esptool
-    with open("%s/build/stub_flasher.json" % THIS_DIR) as f:
-        stub = f.read()
-    stub = json.loads(stub)
-    esptool.ESP8266ROM.STUB_CODE = stub["stub_flasher_8266"]
-    esptool.ESP32ROM.STUB_CODE = stub["stub_flasher_32"]
+    # Python hackiness: evaluate the snippet in the context of the esptool module, so it
+    # edits the esptool's global variables
+    execfile("%s/build/stub_flasher_snippet.py" % THIS_DIR, esptool.__dict__, esptool.__dict__)
     esptool.main()
 
 

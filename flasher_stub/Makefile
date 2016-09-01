@@ -55,11 +55,11 @@ BUILD_DIR = build
 
 STUB_ELF_8266 = $(BUILD_DIR)/$(patsubst %.c,%_8266.elf,$(STUB))
 STUB_ELF_32 = $(BUILD_DIR)/$(patsubst %.c,%_32.elf,$(STUB))
-STUB_JSON = $(BUILD_DIR)/$(patsubst %.c,%.json,$(STUB))
+STUB_PY = $(BUILD_DIR)/$(patsubst %.c,%_snippet.py,$(STUB))
 
 .PHONY: all clean
 
-all: $(STUB_JSON)
+all: $(STUB_PY)
 
 $(BUILD_DIR):
 	$(Q) mkdir $@
@@ -79,7 +79,7 @@ $(STUB_ELF_32): $(STUB) $(LIBS_ESP32) $(BUILD_DIR) stub_32.ld
 	@echo "  CC(32)   $^ -> $@"
 	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -o $@ $(filter %.c, $^)
 
-$(STUB_JSON): $(STUB_ELF_8266) $(STUB_ELF_32) wrap_stub.py
+$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
 	$(Q) $(WRAP_STUB) $(filter %.elf,$^) $@
 

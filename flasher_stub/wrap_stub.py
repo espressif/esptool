@@ -15,7 +15,8 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import json
+import base64
+import zlib
 import os
 import os.path
 import sys
@@ -52,11 +53,26 @@ def wrap_stub(elf_file):
             len(stub['text']), stub['text_start'],
             len(stub.get('data', '')), stub.get('data_start', 0),
             entry, stub['entry']))
-
-    stub['text'] = esptool.hexify(stub['text'])
-    if 'data' in stub:
-        stub['data'] = esptool.hexify(stub['data'])
     return stub
+
+PYTHON_TEMPLATE = """\
+ESP%sROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b\"\"\"
+%s\"\"\")))
+"""
+
+def write_python_snippet(stubs):
+    with open(sys.argv[-1], 'w') as f:
+        f.write("# Binary stub code (see flasher_stub dir for source & details)\n")
+        for key in "8266", "32":
+            stub_data = stubs["stub_flasher_%s" % key]
+            encoded = base64.b64encode(zlib.compress(repr(stub_data), 9))
+            in_lines = ""
+            # split encoded data into 160 character lines
+            LINE_LEN=160
+            for c in range(0, len(encoded), LINE_LEN):
+                in_lines += encoded[c:c+LINE_LEN] + "\\\n"
+            f.write(PYTHON_TEMPLATE % (key, in_lines))
+        print("Python snippet is %d bytes" % f.tell())
 
 def stub_name(filename):
     """ Return a dictionary key for the stub with filename 'filename' """
@@ -64,8 +80,5 @@ def stub_name(filename):
 
 if __name__ == '__main__':
     stubs = dict( (stub_name(elf_file),wrap_stub(elf_file)) for elf_file in sys.argv[1:-1] )
-    print 'Dumping to JSON file %s.' % sys.argv[-1]
-
-    as_json = json.dumps(stubs)
-    with open(sys.argv[-1], 'w') as f:
-        f.write(as_json)
+    print 'Dumping to Python snippet file %s.' % sys.argv[-1]
+    write_python_snippet(stubs)
