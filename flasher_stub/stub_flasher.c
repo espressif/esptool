@@ -33,31 +33,20 @@
 
 #include "stub_flasher.h"
 #include "rom_functions.h"
+#include "slip.h"
+#include "stub_commands.h"
+#include "stub_write_flash.h"
 
 #ifdef ESP8266
-#include "eagle_soc.h"
 #include "ets_sys.h"
 #include "examples/driver_lib/include/driver/uart_register.h"
-#include "examples/driver_lib/include/driver/spi_register.h"
 #else
-#include <stdint.h>
-#include <stdbool.h>
-#define NULL ((void *)0) /*FIXME*/
 #include "soc/soc.h"
 #include "soc/uart_register.h"
 #endif
 
-#include "slip.h"
-
-#define FLASH_SECTOR_SIZE 4096
-#define FLASH_BLOCK_SIZE 65536
-#define FLASH_PAGE_SIZE 256
-#define FLASH_STATUS_MASK 0xFFFF
-#define SECTORS_PER_BLOCK (FLASH_BLOCK_SIZE / FLASH_SECTOR_SIZE)
-
 #define UART_RX_INTS (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA)
 
-#define MAX_WRITE_BLOCK 8192
 
 #ifdef ESP32
 /* ESP32 register naming is a bit more consistent */
@@ -68,31 +57,15 @@
 #define UART_FIFO(X) UART_FIFO_REG(X)
 #endif
 
-
-int handle_flash_erase(uint32_t addr, uint32_t len) {
-  if (addr % FLASH_SECTOR_SIZE != 0) return 0x32;
-  if (len % FLASH_SECTOR_SIZE != 0) return 0x33;
-  if (SPIUnlock() != 0) return 0x34;
-
-  while (len > 0 && (addr % FLASH_BLOCK_SIZE != 0)) {
-    if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x35;
-    len -= FLASH_SECTOR_SIZE;
-    addr += FLASH_SECTOR_SIZE;
-  }
-
-  while (len > FLASH_BLOCK_SIZE) {
-    if (SPIEraseBlock(addr / FLASH_BLOCK_SIZE) != 0) return 0x36;
-    len -= FLASH_BLOCK_SIZE;
-    addr += FLASH_BLOCK_SIZE;
-  }
-
-  while (len > 0) {
-    if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x37;
-    len -= FLASH_SECTOR_SIZE;
-    addr += FLASH_SECTOR_SIZE;
-  }
-
-  return 0;
+static uint32_t baud_rate_to_divider(uint32_t baud_rate) {
+  uint32_t master_freq;
+#ifdef ESP8266
+  master_freq = 52*1000*1000;
+#else
+  master_freq = ets_get_detected_xtal_freq()<<4;
+#endif
+  master_freq += (baud_rate / 2);
+  return master_freq / baud_rate;
 }
 
 /* Buffers for reading from UART. Data is read double-buffered, so
@@ -146,169 +119,6 @@ void uart_isr(void *arg) {
   }
   WRITE_PERI_REG(UART_INT_CLR(0), int_st);
 }
-
-static uint32_t baud_rate_to_divider(uint32_t baud_rate) {
-  uint32_t master_freq;
-#ifdef ESP8266
-  master_freq = 52*1000*1000;
-#else
-  master_freq = ets_get_detected_xtal_freq()<<4;
-#endif
-  master_freq += (baud_rate / 2);
-  return master_freq / baud_rate;
-}
-
-typedef struct {
-  bool in_flash_mode;
-  uint32_t next_write;
-  int next_erase_sector;
-  uint32_t remaining;
-  int remaining_erase_sector;
-  esp_command_error last_error;
-} flashing_state_t;
-flashing_state_t flashing_state;
-
-esp_command_error handle_flash_begin(uint32_t erase_size, uint32_t num_blocks, uint32_t block_size, uint32_t offset) {
-  if (block_size > MAX_WRITE_BLOCK)
-	return ESP_BAD_BLOCKSIZE;
-
-  flashing_state.in_flash_mode = true;
-  flashing_state.next_write = offset;
-  flashing_state.next_erase_sector = offset / FLASH_SECTOR_SIZE;
-  flashing_state.remaining = num_blocks * block_size;
-  flashing_state.remaining_erase_sector = (flashing_state.remaining + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
-  flashing_state.last_error = ESP_OK;
-
-  if (SPIUnlock() != 0) {
-	return ESP_FAILED_SPI_UNLOCK;
-  }
-
-  return ESP_OK;
-}
-
-void handle_flash_data(void *data_buf, uint32_t length) {
-  /* what sector is this write going to end in?
-	 make sure we've erased at least that far.
-   */
-  int last_sector = (flashing_state.next_write + length + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
-  while(flashing_state.next_erase_sector < last_sector) {
-	if(flashing_state.next_erase_sector % SECTORS_PER_BLOCK == 0
-	   && flashing_state.remaining_erase_sector > SECTORS_PER_BLOCK) {
-	  SPIEraseBlock(flashing_state.next_erase_sector / SECTORS_PER_BLOCK);
-	  flashing_state.next_erase_sector += SECTORS_PER_BLOCK;
-	  flashing_state.remaining_erase_sector -= SECTORS_PER_BLOCK;
-	} else {
-	  SPIEraseSector(flashing_state.next_erase_sector++);
-	  flashing_state.remaining_erase_sector--;
-	}
-  }
-
-  if (SPIWrite(flashing_state.next_write, data_buf, length)) {
-	flashing_state.last_error = ESP_FAILED_SPI_OP;
-  }
-  flashing_state.next_write += length;
-  flashing_state.remaining -= length;
-}
-
-esp_command_error handle_flash_end(void)
-{
-  if(!flashing_state.in_flash_mode) {
-	return ESP_NOT_IN_FLASH_MODE;
-  }
-
-  /* TODO: check bytes written, etc. */
-
-  flashing_state.in_flash_mode = false;
-  return flashing_state.last_error;
-}
-
-void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
-                  uint32_t max_in_flight) {
-  uint8_t buf[FLASH_SECTOR_SIZE];
-  uint8_t digest[16];
-  struct MD5Context ctx;
-  uint32_t num_sent = 0, num_acked = 0;
-
-  /* This is one routine where we still do synchronous I/O */
-  ets_isr_mask(1 << ETS_UART_INUM);
-
-  if (block_size > sizeof(buf)) {
-	return;
-  }
-  MD5Init(&ctx);
-  while (num_acked < len && num_acked <= num_sent) {
-    while (num_sent < len && num_sent - num_acked < max_in_flight) {
-      uint32_t n = len - num_sent;
-      if (n > block_size) n = block_size;
-      if (SPIRead(addr, (uint32_t *)buf, n) != 0) {
-		break;
-	  }
-      SLIP_send(buf, n);
-      MD5Update(&ctx, buf, n);
-      addr += n;
-      num_sent += n;
-    }
-	int r = SLIP_recv(&num_acked, sizeof(num_acked));
-	if (r != 4) {
-	  break;
-	}
-  }
-  MD5Final(digest, &ctx);
-  SLIP_send(digest, sizeof(digest));
-
-  /* Go back to async UART */
-  ets_isr_unmask(1 << ETS_UART_INUM);
-}
-
-int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
-  uint8_t buf[FLASH_SECTOR_SIZE];
-  uint8_t digest[16];
-  struct MD5Context ctx;
-  MD5Init(&ctx);
-  while (len > 0) {
-    uint32_t n = len;
-    if (n > FLASH_SECTOR_SIZE) n = FLASH_SECTOR_SIZE;
-    if (SPIRead(addr, (uint32_t *)buf, n) != 0) return 0x63;
-    MD5Update(&ctx, buf, n);
-    addr += n;
-    len -= n;
-  }
-  MD5Final(digest, &ctx);
-  /* ESP32 ROM sends as hex, but we just send a raw bytes - esptool.py can handle either. */
-  SLIP_send_frame_data_buf(digest, sizeof(digest));
-  return 0;
-}
-
-int handle_flash_read_chip_id() {
-  uint32_t chip_id = 0;
-  WRITE_PERI_REG(SPI_CMD(0), SPI_FLASH_RDID);
-  while (READ_PERI_REG(SPI_CMD(0)) & SPI_FLASH_RDID) {
-  }
-  chip_id = READ_PERI_REG(SPI_W0(0)) & 0xFFFFFF;
-  SLIP_send_frame_data_buf(&chip_id, sizeof(chip_id));
-  return 0;
-}
-
-esp_command_error handle_spi_set_params(uint32_t *args, int *status)
-{
-  *status = SPIParamCfg(args[0], args[1], args[2], args[3], args[4], args[5]);
-  return *status ? ESP_FAILED_SPI_OP : ESP_OK;
-}
-
-esp_command_error handle_spi_attach(bool isHspi, bool isLegacy)
-{
-#ifdef ESP8266
-	    /* ESP8266 doesn't yet support SPI flash on HSPI, but could:
-		 see https://github.com/themadinventor/esptool/issues/98 */
-	    SelectSpiFunction();
-#else
-		/* spi_flash_attach calls SelectSpiFunction() and another
-		   function to initialise SPI flash interface. */
-		spi_flash_attach(isHspi, isLegacy);
-#endif
-		return ESP_OK; /* neither function/attach command takes an arg */
-}
-
 
 static esp_command_error verify_data_len(esp_command_req_t *command, uint8_t len)
 {
@@ -379,9 +189,9 @@ uint8_t cmd_loop() {
 	  error = verify_data_len(command, 16) || handle_flash_begin(data_words[0], data_words[1], data_words[2], data_words[3]);
 	  break;
 	case ESP_FLASH_DATA:
-	  /* ACK all write data immediately, then process it a few lines down,
+	  /* ACK DATA commands immediately, then process them a few lines down,
 		 allowing next command to buffer */
-	  if(flashing_state.in_flash_mode) {
+	  if(is_in_flash_mode()) {
 		error = ESP_OK;
 		if (data_words[0] != command->data_len - 16) {
 		  /* First byte of data payload header is length (repeated) as a word */
@@ -425,6 +235,10 @@ uint8_t cmd_loop() {
 	  case ESP_FLASH_DATA:
 		/* drop into flashing mode, discard 16 byte payload header */
 		handle_flash_data(command->data_buf + 16, command->data_len - 16);
+		break;
+	  case ESP_FLASH_END:
+		/* passing 0 as parameter for ESP_FLASH_END means reboot now */
+		software_reset();
 		break;
 	  }
 	}
@@ -493,7 +307,6 @@ void stub_main() {
     __asm volatile("nop.n");
     return; /* To 0x400010a8 */
   } else {
-	// TODO
     //_ResetVector();
   }
   /* Not reached */

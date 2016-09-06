@@ -20,11 +20,13 @@
 
 #ifndef ESP8266
 /* ESP32 has headers for ROM functions*/
+#include <stdbool.h>
 #include <stdint.h>
 #include "rom/ets_sys.h"
 #include "rom/spi_flash.h"
 #include "rom/md5_hash.h"
 #include "rom/uart.h"
+#include "rom/rtc.h"
 
 /* I think the difference is \r\n auto-escaping */
 #define uart_tx_one_char uart_tx_one_char2

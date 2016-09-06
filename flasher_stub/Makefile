@@ -46,16 +46,14 @@ ifneq ("$(V)","1")
 Q = @
 endif
 
-# Files to compile
-STUB = stub_flasher.c
-LIBS = slip.c
-LIBS_ESP32 = $(LIBS)
+STUB = stub_flasher
+SRCS = stub_flasher.c slip.c stub_commands.c stub_write_flash.c
 
 BUILD_DIR = build
 
-STUB_ELF_8266 = $(BUILD_DIR)/$(patsubst %.c,%_8266.elf,$(STUB))
-STUB_ELF_32 = $(BUILD_DIR)/$(patsubst %.c,%_32.elf,$(STUB))
-STUB_PY = $(BUILD_DIR)/$(patsubst %.c,%_snippet.py,$(STUB))
+STUB_ELF_8266 = $(BUILD_DIR)/$(STUB)_8266.elf
+STUB_ELF_32 = $(BUILD_DIR)/$(STUB)_32.elf
+STUB_PY = $(BUILD_DIR)/$(STUB)_snippet.py
 
 .PHONY: all clean
 
@@ -65,17 +63,17 @@ $(BUILD_DIR):
 	$(Q) mkdir $@
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
-         -mtext-section-literals -mlongcalls -nostdlib -fno-builtin \
-         -Wl,-static -g
+         -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
+         -Wl,-static -g -ffunction-sections -Wl,--gc-sections
 
 CFLAGS_8266 = $(CFLAGS) -I$(SDK_PATH) -I$(SDK_PATH)/include -L$(SDK_PATH)/ld
 CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -L$(IDF_PATH)
 
-$(STUB_ELF_8266): $(STUB) $(LIBS) $(BUILD_DIR) stub_8266.ld
+$(STUB_ELF_8266): $(SRCS) $(BUILD_DIR) stub_8266.ld
 	@echo "  CC(8266)   $^ -> $@"
 	$(Q) $(CROSS_8266)gcc $(CFLAGS_8266) -DESP8266 -Tstub_8266.ld -o $@ $(filter %.c, $^)
 
-$(STUB_ELF_32): $(STUB) $(LIBS_ESP32) $(BUILD_DIR) stub_32.ld
+$(STUB_ELF_32): $(SRCS) $(BUILD_DIR) stub_32.ld
 	@echo "  CC(32)   $^ -> $@"
 	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -o $@ $(filter %.c, $^)
 

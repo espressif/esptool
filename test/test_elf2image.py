@@ -11,7 +11,6 @@ from elftools.elf.elffile import ELFFile
 TESTS_DIR = os.path.join(os.path.dirname(__file__), "elf2image")
 ESPTOOL_PY = os.path.join(os.path.dirname(__file__), "..", "esptool.py")
 
-
 def get_irom_offset(elf_file):
     """ For ESP8266, return the offset of the IROM section in the ELF """
     with open(elf_file, "rb") as f:
@@ -149,6 +148,7 @@ def run_tests(tests):
         cmd = [sys.executable, ESPTOOL_PY, "image_info", main_binfile ]
         print "Executing %s" % (" ".join(cmd))
         image_info = subprocess.check_output(cmd)
+        image_info = image_info[image_info.index('\n'):] # strip the esptool version line
         with open(t.get_txt_path(), "r") as f:
             original_image_info = f.read()
 

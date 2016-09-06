@@ -24,6 +24,17 @@
 #include <stdint.h>
 #endif
 
+/* Maximum write block size, used for various buffers. */
+#define MAX_WRITE_BLOCK 8192
+
+/* Flash geometry constants */
+#define FLASH_SECTOR_SIZE 4096
+#define FLASH_BLOCK_SIZE 65536
+#define FLASH_PAGE_SIZE 256
+#define FLASH_STATUS_MASK 0xFFFF
+#define SECTORS_PER_BLOCK (FLASH_BLOCK_SIZE / FLASH_SECTOR_SIZE)
+
+/* Full set of protocol commands */
 typedef enum {
   /* Commands supported by the ESP8266 & ESP32 bootloaders */
   ESP_FLASH_BEGIN = 0x02,
