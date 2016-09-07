@@ -186,9 +186,24 @@ uint8_t cmd_loop() {
 	  error = verify_data_len(command, 16) || handle_flash_get_md5sum(data_words[0], data_words[1]);
 	  break;
 	case ESP_FLASH_BEGIN:
-	  error = verify_data_len(command, 16) || handle_flash_begin(data_words[0], data_words[1], data_words[2], data_words[3]);
+	  /* a number of parameters the ROM flasher uses are ignored here:
+		 0 - erase_size (ignored)
+		 1 - num_blocks (only used to get total size)
+		 2 - block_size (only used to get total size)
+		 3 - offset (used used)
+	   */
+	  error = verify_data_len(command, 16) || handle_flash_begin(data_words[1] * data_words[2], data_words[3]);
+	  break;
+	case ESP_FLASH_DEFLATED_BEGIN:
+	  /* 0 - uncompressed size
+		 1 - num_blocks (based on compressed size)
+		 2 - block size (used to get total size)
+		 3 - offset (used as-is)
+	  */
+	  error = verify_data_len(command, 16) || handle_flash_deflated_begin(data_words[0], data_words[1] * data_words[2], data_words[3]);
 	  break;
 	case ESP_FLASH_DATA:
+	case ESP_FLASH_DEFLATED_DATA:
 	  /* ACK DATA commands immediately, then process them a few lines down,
 		 allowing next command to buffer */
 	  if(is_in_flash_mode()) {
@@ -204,6 +219,9 @@ uint8_t cmd_loop() {
 	  break;
 	case ESP_FLASH_END:
 	  error = handle_flash_end();
+	  break;
+	case ESP_FLASH_DEFLATED_END:
+	  error = handle_flash_deflated_end();
 	  break;
 	case ESP_SPI_SET_PARAMS:
 	  /* data params: fl_id, total_size, block_size, sector_Size, page_size, status_mask */
@@ -236,6 +254,9 @@ uint8_t cmd_loop() {
 		/* drop into flashing mode, discard 16 byte payload header */
 		handle_flash_data(command->data_buf + 16, command->data_len - 16);
 		break;
+	  case ESP_FLASH_DEFLATED_DATA:
+		handle_flash_deflated_data(command->data_buf + 16, command->data_len - 16);
+		break;
 	  case ESP_FLASH_END:
 		/* passing 0 as parameter for ESP_FLASH_END means reboot now */
 		software_reset();
@@ -255,7 +276,7 @@ void stub_main() {
   uint32_t last_cmd;
 
   /* zero bss */
-  for(uint32_t *p = &_bss_start; p <= &_bss_end; p++) {
+  for(uint32_t *p = &_bss_start; p < &_bss_end; p++) {
 	*p = 0;
   }
 

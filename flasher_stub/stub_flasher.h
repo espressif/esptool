@@ -101,6 +101,7 @@ typedef enum {
   ESP_FAILED_SPI_OP = 0xC3,
   ESP_FAILED_SPI_UNLOCK = 0xC4,
   ESP_NOT_IN_FLASH_MODE = 0xC5,
+  ESP_INFLATE_ERROR = 0xC6,
 
   ESP_CMD_NOT_IMPLEMENTED = 0xFF,
 } esp_command_error;

@@ -122,6 +122,11 @@ class TestFlashing(EsptoolTestCase):
             ct = f.read()
         self.assertEqual(last_sector, ct)
 
+    def test_compressed_flash(self):
+        self.run_esptool("write_flash -z 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
+        self.verify_readback(0, 4096, "images/sector.bin")
+        self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
+
 class TestFlashDetection(EsptoolTestCase):
     def test_correct_offset(self):
         """ Verify writing at an offset actually writes to that offset. """

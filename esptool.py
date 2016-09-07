@@ -602,6 +602,15 @@ class ESP8266StubLoader(ESP8266ROM):
     def change_baud(self, baud):
         return ESPROM.change_baud(self, baud)
 
+    def flash_defl_begin(self, size, compsize, offset):
+        return ESPROM.flash_defl_begin(self, size, compsize, offset)
+
+    def flash_defl_block(self, data, seq):
+        return ESPROM.flash_defl_block(self, data, seq)
+
+    def flash_defl_finish(self, reboot=False):
+        return ESPROM.flash_defl_finish(self, reboot)
+
     def flash_md5sum(self, addr, size):
         return ESPROM.flash_md5sum(self, addr, size)
 
