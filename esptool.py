@@ -833,6 +833,8 @@ def write_flash(esp, args):
     for address, argfile in args.addr_filename:
         image = argfile.read()
         argfile.seek(0)  # rewind in case we need it again
+        if address + len(image) > int(args.flash_size.split('m')[0]) * (1 << 17):
+            print 'WARNING: Unlikely to work as data goes beyond end of flash. Hint: Use --flash_size'
         # Fix sflash config data.
         if address == 0 and image[0] == '\xe9':
             print 'Flash params set to 0x%02x%02x' % (flash_mode, flash_size_freq)
