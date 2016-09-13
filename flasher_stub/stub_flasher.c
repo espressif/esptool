@@ -252,7 +252,15 @@ uint8_t cmd_loop() {
 		break;
 	  case ESP_FLASH_END:
 		/* passing 0 as parameter for ESP_FLASH_END means reboot now */
-		software_reset();
+		if (data_words[0] == 0) {
+		  /* Flush the FLASH_END response before rebooting */
+#ifdef ESP32
+		  uart_tx_flush(0);
+#else
+		  ets_delay_us(10000);
+#endif
+		  software_reset();
+		}
 		break;
 	  }
 	}
