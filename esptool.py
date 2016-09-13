@@ -355,10 +355,13 @@ class ESPROM(object):
         print "Uploading stub..."
         for field in [ 'text', 'data' ]:
             if field in stub:
-                self.mem_begin(len(stub[field]), 1, len(stub[field]),
-                               stub[field+"_start"])
-                self.mem_block(stub[field], 0)
-        print "Calling %x" % stub['entry']
+                offs = stub[field+"_start"]
+                length = len(stub[field])
+                blocks = (length + self.ESP_RAM_BLOCK - 1) / self.ESP_RAM_BLOCK
+                self.mem_begin(length, blocks, self.ESP_RAM_BLOCK, offs)
+                for seq in range(blocks):
+                    self.mem_block(stub[field][seq*self.ESP_RAM_BLOCK:(seq+1)*self.ESP_RAM_BLOCK], seq)
+        print "Running stub..."
         self.mem_finish(stub['entry'])
 
         p = self.read()
