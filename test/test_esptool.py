@@ -184,5 +184,6 @@ if __name__ == '__main__':
     except ValueError:
         pass # arg3 not a number, must be a test name
     # unittest also uses argv, so trim the args we used
+    print "Running esptool.py tests..."
     sys.argv = [ sys.argv[0] ] + sys.argv[args_used + 1:]
     unittest.main(buffer=True)

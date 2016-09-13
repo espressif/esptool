@@ -2,17 +2,7 @@
 #include "stub_flasher.h"
 #include "rom_functions.h"
 #include "slip.h"
-
-#ifdef ESP8266
-#include "eagle_soc.h"
-#include "ets_sys.h"
-#include "examples/driver_lib/include/driver/spi_register.h"
-#else
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include "soc/soc.h"
-#endif
+#include "soc_support.h"
 
 int handle_flash_erase(uint32_t addr, uint32_t len) {
   if (addr % FLASH_SECTOR_SIZE != 0) return 0x32;
@@ -48,7 +38,7 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
   uint32_t num_sent = 0, num_acked = 0;
 
   /* This is one routine where we still do synchronous I/O */
-  ets_isr_mask(1 << ETS_UART_INUM);
+  ets_isr_mask(1 << ETS_UART0_INUM);
 
   if (block_size > sizeof(buf)) {
 	return;
@@ -75,7 +65,7 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
   SLIP_send(digest, sizeof(digest));
 
   /* Go back to async UART */
-  ets_isr_unmask(1 << ETS_UART_INUM);
+  ets_isr_unmask(1 << ETS_UART0_INUM);
 }
 
 int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
@@ -99,10 +89,10 @@ int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
 
 int handle_flash_read_chip_id() {
   uint32_t chip_id = 0;
-  WRITE_PERI_REG(SPI_CMD(0), SPI_FLASH_RDID);
-  while (READ_PERI_REG(SPI_CMD(0)) & SPI_FLASH_RDID) {
+  WRITE_PERI_REG(SPI_CMD_REG(0), SPI_FLASH_RDID);
+  while (READ_PERI_REG(SPI_CMD_REG(0)) & SPI_FLASH_RDID) {
   }
-  chip_id = READ_PERI_REG(SPI_W0(0)) & 0xFFFFFF;
+  chip_id = READ_PERI_REG(SPI_W0_REG(0)) & 0xFFFFFF;
   SLIP_send_frame_data_buf(&chip_id, sizeof(chip_id));
   return 0;
 }

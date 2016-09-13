@@ -51,7 +51,7 @@ esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
   fs.next_write = offset;
   fs.next_erase_sector = offset / FLASH_SECTOR_SIZE;
   fs.remaining = total_size;
-  fs.remaining_erase_sector = (fs.remaining + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
+  fs.remaining_erase_sector = (total_size + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
   fs.last_error = ESP_OK;
 
   if (SPIUnlock() != 0) {

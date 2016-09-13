@@ -36,14 +36,7 @@
 #include "slip.h"
 #include "stub_commands.h"
 #include "stub_write_flash.h"
-
-#ifdef ESP8266
-#include "ets_sys.h"
-#include "examples/driver_lib/include/driver/uart_register.h"
-#else
-#include "soc/soc.h"
-#include "soc/uart_register.h"
-#endif
+#include "soc_support.h"
 
 #define UART_RX_INTS (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA)
 
@@ -284,9 +277,9 @@ void stub_main() {
 
   /* All UART reads come via uart_isr */
   ub.reading_buf = ub.buf_a;
-  ets_isr_attach(ETS_UART_INUM, uart_isr, NULL);
+  ets_isr_attach(ETS_UART0_INUM, uart_isr, NULL);
   SET_PERI_REG_MASK(UART_INT_ENA(0), UART_RX_INTS);
-  ets_isr_unmask(1 << ETS_UART_INUM);
+  ets_isr_unmask(1 << ETS_UART0_INUM);
 
 #ifdef ESP8266
   /* This points at us right now, reset for next boot. */
