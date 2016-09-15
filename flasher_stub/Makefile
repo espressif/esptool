@@ -33,7 +33,7 @@ CROSS_8266 ?= xtensa-lx106-elf-
 CROSS_32 ?= xtensa-esp32-elf-
 
 # Path to the ESP8266 SDK root dir
-SDK_PATH ?= ../../esp_iot_sdk_v1.5.1
+SDK_PATH ?= ../../esp_iot_sdk_v2.0.0
 
 # Path to the esp-idf root dir
 IDF_PATH ?= ../../esp-idf

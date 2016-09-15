@@ -10,6 +10,7 @@
  * Foundation; either version 2 of the License, or (at your option) any later version.
  *
  */
+#include "soc_support.h"
 #include "stub_write_flash.h"
 #include "stub_flasher.h"
 #include "rom_functions.h"
@@ -68,6 +69,58 @@ esp_command_error handle_flash_deflated_begin(uint32_t uncompressed_size, uint32
   return err;
 }
 
+
+/* Returns true if the spiflash is ready for its next write
+   operation.
+
+   Doesn't block, except for the SPI state machine to finish
+   any previous SPI host operation.
+*/
+static bool spiflash_is_ready(void)
+{
+  /* Wait for SPI state machine ready */
+  while((REG_READ(SPI_EXT2_REG(SPI_IDX)) & SPI_ST))
+	{ }
+  REG_WRITE(SPI_RD_STATUS_REG(SPI_IDX), 0);
+  /* Issue read status command */
+  REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_RDSR);
+  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
+	{ }
+  uint32_t status_value = REG_READ(SPI_RD_STATUS_REG(SPI_IDX));
+  const uint32_t STATUS_WIP_BIT = 1;
+  return (status_value & STATUS_WIP_BIT) == 0;
+}
+
+/* Erase the next sector or block (depending if we're at a block boundary).
+
+   Does nothing if SPI flash not yet ready for a write. Also does not wait
+   for any existing SPI flash operation to complete.
+ */
+static void start_next_erase(void)
+{
+  if(fs.remaining_erase_sector == 0)
+	return; /* nothing left to erase */
+  if(!spiflash_is_ready())
+	return; /* don't wait for flash to be ready, caller will call again if needed */
+
+  uint32_t command = SPI_FLASH_SE; /* sector erase, 4KB */
+  uint32_t sectors_to_erase = 1;
+  if(fs.remaining_erase_sector >= SECTORS_PER_BLOCK
+	 && fs.next_erase_sector % SECTORS_PER_BLOCK == 0) {
+	/* perform a 32KB block erase if we have space for it */
+	command = SPI_FLASH_BE;
+	sectors_to_erase = SECTORS_PER_BLOCK;
+  }
+
+  uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
+  REG_WRITE(SPI_ADDR_REG(SPI_IDX), addr & 0xffffff);
+  REG_WRITE(SPI_CMD_REG(SPI_IDX), command);
+  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
+	{ }
+  fs.remaining_erase_sector -= sectors_to_erase;
+  fs.next_erase_sector += sectors_to_erase;
+}
+
 /* Write data to flash (either direct for non-compressed upload, or decompressed.
    erases as it goes.
 
@@ -79,15 +132,7 @@ void handle_flash_data(void *data_buf, uint32_t length) {
   */
   int last_sector = (fs.next_write + length + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
   while(fs.next_erase_sector < last_sector) {
-	if(fs.next_erase_sector % SECTORS_PER_BLOCK == 0
-	   && fs.remaining_erase_sector > SECTORS_PER_BLOCK) {
-	  SPIEraseBlock(fs.next_erase_sector / SECTORS_PER_BLOCK);
-	  fs.next_erase_sector += SECTORS_PER_BLOCK;
-	  fs.remaining_erase_sector -= SECTORS_PER_BLOCK;
-	} else {
-	  SPIEraseSector(fs.next_erase_sector++);
-	  fs.remaining_erase_sector--;
-	}
+	start_next_erase();
   }
 
   /* do the actual write */
@@ -110,6 +155,10 @@ void handle_flash_deflated_data(void *data_buf, uint32_t length) {
 	if(fs.remaining_compressed > length) {
 	  flags |= TINFL_FLAG_HAS_MORE_INPUT;
 	}
+
+	/* start an opportunistic erase: decompressing takes time, so might as
+	   well be running a SPI erase in the background. */
+	start_next_erase();
 
 	int status = tinfl_decompress(&fs.inflator, data_buf, &in_bytes,
 					 out_buf, next_out, &out_bytes,
