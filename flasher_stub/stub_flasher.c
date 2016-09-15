@@ -200,7 +200,7 @@ uint8_t cmd_loop() {
 	  /* ACK DATA commands immediately, then process them a few lines down,
 		 allowing next command to buffer */
 	  if(is_in_flash_mode()) {
-		error = ESP_OK;
+		error = get_flash_error();
 		if (data_words[0] != command->data_len - 16) {
 		  /* First byte of data payload header is length (repeated) as a word */
 		  error = ESP_BAD_DATA_LEN;
@@ -211,10 +211,8 @@ uint8_t cmd_loop() {
 	  }
 	  break;
 	case ESP_FLASH_END:
-	  error = handle_flash_end();
-	  break;
 	case ESP_FLASH_DEFLATED_END:
-	  error = handle_flash_deflated_end();
+	  error = handle_flash_end();
 	  break;
 	case ESP_SPI_SET_PARAMS:
 	  /* data params: fl_id, total_size, block_size, sector_Size, page_size, status_mask */

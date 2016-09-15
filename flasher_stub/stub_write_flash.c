@@ -47,6 +47,11 @@ bool is_in_flash_mode(void)
   return fs.in_flash_mode;
 }
 
+esp_command_error get_flash_error(void)
+{
+  return fs.last_error;
+}
+
 esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
   fs.in_flash_mode = true;
   fs.next_write = offset;
@@ -160,7 +165,7 @@ void handle_flash_deflated_data(void *data_buf, uint32_t length) {
 	   well be running a SPI erase in the background. */
 	start_next_erase();
 
-	int status = tinfl_decompress(&fs.inflator, data_buf, &in_bytes,
+	status = tinfl_decompress(&fs.inflator, data_buf, &in_bytes,
 					 out_buf, next_out, &out_bytes,
 					 flags);
 
@@ -175,30 +180,31 @@ void handle_flash_deflated_data(void *data_buf, uint32_t length) {
 	  handle_flash_data(out_buf, bytes_in_out_buf);
 	  next_out = out_buf;
 	}
-  }
+  } // while
 
   if (status < TINFL_STATUS_DONE) {
-	// Error case
+	/* error won't get sent back to esptool.py until next block is sent */
 	fs.last_error = ESP_INFLATE_ERROR;
-	// TODO: put actual status into 'reason' field
   }
 
-  // TODO: if "done", check that remaining == 0, etc.
+  if (status == TINFL_STATUS_DONE && fs.remaining > 0) {
+	fs.last_error = ESP_NOT_ENOUGH_DATA;
+  }
+  if (status != TINFL_STATUS_DONE && fs.remaining == 0) {
+	fs.last_error = ESP_TOO_MUCH_DATA;
+  }
 }
 
 esp_command_error handle_flash_end(void)
 {
-  if(!fs.in_flash_mode) {
+  if (!fs.in_flash_mode) {
 	return ESP_NOT_IN_FLASH_MODE;
   }
 
-  /* TODO: check bytes written, etc. */
+  if (fs.remaining > 0) {
+	return ESP_NOT_ENOUGH_DATA;
+  }
 
   fs.in_flash_mode = false;
   return fs.last_error;
-}
-
-esp_command_error handle_flash_deflated_end(void)
-{
-  return handle_flash_end();
 }
