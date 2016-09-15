@@ -5,9 +5,10 @@
  */
 #pragma once
 
-#define SPI_IDX 1
 
 #ifdef ESP8266
+#define SPI_IDX 0
+
 #include "ets_sys.h"
 #include "eagle_soc.h"
 #include "driver_lib/include/driver/uart_register.h"
@@ -28,6 +29,8 @@
 #define ETS_UART0_INUM ETS_UART_INUM
 
 #else
+#define SPI_IDX 1
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -108,6 +108,11 @@ static void start_next_erase(void)
   if(!spiflash_is_ready())
 	return; /* don't wait for flash to be ready, caller will call again if needed */
 
+  /* Write enable */
+  REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_WREN);
+  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
+	{ }
+
   uint32_t command = SPI_FLASH_SE; /* sector erase, 4KB */
   uint32_t sectors_to_erase = 1;
   if(fs.remaining_erase_sector >= SECTORS_PER_BLOCK
@@ -139,6 +144,8 @@ void handle_flash_data(void *data_buf, uint32_t length) {
   while(fs.next_erase_sector < last_sector) {
 	start_next_erase();
   }
+  while(!spiflash_is_ready())
+	{}
 
   /* do the actual write */
   if (SPIWrite(fs.next_write, data_buf, length)) {
