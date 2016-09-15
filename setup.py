@@ -33,7 +33,7 @@ def find_version(*file_paths):
 class EspToolTests(TestCommand):
     def run_tests(self):
         # lazy test implementation for now, just run the test script standalone
-        errno = subprocess.check_call([ sys.executable, "./test/test_elf2image.py" ])
+        errno = subprocess.check_call([sys.executable, "./test/test_elf2image.py"])
         sys.exit(errno)
 
 long_description = """
@@ -98,7 +98,7 @@ setup(
     tests_require=[
         'pyelftools',
     ],
-    cmdclass = {'test': EspToolTests},
+    cmdclass={'test': EspToolTests},
     scripts=[
         'esptool.py',
     ],

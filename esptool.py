@@ -353,14 +353,16 @@ class ESPROM(object):
 
         # Upload
         print "Uploading stub..."
-        for field in [ 'text', 'data' ]:
+        for field in ['text', 'data']:
             if field in stub:
-                offs = stub[field+"_start"]
+                offs = stub[field + "_start"]
                 length = len(stub[field])
                 blocks = (length + self.ESP_RAM_BLOCK - 1) / self.ESP_RAM_BLOCK
                 self.mem_begin(length, blocks, self.ESP_RAM_BLOCK, offs)
                 for seq in range(blocks):
-                    self.mem_block(stub[field][seq*self.ESP_RAM_BLOCK:(seq+1)*self.ESP_RAM_BLOCK], seq)
+                    from_offs = seq * self.ESP_RAM_BLOCK
+                    to_offs = from_offs + self.ESP_RAM_BLOCK
+                    self.mem_block(stub[field][from_offs:to_offs], seq)
         print "Running stub..."
         self.mem_finish(stub['entry'])
 
@@ -422,7 +424,8 @@ class ESPROM(object):
 
     def erase_flash(self):
         oldtimeout = self._port.timeout
-        self._port.timeout = 128 # depending on brand flash erase may take this long or longer
+        # depending on flash chip model the erase may take this long (maybe longer!)
+        self._port.timeout = 128
         try:
             self.check_command("erase flash", self.ESP_ERASE_FLASH)
         finally:
@@ -437,11 +440,12 @@ class ESPROM(object):
 
     def read_flash(self, offset, length, progress_fn=None):
         # issue a standard bootloader command to trigger the read
-        self.check_command("read flash", self.ESP_READ_FLASH, struct.pack('<IIII',
-                                                                         offset,
-                                                                         length,
-                                                                         self.ESP_FLASH_BLOCK,
-                                                                         64))
+        self.check_command("read flash", self.ESP_READ_FLASH,
+                           struct.pack('<IIII',
+                                       offset,
+                                       length,
+                                       self.ESP_FLASH_BLOCK,
+                                       64))
         # now we expect (length / block_size) SLIP frames with the data
         data = ''
         while len(data) < length:
@@ -493,6 +497,7 @@ class ESPROM(object):
         status_mask = 0xffff
         self.check_command("set SPI params", ESP32ROM.ESP_SPI_SET_PARAMS,
                            struct.pack('<IIIIII', fl_id, total_size, block_size, sector_size, page_size, status_mask))
+
 
 class ESP8266ROM(ESPROM):
     """ Access class for ESP8266 ROM bootloader
@@ -548,10 +553,10 @@ class ESP8266ROM(ESPROM):
         raise NotImplementedInROMError(self)
 
     def flash_spi_attach(self, is_spi, is_legacy):
-        pass # not implemented in ROM, but OK to silently skip
+        pass  # not implemented in ROM, but OK to silently skip
 
     def flash_set_parameters(self, size):
-        pass # not implemented in ROM, but OK to silently skip
+        pass  # not implemented in ROM, but OK to silently skip
 
     def chip_id(self):
         """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
@@ -593,6 +598,7 @@ class ESP8266ROM(ESPROM):
         else:
             return (num_sectors - head_sectors) * sector_size
 
+
 class ESP8266StubLoader(ESP8266ROM):
     """ Access class for ESP8266 stub loader, runs on top of ROM.
     """
@@ -600,7 +606,7 @@ class ESP8266StubLoader(ESP8266ROM):
 
     def __init__(self, rom_loader):
         self._port = rom_loader._port
-        self.flush_input() # resets _slip_reader
+        self.flush_input()  # resets _slip_reader
 
     def change_baud(self, baud):
         return ESPROM.change_baud(self, baud)
@@ -630,6 +636,7 @@ class ESP8266StubLoader(ESP8266ROM):
         return ESPROM.read_flash(self, *args)
 
 ESP8266ROM.STUB_CLASS = ESP8266StubLoader
+
 
 class ESP32ROM(ESPROM):
     """Access class for ESP32 ROM bootloader
@@ -693,6 +700,7 @@ class ESP32ROM(ESPROM):
     def flash_id(self):
         raise NotImplementedInROMError(self)
 
+
 class ESP32StubLoader(ESP32ROM):
     """ Access class for ESP32 stub loader, runs on top of ROM.
     """
@@ -701,7 +709,7 @@ class ESP32StubLoader(ESP32ROM):
 
     def __init__(self, rom_loader):
         self._port = rom_loader._port
-        self.flush_input() # resets _slip_reader
+        self.flush_input()  # resets _slip_reader
 
     def change_baud(self, baud):
         return ESPROM.change_baud(self, baud)
@@ -722,6 +730,7 @@ class ESP32StubLoader(ESP32ROM):
         return ESPROM.read_flash(self, *args)
 
 ESP32ROM.STUB_CLASS = ESP32StubLoader
+
 
 class ESPBOOTLOADER(object):
     """ These are constants related to software ESP bootloader, working with 'v2' image files """
@@ -775,6 +784,7 @@ class ImageSegment(object):
         if self.file_offs is not None:
             r += " file_offs 0x%08x" % (self.file_offs)
         return r
+
 
 class ELFSection(ImageSegment):
     """ Wrapper class for a section in an ELF image, has a section
@@ -1007,8 +1017,6 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             checksum = ESPROM.ESP_CHECKSUM_MAGIC
             last_addr = None
             for segment in sorted(self.segments, key=lambda s:s.addr):
-                #print("Writing %s file @ 0x%x" % (segment, f.tell()))
-
                 # IROM/DROM segment flash mappings need to align on
                 # 64kB boundaries.
                 #
@@ -1023,33 +1031,28 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 # want to merge them in your linker script.)
                 if last_addr is not None and self.is_flash_addr(last_addr) \
                    and self.is_flash_addr(segment.addr) and segment.addr // IROM_ALIGN == last_addr // IROM_ALIGN:
-                    raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. "+
+                    raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. " +
                                      "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
                                      (segment.addr, last_addr))
                 last_addr = segment.addr
 
                 if self.is_flash_addr(segment.addr):
-                    #print("Padding from offset %08x" % f.tell())
                     # Actual alignment required for the segment header: positioned so that
                     # after we write the next 8 byte header, file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
                     #
                     # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
                     # IROM_ALIGN+0x10 to account for longest possible header.
                     align_past = (segment.addr % IROM_ALIGN) - self.SEG_HEADER_LEN
-                    #print "segment starts 0x%x so aligning header at +0x%x" % (segment.addr, align_past)
                     assert (align_past + self.SEG_HEADER_LEN) == (segment.addr % IROM_ALIGN)
 
                     # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
-                    pad_len = ( IROM_ALIGN - (f.tell() % IROM_ALIGN) ) + align_past - self.SEG_HEADER_LEN
+                    pad_len = (IROM_ALIGN - (f.tell() % IROM_ALIGN)) + align_past - self.SEG_HEADER_LEN
                     if pad_len < 0:
                         pad_len += IROM_ALIGN
                     if pad_len > 0:
-                        #print("Calculated pad length %08x to place next header @ %08x" % (pad_len, f.tell()+pad_len))
                         null = ImageSegment(0, '\x00' * pad_len, f.tell())
                         checksum = self.save_segment(f, null, checksum)
-                        #print("After padding, at file offset %08x" % f.tell())
                         padding_segments += 1
-                    #print "Comparing file offs %x (data @ %x) with segment load addr %x" % (f.tell(), f.tell() + 8, segment.addr)
                     # verify that after the 8 byte header is added, were are at the correct offset relative to the segment's vaddr
                     assert (f.tell() + 8) % IROM_ALIGN == segment.addr % IROM_ALIGN
                 checksum = self.save_segment(f, segment, checksum)
@@ -1134,6 +1137,7 @@ class ELFFile(object):
                          if lma != 0]
         self.sections = prog_sections
 
+
 def slip_reader(port):
     """Generator to read SLIP packets from a serial port.
     Yields one full SLIP packet at a time, raises exception on timeout or invalid data.
@@ -1188,6 +1192,7 @@ def align_file_position(f, size):
     align = (size - 1) - (f.tell() % size)
     f.seek(align, 1)
 
+
 def flash_size_bytes(size):
     """ Given a flash size of the type passed in args.flash_size
     (ie 512KB or 1MB) then return the size in bytes.
@@ -1198,6 +1203,7 @@ def flash_size_bytes(size):
         return int(size[:size.index("KB")]) * 1024
     else:
         raise FatalError("Unknown size %s" % size)
+
 
 def hexify(s):
     return ''.join('%02X' % ord(c) for c in s)
@@ -1227,6 +1233,7 @@ class FatalError(RuntimeError):
         message += " (result was %s)" % ", ".join(hex(ord(x)) for x in result)
         return FatalError(message)
 
+
 class NotImplementedInROMError(FatalError):
     """
     Wrapper class for the error thrown when a particular ESP bootloader function
@@ -1239,6 +1246,7 @@ class NotImplementedInROMError(FatalError):
 #
 # Each function takes either two args (<ESPROM instance>, <args>) or a single <args>
 # argument.
+
 
 def load_ram(esp, args):
     image = LoadFirmwareImage(esp, args.filename)
@@ -1279,6 +1287,7 @@ def dump_mem(esp, args):
                                                   f.tell() * 100 / args.size),
         sys.stdout.flush()
     print 'Done!'
+
 
 def write_flash(esp, args):
     """Write data to flash
@@ -1415,10 +1424,12 @@ def erase_flash(esp, args):
     esp.erase_flash()
     print 'Chip erase completed successfully in %.1fs' % (time.time() - t)
 
+
 def erase_region(esp, args):
     print 'Erasing region (may be slow depending on size)...'
     esp.erase_region(args.address, args.size)
     print 'Erase completed successfully.'
+
 
 def run(esp, args):
     esp.run()
@@ -1431,15 +1442,16 @@ def flash_id(esp, args):
 
 
 def read_flash(esp, args):
-    def flash_progress(progress, length):
-        msg = '%d (%d %%)' % (progress, progress * 100.0 / length)
-        padding = '\b' * len(msg)
-        if progress == length:
-            padding = '\n'
-        sys.stdout.write(msg + padding)
-        sys.stdout.flush()
     if args.no_progress:
         flash_progress = None
+    else:
+        def flash_progress(progress, length):
+            msg = '%d (%d %%)' % (progress, progress * 100.0 / length)
+            padding = '\b' * len(msg)
+            if progress == length:
+                padding = '\n'
+            sys.stdout.write(msg + padding)
+            sys.stdout.flush()
     t = time.time()
     data = esp.read_flash(args.address, args.size, flash_progress)
     t = time.time() - t
