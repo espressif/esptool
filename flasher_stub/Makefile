@@ -27,6 +27,8 @@
 # https://github.com/cesanta/fnc/tree/master/common/platforms/esp8266/stubs
 
 # Override these variables on the command line
+# or set them in a local.mk
+-include local.mk
 
 # Prefix for ESP8266 & ESP32 cross compilers (can include a directory path)
 CROSS_8266 ?= xtensa-lx106-elf-
