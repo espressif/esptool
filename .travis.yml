@@ -3,6 +3,10 @@ sudo: false
 env:
   # Downloadable toolchains & SDKs for esp8266 & esp32
   #
+  # Toolchains used for automated builds:
+  # ESP8266 - prebuilt gcc 4.8.2 from ESP8266 Arduino
+  # ESP32 - official Espressif toolchain
+  #
   # Note: if these are updated, you need to flush the Travis cache
   #
   # (esp-idf is downloaded a zip file. It doesn't fully work this way, but
