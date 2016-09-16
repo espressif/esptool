@@ -30,11 +30,6 @@ cache:
 python:
   - "2.7"
 
-addons:
-  apt:
-    packages:
-    - make
-
 before_install:
   - ./.travis_setup_build_env.sh
 
