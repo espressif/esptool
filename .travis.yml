@@ -1,10 +1,50 @@
 language: python
 sudo: false
+env:
+  # Downloadable toolchains & SDKs for esp8266 & esp32
+  #
+  # Note: if these are updated, you need to flush the Travis cache
+  #
+  # (esp-idf is downloaded a zip file. It doesn't fully work this way, but
+  # we're just using it for some header files.)
+
+  # Toolchains
+  ESP8266_TOOLCHAIN_URL="http://arduino.esp8266.com/linux64-xtensa-lx106-elf.tar.gz"
+  ESP32_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-59.tar.gz"
+  TOOLCHAIN_DIR="${HOME}/toolchain"
+  ESP8266_BINDIR="${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"
+  ESP32_BINDIR="${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
+
+  SDKS_DIR="${HOME}/sdks"
+  SDK_PATH="${SDKS_DIR}/ESP8266_NONOS_SDK"
+  ESP8266_SDK_URL="http://bbs.espressif.com/download/file.php?id=1613"
+  IDF_PATH="${SDKS_DIR}/esp-idf"
+  ESP32_IDF_URL="https://github.com/espressif/esp-idf/archive/7fade89fb6abde8dfac639a8c4c92eefded02fab.zip"
+  PATH="${PATH}:${ESP8266_BINDIR}:${ESP32_BINDIR}"
+
+cache:
+  directories:
+    - ${TOOLCHAIN_DIR}
+    - ${SDKS_DIR}
 
 python:
   - "2.7"
 
+addons:
+  apt:
+    packages:
+    - make
+
+before_install:
+  - ./.travis_setup_build_env.sh
+
 script:
+  # test python components (fast)
   - python setup.py build
   - python setup.py test
   - python setup.py flake8
+  - python setup.py install
+  # build stub
+  - make -C flasher_stub V=1
+  # check the just-built stub matches the one in esptool.py
+  - cd flasher_stub && python ./compare_stubs.py
