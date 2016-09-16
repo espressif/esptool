@@ -36,16 +36,51 @@ MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
 
 
-class ESPROM(object):
-    """ Base class providing access to ESP ROM bootloader. Subclasses provide
-    ESP8266 & ESP32 specific functionality.
+def check_supported_function(func, check_func):
+    """
+    Decorator implementation that wraps a check around an ESPLoader
+    bootloader function to check if it's supported.
+
+    This is used to capture the multidimensional differences in
+    functionality between the ESP8266 & ESP32 ROM loaders, and the
+    software stub that runs on both. Not possible to do this cleanly
+    via inheritance alone.
+    """
+    def inner(*args, **kwargs):
+        obj = args[0]
+        if check_func(obj):
+            return func(*args, **kwargs)
+        else:
+            raise NotImplementedInROMError(obj)
+    return inner
+
+
+def stub_function_only(func):
+    """ Attribute for a function only supported in the software stub loader """
+    return check_supported_function(func, lambda o: o.IS_STUB)
+
+
+def stub_and_esp32_function_only(func):
+    """ Attribute for a function only supported by software stubs or ESP32 ROM """
+    return check_supported_function(func, lambda o: o.IS_STUB or o.CHIP_NAME == "ESP32")
+
+
+def esp8266_function_only(func):
+    """ Attribute for a function only supported on ESP8266 """
+    return check_supported_function(func, lambda o: o.CHIP_NAME == "ESP8266")
+
+
+class ESPLoader(object):
+    """ Base class providing access to ESP ROM & softtware stub bootloaders.
+    Subclasses provide ESP8266 & ESP32 specific functionality.
 
     Don't instantiate this base class directly, either instantiate a subclass or
-    call ESPROM.detect_chip() which will interrogate the chip and return the
+    call ESPLoader.detect_chip() which will interrogate the chip and return the
     appropriate subclass instance.
 
     """
     CHIP_NAME = "Espressif device"
+    IS_STUB = False
 
     DEFAULT_PORT = "/dev/ttyUSB0"
 
@@ -107,10 +142,10 @@ class ESPROM(object):
     STATUS_BYTES_LENGTH = 2
 
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, do_connect=True):
-        """Base constructor for ESPROM bootloader interaction
+        """Base constructor for ESPLoader bootloader interaction
 
         Don't call this constructor, either instantiate ESP8266ROM
-        or ESP32ROM, or use ESPROM.detect_chip().
+        or ESP32ROM, or use ESPLoader.detect_chip().
 
         This base class has all of the instance methods for bootloader
         functionality supported across various chips & stub
@@ -141,9 +176,9 @@ class ESPROM(object):
         type.
 
         """
-        detect_port = ESPROM(port, baud, True)
+        detect_port = ESPLoader(port, baud, True)
         sys.stdout.write('Detecting chip type... ')
-        date_reg = detect_port.read_reg(ESPROM.UART_DATA_REG_ADDR)
+        date_reg = detect_port.read_reg(ESPLoader.UART_DATA_REG_ADDR)
 
         for cls in [ESP8266ROM, ESP32ROM]:
             if date_reg == cls.DATE_REG_VALUE:
@@ -228,7 +263,7 @@ class ESPROM(object):
 
     def sync(self):
         """ Perform a connection test """
-        self.command(ESPROM.ESP_SYNC, '\x07\x07\x12\x20' + 32 * '\x55')
+        self.command(self.ESP_SYNC, '\x07\x07\x12\x20' + 32 * '\x55')
         for i in xrange(7):
             self.command()
 
@@ -268,42 +303,42 @@ class ESPROM(object):
         # we don't call check_command here because read_reg() function is called
         # when detecting chip type, and the way we check for success (STATUS_BYTES_LENGTH) is different
         # for different chip types (!)
-        val, data = self.command(ESPROM.ESP_READ_REG, struct.pack('<I', addr))
+        val, data = self.command(self.ESP_READ_REG, struct.pack('<I', addr))
         if data[0] != '\0':
             raise FatalError.WithResult("Failed to read register address %08x" % addr, data)
         return val
 
     """ Write to memory address in target """
     def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0):
-        return self.check_command("write target memory", ESPROM.ESP_WRITE_REG,
+        return self.check_command("write target memory", self.ESP_WRITE_REG,
                                   struct.pack('<IIII', addr, value, mask, delay_us))
 
     """ Start downloading an application image to RAM """
     def mem_begin(self, size, blocks, blocksize, offset):
-        return self.check_command("enter RAM download mode", ESPROM.ESP_MEM_BEGIN,
+        return self.check_command("enter RAM download mode", self.ESP_MEM_BEGIN,
                                   struct.pack('<IIII', size, blocks, blocksize, offset))
 
     """ Send a block of an image to RAM """
     def mem_block(self, data, seq):
-        return self.check_command("write to target RAM", ESPROM.ESP_MEM_DATA,
+        return self.check_command("write to target RAM", self.ESP_MEM_DATA,
                                   struct.pack('<IIII', len(data), seq, 0, 0) + data,
-                                  ESPROM.checksum(data))
+                                  self.checksum(data))
 
     """ Leave download mode and run the application """
     def mem_finish(self, entrypoint=0):
-        return self.check_command("leave RAM download mode", ESPROM.ESP_MEM_END,
+        return self.check_command("leave RAM download mode", self.ESP_MEM_END,
                                   struct.pack('<II', int(entrypoint == 0), entrypoint))
 
     """ Start downloading to Flash (performs an erase) """
     def flash_begin(self, size, offset):
         old_tmo = self._port.timeout
-        num_blocks = (size + ESPROM.ESP_FLASH_BLOCK - 1) / ESPROM.ESP_FLASH_BLOCK
+        num_blocks = (size + self.ESP_FLASH_BLOCK - 1) / self.ESP_FLASH_BLOCK
         erase_size = self.get_erase_size(offset, size)
 
         self._port.timeout = 20
         t = time.time()
-        self.check_command("enter Flash download mode", ESPROM.ESP_FLASH_BEGIN,
-                           struct.pack('<IIII', erase_size, num_blocks, ESPROM.ESP_FLASH_BLOCK, offset))
+        self.check_command("enter Flash download mode", self.ESP_FLASH_BEGIN,
+                           struct.pack('<IIII', erase_size, num_blocks, self.ESP_FLASH_BLOCK, offset))
         if size != 0:
             print "Took %.2fs to erase flash block" % (time.time() - t)
         self._port.timeout = old_tmo
@@ -311,14 +346,14 @@ class ESPROM(object):
     """ Write block to flash """
     def flash_block(self, data, seq):
         self.check_command("write to target Flash after seq %d" % seq,
-                           ESPROM.ESP_FLASH_DATA,
+                           self.ESP_FLASH_DATA,
                            struct.pack('<IIII', len(data), seq, 0, 0) + data,
-                           ESPROM.checksum(data))
+                           self.checksum(data))
 
     """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot=False):
         pkt = struct.pack('<I', int(not reboot))
-        self.check_command("leave Flash mode", ESPROM.ESP_FLASH_END, pkt)
+        self.check_command("leave Flash mode", self.ESP_FLASH_END, pkt)
 
     """ Run application code in flash """
     def run(self, reboot=False):
@@ -327,8 +362,9 @@ class ESPROM(object):
         self.flash_finish(reboot)
 
     """ Read SPI flash manufacturer and device id """
+    @stub_function_only
     def flash_id(self):
-        resp = self.check_command("get flash id", ESPROM.ESP_GET_FLASH_ID)
+        resp = self.check_command("get flash id", self.ESP_GET_FLASH_ID)
         return struct.unpack('<I', resp)[0]
 
     def parse_flash_size_arg(self, arg):
@@ -339,6 +375,7 @@ class ESPROM(object):
                              % (arg, ", ".join(self.FLASH_SIZES.keys())))
 
     """ Abuse the loader protocol to force flash to be left in write mode """
+    @esp8266_function_only
     def flash_unlock_dio(self):
         # Enable flash write mode
         self.flash_begin(0, 0)
@@ -349,6 +386,8 @@ class ESPROM(object):
 
     def run_stub(self, stub=None):
         if stub is None:
+            if self.IS_STUB:
+                raise FatalError("Not possible for a stub to load another stub (memory likely to overlap.)")
             stub = self.STUB_CODE
 
         # Upload
@@ -372,6 +411,7 @@ class ESPROM(object):
         print "Stub running..."
         return self.STUB_CLASS(self)
 
+    @stub_and_esp32_function_only
     def flash_defl_begin(self, size, compsize, offset):
         """ Start downloading compressed data to Flash (performs an erase) """
         old_tmo = self._port.timeout
@@ -387,21 +427,25 @@ class ESPROM(object):
         print "Unc size %d comp size %d comp blocks %d" % (size, compsize, num_blocks)
         self.check_command("enter compressed flash mode", self.ESP_FLASH_DEFL_BEGIN,
                            struct.pack('<IIII', erase_blocks * self.ESP_FLASH_BLOCK, num_blocks, self.ESP_FLASH_BLOCK, offset))
-        if size != 0:
+        if size != 0 and not self.IS_STUB:
+            # (stub erases as it writes, but ROM loaders erase on begin)
             print "Took %.2fs to erase flash block" % (time.time() - t)
         self._port.timeout = old_tmo
 
     """ Write block to flash, send compressed """
+    @stub_and_esp32_function_only
     def flash_defl_block(self, data, seq):
         self.check_command("write compressed data to flash after seq %d" % seq,
-                           self.ESP_FLASH_DEFL_DATA, struct.pack('<IIII', len(data), seq, 0, 0) + data, ESPROM.checksum(data))
+                           self.ESP_FLASH_DEFL_DATA, struct.pack('<IIII', len(data), seq, 0, 0) + data, self.checksum(data))
 
     """ Leave compressed flash mode and run/reboot """
+    @stub_and_esp32_function_only
     def flash_defl_finish(self, reboot=False):
         pkt = struct.pack('<I', int(not reboot))
         self.check_command("leave compressed flash mode", self.ESP_FLASH_DEFL_END, pkt)
         self.in_bootloader = False
 
+    @stub_and_esp32_function_only
     def flash_md5sum(self, addr, size):
         # the MD5 command returns additional bytes in the standard
         # command reply slot
@@ -414,6 +458,7 @@ class ESPROM(object):
         else:
             raise FatalError("MD5Sum command returned unexpected result: %r" % res)
 
+    @stub_and_esp32_function_only
     def change_baud(self, baud):
         print "Changing baud rate to %d" % baud
         self.command(self.ESP_CHANGE_BAUDRATE, struct.pack('<II', baud, 0))
@@ -422,6 +467,7 @@ class ESPROM(object):
         time.sleep(0.05)  # get rid of crap sent during baud rate change
         self.flush_input()
 
+    @stub_function_only
     def erase_flash(self):
         oldtimeout = self._port.timeout
         # depending on flash chip model the erase may take this long (maybe longer!)
@@ -431,13 +477,15 @@ class ESPROM(object):
         finally:
             self._port.timeout = oldtimeout
 
+    @stub_function_only
     def erase_region(self, offset, size):
-        if offset % ESPROM.ESP_FLASH_SECTOR != 0:
+        if offset % self.ESP_FLASH_SECTOR != 0:
             raise FatalError("Offset to erase from must be a multiple of 4096")
-        if size % ESPROM.ESP_FLASH_SECTOR != 0:
+        if size % self.ESP_FLASH_SECTOR != 0:
             raise FatalError("Size of data to erase must be a multiple of 4096")
         self.check_command("erase region", self.ESP_ERASE_REGION, struct.pack('<II', offset, size))
 
+    @stub_function_only
     def read_flash(self, offset, length, progress_fn=None):
         # issue a standard bootloader command to trigger the read
         self.check_command("read flash", self.ESP_READ_FLASH,
@@ -499,10 +547,11 @@ class ESPROM(object):
                            struct.pack('<IIIIII', fl_id, total_size, block_size, sector_size, page_size, status_mask))
 
 
-class ESP8266ROM(ESPROM):
+class ESP8266ROM(ESPLoader):
     """ Access class for ESP8266 ROM bootloader
     """
-    CHIP_NAME = "ESP8266EX"
+    CHIP_NAME = "ESP8266"
+    IS_STUB = False
 
     DATE_REG_VALUE = 0x00062000
 
@@ -523,34 +572,6 @@ class ESP8266ROM(ESPROM):
         '2MB-c1': 0x50,
         '4MB-c1':0x60,
         '4MB-c2':0x70}
-
-    def change_baud(self, baud):
-        if baud != self._port.baud:
-            raise NotImplementedInROMError(self)
-
-    def flash_defl_begin(self, size, compsize, offset):
-        raise NotImplementedInROMError(self)
-
-    def flash_defl_block(self, data, seq):
-        raise NotImplementedInROMError(self)
-
-    def flash_defl_finish(self, reboot=False):
-        raise NotImplementedInROMError(self)
-
-    def flash_md5sum(self, addr, size):
-        raise NotImplementedInROMError(self)
-
-    def flash_id(self):
-        raise NotImplementedInROMError(self)
-
-    def erase_flash(self):
-        raise NotImplementedInROMError(self)
-
-    def erase_region(self):
-        raise NotImplementedInROMError(self)
-
-    def read_flash(self, *args):
-        raise NotImplementedInROMError(self)
 
     def flash_spi_attach(self, is_spi, is_legacy):
         pass  # not implemented in ROM, but OK to silently skip
@@ -603,46 +624,21 @@ class ESP8266StubLoader(ESP8266ROM):
     """ Access class for ESP8266 stub loader, runs on top of ROM.
     """
     FLASH_WRITE_SIZE = 8192  # matches MAX_WRITE_BLOCK in stub_loader.c
+    IS_STUB = True
 
     def __init__(self, rom_loader):
         self._port = rom_loader._port
         self.flush_input()  # resets _slip_reader
 
-    def change_baud(self, baud):
-        return ESPROM.change_baud(self, baud)
-
-    def flash_defl_begin(self, size, compsize, offset):
-        return ESPROM.flash_defl_begin(self, size, compsize, offset)
-
-    def flash_defl_block(self, data, seq):
-        return ESPROM.flash_defl_block(self, data, seq)
-
-    def flash_defl_finish(self, reboot=False):
-        return ESPROM.flash_defl_finish(self, reboot)
-
-    def flash_md5sum(self, addr, size):
-        return ESPROM.flash_md5sum(self, addr, size)
-
-    def flash_id(self):
-        return ESPROM.flash_id(self)
-
-    def erase_flash(self):
-        return ESPROM.erase_flash(self)
-
-    def erase_region(self, offset, size):
-        return ESPROM.erase_region(self, offset, size)
-
-    def read_flash(self, *args):
-        return ESPROM.read_flash(self, *args)
-
 ESP8266ROM.STUB_CLASS = ESP8266StubLoader
 
 
-class ESP32ROM(ESPROM):
+class ESP32ROM(ESPLoader):
     """Access class for ESP32 ROM bootloader
 
     """
     CHIP_NAME = "ESP32"
+    IS_STUB = False
 
     DATE_REG_VALUE = 0x15122500
 
@@ -691,43 +687,17 @@ class ESP32ROM(ESPROM):
     def get_erase_size(self, offset, size):
         return size
 
-    def erase_flash(self):
-        raise NotImplementedInROMError(self)
-
-    def erase_region(self):
-        raise NotImplementedInROMError(self)
-
-    def flash_id(self):
-        raise NotImplementedInROMError(self)
-
 
 class ESP32StubLoader(ESP32ROM):
     """ Access class for ESP32 stub loader, runs on top of ROM.
     """
     FLASH_WRITE_SIZE = 8192  # matches MAX_WRITE_BLOCK in stub_loader.c
     STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
+    IS_STUB = True
 
     def __init__(self, rom_loader):
         self._port = rom_loader._port
         self.flush_input()  # resets _slip_reader
-
-    def change_baud(self, baud):
-        return ESPROM.change_baud(self, baud)
-
-    def flash_md5sum(self, addr, size):
-        return ESPROM.flash_md5sum(self, addr, size)
-
-    def flash_id(self):
-        return ESPROM.flash_id(self)
-
-    def erase_flash(self):
-        return ESPROM.erase_flash(self)
-
-    def erase_region(self, offset, size):
-        return ESPROM.erase_region(self, offset, size)
-
-    def read_flash(self, *args):
-        return ESPROM.read_flash(self, *args)
 
 ESP32ROM.STUB_CLASS = ESP32StubLoader
 
@@ -754,7 +724,7 @@ def LoadFirmwareImage(chip, filename):
         else:  # Otherwise, ESP8266 so look at magic to determine the image type
             magic = ord(f.read(1))
             f.seek(0)
-            if magic == ESPROM.ESP_IMAGE_MAGIC:
+            if magic == ESPLoader.ESP_IMAGE_MAGIC:
                 return ESPFirmwareImage(f)
             elif magic == ESPBOOTLOADER.IMAGE_V2_MAGIC:
                 return OTAFirmwareImage(f)
@@ -831,29 +801,29 @@ class BaseFirmwareImage(object):
         f.write(struct.pack('<II', segment.addr, len(segment.data)))
         f.write(segment.data)
         if checksum is not None:
-            return ESPROM.checksum(segment.data, checksum)
+            return ESPLoader.checksum(segment.data, checksum)
 
     def read_checksum(self, f):
-        """ Return ESPROM checksum from end of just-read image """
+        """ Return ESPLoader checksum from end of just-read image """
         # Skip the padding. The checksum is stored in the last byte so that the
         # file is a multiple of 16 bytes.
         align_file_position(f, 16)
         return ord(f.read(1))
 
     def append_checksum(self, f, checksum):
-        """ Append ESPROM checksum to the just-written image """
+        """ Append ESPLoader checksum to the just-written image """
         align_file_position(f, 16)
         f.write(struct.pack('B', checksum))
 
     def write_common_header(self, f, segments):
-        f.write(struct.pack('<BBBBI', ESPROM.ESP_IMAGE_MAGIC, len(segments),
+        f.write(struct.pack('<BBBBI', ESPLoader.ESP_IMAGE_MAGIC, len(segments),
                             self.flash_mode, self.flash_size_freq, self.entrypoint))
 
     def is_irom_addr(self, addr):
         """ Returns True if an address starts in the irom region.
         Valid for ESP8266 only.
         """
-        return ESPROM.IROM_MAP_START <= addr < ESPROM.IROM_MAP_END
+        return ESPLoader.IROM_MAP_START <= addr < ESPLoader.IROM_MAP_END
 
     def get_irom_segment(self):
             irom_segments = [s for s in self.segments if self.is_irom_addr(s.addr)]
@@ -877,7 +847,7 @@ class ESPFirmwareImage(BaseFirmwareImage):
         self.version = 1
 
         if load_file is not None:
-            segments = self.load_common_header(load_file, ESPROM.ESP_IMAGE_MAGIC)
+            segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
 
             for _ in xrange(segments):
                 self.load_segment(load_file)
@@ -899,7 +869,7 @@ class ESPFirmwareImage(BaseFirmwareImage):
         normal_segments = self.get_non_irom_segments()
         with open("%s0x00000.bin" % basename, 'wb') as f:
             self.write_common_header(f, normal_segments)
-            checksum = ESPROM.ESP_CHECKSUM_MAGIC
+            checksum = ESPLoader.ESP_CHECKSUM_MAGIC
             for segment in self.segments:
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
@@ -924,13 +894,13 @@ class OTAFirmwareImage(BaseFirmwareImage):
             # in the header, so we need to calculate a load address
             irom_offs = load_file.tell()
             irom_segment = self.load_segment(load_file, True)
-            irom_segment.addr = irom_offs + ESPROM.IROM_MAP_START
+            irom_segment.addr = irom_offs + self.IROM_MAP_START
 
             first_flash_mode = self.flash_mode
             first_flash_size_freq = self.flash_size_freq
             first_entrypoint = self.entrypoint
             # load the second header
-            self.load_common_header(load_file, ESPROM.ESP_IMAGE_MAGIC)
+            self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
             (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
 
             if first_flash_mode != self.flash_mode:
@@ -952,11 +922,11 @@ class OTAFirmwareImage(BaseFirmwareImage):
         """ Derive a default output name from the ELF name. """
         irom_segment = self.get_irom_segment()
         if irom_segment is not None:
-            irom_offs = irom_segment.addr - ESPROM.IROM_MAP_START
+            irom_offs = irom_segment.addr - self.IROM_MAP_START
         else:
             irom_offs = 0
         return "%s-0x%05x.bin" % (os.path.splitext(input_file)[0],
-                                  irom_offs & ~(ESPROM.ESP_FLASH_SECTOR - 1))
+                                  irom_offs & ~(ESPLoader.ESP_FLASH_SECTOR - 1))
 
     def save(self, filename):
         with open(filename, 'wb') as f:
@@ -973,7 +943,7 @@ class OTAFirmwareImage(BaseFirmwareImage):
             # second header, matches V1 header and contains loadable segments
             normal_segments = self.get_non_irom_segments()
             self.write_common_header(f, normal_segments)
-            checksum = ESPROM.ESP_CHECKSUM_MAGIC
+            checksum = ESPLoader.ESP_CHECKSUM_MAGIC
             for segment in normal_segments:
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
@@ -993,7 +963,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.additional_header = '\x00' * 16
 
         if load_file is not None:
-            segments = self.load_common_header(load_file, ESPROM.ESP_IMAGE_MAGIC)
+            segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
             self.additional_header = load_file.read(16)
 
             for i in xrange(segments):
@@ -1014,7 +984,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             self.write_common_header(f, self.segments)
             f.write(self.additional_header)
 
-            checksum = ESPROM.ESP_CHECKSUM_MAGIC
+            checksum = ESPLoader.ESP_CHECKSUM_MAGIC
             last_addr = None
             for segment in sorted(self.segments, key=lambda s:s.addr):
                 # IROM/DROM segment flash mappings need to align on
@@ -1244,7 +1214,7 @@ class NotImplementedInROMError(FatalError):
 
 # "Operation" commands, executable at command line. One function each
 #
-# Each function takes either two args (<ESPROM instance>, <args>) or a single <args>
+# Each function takes either two args (<ESPLoader instance>, <args>) or a single <args>
 # argument.
 
 
@@ -1362,12 +1332,12 @@ def image_info(args):
     print('Entry point: %08x' % image.entrypoint) if image.entrypoint != 0 else 'Entry point not set'
     print '%d segments' % len(image.segments)
     print
-    checksum = ESPROM.ESP_CHECKSUM_MAGIC
+    checksum = ESPLoader.ESP_CHECKSUM_MAGIC
     idx = 0
     for seg in image.segments:
         idx += 1
         print 'Segment %d: %r' % (idx, seg)
-        checksum = ESPROM.checksum(seg.data, checksum)
+        checksum = ESPLoader.checksum(seg.data, checksum)
     print
     print 'Checksum: %02x (%s)' % (image.checksum, 'valid' if image.checksum == checksum else 'invalid!')
 
@@ -1510,13 +1480,13 @@ def main():
     parser.add_argument(
         '--port', '-p',
         help='Serial port device',
-        default=os.environ.get('ESPTOOL_PORT', ESPROM.DEFAULT_PORT))
+        default=os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT))
 
     parser.add_argument(
         '--baud', '-b',
         help='Serial port baud rate used when flashing/reading',
         type=arg_auto_int,
-        default=os.environ.get('ESPTOOL_BAUD', ESPROM.ESP_ROM_BAUD))
+        default=os.environ.get('ESPTOOL_BAUD', ESPLoader.ESP_ROM_BAUD))
 
     parser.add_argument(
         '--no-stub',
@@ -1651,14 +1621,14 @@ def main():
     print 'esptool.py v%s' % __version__
 
     # operation function can take 1 arg (args), 2 args (esp, arg)
-    # or be a member function of the ESPROM class.
+    # or be a member function of the ESPLoader class.
 
     operation_func = globals()[args.operation]
     operation_args,_,_,_ = inspect.getargspec(operation_func)
-    if operation_args[0] == 'esp':  # operation function takes an ESPROM connection object
-        initial_baud = min(ESPROM.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
+    if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
+        initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
         chip_constructor_fun = {
-            'auto': ESPROM.detect_chip,
+            'auto': ESPLoader.detect_chip,
             'esp8266': ESP8266ROM,
             'esp32': ESP32ROM,
         }[args.chip]
