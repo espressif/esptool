@@ -1313,7 +1313,7 @@ def write_flash(esp, args):
         else:
             print 'Hash of data verified.'
     print '\nLeaving...'
-    if args.flash_mode == 'dio':
+    if args.flash_mode == 'dio' and esp.CHIP_NAME == "ESP8266":
         esp.flash_unlock_dio()
     else:
         esp.flash_begin(0, 0)
