@@ -7,4 +7,4 @@ GTAGS
 esptool.egg-info
 build
 dist
-
+.eggs
