@@ -1,3 +1,5 @@
+from __future__ import division, print_function, unicode_literals
+
 from setuptools import setup
 import io
 import os
@@ -77,6 +79,7 @@ setup(
     ],
     setup_requires=[
         'flake8<3.0.0',
+        'flake8-future-import',
     ],
     install_requires=[
         'pyserial',
