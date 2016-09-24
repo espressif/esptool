@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cesanta Software Limited
+ * Copyright (c) 2016 Cesanta Software Limited & Angus Gratton
  * All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -35,32 +35,53 @@
 
 #include "rom_functions.h"
 
-#include "eagle_soc.h"
-#include "ets_sys.h"
-#include "examples/driver_lib/include/driver/uart_register.h"
+#include <esp/interrupts.h>
+#include <esp/uart.h>
+#include <esp/spi_regs.h>
+
+#ifdef ESP31
+/* ESP31 has no (known) set of MD5 functions in ROM */
+#include <md5.h>
+#endif
 
 #include "slip.h"
 
-/* Param: baud rate. */
-uint32_t params[1] __attribute__((section(".params")));
+/* Params sent by esptool.py */
+volatile struct {
+  uint32_t desired_baudrate; /* if non-zero, change to this baud rate when running */
+} params __attribute__((section(".params")));
+
+/* Params sent back to esptool.py on startup */
+struct startup_params {
+  uint32_t max_writeahead;
+  uint32_t write_block_len;
+};
 
 /* TODO(rojer): read sector and block sizes from device ROM. */
 #define FLASH_SECTOR_SIZE 4096
 #define FLASH_BLOCK_SIZE 65536
-#define UART_CLKDIV_26MHZ(B) (52000000 + B / 2) / B
 
 #define UART_BUF_SIZE 6144
 #define SPI_WRITE_SIZE 1024
 
-#define UART_RX_INTS (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA)
+#ifdef ESP8266
+#define MAX_WRITEAHEAD (UART_BUF_SIZE - SPI_WRITE_SIZE)
+#else
+/* ESP31 only supports synchronous writes for now */
+#define MAX_WRITEAHEAD SPI_WRITE_SIZE
+#endif
 
-/* From spi_register.h */
-#define REG_SPI_BASE(i) (0x60000200 - i * 0x100)
+#define SPI_RDID (BIT(28)) /* SPI read ID command */
 
-#define SPI_CMD(i) (REG_SPI_BASE(i) + 0x0)
-#define SPI_RDID (BIT(28))
+#define UART_RX_INTS (UART_INT_ENABLE_RXFIFO_FULL | UART_INT_ENABLE_RXFIFO_TIMEOUT)
 
-#define SPI_W0(i) (REG_SPI_BASE(i) + 0x40)
+/* This function needs modifying before it works on ESP31 */
+static inline uint32_t read_flash_chip_id() {
+  SPI(0).CMD = SPI_RDID;
+  while (SPI(0).CMD & SPI_RDID) {
+  }
+  return SPI(0).W0 & 0xFFFFFF;
+}
 
 int do_flash_erase(uint32_t addr, uint32_t len) {
   if (addr % FLASH_SECTOR_SIZE != 0) return 0x32;
@@ -73,11 +94,13 @@ int do_flash_erase(uint32_t addr, uint32_t len) {
     addr += FLASH_SECTOR_SIZE;
   }
 
+#ifdef ESP8266 /* Only ESP8266 has SPIEraseBlock */
   while (len > FLASH_BLOCK_SIZE) {
     if (SPIEraseBlock(addr / FLASH_BLOCK_SIZE) != 0) return 0x36;
     len -= FLASH_BLOCK_SIZE;
     addr += FLASH_BLOCK_SIZE;
   }
+#endif
 
   while (len > 0) {
     if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x37;
@@ -94,21 +117,82 @@ struct uart_buf {
   uint8_t *pr, *pw;
 };
 
+#ifdef ESP8266
+/* Asynchronous UART reader routine for ESP8266 */
+
 void uart_isr(void *arg) {
-  uint32_t int_st = READ_PERI_REG(UART_INT_ST(0));
+  uint32_t int_st = UART(0).INT_STATUS;
   struct uart_buf *ub = (struct uart_buf *) arg;
   while (1) {
-    uint32_t fifo_len = READ_PERI_REG(UART_STATUS(0)) & 0xff;
+    uint32_t fifo_len = FIELD2VAL(UART_STATUS_RXFIFO_COUNT, UART(0).STATUS);
     if (fifo_len == 0) break;
     while (fifo_len-- > 0) {
-      uint8_t byte = READ_PERI_REG(UART_FIFO(0)) & 0xff;
+      uint8_t byte = UART(0).FIFO & 0xff;
       *ub->pw++ = byte;
       ub->nr++;
       if (ub->pw >= ub->data + UART_BUF_SIZE) ub->pw = ub->data;
     }
   }
-  WRITE_PERI_REG(UART_INT_CLR(0), int_st);
+  UART(0).INT_CLEAR = int_st;
 }
+
+static void uart_reader_init(volatile struct uart_buf *ub)
+{
+  ets_isr_attach(INUM_UART, uart_isr, (void *)ub);
+  UART(0).INT_ENABLE = UART_RX_INTS;
+  /* note: on ESP8266 we have to use ets_isr_unmask/mask not
+	 _xt_isr_mask as the ROM functions set flags in RAM for
+	 the user exception handler to pick up on.
+  */
+  ets_isr_unmask(BIT(INUM_UART));
+}
+
+static void uart_reader_fill_buffer_before_erase(volatile struct uart_buf *ub)
+{
+}
+
+static void uart_reader_fill_buffer_after_erase(volatile struct uart_buf *ub)
+{
+  /* Happens in the ISR, so we just wait for enough data to have arrived. */
+  while (ub->nr < SPI_WRITE_SIZE) { }
+}
+
+static void uart_reader_deinit(void)
+{
+  ets_isr_mask(BIT(INUM_UART));
+}
+
+#elif defined(ESP31) /* End of ESP8266 async uart_reader_xxx routines */
+
+/* ESP31 cureently doesn't have documented interrupt routines,
+   so do slower synchronus read/write */
+
+static void uart_reader_init(struct uart_buf *ub)
+{
+
+}
+
+static void uart_reader_fill_buffer_before_erase(struct uart_buf *ub)
+{
+  /* We have to read SPI_WRITE_SIZE bytes before erasing, or we'll drop bytes. */
+  while (ub->nr < SPI_WRITE_SIZE) {
+	*ub->pw++ = uart_getc(0);
+	ub->nr++;
+	if (ub->pw >= ub->data + UART_BUF_SIZE) ub->pw = ub->data;
+  }
+}
+
+static void uart_reader_fill_buffer_after_erase(struct uart_buf *ub)
+{
+}
+
+static void uart_reader_deinit(void)
+{
+}
+
+#else
+#error "Unknown Espressif chip type?"
+#endif
 
 int do_flash_write(uint32_t addr, uint32_t len, uint32_t erase) {
   struct uart_buf ub;
@@ -123,42 +207,46 @@ int do_flash_write(uint32_t addr, uint32_t len, uint32_t erase) {
 
   ub.nr = 0;
   ub.pr = ub.pw = ub.data;
-  ets_isr_attach(ETS_UART_INUM, uart_isr, &ub);
-  SET_PERI_REG_MASK(UART_INT_ENA(0), UART_RX_INTS);
-  ets_isr_unmask(1 << ETS_UART_INUM);
+
+  uart_reader_init(&ub);
 
   SLIP_send(&num_written, 4);
 
   while (num_written < len) {
-    volatile uint32_t *nr = &ub.nr;
+	uart_reader_fill_buffer_before_erase(&ub);
+
     /* Prepare the space ahead. */
-    while (erase && num_erased < num_written + SPI_WRITE_SIZE) {
-      const uint32_t num_left = (len - num_erased);
-      if (num_left > FLASH_BLOCK_SIZE && addr % FLASH_BLOCK_SIZE == 0) {
-        if (SPIEraseBlock(addr / FLASH_BLOCK_SIZE) != 0) return 0x35;
-        num_erased += FLASH_BLOCK_SIZE;
-      } else {
-        /* len % FLASH_SECTOR_SIZE == 0 is enforced, no further checks needed */
-        if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x36;
-        num_erased += FLASH_SECTOR_SIZE;
-      }
-    }
-    /* Wait for data to arrive. */
-    while (*nr < SPI_WRITE_SIZE) {
-    }
-    MD5Update(&ctx, ub.pr, SPI_WRITE_SIZE);
-    if (SPIWrite(addr, ub.pr, SPI_WRITE_SIZE) != 0) return 0x37;
-    ets_intr_lock();
-    *nr -= SPI_WRITE_SIZE;
-    ets_intr_unlock();
-    num_written += SPI_WRITE_SIZE;
+#ifdef ESP8266
+    if (erase && num_erased < num_written + SPI_WRITE_SIZE
+		   && (len - num_erased) > FLASH_BLOCK_SIZE
+		   && (addr % FLASH_BLOCK_SIZE) == 0) {
+	  if (SPIEraseBlock(addr / FLASH_BLOCK_SIZE) != 0) return 0x35;
+	  num_erased += FLASH_BLOCK_SIZE;
+	} else
+#endif
+    if (erase && num_erased < num_written + SPI_WRITE_SIZE) {
+	  /* len % FLASH_SECTOR_SIZE == 0 is enforced, no further checks needed */
+	  if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x36;
+	  num_erased += FLASH_SECTOR_SIZE;
+	}
+
+	uart_reader_fill_buffer_after_erase(&ub);
+
+	if (SPIWrite(addr, ub.pr, SPI_WRITE_SIZE) != 0) return 0x37;
+	uint32_t int_level = _xt_disable_interrupts();
+	ub.nr -= SPI_WRITE_SIZE;
+	_xt_restore_interrupts(int_level);
+
+	MD5Update(&ctx, ub.pr, SPI_WRITE_SIZE);
+
+	num_written += SPI_WRITE_SIZE;
     addr += SPI_WRITE_SIZE;
     ub.pr += SPI_WRITE_SIZE;
     if (ub.pr >= ub.data + UART_BUF_SIZE) ub.pr = ub.data;
     SLIP_send(&num_written, 4);
   }
 
-  ets_isr_mask(1 << ETS_UART_INUM);
+  uart_reader_deinit();
 
   MD5Final(digest, &ctx);
   SLIP_send(digest, 16);
@@ -179,7 +267,7 @@ int do_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
       uint32_t n = len - num_sent;
       if (n > block_size) n = block_size;
       if (SPIRead(addr, buf, n) != 0) return 0x53;
-      send_packet(buf, n);
+      SLIP_send(buf, n);
       MD5Update(&ctx, buf, n);
       addr += n;
       num_sent += n;
@@ -190,7 +278,7 @@ int do_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
     }
   }
   MD5Final(digest, &ctx);
-  send_packet(digest, sizeof(digest));
+  SLIP_send(digest, sizeof(digest));
   return 0;
 }
 
@@ -212,23 +300,19 @@ int do_flash_digest(uint32_t addr, uint32_t len, uint32_t digest_block_size) {
     if (digest_block_size > 0) {
       MD5Update(&block_ctx, buf, n);
       MD5Final(digest, &block_ctx);
-      send_packet(digest, sizeof(digest));
+      SLIP_send(digest, sizeof(digest));
     }
     addr += n;
     len -= n;
   }
   MD5Final(digest, &ctx);
-  send_packet(digest, sizeof(digest));
+  SLIP_send(digest, sizeof(digest));
   return 0;
 }
 
 int do_flash_read_chip_id() {
-  uint32_t chip_id = 0;
-  WRITE_PERI_REG(SPI_CMD(0), SPI_RDID);
-  while (READ_PERI_REG(SPI_CMD(0)) & SPI_RDID) {
-  }
-  chip_id = READ_PERI_REG(SPI_W0(0)) & 0xFFFFFF;
-  send_packet(&chip_id, sizeof(chip_id));
+  uint32_t chip_id = read_flash_chip_id();
+  SLIP_send(&chip_id, sizeof(chip_id));
   return 0;
 }
 
@@ -287,7 +371,11 @@ uint8_t cmd_loop() {
         break;
       }
       case CMD_FLASH_ERASE_CHIP: {
+#ifdef ESP8266
         resp = SPIEraseChip();
+#else
+		resp = 1; /* TODO: ESP31 erase chip function! */
+#endif
         break;
       }
       case CMD_BOOT_FW:
@@ -303,25 +391,35 @@ uint8_t cmd_loop() {
 }
 
 void stub_main() {
-  uint32_t baud_rate = params[0];
-  uint32_t greeting = 0x4941484f; /* OHAI */
+  const uint32_t greeting = 0x4941484f; /* OHAI */
   uint8_t last_cmd;
 
+#ifdef ESP8266
   /* This points at us right now, reset for next boot. */
-  ets_set_user_start(NULL);
+  ets_set_user_start(0);
+#endif
 
+#ifdef ESP8266
   /* Selects SPI functions for flash pins. */
   SelectSpiFunction();
+#endif
 
-  if (baud_rate > 0) {
-    ets_delay_us(1000);
-    uart_div_modify(0, UART_CLKDIV_26MHZ(baud_rate));
-  }
-
-  /* Give host time to get ready too. */
+  /* Give host time to get ready too
+	 (also allows any pending UART TX to flush before
+	 we change baud rates.)*/
   ets_delay_us(10000);
 
-  SLIP_send(&greeting, 4);
+  if (params.desired_baudrate > 0) {
+	uart_set_baud(0, params.desired_baudrate);
+  }
+
+  SLIP_send(&greeting, sizeof(greeting));
+
+  const struct startup_params startup_params = {
+	.write_block_len = SPI_WRITE_SIZE,
+	.max_writeahead = MAX_WRITEAHEAD,
+  };
+  SLIP_send(&startup_params, sizeof(struct startup_params));
 
   last_cmd = cmd_loop();
 
@@ -335,7 +433,8 @@ void stub_main() {
      * then jumps to 0x4000108a, then checks strapping bits again (which will
      * not have changed), and then proceeds to 0x400010a8.
      */
-    volatile uint32_t *sp = &baud_rate;
+    volatile uint32_t *sp;
+    __asm volatile("mov %0, a1" : "=r" (sp));
     while (*sp != (uint32_t) 0x40001100) sp++;
     *sp = 0x400010a8;
     /*
@@ -346,7 +445,11 @@ void stub_main() {
     __asm volatile("nop.n");
     return; /* To 0x400010a8 */
   } else {
+#ifdef ESP8266
     _ResetVector();
+#else
+	/* ESP31 TODO */
+#endif
   }
   /* Not reached */
 }

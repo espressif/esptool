@@ -248,11 +248,17 @@ In `qio` mode, GPIOs 9 and 10 are used for SPI flash communications. If flash mo
 
 ### Flash Size (--flash_size, -fs)
 
-Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). The default is `4m` (4 megabits, 512 kilobytes.) This parameter can also be specified using the environment variable `ESPTOOL_FS`.
+Size of the SPI flash. Valid values for ESP8266 are `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `4MB-c2`. Valid values for ESP31 are `1MB`, `2MB`, `4MB`, `8MB`, `16MB`.
+
+Flash sizes are given in kilobytes or megabytes, ie `4MB` means four megabytes.
+
+Note that older versions of esptool.py specified sizes in mega*bits*, ie `4m`. Megabit format still works but is deprecated, we recommend you use the equivalent kilobyte/megabyte value (divide megabits by 8 to get megabytes).
+
+This parameter can also be specified using the environment variable `ESPTOOL_FS`. If no value is specified, the default is 1MB.
 
 The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
 
-ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 32 megabit (`32m` i.e. 4MB) flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)).
+ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 4MB of flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)).
 
 ### Flash Frequency (--flash_freq, -ff)
 
@@ -360,5 +366,7 @@ csum 0x46
 ## About
 
 esptool.py was initially created by Fredrik Ahlberg (themadinventor, kongo), and is currently maintained by Fredrik and Angus Gratton (@projectgus). It has also received improvements from many members of the ESP8266 community - including pfalcon, tommie, 0ff and george-hopkins.
+
+A special thank you to [Cesanta Systems](http://cesanta.com/) who wrote a high performance "flasher stub" and helped to get it merged back into esptool.py.
 
 This document and the attached source code is released under GPLv2.
