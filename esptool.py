@@ -419,8 +419,6 @@ class ESPLoader(object):
         erase_blocks = (size + self.ESP_FLASH_BLOCK - 1) / self.ESP_FLASH_BLOCK
 
         erase_size = size
-        if erase_size > 0 and (offset + erase_size) >= (16 / 8) * 1024 * 1024:
-            self.flash_spi_param_set()
 
         self._port.timeout = 20
         t = time.time()

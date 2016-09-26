@@ -127,6 +127,36 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0, 4096, "images/sector.bin")
         self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
 
+class TestFlashSizes(EsptoolTestCase):
+
+    def test_high_offset(self):
+        self.run_esptool("write_flash -fs 4MB 0x300000 images/one_kb.bin")
+        self.verify_readback(0x300000, 1024, "images/one_kb.bin")
+
+    def test_high_offset_compressed(self):
+        self.run_esptool("write_flash -z -fs 4MB 0x300000 images/one_kb.bin")
+        self.verify_readback(0x300000, 1024, "images/one_kb.bin")
+
+    def test_large_image(self):
+        self.run_esptool("write_flash -fs 4MB 0x280000 images/one_mb.bin")
+        self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
+
+    def test_large_compressed(self):
+        self.run_esptool("write_flash -z -fs 4MB 0x280000 images/one_mb.bin")
+        self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
+
+    def test_invalid_size_arg(self):
+        with self.assertRaises(subprocess.CalledProcessError) as fail:
+            self.run_esptool("write_flash -fs 10MB 0x6000 images/one_kb.bin")
+
+    def test_write_past_end_fails(self):
+        with self.assertRaises(subprocess.CalledProcessError) as fail:
+            self.run_esptool("write_flash -fs 1MB 0x280000 images/one_kb.bin")
+
+    def test_write_compressed_past_end_fails(self):
+        with self.assertRaises(subprocess.CalledProcessError) as fail:
+            self.run_esptool("write_flash -z -fs 1MB 0x280000 images/one_kb.bin")
+
 class TestFlashDetection(EsptoolTestCase):
     def test_correct_offset(self):
         """ Verify writing at an offset actually writes to that offset. """
