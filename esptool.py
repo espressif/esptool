@@ -555,6 +555,7 @@ class CesantaFlasher(object):
     CMD_FLASH_WRITE = 1
     CMD_FLASH_READ = 2
     CMD_FLASH_DIGEST = 3
+    CMD_FLASH_ERASE_CHIP = 5
     CMD_BOOT_FW = 6
 
     def __init__(self, esp, baud_rate=0):
@@ -674,6 +675,18 @@ class CesantaFlasher(object):
         status_code = struct.unpack('<B', p)[0]
         if status_code != 0:
             raise FatalError('Boot failure, status: %x' % status_code)
+
+    def flash_erase_chip(self):
+        self._esp.write(struct.pack('<B', self.CMD_FLASH_ERASE_CHIP))
+        otimeout = self._esp._port.timeout
+        self._esp._port.timeout = 60
+        p = self._esp.read()
+        self._esp._port.timeout = otimeout
+        if len(p) != 1:
+            raise FatalError('Expected status, got: %s' % hexify(p))
+        status_code = struct.unpack('<B', p)[0]
+        if status_code != 0:
+            raise FatalError('Erase chip failure, status: %x' % status_code)
 
 
 def slip_reader(port):
@@ -934,8 +947,12 @@ def chip_id(esp, args):
 
 
 def erase_flash(esp, args):
+    flasher = CesantaFlasher(esp, args.baud)
     print 'Erasing flash (this may take a while)...'
-    esp.flash_erase()
+    t = time.time()
+    flasher.flash_erase_chip()
+    t = time.time() - t
+    print 'Erase took %.1f seconds' % t
 
 
 def run(esp, args):
