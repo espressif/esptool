@@ -418,8 +418,6 @@ class ESPLoader(object):
         num_blocks = (compsize + self.ESP_FLASH_BLOCK - 1) / self.ESP_FLASH_BLOCK
         erase_blocks = (size + self.ESP_FLASH_BLOCK - 1) / self.ESP_FLASH_BLOCK
 
-        erase_size = size
-
         self._port.timeout = 20
         t = time.time()
         print "Unc size %d comp size %d comp blocks %d" % (size, compsize, num_blocks)
@@ -1264,6 +1262,17 @@ def write_flash(esp, args):
     flash_size_freq = esp.parse_flash_size_arg(args.flash_size)
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
     flash_info = struct.pack('BB', flash_mode, flash_size_freq)
+
+    # verify file sizes fit in flash
+    flash_end = flash_size_bytes(args.flash_size)
+    for address, argfile in args.addr_filename:
+        argfile.seek(0,2)  # seek to end
+        if address + argfile.tell() > flash_end:
+            raise FatalError("File %s (length %d) at offset %d will not fit in %d bytes of flash." +
+                             "Use --flash-size argument, or change flashing address."
+                             % (argfile.name, argfile.tell(), address, flash_end))
+        argfile.seek(0)
+
     for address, argfile in args.addr_filename:
         print 'Erasing flash...'
         if args.compress:

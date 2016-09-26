@@ -152,10 +152,17 @@ class TestFlashSizes(EsptoolTestCase):
     def test_write_past_end_fails(self):
         with self.assertRaises(subprocess.CalledProcessError) as fail:
             self.run_esptool("write_flash -fs 1MB 0x280000 images/one_kb.bin")
+        failure = fail.exception
+        self.assertIn("File images/one_kb.bin", failure.output)
+        self.assertIn("will not fit", failure.output)
 
     def test_write_compressed_past_end_fails(self):
         with self.assertRaises(subprocess.CalledProcessError) as fail:
             self.run_esptool("write_flash -z -fs 1MB 0x280000 images/one_kb.bin")
+        failure = fail.exception
+        self.assertIn("File images/one_kb.bin", failure.output)
+        self.assertIn("will not fit", failure.output)
+
 
 class TestFlashDetection(EsptoolTestCase):
     def test_correct_offset(self):
