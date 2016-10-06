@@ -28,6 +28,8 @@ default_baudrate = 115200 # can override on command line
 chip = None # set on command line
 serialport = None # set on command line
 
+RETURN_CODE_FATAL_ERROR = 2
+
 class EsptoolTestCase(unittest.TestCase):
 
     def run_esptool(self, args, baud=None):
@@ -49,6 +51,19 @@ class EsptoolTestCase(unittest.TestCase):
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise e
+
+    def run_esptool_error(self, args, baud=None):
+        """ Run esptool.py similar to run_esptool, but expect an
+        error.
+
+        Verifies the error is an expected error not an unhandled exception,
+        and returns the output from esptool.py
+        """
+        with self.assertRaises(subprocess.CalledProcessError) as fail:
+            self.run_esptool(args, baud)
+        failure = fail.exception
+        self.assertEqual(RETURN_CODE_FATAL_ERROR, failure.returncode)
+        return failure.output
 
     def get_tempfile(self):
         with warnings.catch_warnings():
@@ -146,22 +161,17 @@ class TestFlashSizes(EsptoolTestCase):
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
 
     def test_invalid_size_arg(self):
-        with self.assertRaises(subprocess.CalledProcessError) as fail:
-            self.run_esptool("write_flash -fs 10MB 0x6000 images/one_kb.bin")
+        self.run_esptool_error("write_flash -fs 10MB 0x6000 images/one_kb.bin")
 
     def test_write_past_end_fails(self):
-        with self.assertRaises(subprocess.CalledProcessError) as fail:
-            self.run_esptool("write_flash -fs 1MB 0x280000 images/one_kb.bin")
-        failure = fail.exception
-        self.assertIn("File images/one_kb.bin", failure.output)
-        self.assertIn("will not fit", failure.output)
+        output = self.run_esptool_error("write_flash -fs 1MB 0x280000 images/one_kb.bin")
+        self.assertIn("File images/one_kb.bin", output)
+        self.assertIn("will not fit", output)
 
     def test_write_compressed_past_end_fails(self):
-        with self.assertRaises(subprocess.CalledProcessError) as fail:
-            self.run_esptool("write_flash -z -fs 1MB 0x280000 images/one_kb.bin")
-        failure = fail.exception
-        self.assertIn("File images/one_kb.bin", failure.output)
-        self.assertIn("will not fit", failure.output)
+        output = self.run_esptool_error("write_flash -z -fs 1MB 0x280000 images/one_kb.bin")
+        self.assertIn("File images/one_kb.bin", output)
+        self.assertIn("will not fit", output)
 
 
 class TestFlashDetection(EsptoolTestCase):
@@ -199,11 +209,9 @@ class TestVerifyCommand(EsptoolTestCase):
 
     def test_verify_failure(self):
         self.run_esptool("write_flash 0x6000 images/sector.bin")
-        with self.assertRaises(subprocess.CalledProcessError) as fail:
-            self.run_esptool("verify_flash --diff=yes 0x6000 images/one_kb.bin")
-        failure = fail.exception
-        self.assertIn("verify FAILED", failure.output)
-        self.assertIn("first @ 0x00006000", failure.output)
+        output = self.run_esptool_error("verify_flash --diff=yes 0x6000 images/one_kb.bin")
+        self.assertIn("verify FAILED", output)
+        self.assertIn("first @ 0x00006000", output)
 
 
 if __name__ == '__main__':

@@ -1268,8 +1268,8 @@ def write_flash(esp, args):
     for address, argfile in args.addr_filename:
         argfile.seek(0,2)  # seek to end
         if address + argfile.tell() > flash_end:
-            raise FatalError("File %s (length %d) at offset %d will not fit in %d bytes of flash." +
-                             "Use --flash-size argument, or change flashing address."
+            raise FatalError(("File %s (length %d) at offset %d will not fit in %d bytes of flash. " +
+                             "Use --flash-size argument, or change flashing address.")
                              % (argfile.name, argfile.tell(), address, flash_end))
         argfile.seek(0)
 
