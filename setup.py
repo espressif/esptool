@@ -84,7 +84,7 @@ setup(
         'flake8<3.0.0',
     ],
     install_requires=[
-        'pyserial',
+        'pyserial>=2.5',
     ],
     scripts=[
         'esptool.py',
