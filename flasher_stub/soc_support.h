@@ -2,9 +2,9 @@
  *
  * Provide a unified interface where possible, from ESP8266 Non-OS SDK & esp-idf
  * headers.
+ *
  */
 #pragma once
-
 
 #ifdef ESP8266
 #define SPI_IDX 0

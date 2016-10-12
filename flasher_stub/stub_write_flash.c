@@ -98,8 +98,14 @@ static bool spiflash_is_ready(void)
 
 /* Erase the next sector or block (depending if we're at a block boundary).
 
-   Does nothing if SPI flash not yet ready for a write. Also does not wait
-   for any existing SPI flash operation to complete.
+   Updates fs.next_erase_sector & fs.remaining_erase_sector on success.
+
+   If nothing left to erase, returns immediately.
+
+   Returns immediately if SPI flash not yet ready for a write operation.
+
+   Does not wait for the erase to complete - the next SPI operation
+   should check if a write operation is currently in progress.
  */
 static void start_next_erase(void)
 {
@@ -131,8 +137,8 @@ static void start_next_erase(void)
   fs.next_erase_sector += sectors_to_erase;
 }
 
-/* Write data to flash (either direct for non-compressed upload, or decompressed.
-   erases as it goes.
+/* Write data to flash (either direct for non-compressed upload, or
+   freshly decompressed.) Erases as it goes.
 
    Updates fs.remaining_erase_sector, fs.next_write, and fs.remaining
 */
