@@ -74,6 +74,17 @@ typedef struct {
 } uart_buf_t;
 static volatile uart_buf_t ub;
 
+/* esptool protcol "checksum" is XOR of 0xef and each byte of
+   data payload. */
+static uint8_t calculate_checksum(uint8_t *buf, int length)
+{
+  uint8_t res = 0xef;
+  for(int i = 0; i < length; i++) {
+	res ^= buf[i];
+  }
+  return res;
+}
+
 static void uart_isr_receive(char byte)
 {
   int16_t r = SLIP_recv_byte(byte, (slip_state_t *)&ub.state);
@@ -201,9 +212,14 @@ uint8_t cmd_loop() {
 		 allowing next command to buffer */
 	  if(is_in_flash_mode()) {
 		error = get_flash_error();
-		if (data_words[0] != command->data_len - 16) {
+		int payload_len = command->data_len - 16;
+		if (data_words[0] != payload_len) {
 		  /* First byte of data payload header is length (repeated) as a word */
 		  error = ESP_BAD_DATA_LEN;
+		}
+		uint8_t data_checksum = calculate_checksum(command->data_buf + 16, payload_len);
+		if (data_checksum != command->checksum) {
+		  error = ESP_BAD_DATA_CHECKSUM;
 		}
 	  }
 	  else {

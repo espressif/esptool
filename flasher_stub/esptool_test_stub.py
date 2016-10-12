@@ -22,6 +22,9 @@ import esptool
 execfile("%s/build/stub_flasher_snippet.py" % THIS_DIR, esptool.__dict__, esptool.__dict__)
 
 if __name__ == "__main__":
-    esptool.main()
-
+    try:
+        esptool.main()
+    except esptool.FatalError as e:
+        print '\nA fatal error occurred: %s' % e
+        sys.exit(2)
 
