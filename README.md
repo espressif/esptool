@@ -93,7 +93,7 @@ The --port argument specifies the serial port. This may take the form of somethi
 
 The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For "version 2" images, the bootloader and linker script you are using determines the flash offset.
 
-You may need to specify arguments for [flash mode and flash size](#flash-modes) as well. For example:
+You may need to specify arguments for [flash mode and flash size](#flash-modes) as well (flash size is autodetected in the recent versions and usually can be omitted). For example:
 
 ```
 esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
@@ -248,11 +248,11 @@ In `qio` mode, GPIOs 9 and 10 are used for SPI flash communications. If flash mo
 
 ### Flash Size (--flash_size, -fs)
 
-Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). The default is `4m` (4 megabits, 512 kilobytes.) This parameter can also be specified using the environment variable `ESPTOOL_FS`.
+Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). For `write_flash` command, the default is `detect`, which tries to autodetect size based on SPI flash ID. If detection fails, older default of `4m` (4 megabits, 512 kilobytes) is used. This parameter can also be specified using the environment variable `ESPTOOL_FS`.
 
 The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
 
-ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 32 megabit (`32m` i.e. 4MB) flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)).
+ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 32 megabit (`32m` i.e. 4MB) flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)). If `--flash_size=detect` (recent default) is used, this process is performed automatically by `esptool.py` itself.
 
 ### Flash Frequency (--flash_freq, -ff)
 
