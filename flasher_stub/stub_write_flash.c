@@ -42,6 +42,10 @@ static struct {
   uint32_t remaining_compressed;
 } fs;
 
+/* SPI status bits */
+static const uint32_t STATUS_WIP_BIT = (1 << 0);
+static const uint32_t STATUS_CMP_BIT = (1 << 14); /* Complement Protect */
+
 bool is_in_flash_mode(void)
 {
   return fs.in_flash_mode;
@@ -51,29 +55,6 @@ esp_command_error get_flash_error(void)
 {
   return fs.last_error;
 }
-
-esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
-  fs.in_flash_mode = true;
-  fs.next_write = offset;
-  fs.next_erase_sector = offset / FLASH_SECTOR_SIZE;
-  fs.remaining = total_size;
-  fs.remaining_erase_sector = (total_size + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
-  fs.last_error = ESP_OK;
-
-  if (SPIUnlock() != 0) {
-	return ESP_FAILED_SPI_UNLOCK;
-  }
-
-  return ESP_OK;
-}
-
-esp_command_error handle_flash_deflated_begin(uint32_t uncompressed_size, uint32_t compressed_size, uint32_t offset) {
-  esp_command_error err = handle_flash_begin(uncompressed_size, offset);
-  tinfl_init(&fs.inflator);
-  fs.remaining_compressed = compressed_size;
-  return err;
-}
-
 
 /* Returns true if the spiflash is ready for its next write
    operation.
@@ -92,8 +73,74 @@ static bool spiflash_is_ready(void)
   while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
 	{ }
   uint32_t status_value = REG_READ(SPI_RD_STATUS_REG(SPI_IDX));
-  const uint32_t STATUS_WIP_BIT = 1;
   return (status_value & STATUS_WIP_BIT) == 0;
+}
+
+static void spi_write_enable(void)
+{
+  while(!spiflash_is_ready())
+	{ }
+  REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_WREN);
+  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
+	{ }
+
+  /* TODO: verify Write Enable is set in status reg */
+}
+
+#ifdef ESP8266
+static inline uint32_t spi_unlock(void)
+{
+  return SPIUnlock();
+}
+#else /* ESP32 */
+
+static SpiFlashChip *flashchip = (SpiFlashChip *)0x3ffae270;
+
+/* Stub version of SPIUnlock() that also clears the CMP bit in SR2,
+ * if present.
+ */
+static SpiFlashOpResult spi_unlock(void)
+{
+  uint32_t status;
+
+  if (SPI_read_status_high(flashchip, &status) != SPI_FLASH_RESULT_OK) {
+	return SPI_FLASH_RESULT_ERR;
+  }
+
+  /* Clear all lower bits & CMP bit */
+  status &= ~(STATUS_CMP_BIT | 0xFF);
+
+  spi_write_enable();
+
+  SET_PERI_REG_MASK(SPI_CTRL_REG(SPI_IDX), SPI_WRSR_2B);
+  if (SPI_write_status(flashchip, status) != SPI_FLASH_RESULT_OK) {
+	return SPI_FLASH_RESULT_ERR;
+  }
+
+  return SPI_FLASH_RESULT_OK;
+}
+#endif
+
+esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
+  fs.in_flash_mode = true;
+  fs.next_write = offset;
+  fs.next_erase_sector = offset / FLASH_SECTOR_SIZE;
+  fs.remaining = total_size;
+  fs.remaining_erase_sector = (total_size + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
+  fs.last_error = ESP_OK;
+
+  if (spi_unlock() != 0) {
+	return ESP_FAILED_SPI_UNLOCK;
+  }
+
+  return ESP_OK;
+}
+
+esp_command_error handle_flash_deflated_begin(uint32_t uncompressed_size, uint32_t compressed_size, uint32_t offset) {
+  esp_command_error err = handle_flash_begin(uncompressed_size, offset);
+  tinfl_init(&fs.inflator);
+  fs.remaining_compressed = compressed_size;
+  return err;
 }
 
 /* Erase the next sector or block (depending if we're at a block boundary).
@@ -114,10 +161,7 @@ static void start_next_erase(void)
   if(!spiflash_is_ready())
 	return; /* don't wait for flash to be ready, caller will call again if needed */
 
-  /* Write enable */
-  REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_WREN);
-  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
-	{ }
+  spi_write_enable();
 
   uint32_t command = SPI_FLASH_SE; /* sector erase, 4KB */
   uint32_t sectors_to_erase = 1;
