@@ -145,6 +145,13 @@ uint8_t cmd_loop() {
 	  .len_ret = 0, /* esptool.py ignores this value */
 	  .value = 0,
 	};
+
+	/* ESP_READ_REG is the only command that needs to write into the
+	   'resp' structure before we send it back. */
+	if (command->op == ESP_READ_REG && command->data_len == 4) {
+	  resp.value = REG_READ(data_words[0]);
+	}
+
 	/* Send the command response. */
 	SLIP_send_frame_delimiter();
 	SLIP_send_frame_data_buf(&resp, sizeof(esp_command_response_t));
@@ -237,6 +244,17 @@ uint8_t cmd_loop() {
 	case ESP_SPI_ATTACH:
 	  /* params are isHSPI, isLegacy */
 	  error = verify_data_len(command, 8) || handle_spi_attach(data_words[0], data_words[1] & 0xFF);
+	  break;
+	case ESP_WRITE_REG:
+	  /* params are addr, value, mask (ignored), delay_us (ignored) */
+	  error = verify_data_len(command, 16);
+	  if (error == ESP_OK) {
+		REG_WRITE(data_words[0], data_words[1]);
+	  }
+	  break;
+	case ESP_READ_REG:
+	  /* actual READ_REG operation happens higher up */
+	  error = verify_data_len(command, 4);
 	  break;
 	}
 

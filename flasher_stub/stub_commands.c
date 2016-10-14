@@ -132,4 +132,3 @@ esp_command_error handle_spi_attach(bool isHspi, bool isLegacy)
 #endif
 		return ESP_OK; /* neither function/attach command takes an arg */
 }
-
