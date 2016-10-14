@@ -187,9 +187,6 @@ uint8_t cmd_loop() {
 	  error = verify_data_len(command, 16);
 	  /* actual data is sent after we send the reply */
 	  break;
-	case ESP_GET_FLASH_ID:
-	  error = verify_data_len(command, 0) || handle_flash_read_chip_id();
-	  break;
 	case ESP_FLASH_VERIFY_MD5:
 	  /* unsure why the MD5 command has 4 params but we only pass 2 of them,
 		 but this is in ESP32 ROM so we can't mess with it.

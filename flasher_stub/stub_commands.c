@@ -103,16 +103,6 @@ int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
   return 0;
 }
 
-int handle_flash_read_chip_id() {
-  uint32_t chip_id = 0;
-  WRITE_PERI_REG(SPI_CMD_REG(0), SPI_FLASH_RDID);
-  while (READ_PERI_REG(SPI_CMD_REG(0)) & SPI_FLASH_RDID) {
-  }
-  chip_id = READ_PERI_REG(SPI_W0_REG(0)) & 0xFFFFFF;
-  SLIP_send_frame_data_buf(&chip_id, sizeof(chip_id));
-  return 0;
-}
-
 esp_command_error handle_spi_set_params(uint32_t *args, int *status)
 {
   *status = SPIParamCfg(args[0], args[1], args[2], args[3], args[4], args[5]);

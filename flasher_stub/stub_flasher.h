@@ -62,7 +62,6 @@ typedef enum {
   ESP_ERASE_FLASH = 0xD0,
   ESP_ERASE_REGION = 0xD1,
   ESP_READ_FLASH = 0xD2,
-  ESP_GET_FLASH_ID = 0xD3,
 } esp_command;
 
 /* Command request header */
