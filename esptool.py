@@ -98,7 +98,6 @@ class ESPLoader(object):
     # Some comands supported by ESP32 ROM bootloader (or -8266 w/ stub)
     ESP_SPI_SET_PARAMS = 0x0B
     ESP_SPI_ATTACH     = 0x0D
-
     ESP_CHANGE_BAUDRATE = 0x0F
     ESP_FLASH_DEFL_BEGIN = 0x10
     ESP_FLASH_DEFL_DATA  = 0x11
@@ -131,14 +130,11 @@ class ESPLoader(object):
 
     UART_DATA_REG_ADDR = 0x60000078
 
-    # SPI peripheral "command" bitmasks
-    SPI_CMD_READ_ID = 0x10000000
-
     # Memory addresses
     IROM_MAP_START = 0x40200000
     IROM_MAP_END = 0x40300000
 
-    # The number of bytes in the response that signify command status
+    # The number of bytes in the UART response that signify command status
     STATUS_BYTES_LENGTH = 2
 
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, do_connect=True):
@@ -542,6 +538,148 @@ class ESPLoader(object):
         self.check_command("set SPI params", ESP32ROM.ESP_SPI_SET_PARAMS,
                            struct.pack('<IIIIII', fl_id, total_size, block_size, sector_size, page_size, status_mask))
 
+    def run_spiflash_command(self, spiflash_command, data=b"", read_bits=0):
+        """Run an arbitrary SPI flash command.
+
+        This function uses the "USR_COMMAND" functionality in the ESP
+        SPI hardware, rather than the precanned commands supported by
+        hardware. So the value of spiflash_command is an actual command
+        byte, sent over the wire.
+
+        After writing command byte, writes 'data' to MOSI and then
+        reads back 'read_bits' of reply on MISO. Result is a number.
+        """
+
+        # SPI_USR register flags
+        SPI_USR_COMMAND = (1 << 31)
+        SPI_USR_MISO    = (1 << 28)
+        SPI_USR_MOSI    = (1 << 27)
+
+        # SPI registers, base address differs ESP32 vs 8266
+        base = self.SPI_REG_BASE
+        SPI_CMD_REG       = base + 0x00
+        SPI_CTRL_REG      = base + 0x08
+        SPI_STATUS_REG    = base + 0x10
+        SPI_USR_REG       = base + 0x1C
+        SPI_USR1_REG      = base + 0x20
+        SPI_USR2_REG      = base + 0x24
+        SPI_W0_REG        = base + 0x80
+
+        # following two registers are ESP32 only
+        if self.SPI_HAS_MOSI_DLEN_REG:
+            # ESP32 has a more sophisticated wayto set up "user" commands
+            SPI_MOSI_DLEN_REG = base + 0x28
+            SPI_MISO_DLEN_REG = base + 0x2C
+            def set_data_lengths(mosi_bits, miso_bits):
+                if mosi_bits > 0:
+                    self.write_reg(SPI_MOSI_DLEN_REG, mosi_bits-1)
+                if miso_bits > 0:
+                    self.write_reg(SPI_MISO_DLEN_REG, miso_bits-1)
+        else:
+            SPI_DATA_LEN_REG = base + 0x20 # SPI_USER1 ???
+            SPI_MOSI_BITLEN_S = 17
+            SPI_MISO_BITLEN_S = 8
+            def set_data_lengths(mosi_bits, miso_bits):
+                mosi_mask = 0 if (mosi_bits == 0) else (mosi_bits - 1)
+                miso_mask = 0 if (miso_bits == 0) else (miso_bits - 1)
+                self.write_reg(SPI_DATA_LEN_REG,
+                               (miso_mask << SPI_MISO_BITLEN_S)
+                               | (mosi_mask << SPI_MOSI_BITLEN_S))
+
+        # SPI peripheral "command" bitmasks for SPI_CMD_REG
+        SPI_CMD_USR  = (1 << 18)
+
+        # shift values
+        SPI_USR2_DLEN_SHIFT = 28
+
+        if read_bits > 32:
+            raise FatalError("Reading more than 32 bits back from a SPI flash operation is unsupported")
+        if len(data) > 64:
+            raise FatalError("Writing more than 64 bytes of data with one SPI command is unsupported")
+
+        data_bits = len(data) * 8
+        self.write_reg(SPI_CTRL_REG, 0)
+        flags = SPI_USR_COMMAND
+        if read_bits > 0:
+            flags |= SPI_USR_MISO
+        if data_bits > 0:
+            flags |= SPI_USR_MOSI
+        set_data_lengths(data_bits, read_bits)
+        self.write_reg(SPI_USR_REG, flags)
+        self.write_reg(SPI_USR2_REG,
+                       (7 << SPI_USR2_DLEN_SHIFT) | spiflash_command)
+        if data_bits == 0:
+            self.write_reg(SPI_W0_REG, 0)  # clear data register before we read it
+        else:
+            if len(data) % 4 != 0:  # pad to 32-bit multiple
+                data += b'\0' * (4 - (len(data) % 4))
+            words = struct.unpack("I"* (len(data)/4), data)
+            next_reg = SPI_W0_REG
+            for word in words:
+                self.write_reg(next_reg, word)
+                next_reg += 4
+        self.write_reg(SPI_CMD_REG, SPI_CMD_USR)
+        while self.read_reg(SPI_CMD_REG) != 0:
+            print "Waiting... %08x" % self.read_reg(SPI_CMD_REG)
+            pass
+        status = self.read_reg(SPI_W0_REG)
+        return status
+
+    def read_status(self, num_bytes=2):
+        """Read up to 24 bits (num_bytes) of SPI flash status register contents
+        via RDSR, RDSR2, RDSR3 commands
+
+        Not all SPI flash supports all three commands. The upper 1 or 2
+        bytes may be 0xFF.
+        """
+        SPIFLASH_RDSR =  0x05
+        SPIFLASH_RDSR2 = 0x35
+        SPIFLASH_RDSR3 = 0x15
+
+        status = 0
+        shift = 0
+        for cmd in [SPIFLASH_RDSR, SPIFLASH_RDSR2, SPIFLASH_RDSR3][0:num_bytes]:
+            status += self.run_spiflash_command(cmd, read_bits=8) << shift
+            shift += 8
+        return status
+
+    def write_status(self, new_status, num_bytes=2, set_non_volatile=False):
+        """Write up to 24 bits (num_bytes) of new status register
+
+        num_bytes can be 1, 2 or 3.
+
+        Not all flash supports the additional commands to write the
+        second and third byte of the status register. When writing 2
+        bytes, esptool also sends a 16-byte WRSR command (as some
+        flash types use this instead of WRSR2.)
+
+        If the set_non_volatile flag is set, non-volatile bits will
+        be set as well as volatile ones (WREN used instead of WEVSR).
+
+        """
+        SPIFLASH_WRSR = 0x01
+        SPIFLASH_WRSR2 = 0x31
+        SPIFLASH_WRSR3 = 0x11
+        SPIFLASH_WEVSR = 0x50
+        SPIFLASH_WREN = 0x06
+        SPIFLASH_WRDI = 0x04
+
+        enable_cmd = SPIFLASH_WREN if set_non_volatile else SPIFLASH_WEVSR
+
+        # try using a 16-bit WRSR (not supported by all chips)
+        # this may be redundant, but shouldn't hurt
+        if num_bytes == 2:
+            self.run_spiflash_command(enable_cmd)
+            self.run_spiflash_command(SPIFLASH_WRSR, struct.pack("<H", new_status))
+
+        # also try using individual commands (also not supported by all chips for num_bytes 2 & 3)
+        for cmd in [SPIFLASH_WRSR, SPIFLASH_WRSR2, SPIFLASH_WRSR3][0:num_bytes]:
+            self.run_spiflash_command(enable_cmd)
+            self.run_spiflash_command(cmd, struct.pack("B", new_status & 0xFF))
+            new_status >>= 8
+
+        self.run_spiflash_command(SPIFLASH_WRDI)
+
 
 class ESP8266ROM(ESPLoader):
     """ Access class for ESP8266 ROM bootloader
@@ -556,8 +694,8 @@ class ESP8266ROM(ESPLoader):
     ESP_OTP_MAC1    = 0x3ff00054
     ESP_OTP_MAC3    = 0x3ff0005c
 
-    SPI_CMD_REG_ADDR = 0x60000200
-    SPI_W0_REG_ADDR = 0x60000240
+    SPI_REG_BASE    = 0x60000200
+    SPI_HAS_MOSI_DLEN_REG = False
 
     FLASH_SIZES = {
         '512KB':0x00,
@@ -646,10 +784,10 @@ class ESP32ROM(ESPLoader):
     # ESP32 uses a 4 byte status reply
     STATUS_BYTES_LENGTH = 4
 
-    SPI_CMD_REG_ADDR = 0x60003000
-    SPI_W0_REG_ADDR = 0x60003040
+    SPI_REG_BASE   = 0x60002000
+    EFUSE_REG_BASE = 0x6001a000
 
-    EFUSE_BASE = 0x6001a000
+    SPI_HAS_MOSI_DLEN_REG = True
 
     FLASH_SIZES = {
         '1MB':0x00,
@@ -661,7 +799,7 @@ class ESP32ROM(ESPLoader):
 
     def read_efuse(self, n):
         """ Read the nth word of the ESP3x EFUSE region. """
-        return self.read_reg(self.EFUSE_BASE + (4 * n))
+        return self.read_reg(self.EFUSE_REG_BASE + (4 * n))
 
     def chip_id(self):
         word16 = self.read_efuse(16)
@@ -1467,6 +1605,16 @@ def verify_flash(esp, args, flash_params=None):
     if differences:
         raise FatalError("Verify failed.")
 
+def read_flash_status(esp, args):
+    print ('Status value: 0x%04x' % esp.read_status(args.bytes))
+
+def write_flash_status(esp, args):
+    fmt = "0x%%0%dx" % (args.bytes * 2)
+    args.value = args.value & ((1 << (args.bytes * 8)) - 1)
+    print (('Initial flash status: '+fmt) % esp.read_status(args.bytes))
+    print (('Setting flash status: '+fmt) % args.value)
+    esp.write_status(args.value, args.bytes, args.non_volatile)
+    print (('After flash status:   '+fmt) % esp.read_status(args.bytes))
 
 def version(args):
     print __version__
@@ -1590,6 +1738,20 @@ def main():
         'flash_id',
         help='Read SPI flash manufacturer and device ID')
 
+    parser_read_status = subparsers.add_parser(
+        'read_flash_status',
+        help='Read SPI flash status register')
+
+    parser_read_status.add_argument('--bytes', help='Number of bytes to read (1-3)', type=int, choices=[1,2,3], default=2)
+
+    parser_write_status = subparsers.add_parser(
+        'write_flash_status',
+        help='Write SPI flash status register')
+
+    parser_write_status.add_argument('--non-volatile', help='Write non-volatile bits (use with caution)', action='store_true')
+    parser_write_status.add_argument('--bytes', help='Number of status bytes to write (1-3)', type=int, choices=[1,2,3], default=2)
+    parser_write_status.add_argument('value', help='New value', type=arg_auto_int)
+
     parser_read_flash = subparsers.add_parser(
         'read_flash',
         help='Read SPI flash content')
@@ -1652,6 +1814,8 @@ def main():
         if hasattr(args, "ucIsHspi"):
             print "Attaching SPI flash..."
             esp.flash_spi_attach(args.ucIsHspi,args.ucIsLegacy)
+        else:
+            esp.flash_spi_attach(0, 0)
         if hasattr(args, "flash_size"):
             print "Configuring flash size..."
             esp.flash_set_parameters(flash_size_bytes(args.flash_size))
