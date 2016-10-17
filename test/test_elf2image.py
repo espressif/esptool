@@ -99,11 +99,15 @@ def regenerate_all(tests):
         # run elf2image
         cmd = [sys.executable, ESPTOOL_PY ] + t.get_esptool_args("elf2image")[2:] + [ t.get_elf_path() ]
         print "Executing %s" % (" ".join(cmd))
-        subprocess.check_output(cmd)
+        print(subprocess.check_output(cmd))
 
         # run image_info to regenerate txt file
         cmd = [sys.executable, ESPTOOL_PY, "image_info", t.get_bin_paths()[0] ]
-        image_info = subprocess.check_output(cmd)
+        try:
+            image_info = subprocess.check_output(cmd)
+        except subprocess.CalledProcessError as e:
+            print (e.output)
+            raise
         with open(t.get_txt_path(), "w") as f:
             f.write(image_info)
         t.verify_files()

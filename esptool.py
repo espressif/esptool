@@ -956,7 +956,7 @@ class BaseFirmwareImage(object):
         """ Returns True if an address starts in the irom region.
         Valid for ESP8266 only.
         """
-        return ESPLoader.IROM_MAP_START <= addr < ESPLoader.IROM_MAP_END
+        return ESP8266ROM.IROM_MAP_START <= addr < ESP8266ROM.IROM_MAP_END
 
     def get_irom_segment(self):
             irom_segments = [s for s in self.segments if self.is_irom_addr(s.addr)]
@@ -1027,14 +1027,14 @@ class OTAFirmwareImage(BaseFirmwareImage):
             # in the header, so we need to calculate a load address
             irom_offs = load_file.tell()
             irom_segment = self.load_segment(load_file, True)
-            irom_segment.addr = irom_offs + self.IROM_MAP_START
+            irom_segment.addr = irom_offs + ESP8266ROM.IROM_MAP_START
 
             first_flash_mode = self.flash_mode
             first_flash_size_freq = self.flash_size_freq
             first_entrypoint = self.entrypoint
             # load the second header
-            self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
-            (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
+
+            segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
 
             if first_flash_mode != self.flash_mode:
                 print('WARNING: Flash mode value in first header (0x%02x) disagrees with second (0x%02x). Using second value.'
@@ -1055,7 +1055,7 @@ class OTAFirmwareImage(BaseFirmwareImage):
         """ Derive a default output name from the ELF name. """
         irom_segment = self.get_irom_segment()
         if irom_segment is not None:
-            irom_offs = irom_segment.addr - self.IROM_MAP_START
+            irom_offs = irom_segment.addr - ESP8266ROM.IROM_MAP_START
         else:
             irom_offs = 0
         return "%s-0x%05x.bin" % (os.path.splitext(input_file)[0],
