@@ -920,15 +920,18 @@ class BaseFirmwareImage(object):
         """ Load the next segment from the image file """
         file_offs = f.tell()
         (offset, size) = struct.unpack('<II', f.read(8))
-        if not is_irom_segment:
-            if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
-                print('WARNING: Suspicious segment 0x%x, length %d' % (offset, size))
+        self.warn_if_unusual_segment(offset, size, is_irom_segment)
         segment_data = f.read(size)
         if len(segment_data) < size:
             raise FatalError('End of file reading segment 0x%x, length %d (actual length %d)' % (offset, size, len(segment_data)))
         segment = ImageSegment(offset, segment_data, file_offs)
         self.segments.append(segment)
         return segment
+
+    def warn_if_unusual_segment(self, offset, size, is_irom_segment):
+        if not is_irom_segment:
+            if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
+                print('WARNING: Suspicious segment 0x%x, length %d' % (offset, size))
 
     def save_segment(self, f, segment, checksum=None):
         """ Save the next segment to the image file, return next checksum value if provided """
@@ -1123,6 +1126,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     def default_output_name(self, input_file):
         """ Derive a default output name from the ELF name. """
         return "%s.bin" % (os.path.splitext(input_file)[0])
+
+    def warn_if_unusual_segment(self, offset, size, is_irom_segment):
+        pass  # TODO: add warnings for ESP32 segment offset/size combinations that are wrong
 
     def save(self, filename):
         padding_segments = 0

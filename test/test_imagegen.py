@@ -26,19 +26,6 @@ def try_delete(path):
     except OSError:
         pass
 
-def run_elf2image(chip, elf_path, version=None):
-    """ Run elf2image on elf_path """
-    cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "elf2image" ]
-    if version is not None:
-        cmd += [ "--version", str(version) ]
-    cmd += [ elf_path ]
-    print "Executing %s" % (" ".join(cmd))
-    try:
-        print(subprocess.check_output(cmd))
-    except subprocess.CalledProcessError as e:
-        print(e.output)
-        raise
-
 def segment_matches_section(segment, section):
     """ segment is an ImageSegment from an esptool binary.
     section is an elftools ELF section
@@ -60,17 +47,18 @@ class BaseTestCase(unittest.TestCase):
         with open(elf, "rb") as f:
             e = ELFFile(f)
             section = e.get_section_by_name(section_name)
+            self.assertTrue(section, "%s should be in the ELF" % section_name)
             matches = [ seg for seg in image.segments if segment_matches_section(seg, section) ]
             self.assertEqual(1, len(matches),
                              "ELF %s section '%s' has no equivalent segment in binary image (image segments: %s)"
                              % (elf, section_name, image.segments))
 
-    def assertImageInfo(self, binpath):
+    def assertImageInfo(self, binpath, chip="esp8266"):
         """
         Run esptool.py image_info on a binary file,
         assert no red flags about contents.
         """
-        cmd = [ sys.executable, ESPTOOL_PY, "image_info", binpath ]
+        cmd = [ sys.executable, ESPTOOL_PY, "--chip", chip, "image_info", binpath ]
         try:
             output = subprocess.check_output(cmd)
             print(output)
@@ -78,7 +66,22 @@ class BaseTestCase(unittest.TestCase):
             print(e.output)
             raise
         self.assertFalse("invalid" in output, "Checksum calculation should be valid")
-        self.assertFalse("warning" in output.lower(), "Should be no warnings in output")
+        self.assertFalse("warning" in output.lower(), "Should be no warnings in image_info output")
+
+    def run_elf2image(self, chip, elf_path, version=None):
+        """ Run elf2image on elf_path """
+        cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "elf2image" ]
+        if version is not None:
+            cmd += [ "--version", str(version) ]
+        cmd += [ elf_path ]
+        print "Executing %s" % (" ".join(cmd))
+        try:
+            output = str(subprocess.check_output(cmd))
+            print(output)
+            self.assertFalse("warning" in output.lower(), "elf2image should not output warnings")
+        except subprocess.CalledProcessError as e:
+            print(e.output)
+            raise
 
 class ESP8266V1ImageTests(BaseTestCase):
     ELF="esp8266-nonosssdk20-iotdemo.elf"
@@ -86,7 +89,7 @@ class ESP8266V1ImageTests(BaseTestCase):
     BIN_IROM="esp8266-nonosssdk20-iotdemo.elf-0x10000.bin"
 
     def setUp(self):
-        run_elf2image("esp8266", self.ELF, 1)
+        self.run_elf2image("esp8266", self.ELF, 1)
 
     def tearDown(self):
         try_delete(self.BIN_LOAD)
@@ -111,7 +114,7 @@ class ESP8266V2ImageTests(BaseTestCase):
 
     def _test_elf2image(self, elfpath, binpath):
         try:
-            run_elf2image("esp8266", elfpath, 2)
+            self.run_elf2image("esp8266", elfpath, 2)
             image = esptool.LoadFirmwareImage("esp8266", binpath)
             self.assertEqual(4, len(image.segments))
             self.assertImageContainsSection(image, elfpath, ".data")
@@ -140,7 +143,35 @@ class ESP8266V2ImageTests(BaseTestCase):
         BIN="esp8266-openrtos-blink-v2-0x02000.bin"
         self._test_elf2image(ELF, BIN)
 
+class ESP32ImageTests(BaseTestCase):
+    def _test_elf2image(self, elfpath, binpath):
+        try:
+            self.run_elf2image("esp32", elfpath)
+            image = esptool.LoadFirmwareImage("esp32", binpath)
+            self.assertImageInfo(binpath, "esp32")
+            return image
+        finally:
+            try_delete(binpath)
 
+    def test_bootloader(self):
+        ELF="esp32-bootloader.elf"
+        BIN="esp32-bootloader.bin"
+        image = self._test_elf2image(ELF, BIN)
+        self.assertEqual(4, len(image.segments))
+        for section in [ ".iram1.text", ".iram_pool_1.text",
+                         ".dram0.data", ".dram0.rodata"]:
+            self.assertImageContainsSection(image, ELF, section)
+
+    def test_app_template(self):
+        ELF="esp32-app-template.elf"
+        BIN="esp32-app-template.bin"
+        image = self._test_elf2image(ELF, BIN)
+        self.assertEqual(8, len(image.segments))
+        # the other two segments are padding segments
+        for section in [ ".iram0.text", ".iram0.vectors",
+                         ".dram0.data", ".flash.rodata",
+                         ".flash.text", ".rtc.text"]:
+            self.assertImageContainsSection(image, ELF, section)
 
 if __name__ == '__main__':
     print "Running image generation tests..."
