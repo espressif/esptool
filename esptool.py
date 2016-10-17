@@ -415,7 +415,7 @@ class ESPLoader(object):
 
         self._port.timeout = 20
         t = time.time()
-        print "Unc size %d comp size %d comp blocks %d" % (size, compsize, num_blocks)
+        print "Compressed %d bytes to %d..." % (size, compsize)
         self.check_command("enter compressed flash mode", self.ESP_FLASH_DEFL_BEGIN,
                            struct.pack('<IIII', erase_blocks * self.ESP_FLASH_BLOCK, num_blocks, self.ESP_FLASH_BLOCK, offset))
         if size != 0 and not self.IS_STUB:
@@ -490,7 +490,6 @@ class ESPLoader(object):
         while len(data) < length:
             p = self.read()
             data += p
-            print "Read %d bytes total %d" % (len(p), len(data))
             self.write(struct.pack('<I', len(data)))
             if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
                 progress_fn(len(data), length)
@@ -1430,17 +1429,18 @@ def write_flash(esp, args):
 
     for address, argfile in args.addr_filename:
         print 'Erasing flash...'
+        image = argfile.read()
+        # Update header with flash parameters
+        if address == 0 and image[0] == '\xe9':
+            image = image[0:2] + flash_info + image[4:]
+        calcmd5 = hashlib.md5(image).hexdigest()
+        uncsize = len(image)
         if args.compress:
-            uncimage = argfile.read()
-            calcmd5 = hashlib.md5(uncimage).hexdigest()
-            uncsize = len(uncimage)
+            uncimage = image
             image = zlib.compress(uncimage, 9)
             blocks = div_roundup(len(image), esp.FLASH_WRITE_SIZE)
             esp.flash_defl_begin(len(uncimage),len(image), address)
         else:
-            image = argfile.read()
-            calcmd5 = hashlib.md5(image).hexdigest()
-            uncsize = len(image)
             blocks = div_roundup(len(image), esp.FLASH_WRITE_SIZE)
             esp.flash_begin(blocks * esp.FLASH_WRITE_SIZE, address)
         argfile.seek(0)  # in case we need it again
@@ -1457,16 +1457,20 @@ def write_flash(esp, args):
             else:
                 # Pad the last block
                 block = block + '\xff' * (esp.FLASH_WRITE_SIZE - len(block))
-                # Fix sflash config data
-                if address == 0 and seq == 0 and block[0] == '\xe9':
-                    block = block[0:2] + flash_info + block[4:]
-                    header_block = block
                 esp.flash_block(block, seq)
             image = image[esp.FLASH_WRITE_SIZE:]
             seq += 1
             written += len(block)
         t = time.time() - t
-        print '\rWrote %d bytes at 0x%08x in %.1f seconds (%.1f kbit/s)...' % (written, address, t, written / t * 8 / 1000)
+        speed_msg = ""
+        if args.compress:
+            if t > 0.0:
+                speed_msg = " (effective %.1f kbit/s)" % (uncsize / t * 8 / 1000)
+            print '\rWrote %d bytes (%d compressed) at 0x%08x in %.1f seconds%s...' % (uncsize, written, address, t, speed_msg)
+        else:
+            if t > 0.0:
+                speed_msg = " (%.1f kbit/s)" % (written / t * 8 / 1000)
+            print '\rWrote %d bytes at 0x%08x in %.1f seconds%s...' % (written, address, t, speed_msg)
         res = esp.flash_md5sum(address, uncsize)
         if res != calcmd5:
             print 'File  md5: %s' % calcmd5
@@ -1558,8 +1562,9 @@ def erase_flash(esp, args):
 
 def erase_region(esp, args):
     print 'Erasing region (may be slow depending on size)...'
+    t = time.time()
     esp.erase_region(args.address, args.size)
-    print 'Erase completed successfully.'
+    print 'Erase completed successfully in %.1f seconds.' % (time.time() - t)
 
 
 def run(esp, args):
