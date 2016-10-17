@@ -876,6 +876,7 @@ class ImageSegment(object):
             data += "\x00" * (4 - pad_mod)
         self.data = data
         self.file_offs = file_offs
+        self.include_in_checksum = True
 
     def copy_with_new_addr(self, new_addr):
         """ Return a new ImageSegment with same data, but mapped at
@@ -943,6 +944,16 @@ class BaseFirmwareImage(object):
         align_file_position(f, 16)
         return ord(f.read(1))
 
+    def calculate_checksum(self):
+        """ Calculate checksum of loaded image, based on segments in
+        segment array.
+        """
+        checksum = ESPLoader.ESP_CHECKSUM_MAGIC
+        for seg in self.segments:
+            if seg.include_in_checksum:
+                checksum = ESPLoader.checksum(seg.data, checksum)
+        return checksum
+
     def append_checksum(self, f, checksum):
         """ Append ESPLoader checksum to the just-written image """
         align_file_position(f, 16)
@@ -995,7 +1006,7 @@ class ESPFirmwareImage(BaseFirmwareImage):
         # IROM data goes in its own plain binary file
         irom_segment = self.get_irom_segment()
         if irom_segment is not None:
-            with open("%s0x%05x.bin" % (basename, irom_segment.addr), "wb") as f:
+            with open("%s0x%05x.bin" % (basename, irom_segment.addr - ESP8266ROM.IROM_MAP_START), "wb") as f:
                 f.write(irom_segment.data)
 
         # everything but IROM goes at 0x00000 in an image file
@@ -1003,7 +1014,7 @@ class ESPFirmwareImage(BaseFirmwareImage):
         with open("%s0x00000.bin" % basename, 'wb') as f:
             self.write_common_header(f, normal_segments)
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
-            for segment in self.segments:
+            for segment in normal_segments:
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
 
@@ -1027,7 +1038,9 @@ class OTAFirmwareImage(BaseFirmwareImage):
             # in the header, so we need to calculate a load address
             irom_offs = load_file.tell()
             irom_segment = self.load_segment(load_file, True)
-            irom_segment.addr = irom_offs + ESP8266ROM.IROM_MAP_START
+            # for actual mapped addr, add ESP8266ROM.IROM_MAP_START + flashing_Addr + 8
+            irom_segment.addr = 0
+            irom_segment.include_in_checksum = False
 
             first_flash_mode = self.flash_mode
             first_flash_size_freq = self.flash_size_freq
@@ -1476,14 +1489,13 @@ def image_info(args):
     print('Entry point: %08x' % image.entrypoint) if image.entrypoint != 0 else 'Entry point not set'
     print '%d segments' % len(image.segments)
     print
-    checksum = ESPLoader.ESP_CHECKSUM_MAGIC
     idx = 0
     for seg in image.segments:
         idx += 1
         print 'Segment %d: %r' % (idx, seg)
-        checksum = ESPLoader.checksum(seg.data, checksum)
-    print
-    print 'Checksum: %02x (%s)' % (image.checksum, 'valid' if image.checksum == checksum else 'invalid!')
+    calc_checksum = image.calculate_checksum()
+    print 'Checksum: %02x (%s)' % (image.checksum,
+                                   'valid' if image.checksum == calc_checksum else 'invalid - calculated %02x' % calc_checksum)
 
 
 def make_image(args):
