@@ -558,7 +558,6 @@ class ESPLoader(object):
         base = self.SPI_REG_BASE
         SPI_CMD_REG       = base + 0x00
         SPI_CTRL_REG      = base + 0x08
-        SPI_STATUS_REG    = base + 0x10
         SPI_USR_REG       = base + 0x1C
         SPI_USR1_REG      = base + 0x20
         SPI_USR2_REG      = base + 0x24
@@ -567,23 +566,24 @@ class ESPLoader(object):
         # following two registers are ESP32 only
         if self.SPI_HAS_MOSI_DLEN_REG:
             # ESP32 has a more sophisticated wayto set up "user" commands
-            SPI_MOSI_DLEN_REG = base + 0x28
-            SPI_MISO_DLEN_REG = base + 0x2C
             def set_data_lengths(mosi_bits, miso_bits):
+                SPI_MOSI_DLEN_REG = base + 0x28
+                SPI_MISO_DLEN_REG = base + 0x2C
                 if mosi_bits > 0:
-                    self.write_reg(SPI_MOSI_DLEN_REG, mosi_bits-1)
+                    self.write_reg(SPI_MOSI_DLEN_REG, mosi_bits - 1)
                 if miso_bits > 0:
-                    self.write_reg(SPI_MISO_DLEN_REG, miso_bits-1)
+                    self.write_reg(SPI_MISO_DLEN_REG, miso_bits - 1)
         else:
-            SPI_DATA_LEN_REG = base + 0x20 # SPI_USER1 ???
-            SPI_MOSI_BITLEN_S = 17
-            SPI_MISO_BITLEN_S = 8
+
             def set_data_lengths(mosi_bits, miso_bits):
+                SPI_DATA_LEN_REG = SPI_USR1_REG
+                SPI_MOSI_BITLEN_S = 17
+                SPI_MISO_BITLEN_S = 8
                 mosi_mask = 0 if (mosi_bits == 0) else (mosi_bits - 1)
                 miso_mask = 0 if (miso_bits == 0) else (miso_bits - 1)
                 self.write_reg(SPI_DATA_LEN_REG,
-                               (miso_mask << SPI_MISO_BITLEN_S)
-                               | (mosi_mask << SPI_MOSI_BITLEN_S))
+                               (miso_mask << SPI_MISO_BITLEN_S) | (
+                                   mosi_mask << SPI_MOSI_BITLEN_S))
 
         # SPI peripheral "command" bitmasks for SPI_CMD_REG
         SPI_CMD_USR  = (1 << 18)
@@ -612,7 +612,7 @@ class ESPLoader(object):
         else:
             if len(data) % 4 != 0:  # pad to 32-bit multiple
                 data += b'\0' * (4 - (len(data) % 4))
-            words = struct.unpack("I"* (len(data)/4), data)
+            words = struct.unpack("I" * (len(data) / 4), data)
             next_reg = SPI_W0_REG
             for word in words:
                 self.write_reg(next_reg, word)
@@ -631,7 +631,7 @@ class ESPLoader(object):
         Not all SPI flash supports all three commands. The upper 1 or 2
         bytes may be 0xFF.
         """
-        SPIFLASH_RDSR =  0x05
+        SPIFLASH_RDSR  = 0x05
         SPIFLASH_RDSR2 = 0x35
         SPIFLASH_RDSR3 = 0x15
 
@@ -1039,7 +1039,6 @@ class OTAFirmwareImage(BaseFirmwareImage):
             #
             # the file is saved in the image with a zero load address
             # in the header, so we need to calculate a load address
-            irom_offs = load_file.tell()
             irom_segment = self.load_segment(load_file, True)
             # for actual mapped addr, add ESP8266ROM.IROM_MAP_START + flashing_Addr + 8
             irom_segment.addr = 0
@@ -1622,16 +1621,19 @@ def verify_flash(esp, args, flash_params=None):
     if differences:
         raise FatalError("Verify failed.")
 
+
 def read_flash_status(esp, args):
     print ('Status value: 0x%04x' % esp.read_status(args.bytes))
+
 
 def write_flash_status(esp, args):
     fmt = "0x%%0%dx" % (args.bytes * 2)
     args.value = args.value & ((1 << (args.bytes * 8)) - 1)
-    print (('Initial flash status: '+fmt) % esp.read_status(args.bytes))
-    print (('Setting flash status: '+fmt) % args.value)
+    print (('Initial flash status: ' + fmt) % esp.read_status(args.bytes))
+    print (('Setting flash status: ' + fmt) % args.value)
     esp.write_status(args.value, args.bytes, args.non_volatile)
-    print (('After flash status:   '+fmt) % esp.read_status(args.bytes))
+    print (('After flash status:   ' + fmt) % esp.read_status(args.bytes))
+
 
 def version(args):
     print __version__
