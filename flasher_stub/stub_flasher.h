@@ -25,7 +25,7 @@
 #endif
 
 /* Maximum write block size, used for various buffers. */
-#define MAX_WRITE_BLOCK 8192
+#define MAX_WRITE_BLOCK 0x4000
 
 /* Flash geometry constants */
 #define FLASH_SECTOR_SIZE 4096
