@@ -986,6 +986,9 @@ class BaseFirmwareImage(object):
 
 class ESPFirmwareImage(BaseFirmwareImage):
     """ 'Version 1' firmware image, segments loaded directly by the ROM bootloader. """
+
+    ROM_LOADER = ESP8266ROM
+
     def __init__(self, load_file=None):
         super(ESPFirmwareImage, self).__init__()
         self.flash_mode = 0
@@ -1025,6 +1028,9 @@ class OTAFirmwareImage(BaseFirmwareImage):
     """ 'Version 2' firmware image, segments loaded by software bootloader stub
         (ie Espressif bootloader or rboot)
     """
+
+    ROM_LOADER = ESP8266ROM
+
     def __init__(self, load_file=None):
         super(OTAFirmwareImage, self).__init__()
         self.version = 2
@@ -1102,6 +1108,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     and because of new flash mapping capabilities the flash-mapped regions
     can be placed in the normal image (just @ 64kB padded offsets).
     """
+
+    ROM_LOADER = ESP32ROM
+
     def __init__(self, load_file=None):
         super(ESP32FirmwareImage, self).__init__()
         self.flash_mode = 0
@@ -1535,7 +1544,7 @@ def elf2image(args):
     image.entrypoint = e.entrypoint
     image.segments = e.sections  # ELFSection is a subclass of ImageSegment
     image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
-    image.flash_size_freq = ESP8266ROM.FLASH_SIZES[args.flash_size]
+    image.flash_size_freq = image.ROM_LOADER.FLASH_SIZES[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
 
     if args.output is None:

@@ -39,6 +39,17 @@ def segment_matches_section(segment, section):
 
 class BaseTestCase(unittest.TestCase):
 
+    def assertEqualHex(self, expected, actual, message=None):
+        try:
+            expected = hex(expected)
+        except TypeError:  # if expected is character
+            expected = hex(ord(expected))
+        try:
+            actual = hex(actual)
+        except TypeError:  # if actual is character
+            actual = hex(ord(actual))
+        self.assertEqual(expected, actual, message)
+
     def assertImageContainsSection(self, image, elf, section_name):
         """
         Assert an esptool binary image object contains
@@ -68,12 +79,12 @@ class BaseTestCase(unittest.TestCase):
         self.assertFalse("invalid" in output, "Checksum calculation should be valid")
         self.assertFalse("warning" in output.lower(), "Should be no warnings in image_info output")
 
-    def run_elf2image(self, chip, elf_path, version=None):
+    def run_elf2image(self, chip, elf_path, version=None, extra_args=[]):
         """ Run elf2image on elf_path """
         cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "elf2image" ]
         if version is not None:
             cmd += [ "--version", str(version) ]
-        cmd += [ elf_path ]
+        cmd += [ elf_path ] + extra_args
         print "Executing %s" % (" ".join(cmd))
         try:
             output = str(subprocess.check_output(cmd))
@@ -172,6 +183,36 @@ class ESP32ImageTests(BaseTestCase):
                          ".dram0.data", ".flash.rodata",
                          ".flash.text", ".rtc.text"]:
             self.assertImageContainsSection(image, ELF, section)
+
+class ESP8266FlashHeaderTests(BaseTestCase):
+    def test_2mb(self):
+        ELF="esp8266-nonossdkv20-at-v2.elf"
+        BIN="esp8266-nonossdkv20-at-v2-0x01000.bin"
+        try:
+            self.run_elf2image("esp8266", ELF, version=2, extra_args=["--flash_size", "2MB", "--flash_mode", "dio"])
+            with open(BIN, "r") as f:
+                header = f.read(4)
+                print("header %r" % header)
+                self.assertEqualHex(0xea, header[0])
+                self.assertEqualHex(0x02, header[2])
+                self.assertEqualHex(0x30, header[3])
+        finally:
+            try_delete(BIN)
+
+class ESP32FlashHeaderTests(BaseTestCase):
+    def test_16mb(self):
+        ELF="esp32-app-template.elf"
+        BIN="esp32-app-template.bin"
+        try:
+            self.run_elf2image("esp32", ELF, extra_args=["--flash_size", "16MB", "--flash_mode", "dio"])
+            with open(BIN, "r") as f:
+                header = f.read(4)
+                self.assertEqualHex(0xe9, header[0])
+                self.assertEqualHex(0x02, header[2])
+                self.assertEqualHex(0x40, header[3])
+        finally:
+            try_delete(BIN)
+
 
 if __name__ == '__main__':
     print "Running image generation tests..."
