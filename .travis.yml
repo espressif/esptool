@@ -40,7 +40,11 @@ before_install:
 script:
   # test python components (fast)
   - python setup.py build
-  - python setup.py test
+  # this is hacky, installing test script deps via pip as need to be in the virtualenv
+  # but don't count if only in setup.py's .eggs dir, and "setup.py test" integration
+  # doesn't allow running esptool.py as a script...
+  - pip install pyserial pyelftools
+  - python test/test_imagegen.py
   - python setup.py flake8
   - python setup.py install
   # build stub
