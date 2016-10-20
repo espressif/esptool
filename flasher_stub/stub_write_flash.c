@@ -57,6 +57,18 @@ esp_command_error get_flash_error(void)
   return fs.last_error;
 }
 
+/* Wait for the SPI state machine to be ready,
+   ie no command in progress in the internal host.
+*/
+inline static void spi_wait_ready(void)
+{
+  /* Wait for SPI state machine ready */
+  while((REG_READ(SPI_EXT2_REG(SPI_IDX)) & SPI_ST))
+    { }
+  while((REG_READ(SPI_EXT2_REG((SPI_IDX == 0) ? 1 : 0)) & SPI_ST))
+    { }
+}
+
 /* Returns true if the spiflash is ready for its next write
    operation.
 
@@ -65,9 +77,7 @@ esp_command_error get_flash_error(void)
 */
 static bool spiflash_is_ready(void)
 {
-  /* Wait for SPI state machine ready */
-  while((REG_READ(SPI_EXT2_REG(SPI_IDX)) & SPI_ST))
-    { }
+  spi_wait_ready();
   REG_WRITE(SPI_RD_STATUS_REG(SPI_IDX), 0);
   /* Issue read status command */
   REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_RDSR);
@@ -93,22 +103,19 @@ static SpiFlashChip *flashchip = (SpiFlashChip *)0x3ffae270;
 
 /* Stub version of SPIUnlock() that replaces version in ROM.
 
-   Fixes bug w/ accidentally setting status bits in SR2, and
-   clears these bits if they were set during a previous
-   buggy flash.
+   This works around a bug where SPIUnlock sometimes reads the wrong
+   high status byte (RDSR2 result) and then copies it back to the
+   flash status, causing lock bit CMP or Status Register Protect ` to
+   become set.
  */
 SpiFlashOpResult SPIUnlock(void)
 {
   uint32_t status;
 
-  if (SPI_read_status_high(flashchip, &status) != SPI_FLASH_RESULT_OK) {
+  spi_wait_ready(); /* ROM SPI_read_status_high() doesn't wait for this */
+  if (SPI_read_status_high(&status) != SPI_FLASH_RESULT_OK) {
     return SPI_FLASH_RESULT_ERR;
   }
-  /* There is a bug in ROM SPI_read_status_high() where the status
-     reads wrong.  However, we can read the correct result back from
-     the hardware data register at this point:
-  */
-  status = REG_READ(SPI_W0_REG(SPI_IDX));
 
   /* Clear all bits except QIE, if it is set.
      (This is different from ROM SPIUnlock, which keeps all bits as-is.)
@@ -178,6 +185,7 @@ static void start_next_erase(void)
   }
 
   uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
+  spi_wait_ready();
   REG_WRITE(SPI_ADDR_REG(SPI_IDX), addr & 0xffffff);
   REG_WRITE(SPI_CMD_REG(SPI_IDX), command);
   while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
