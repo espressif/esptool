@@ -45,6 +45,7 @@ static struct {
 /* SPI status bits */
 static const uint32_t STATUS_WIP_BIT = (1 << 0);
 static const uint32_t STATUS_CMP_BIT = (1 << 14); /* Complement Protect */
+static const uint32_t STATUS_QIE_BIT = (1 << 9); /* Quad Enable */
 
 bool is_in_flash_mode(void)
 {
@@ -87,28 +88,32 @@ static void spi_write_enable(void)
   /* TODO: verify Write Enable is set in status reg */
 }
 
-#ifdef ESP8266
-static inline uint32_t spi_unlock(void)
-{
-  return SPIUnlock();
-}
-#else /* ESP32 */
-
+#ifdef ESP32
 static SpiFlashChip *flashchip = (SpiFlashChip *)0x3ffae270;
 
-/* Stub version of SPIUnlock() that also clears the CMP bit in SR2,
- * if present.
+/* Stub version of SPIUnlock() that replaces version in ROM.
+
+   Fixes bug w/ accidentally setting status bits in SR2, and
+   clears these bits if they were set during a previous
+   buggy flash.
  */
-static SpiFlashOpResult spi_unlock(void)
+SpiFlashOpResult SPIUnlock(void)
 {
   uint32_t status;
 
   if (SPI_read_status_high(flashchip, &status) != SPI_FLASH_RESULT_OK) {
 	return SPI_FLASH_RESULT_ERR;
   }
+  /* There is a bug in ROM SPI_read_status_high() where the status
+     reads wrong.  However, we can read the correct result back from
+     the hardware data register at this point:
+  */
+  status = REG_READ(SPI_W0_REG(SPI_IDX));
 
-  /* Clear all lower bits & CMP bit */
-  status &= ~(STATUS_CMP_BIT | 0xFF);
+  /* Clear all bits except QIE, if it is set.
+     (This is different from ROM SPIUnlock, which keeps all bits as-is.)
+   */
+  status &= STATUS_QIE_BIT;
 
   spi_write_enable();
 
@@ -129,7 +134,7 @@ esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
   fs.remaining_erase_sector = (total_size + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
   fs.last_error = ESP_OK;
 
-  if (spi_unlock() != 0) {
+  if (SPIUnlock() != 0) {
 	return ESP_FAILED_SPI_UNLOCK;
   }
 
