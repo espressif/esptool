@@ -267,7 +267,7 @@ class ESPLoader(object):
         """ Try connecting repeatedly until successful, or giving up """
         print 'Connecting...'
 
-        for _ in xrange(4):
+        for _ in xrange(10):
             # issue reset-to-bootloader:
             # RTS = either CH_PD or nRESET (both active low = chip in reset)
             # DTR = GPIO0 (active low = boot to flasher)
@@ -279,8 +279,7 @@ class ESPLoader(object):
             time.sleep(0.05)
             self._port.setDTR(False)
 
-            # worst-case latency timer should be 255ms (probably <20ms)
-            self._port.timeout = 0.3
+            self._port.timeout = 0.1
             last_exception = None
             for _ in xrange(4):
                 try:
