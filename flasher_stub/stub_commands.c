@@ -57,7 +57,7 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
   ets_isr_mask(1 << ETS_UART0_INUM);
 
   if (block_size > sizeof(buf)) {
-	return;
+    return;
   }
   MD5Init(&ctx);
   while (num_acked < len && num_acked <= num_sent) {
@@ -65,17 +65,17 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
       uint32_t n = len - num_sent;
       if (n > block_size) n = block_size;
       if (SPIRead(addr, (uint32_t *)buf, n) != 0) {
-		break;
-	  }
+        break;
+      }
       SLIP_send(buf, n);
       MD5Update(&ctx, buf, n);
       addr += n;
       num_sent += n;
     }
-	int r = SLIP_recv(&num_acked, sizeof(num_acked));
-	if (r != 4) {
-	  break;
-	}
+    int r = SLIP_recv(&num_acked, sizeof(num_acked));
+    if (r != 4) {
+      break;
+    }
   }
   MD5Final(digest, &ctx);
   SLIP_send(digest, sizeof(digest));
@@ -112,13 +112,13 @@ esp_command_error handle_spi_set_params(uint32_t *args, int *status)
 esp_command_error handle_spi_attach(bool isHspi, bool isLegacy)
 {
 #ifdef ESP8266
-	    /* ESP8266 doesn't yet support SPI flash on HSPI, but could:
-		 see https://github.com/themadinventor/esptool/issues/98 */
-	    SelectSpiFunction();
+        /* ESP8266 doesn't yet support SPI flash on HSPI, but could:
+         see https://github.com/themadinventor/esptool/issues/98 */
+        SelectSpiFunction();
 #else
-		/* spi_flash_attach calls SelectSpiFunction() and another
-		   function to initialise SPI flash interface. */
-		spi_flash_attach(isHspi, isLegacy);
+        /* spi_flash_attach calls SelectSpiFunction() and another
+           function to initialise SPI flash interface. */
+        spi_flash_attach(isHspi, isLegacy);
 #endif
-		return ESP_OK; /* neither function/attach command takes an arg */
+        return ESP_OK; /* neither function/attach command takes an arg */
 }

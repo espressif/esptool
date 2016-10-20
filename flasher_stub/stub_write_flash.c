@@ -67,12 +67,12 @@ static bool spiflash_is_ready(void)
 {
   /* Wait for SPI state machine ready */
   while((REG_READ(SPI_EXT2_REG(SPI_IDX)) & SPI_ST))
-	{ }
+    { }
   REG_WRITE(SPI_RD_STATUS_REG(SPI_IDX), 0);
   /* Issue read status command */
   REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_RDSR);
   while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
-	{ }
+    { }
   uint32_t status_value = REG_READ(SPI_RD_STATUS_REG(SPI_IDX));
   return (status_value & STATUS_WIP_BIT) == 0;
 }
@@ -80,10 +80,10 @@ static bool spiflash_is_ready(void)
 static void spi_write_enable(void)
 {
   while(!spiflash_is_ready())
-	{ }
+    { }
   REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_WREN);
   while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
-	{ }
+    { }
 
   /* TODO: verify Write Enable is set in status reg */
 }
@@ -102,7 +102,7 @@ SpiFlashOpResult SPIUnlock(void)
   uint32_t status;
 
   if (SPI_read_status_high(flashchip, &status) != SPI_FLASH_RESULT_OK) {
-	return SPI_FLASH_RESULT_ERR;
+    return SPI_FLASH_RESULT_ERR;
   }
   /* There is a bug in ROM SPI_read_status_high() where the status
      reads wrong.  However, we can read the correct result back from
@@ -119,7 +119,7 @@ SpiFlashOpResult SPIUnlock(void)
 
   SET_PERI_REG_MASK(SPI_CTRL_REG(SPI_IDX), SPI_WRSR_2B);
   if (SPI_write_status(flashchip, status) != SPI_FLASH_RESULT_OK) {
-	return SPI_FLASH_RESULT_ERR;
+    return SPI_FLASH_RESULT_ERR;
   }
 
   return SPI_FLASH_RESULT_OK;
@@ -135,7 +135,7 @@ esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
   fs.last_error = ESP_OK;
 
   if (SPIUnlock() != 0) {
-	return ESP_FAILED_SPI_UNLOCK;
+    return ESP_FAILED_SPI_UNLOCK;
   }
 
   return ESP_OK;
@@ -162,26 +162,26 @@ esp_command_error handle_flash_deflated_begin(uint32_t uncompressed_size, uint32
 static void start_next_erase(void)
 {
   if(fs.remaining_erase_sector == 0)
-	return; /* nothing left to erase */
+    return; /* nothing left to erase */
   if(!spiflash_is_ready())
-	return; /* don't wait for flash to be ready, caller will call again if needed */
+    return; /* don't wait for flash to be ready, caller will call again if needed */
 
   spi_write_enable();
 
   uint32_t command = SPI_FLASH_SE; /* sector erase, 4KB */
   uint32_t sectors_to_erase = 1;
   if(fs.remaining_erase_sector >= SECTORS_PER_BLOCK
-	 && fs.next_erase_sector % SECTORS_PER_BLOCK == 0) {
-	/* perform a 32KB block erase if we have space for it */
-	command = SPI_FLASH_BE;
-	sectors_to_erase = SECTORS_PER_BLOCK;
+     && fs.next_erase_sector % SECTORS_PER_BLOCK == 0) {
+    /* perform a 32KB block erase if we have space for it */
+    command = SPI_FLASH_BE;
+    sectors_to_erase = SECTORS_PER_BLOCK;
   }
 
   uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
   REG_WRITE(SPI_ADDR_REG(SPI_IDX), addr & 0xffffff);
   REG_WRITE(SPI_CMD_REG(SPI_IDX), command);
   while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
-	{ }
+    { }
   fs.remaining_erase_sector -= sectors_to_erase;
   fs.next_erase_sector += sectors_to_erase;
 }
@@ -193,18 +193,18 @@ static void start_next_erase(void)
 */
 void handle_flash_data(void *data_buf, uint32_t length) {
   /* what sector is this write going to end in?
-	 make sure we've erased at least that far.
+     make sure we've erased at least that far.
   */
   int last_sector = (fs.next_write + length + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
   while(fs.next_erase_sector < last_sector) {
-	start_next_erase();
+    start_next_erase();
   }
   while(!spiflash_is_ready())
-	{}
+    {}
 
   /* do the actual write */
   if (SPIWrite(fs.next_write, data_buf, length)) {
-	fs.last_error = ESP_FAILED_SPI_OP;
+    fs.last_error = ESP_FAILED_SPI_OP;
   }
   fs.next_write += length;
   fs.remaining -= length;
@@ -216,55 +216,55 @@ void handle_flash_deflated_data(void *data_buf, uint32_t length) {
   int status = TINFL_STATUS_NEEDS_MORE_INPUT;
 
   while(length > 0 && fs.remaining > 0 && status > TINFL_STATUS_DONE) {
-	size_t in_bytes = length; /* input remaining */
-	size_t out_bytes = out_buf + sizeof(out_buf) - next_out; /* output space remaining */
-	int flags = TINFL_FLAG_PARSE_ZLIB_HEADER;
-	if(fs.remaining_compressed > length) {
-	  flags |= TINFL_FLAG_HAS_MORE_INPUT;
-	}
+    size_t in_bytes = length; /* input remaining */
+    size_t out_bytes = out_buf + sizeof(out_buf) - next_out; /* output space remaining */
+    int flags = TINFL_FLAG_PARSE_ZLIB_HEADER;
+    if(fs.remaining_compressed > length) {
+      flags |= TINFL_FLAG_HAS_MORE_INPUT;
+    }
 
-	/* start an opportunistic erase: decompressing takes time, so might as
-	   well be running a SPI erase in the background. */
-	start_next_erase();
+    /* start an opportunistic erase: decompressing takes time, so might as
+       well be running a SPI erase in the background. */
+    start_next_erase();
 
-	status = tinfl_decompress(&fs.inflator, data_buf, &in_bytes,
-					 out_buf, next_out, &out_bytes,
-					 flags);
+    status = tinfl_decompress(&fs.inflator, data_buf, &in_bytes,
+                     out_buf, next_out, &out_bytes,
+                     flags);
 
-	fs.remaining_compressed -= in_bytes;
-	length -= in_bytes;
-	data_buf += in_bytes;
+    fs.remaining_compressed -= in_bytes;
+    length -= in_bytes;
+    data_buf += in_bytes;
 
-	next_out += out_bytes;
-	size_t bytes_in_out_buf = next_out - out_buf;
-	if (status <= TINFL_STATUS_DONE || bytes_in_out_buf == sizeof(out_buf)) {
-	  // Output buffer full, or done
-	  handle_flash_data(out_buf, bytes_in_out_buf);
-	  next_out = out_buf;
-	}
+    next_out += out_bytes;
+    size_t bytes_in_out_buf = next_out - out_buf;
+    if (status <= TINFL_STATUS_DONE || bytes_in_out_buf == sizeof(out_buf)) {
+      // Output buffer full, or done
+      handle_flash_data(out_buf, bytes_in_out_buf);
+      next_out = out_buf;
+    }
   } // while
 
   if (status < TINFL_STATUS_DONE) {
-	/* error won't get sent back to esptool.py until next block is sent */
-	fs.last_error = ESP_INFLATE_ERROR;
+    /* error won't get sent back to esptool.py until next block is sent */
+    fs.last_error = ESP_INFLATE_ERROR;
   }
 
   if (status == TINFL_STATUS_DONE && fs.remaining > 0) {
-	fs.last_error = ESP_NOT_ENOUGH_DATA;
+    fs.last_error = ESP_NOT_ENOUGH_DATA;
   }
   if (status != TINFL_STATUS_DONE && fs.remaining == 0) {
-	fs.last_error = ESP_TOO_MUCH_DATA;
+    fs.last_error = ESP_TOO_MUCH_DATA;
   }
 }
 
 esp_command_error handle_flash_end(void)
 {
   if (!fs.in_flash_mode) {
-	return ESP_NOT_IN_FLASH_MODE;
+    return ESP_NOT_IN_FLASH_MODE;
   }
 
   if (fs.remaining > 0) {
-	return ESP_NOT_ENOUGH_DATA;
+    return ESP_NOT_ENOUGH_DATA;
   }
 
   fs.in_flash_mode = false;

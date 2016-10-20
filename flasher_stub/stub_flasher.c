@@ -80,7 +80,7 @@ static uint8_t calculate_checksum(uint8_t *buf, int length)
 {
   uint8_t res = 0xef;
   for(int i = 0; i < length; i++) {
-	res ^= buf[i];
+    res ^= buf[i];
   }
   return res;
 }
@@ -89,23 +89,23 @@ static void uart_isr_receive(char byte)
 {
   int16_t r = SLIP_recv_byte(byte, (slip_state_t *)&ub.state);
   if (r >= 0) {
-	ub.reading_buf[ub.read++] = (uint8_t) r;
-	if (ub.read == MAX_WRITE_BLOCK+64) {
-	  /* shouldn't happen unless there are data errors */
-	  r = SLIP_FINISHED_FRAME;
-	}
+    ub.reading_buf[ub.read++] = (uint8_t) r;
+    if (ub.read == MAX_WRITE_BLOCK+64) {
+      /* shouldn't happen unless there are data errors */
+      r = SLIP_FINISHED_FRAME;
+    }
   }
   if (r == SLIP_FINISHED_FRAME) {
-	/* end of frame, set 'command'
-	   to be processed by main thread */
-	if(ub.reading_buf == ub.buf_a) {
-	  ub.command = (esp_command_req_t *)ub.buf_a;
-	  ub.reading_buf = ub.buf_b;
-	} else {
-	  ub.command = (esp_command_req_t *)ub.buf_b;
-	  ub.reading_buf = ub.buf_a;
-	}
-	ub.read = 0;
+    /* end of frame, set 'command'
+       to be processed by main thread */
+    if(ub.reading_buf == ub.buf_a) {
+      ub.command = (esp_command_req_t *)ub.buf_a;
+      ub.reading_buf = ub.buf_b;
+    } else {
+      ub.command = (esp_command_req_t *)ub.buf_b;
+      ub.reading_buf = ub.buf_a;
+    }
+    ub.read = 0;
   }
 }
 
@@ -114,11 +114,11 @@ void uart_isr(void *arg) {
   while (1) {
     uint32_t fifo_len = READ_PERI_REG(UART_STATUS(0)) & 0xff;
     if (fifo_len == 0) {
-	  break;
-	}
+      break;
+    }
     while (fifo_len-- > 0) {
       uint8_t byte = READ_PERI_REG(UART_FIFO(0)) & 0xff;
-	  uart_isr_receive(byte);
+      uart_isr_receive(byte);
     }
   }
   WRITE_PERI_REG(UART_INT_CLR(0), int_st);
@@ -131,168 +131,168 @@ static esp_command_error verify_data_len(esp_command_req_t *command, uint8_t len
 
 uint8_t cmd_loop() {
   while(1) {
-	/* Wait for a command */
-	while(ub.command == NULL) { }
-	esp_command_req_t *command = ub.command;
-	ub.command = NULL;
-	/* provide easy access for 32-bit data words */
-	uint32_t *data_words = (uint32_t *)command->data_buf;
+    /* Wait for a command */
+    while(ub.command == NULL) { }
+    esp_command_req_t *command = ub.command;
+    ub.command = NULL;
+    /* provide easy access for 32-bit data words */
+    uint32_t *data_words = (uint32_t *)command->data_buf;
 
-	/* Send command response header */
-	esp_command_response_t resp = {
-	  .resp = 1,
-	  .op_ret = command->op,
-	  .len_ret = 0, /* esptool.py ignores this value */
-	  .value = 0,
-	};
+    /* Send command response header */
+    esp_command_response_t resp = {
+      .resp = 1,
+      .op_ret = command->op,
+      .len_ret = 0, /* esptool.py ignores this value */
+      .value = 0,
+    };
 
-	/* ESP_READ_REG is the only command that needs to write into the
-	   'resp' structure before we send it back. */
-	if (command->op == ESP_READ_REG && command->data_len == 4) {
-	  resp.value = REG_READ(data_words[0]);
-	}
+    /* ESP_READ_REG is the only command that needs to write into the
+       'resp' structure before we send it back. */
+    if (command->op == ESP_READ_REG && command->data_len == 4) {
+      resp.value = REG_READ(data_words[0]);
+    }
 
-	/* Send the command response. */
-	SLIP_send_frame_delimiter();
-	SLIP_send_frame_data_buf(&resp, sizeof(esp_command_response_t));
+    /* Send the command response. */
+    SLIP_send_frame_delimiter();
+    SLIP_send_frame_data_buf(&resp, sizeof(esp_command_response_t));
 
-	if(command->data_len > MAX_WRITE_BLOCK+16) {
-	  SLIP_send_frame_data(ESP_BAD_DATA_LEN);
-	  SLIP_send_frame_data(0xEE);
-	  SLIP_send_frame_delimiter();
-	  continue;
-	}
+    if(command->data_len > MAX_WRITE_BLOCK+16) {
+      SLIP_send_frame_data(ESP_BAD_DATA_LEN);
+      SLIP_send_frame_data(0xEE);
+      SLIP_send_frame_delimiter();
+      continue;
+    }
 
-	/* ... some commands will insert in-frame response data
-	   between here and when we send the end of the frame */
+    /* ... some commands will insert in-frame response data
+       between here and when we send the end of the frame */
 
-	esp_command_error error = ESP_CMD_NOT_IMPLEMENTED;
-	int status = 0;
+    esp_command_error error = ESP_CMD_NOT_IMPLEMENTED;
+    int status = 0;
 
-	/* First stage of command processing - before sending error/status */
-	switch (command->op) {
-	case ESP_ERASE_FLASH:
-	  error = verify_data_len(command, 0) || SPIEraseChip();
-	  break;
-	case ESP_ERASE_REGION:
-	  /* Params for ERASE_REGION are addr, len */
-	  error = verify_data_len(command, 8) || handle_flash_erase(data_words[0], data_words[1]);
-	  break;
-	case ESP_SET_BAUD:
-	  /* ESP_SET_BAUD sends two args, we ignore the second one */
-	  error = verify_data_len(command, 8);
-	  /* actual baud setting happens after we send the reply */
-	  break;
-	case ESP_READ_FLASH:
-	  error = verify_data_len(command, 16);
-	  /* actual data is sent after we send the reply */
-	  break;
-	case ESP_FLASH_VERIFY_MD5:
-	  /* unsure why the MD5 command has 4 params but we only pass 2 of them,
-		 but this is in ESP32 ROM so we can't mess with it.
-	  */
-	  error = verify_data_len(command, 16) || handle_flash_get_md5sum(data_words[0], data_words[1]);
-	  break;
-	case ESP_FLASH_BEGIN:
-	  /* a number of parameters the ROM flasher uses are ignored here:
-		 0 - erase_size (ignored)
-		 1 - num_blocks (only used to get total size)
-		 2 - block_size (only used to get total size)
-		 3 - offset (used used)
-	   */
-	  error = verify_data_len(command, 16) || handle_flash_begin(data_words[1] * data_words[2], data_words[3]);
-	  break;
-	case ESP_FLASH_DEFLATED_BEGIN:
-	  /* 0 - uncompressed size
-		 1 - num_blocks (based on compressed size)
-		 2 - block size (used to get total size)
-		 3 - offset (used as-is)
-	  */
-	  error = verify_data_len(command, 16) || handle_flash_deflated_begin(data_words[0], data_words[1] * data_words[2], data_words[3]);
-	  break;
-	case ESP_FLASH_DATA:
-	case ESP_FLASH_DEFLATED_DATA:
-	  /* ACK DATA commands immediately, then process them a few lines down,
-		 allowing next command to buffer */
-	  if(is_in_flash_mode()) {
-		error = get_flash_error();
-		int payload_len = command->data_len - 16;
-		if (data_words[0] != payload_len) {
-		  /* First byte of data payload header is length (repeated) as a word */
-		  error = ESP_BAD_DATA_LEN;
-		}
-		uint8_t data_checksum = calculate_checksum(command->data_buf + 16, payload_len);
-		if (data_checksum != command->checksum) {
-		  error = ESP_BAD_DATA_CHECKSUM;
-		}
-	  }
-	  else {
-		error = ESP_NOT_IN_FLASH_MODE;
-	  }
-	  break;
-	case ESP_FLASH_END:
-	case ESP_FLASH_DEFLATED_END:
-	  error = handle_flash_end();
-	  break;
-	case ESP_SPI_SET_PARAMS:
-	  /* data params: fl_id, total_size, block_size, sector_Size, page_size, status_mask */
-	  error = verify_data_len(command, 24) || handle_spi_set_params(data_words, &status);
-	  break;
-	case ESP_SPI_ATTACH:
-	  /* params are isHSPI, isLegacy */
-	  error = verify_data_len(command, 8) || handle_spi_attach(data_words[0], data_words[1] & 0xFF);
-	  break;
-	case ESP_WRITE_REG:
-	  /* params are addr, value, mask (ignored), delay_us (ignored) */
-	  error = verify_data_len(command, 16);
-	  if (error == ESP_OK) {
-		REG_WRITE(data_words[0], data_words[1]);
-	  }
-	  break;
-	case ESP_READ_REG:
-	  /* actual READ_REG operation happens higher up */
-	  error = verify_data_len(command, 4);
-	  break;
-	}
+    /* First stage of command processing - before sending error/status */
+    switch (command->op) {
+    case ESP_ERASE_FLASH:
+      error = verify_data_len(command, 0) || SPIEraseChip();
+      break;
+    case ESP_ERASE_REGION:
+      /* Params for ERASE_REGION are addr, len */
+      error = verify_data_len(command, 8) || handle_flash_erase(data_words[0], data_words[1]);
+      break;
+    case ESP_SET_BAUD:
+      /* ESP_SET_BAUD sends two args, we ignore the second one */
+      error = verify_data_len(command, 8);
+      /* actual baud setting happens after we send the reply */
+      break;
+    case ESP_READ_FLASH:
+      error = verify_data_len(command, 16);
+      /* actual data is sent after we send the reply */
+      break;
+    case ESP_FLASH_VERIFY_MD5:
+      /* unsure why the MD5 command has 4 params but we only pass 2 of them,
+         but this is in ESP32 ROM so we can't mess with it.
+      */
+      error = verify_data_len(command, 16) || handle_flash_get_md5sum(data_words[0], data_words[1]);
+      break;
+    case ESP_FLASH_BEGIN:
+      /* a number of parameters the ROM flasher uses are ignored here:
+         0 - erase_size (ignored)
+         1 - num_blocks (only used to get total size)
+         2 - block_size (only used to get total size)
+         3 - offset (used used)
+       */
+      error = verify_data_len(command, 16) || handle_flash_begin(data_words[1] * data_words[2], data_words[3]);
+      break;
+    case ESP_FLASH_DEFLATED_BEGIN:
+      /* 0 - uncompressed size
+         1 - num_blocks (based on compressed size)
+         2 - block size (used to get total size)
+         3 - offset (used as-is)
+      */
+      error = verify_data_len(command, 16) || handle_flash_deflated_begin(data_words[0], data_words[1] * data_words[2], data_words[3]);
+      break;
+    case ESP_FLASH_DATA:
+    case ESP_FLASH_DEFLATED_DATA:
+      /* ACK DATA commands immediately, then process them a few lines down,
+         allowing next command to buffer */
+      if(is_in_flash_mode()) {
+        error = get_flash_error();
+        int payload_len = command->data_len - 16;
+        if (data_words[0] != payload_len) {
+          /* First byte of data payload header is length (repeated) as a word */
+          error = ESP_BAD_DATA_LEN;
+        }
+        uint8_t data_checksum = calculate_checksum(command->data_buf + 16, payload_len);
+        if (data_checksum != command->checksum) {
+          error = ESP_BAD_DATA_CHECKSUM;
+        }
+      }
+      else {
+        error = ESP_NOT_IN_FLASH_MODE;
+      }
+      break;
+    case ESP_FLASH_END:
+    case ESP_FLASH_DEFLATED_END:
+      error = handle_flash_end();
+      break;
+    case ESP_SPI_SET_PARAMS:
+      /* data params: fl_id, total_size, block_size, sector_Size, page_size, status_mask */
+      error = verify_data_len(command, 24) || handle_spi_set_params(data_words, &status);
+      break;
+    case ESP_SPI_ATTACH:
+      /* params are isHSPI, isLegacy */
+      error = verify_data_len(command, 8) || handle_spi_attach(data_words[0], data_words[1] & 0xFF);
+      break;
+    case ESP_WRITE_REG:
+      /* params are addr, value, mask (ignored), delay_us (ignored) */
+      error = verify_data_len(command, 16);
+      if (error == ESP_OK) {
+        REG_WRITE(data_words[0], data_words[1]);
+      }
+      break;
+    case ESP_READ_REG:
+      /* actual READ_REG operation happens higher up */
+      error = verify_data_len(command, 4);
+      break;
+    }
 
-	SLIP_send_frame_data(error);
-	SLIP_send_frame_data(status);
-	SLIP_send_frame_delimiter();
+    SLIP_send_frame_data(error);
+    SLIP_send_frame_data(status);
+    SLIP_send_frame_delimiter();
 
-	/* Some commands need to do things after after sending this response */
-	if (error == ESP_OK) {
-	  switch(command->op) {
-	  case ESP_SET_BAUD:
-		ets_delay_us(10000);
-		uart_div_modify(0, baud_rate_to_divider(data_words[0]));
-		ets_delay_us(1000);
-		break;
-	  case ESP_READ_FLASH:
-		/* args are: offset, length, block_size, max_in_flight */
-		handle_flash_read(data_words[0], data_words[1], data_words[2],
-						  data_words[3]);
-		break;
-	  case ESP_FLASH_DATA:
-		/* drop into flashing mode, discard 16 byte payload header */
-		handle_flash_data(command->data_buf + 16, command->data_len - 16);
-		break;
-	  case ESP_FLASH_DEFLATED_DATA:
-		handle_flash_deflated_data(command->data_buf + 16, command->data_len - 16);
-		break;
-	  case ESP_FLASH_END:
-		/* passing 0 as parameter for ESP_FLASH_END means reboot now */
-		if (data_words[0] == 0) {
-		  /* Flush the FLASH_END response before rebooting */
+    /* Some commands need to do things after after sending this response */
+    if (error == ESP_OK) {
+      switch(command->op) {
+      case ESP_SET_BAUD:
+        ets_delay_us(10000);
+        uart_div_modify(0, baud_rate_to_divider(data_words[0]));
+        ets_delay_us(1000);
+        break;
+      case ESP_READ_FLASH:
+        /* args are: offset, length, block_size, max_in_flight */
+        handle_flash_read(data_words[0], data_words[1], data_words[2],
+                          data_words[3]);
+        break;
+      case ESP_FLASH_DATA:
+        /* drop into flashing mode, discard 16 byte payload header */
+        handle_flash_data(command->data_buf + 16, command->data_len - 16);
+        break;
+      case ESP_FLASH_DEFLATED_DATA:
+        handle_flash_deflated_data(command->data_buf + 16, command->data_len - 16);
+        break;
+      case ESP_FLASH_END:
+        /* passing 0 as parameter for ESP_FLASH_END means reboot now */
+        if (data_words[0] == 0) {
+          /* Flush the FLASH_END response before rebooting */
 #ifdef ESP32
-		  uart_tx_flush(0);
+          uart_tx_flush(0);
 #else
-		  ets_delay_us(10000);
+          ets_delay_us(10000);
 #endif
-		  software_reset();
-		}
-		break;
-	  }
-	}
+          software_reset();
+        }
+        break;
+      }
+    }
   }
   return 0;
 }
@@ -307,7 +307,7 @@ void stub_main() {
 
   /* zero bss */
   for(uint32_t *p = &_bss_start; p < &_bss_end; p++) {
-	*p = 0;
+    *p = 0;
   }
 
   SLIP_send(&greeting, 4);
@@ -326,14 +326,14 @@ void stub_main() {
 #endif
 
   /* Configure default SPI flash functionality.
-	 Can be changed later by esptool.py. */
+     Can be changed later by esptool.py. */
 #ifdef ESP8266
-	    SelectSpiFunction();
+        SelectSpiFunction();
 #else
-		spi_flash_attach(0, 0);
+        spi_flash_attach(0, 0);
 #endif
-		SPIParamCfg(0, 16*1024*1024, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
-					FLASH_PAGE_SIZE, FLASH_STATUS_MASK);
+        SPIParamCfg(0, 16*1024*1024, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
+                    FLASH_PAGE_SIZE, FLASH_STATUS_MASK);
 
   last_cmd = cmd_loop();
 
