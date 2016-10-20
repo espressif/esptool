@@ -74,11 +74,11 @@ CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -L$(IDF_PATH)
 
 $(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) stub_8266.ld
 	@echo "  CC(8266)   $^ -> $@"
-	$(Q) $(CROSS_8266)gcc $(CFLAGS_8266) -DESP8266 -Tstub_8266.ld -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_8266)gcc $(CFLAGS_8266) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 
 $(STUB_ELF_32): $(SRCS) $(BUILD_DIR) stub_32.ld
 	@echo "  CC(32)   $^ -> $@"
-	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 
 $(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
