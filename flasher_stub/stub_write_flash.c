@@ -65,8 +65,10 @@ inline static void spi_wait_ready(void)
   /* Wait for SPI state machine ready */
   while((REG_READ(SPI_EXT2_REG(SPI_IDX)) & SPI_ST))
     { }
-  while((REG_READ(SPI_EXT2_REG((SPI_IDX == 0) ? 1 : 0)) & SPI_ST))
+#ifdef ESP32
+  while(REG_READ(SPI_EXT2_REG(0)) & SPI_ST)
     { }
+#endif
 }
 
 /* Returns true if the spiflash is ready for its next write
