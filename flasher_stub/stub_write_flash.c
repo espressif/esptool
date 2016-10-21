@@ -94,8 +94,6 @@ static void spi_write_enable(void)
   REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_WREN);
   while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
     { }
-
-  /* TODO: verify Write Enable is set in status reg */
 }
 
 #ifdef ESP32
