@@ -194,22 +194,30 @@ uint8_t cmd_loop() {
       error = verify_data_len(command, 16) || handle_flash_get_md5sum(data_words[0], data_words[1]);
       break;
     case ESP_FLASH_BEGIN:
-      /* a number of parameters the ROM flasher uses are ignored here:
-         0 - erase_size (ignored)
-         1 - num_blocks (only used to get total size)
-         2 - block_size (only used to get total size)
-         3 - offset (used used)
+      /* parameters (interpreted differently to ROM flasher):
+         0 - erase_size (used as total size to write)
+         1 - num_blocks (ignored)
+         2 - block_size (should be MAX_WRITE_BLOCK, relies on num_blocks * block_size >= erase_size)
+         3 - offset (used as-is)
        */
-      error = verify_data_len(command, 16) || handle_flash_begin(data_words[1] * data_words[2], data_words[3]);
+        if (command->data_len == 16 && data_words[2] != MAX_WRITE_BLOCK) {
+            error = ESP_BAD_BLOCKSIZE;
+        } else {
+            error = verify_data_len(command, 16) || handle_flash_begin(data_words[0], data_words[3]);
+        }
       break;
     case ESP_FLASH_DEFLATED_BEGIN:
-      /* 0 - uncompressed size
+      /* parameters:
+         0 - uncompressed size
          1 - num_blocks (based on compressed size)
-         2 - block size (used to get total size)
+         2 - block_size (should be MAX_WRITE_BLOCK, total bytes over serial = num_blocks * block_size)
          3 - offset (used as-is)
       */
-      error = verify_data_len(command, 16) || handle_flash_deflated_begin(data_words[0], data_words[1] * data_words[2], data_words[3]);
-      break;
+        if (command->data_len == 16 && data_words[2] != MAX_WRITE_BLOCK) {
+            error = ESP_BAD_BLOCKSIZE;
+        } else {
+            error = verify_data_len(command, 16) || handle_flash_deflated_begin(data_words[0], data_words[1] * data_words[2], data_words[3]);            }
+        break;
     case ESP_FLASH_DATA:
     case ESP_FLASH_DEFLATED_DATA:
       /* ACK DATA commands immediately, then process them a few lines down,

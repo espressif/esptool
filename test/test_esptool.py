@@ -142,6 +142,22 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0, 4096, "images/sector.bin")
         self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
 
+    def _test_partition_table_then_bootloader(self, args):
+        self.run_esptool(args + " 0x4000 images/partitions_singleapp.bin")
+        self.verify_readback(0x4000, 96, "images/partitions_singleapp.bin")
+        self.run_esptool(args + " 0x1000 images/bootloader.bin")
+        self.verify_readback(0x1000, 7888, "images/bootloader.bin")
+        self.verify_readback(0x4000, 96, "images/partitions_singleapp.bin")
+
+    def test_partition_table_then_bootloader(self):
+        self._test_partition_table_then_bootloader("write_flash")
+
+    def test_partition_table_then_bootloader_compressed(self):
+        self._test_partition_table_then_bootloader("write_flash -z")
+
+    def test_partition_table_then_bootloader_nostub(self):
+        self._test_partition_table_then_bootloader("--no-stub write_flash")
+
 class TestFlashSizes(EsptoolTestCase):
 
     def test_high_offset(self):
@@ -200,6 +216,19 @@ class TestErase(EsptoolTestCase):
         self.verify_readback(0x11000, 0x1000, "images/sector.bin")
         empty = self.readback(0x10000, 0x1000)
         self.assertTrue(empty == '\xFF'*0x1000)
+
+class TestSectorBoundaries(EsptoolTestCase):
+
+    def test_end_sector(self):
+        self.run_esptool("write_flash 0x10000 images/sector.bin")
+        self.run_esptool("write_flash 0x0FC00 images/one_kb.bin")
+        self.verify_readback(0x0FC00, 0x400, "images/one_kb.bin")
+        self.verify_readback(0x10000, 0x1000, "images/sector.bin")
+
+    def test_overlap(self):
+        self.run_esptool("write_flash 0x20800 images/sector.bin")
+        self.verify_readback(0x20800, 0x1000, "images/sector.bin")
+
 
 class TestVerifyCommand(EsptoolTestCase):
 
