@@ -1590,8 +1590,14 @@ def elf2image(args):
 
 def read_mac(esp, args):
     mac = esp.read_mac()
-    print 'MAC: %s' % ':'.join(map(lambda x: '%02x' % x, mac))
-
+    def print_mac(label, mac):
+        print '%s: %s' % (label, ':'.join(map(lambda x: '%02x' % x, mac)))
+    print("%r" % (mac,))
+    if len(mac) == 1:
+        print_mac("MAC", mac)
+    else:
+        print_mac("WiFi MAC", mac[0])
+        print_mac("BT MAC", mac[1])
 
 def chip_id(esp, args):
     chipid = esp.chip_id()
