@@ -76,11 +76,7 @@ def digest_secure_bootloader(args):
             f.write(word[::-1])  # swap word order in the result
         f.write('\xFF' * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
-
     print "digest+image written to %s" % args.output
-    print "To load into chip, run:"
-    print "espefuse.py --port PORT burn_key %s" % args.keyfile.name
-    print "esptool.py --port PORT write_flash 0x0 %s" % args.output
 
 
 def main():

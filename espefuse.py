@@ -145,11 +145,25 @@ class EfuseField(object):
         if self.read_disable_bit is None:
             return True  # read cannot be disabled
         value = (self.esp.read_efuse(0) >> 16) & 0xF  # RD_DIS values
-        return (value & self.read_disable_bit) == 0
+        return (value & (1 << self.read_disable_bit)) == 0
+
+    def disable_read(self):
+        if self.read_disable_bit is None:
+            raise esptool.FatalError("This efuse cannot be read-disabled")
+        rddis_reg_addr = efuse_write_reg_addr(0, 0)
+        self.esp.write_reg(rddis_reg_addr, 1 << (16 + self.read_disable_bit))
+        efuse_perform_write(self.esp)
+        return self.get()
 
     def is_writeable(self):
         value = self.esp.read_efuse(0) & 0xFFFF   # WR_DIS values
-        return (value & self.write_disable_bit) == 0
+        return (value & (1 << self.write_disable_bit)) == 0
+
+    def disable_write(self):
+        wrdis_reg_addr = efuse_write_reg_addr(0, 0)
+        self.esp.write_reg(wrdis_reg_addr, 1 << self.write_disable_bit)
+        efuse_perform_write(self.esp)
+        return self.get()
 
     def burn(self, new_value):
         raw_value = (new_value << self.shift) & self.mask
@@ -235,8 +249,12 @@ def summary(esp, efuses, args):
             print "%-22s %-40s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw)
         print ""
 
+
+def _get_efuse(efuses, args):
+    return [e for e in efuses if args.efuse_name == e.register_name][0]
+
 def burn_efuse(esp, efuses, args):
-    efuse = [e for e in efuses if args.efuse_name == e.register_name][0]
+    efuse = _get_efuse(efuses, args)
     if efuse.efuse_type == "flag":
         old = efuse.get()
         if old:
@@ -247,6 +265,23 @@ def burn_efuse(esp, efuses, args):
         new_value = efuse.burn(1)
         if not new_value:
             raise esptool.FatalError("Efuse %s failed to burn. Protected?" % efuse.register_name)
+
+def read_protect_efuse(esp, efuses, args):
+    efuse = _get_efuse(efuses, args)
+    if not efuse.is_readable():
+        print "Efuse %s is already read protected" % efuse.register_name
+    else:
+        confirm("Permanently read-disabling efuse %s (%s)" % (efuse.register_name, efuse.description), args)
+        efuse.disable_read()
+
+def write_protect_efuse(esp, efuses,args):
+    efuse = _get_efuse(efuses, args)
+    if not efuse.is_writeable():
+        print "Efuse %s is already write protected" % efuse.register_name
+    else:
+        confirm("Permanently write-disabling efuse %s (%s)" % (efuse.register_name, efuse.description), args)
+        efuse.disable_write()
+
 
 def burn_key(esp, efuses, args):
     # check block choice
@@ -270,16 +305,38 @@ def burn_key(esp, efuses, args):
     # check existing data
     efuse = [e for e in efuses if e.register_name == "BLK%d" % block_num][0]
     original = efuse.get_raw()
-    # TODO: allow --force argument to turn these errors into warnings
-    if original != '\x00'*32:
-        raise esptool.FatalError("Key block already has value %s." % efuse.get())
-    if not efuse.is_writeable:
-        raise esptool.FatalError("The efuse block has already been write protected.")
-    confirm("Write key in efuse block %d" % block_num, args)
+    EMPTY_KEY = '\x00'*32
+    if original != EMPTY_KEY:
+        if not args.force_write_always:
+            raise esptool.FatalError("Key block already has value %s." % efuse.get())
+        else:
+            print "WARNING: Key appears to have a value already. Trying anyhow, due to --force-write-always (result will be bitwise OR of new and old values.)"
+    if not efuse.is_writeable():
+        if not args.force_write_always:
+            raise esptool.FatalError("The efuse block has already been write protected.")
+        else:
+            print "WARNING: Key appears to be write protected. Trying anyhow, due to --force-write-always"
+    msg = "Write key in efuse block %d. " % block_num
+    if args.no_protect_key:
+        msg += "The key block will left readable and writeable (due to --no-protect-key)"
+    else:
+        msg += "The key block will be read and write protected (no further changes or readback)"
+    confirm(msg, args)
 
     new_value = keyfile.read(32)
     new = efuse.burn(new_value)
     print "Burned key data. New value: %s" % (new,)
+    if not args.no_protect_key:
+        print "Disabling read/write to key efuse block..."
+        efuse.disable_write()
+        efuse.disable_read()
+        if efuse.is_readable():
+            print "WARNING: Key does not appear to have been read protected. Perhaps read disable efuse is write protected?"
+        if efuse.is_writeable():
+            print "WARNING: Key does not appear to have been write protected. Perhaps write disable efuse is write protected?"
+    else:
+        print "Key is left unprotected as per --no-protect-key argument."
+
 
 def main():
     parser = argparse.ArgumentParser(description='espefuse.py v%s - ESP32 efuse get/set tool' % esptool.__version__, prog='espefuse')
@@ -303,9 +360,20 @@ def main():
     p.add_argument('efuse_name', help='Name of efuse register to burn',
                    choices=[efuse[0] for efuse in EFUSES])
 
+    p = subparsers.add_parser('read_protect_efuse',
+                              help='Disable readback for the efuse with the specified name')
+    p.add_argument('efuse_name', help='Name of efuse register to burn',
+                   choices=[efuse[0] for efuse in EFUSES if efuse[6] is not None])  # only allow if read_disable_bit is not None
+
+    p = subparsers.add_parser('write_protect_efuse',
+                              help='Disable writing to the efuse with the specified name')
+    p.add_argument('efuse_name', help='Name of efuse register to burn',
+                   choices=[efuse[0] for efuse in EFUSES])
+
     p = subparsers.add_parser('burn_key',
                               help='Burn a 256-bit AES key to EFUSE BLK1,BLK2 or BLK3 (flash_encrypt, secure_boot).')
     p.add_argument('--no-protect-key', help='Disable default read- and write-protecting of the key. If this option is not set, once the key is flashed it cannot be read back or changed.', action='store_true')
+    p.add_argument('--force-write-always', help="Write the key even if it looks like it's already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.", action='store_true')
     p.add_argument('block', help='Key block to burn. "flash_encrypt" is an alias for BLK1, "secure_boot" is an alias for BLK2.', choices=["secure_boot","flash_encrypt","BLK1","BLK2","BLK3"])
     p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=file)
 
