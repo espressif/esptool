@@ -28,15 +28,6 @@ def get_chunks(source, chunk_len):
     """ Returns an iterator over 'chunk_len' chunks of 'source' """
     return (source[i: i+chunk_len] for i in range(0, len(source), chunk_len))
 
-def generate_key(args):
-    """ Save 32 random bytes for use as a pre-generated secure bootloader siging key """
-    if os.path.exists(args.keyfile):
-        raise FatalError("Output key file %s already exists." % args.keyfile)
-    with open(args.keyfile, "wb") as f:
-        # Python docs say os.urandom is "suitable for cryptographic use"
-        f.write(os.urandom(32))
-    print "Private secure bootloader key written to %s" % args.keyfile
-
 
 def digest_secure_bootloader(args):
     """ Calculate the digest of a bootloader image, in the same way the hardware
@@ -61,6 +52,8 @@ def digest_secure_bootloader(args):
     # (due to hardware quirks not for security.)
 
     key = args.keyfile.read()
+    if len(key) != 32:
+        raise esptool.FatalError("Key file contains wrong length (%d bytes), 32 expected." % len(key))
     aes = pyaes.AESModeOfOperationECB(key)
     digest = hashlib.sha512()
 
@@ -131,15 +124,22 @@ def extract_public_key(args):
     args.public_keyfile.write(vk.to_string())
     print "%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name)
 
+
+def digest_private_key(args):
+    sk = _load_key(args)
+    repr(sk.to_string())
+    digest = hashlib.sha256()
+    digest.update(sk.to_string())
+    args.digest_file.write(digest.digest())
+    print "SHA-256 digest of private key %s written to %s" % (args.keyfile.name, args.digest_file.name)
+
+
 def main():
     parser = argparse.ArgumentParser(description='espsecure.py v%s - ESP32 Secure Boot & Flash Encryption tool' % esptool.__version__, prog='espsecure')
 
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run espefuse.py {command} -h for additional help')
-
-    p = subparsers.add_parser('generate_key', help='Generate a random 256 bit key for either secure boot or flash encryption')
-    p.add_argument('keyfile', help="Name of key file to generate")
 
     p = subparsers.add_parser('digest_secure_bootloader',
                           help='Take a bootloader binary image and a secure boot key, and output a combined digest+binary suitable for flashing along with the precalculated secure boot key.')
@@ -163,6 +163,11 @@ def main():
     p.add_argument('--keyfile', '-k', help="Private key file to extract the public verification key from.", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('public_keyfile', help="File to save new public key) into", type=argparse.FileType('wb'))
+
+    p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. This can be used as a reproducible secure bootloader key.')
+    p.add_argument('--keyfile', '-k', help="Private key file to generate a digest from.", type=argparse.FileType('rb'),
+                   required=True)
+    p.add_argument('digest_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
 
     args = parser.parse_args()
     print 'espsecure.py v%s' % esptool.__version__
