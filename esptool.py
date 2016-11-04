@@ -31,7 +31,7 @@ import tempfile
 import time
 
 
-__version__ = "1.2-dev"
+__version__ = "1.2"
 
 
 class ESPROM(object):
