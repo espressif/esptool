@@ -1340,7 +1340,6 @@ def div_roundup(a, b):
     """
     return (int(a) + int(b) - 1) / int(b)
 
-
 def align_file_position(f, size):
     """ Align the position in the file to the next block of specified size """
     align = (size - 1) - (f.tell() % size)
