@@ -269,7 +269,7 @@ ESP8266 problems can be fiddly to troubleshoot. Try the suggestions here if you'
 If you see errors like "Failed to connect to ESP8266" then your ESP8266 is probably not entering the bootloader properly:
 
 * Check you are passing the correct serial port on the command line.
-* Check you have permissions to access the serial port, and other software (such as modem-manager on Linux) is not trying to interact with it.
+* Check you have permissions to access the serial port, and other software (such as modem-manager on Linux) is not trying to interact with it. A common pitfall is leaving a serial terminal accessing this port open in another window and forgetting about it.
 * Check the ESP8266 is receiving 3.3V from a stable power source (see [Insufficient Power](#insufficient-power) for more details.)
 * Check that all pins are connected as described in [Entering the bootloader](#entering-the-bootloader). Check the voltages at each pin with a multimeter, "high" pins should be close to 3.3V and "low" pins should be close to 0V.
 * If you have connected other devices to GPIO0, GPIO2 or GPIO15 then try removing them and see if esptool.py starts working.
