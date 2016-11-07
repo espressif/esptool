@@ -95,15 +95,18 @@ def _load_key(args):
         raise esptool.FatalError("Signing key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
     return sk
 
+
 def sign_data(args):
     """ Sign a data file with a ECDSA private key, append binary signature to file contents """
     sk = _load_key(args)
 
-    # calculate SHA512 digest of binary & sign it
-    digest = hashlib.sha512()
+    # calculate signature of binary data
     binary_content = args.datafile.read()
-    digest.update(binary_content)
-    signature = sk.sign_deterministic(digest.digest())
+    signature = sk.sign_deterministic(binary_content, hashlib.sha256)
+
+    # back-verify signature
+    vk = sk.get_verifying_key()
+    vk.verify(signature, binary_content, hashlib.sha256)  # throws exception on failure
 
     if args.output is None or os.path.abspath(args.output) == os.path.abspath(args.datafile.name):  # append signature to input file
         args.datafile.close()
@@ -115,6 +118,31 @@ def sign_data(args):
     outfile.write(signature)
     outfile.close()
     print "Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile.name)
+
+def verify_signature(args):
+    """ Verify a previously signed binary image, using the ECDSA public key """
+    try:
+        sk = _load_key(args)  # try to load as private key first
+        vk = sk.get_verifying_key()
+    except:
+        args.keyfile.seek(0)
+        vk = ecdsa.VerifyingKey.from_pem(args.keyfile.read())
+    if vk.curve != ecdsa.NIST256p:
+        raise esptool.FatalError("Public key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
+
+    binary_content = args.datafile.read()
+    data = binary_content[0:-68]
+    sig_version, signature = struct.unpack("I64s", binary_content[-68:])
+    if sig_version != 0:
+        raise esptool.FatalError("Signature block has version %d. This version  of espsecure only supports version 0." % sig_version)
+    print "Verifying %d bytes of data" % len(data)
+    try:
+        if vk.verify(signature, data, hashlib.sha256):
+            print "Signature is valid"
+        else:
+            raise esptool.FatalError("Signature is not valid")
+    except ecdsa.keys.BadSignatureError:
+        raise esptool.FatalError("Signature is not valid")
 
 
 def extract_public_key(args):
@@ -157,6 +185,11 @@ def main():
     p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format, ECDSA NIST256p curve. generate_signing_key command can be used to generate a suitable signing key.", type=argparse.FileType('rb'), required=True)
     p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to append signature to existing file.")
     p.add_argument('datafile', help="Data file to sign.", type=argparse.FileType('rb'))
+
+    p = subparsers.add_parser('verify_signature',
+                              help='Verify a data file previously signed by "sign_data", using the public key.')
+    p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be the private key file (public key is embedded).", type=argparse.FileType('rb'), required=True)
+    p.add_argument('datafile', help="Signed data file to verify signature.", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('extract_public_key',
                               help='Extract the public verification key for signatures, save it as a raw binary file.')
