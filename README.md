@@ -1,9 +1,12 @@
 # esptool.py
 
-A cute Python utility to communicate with the ROM bootloader in Espressif ESP8266.
-It is intended to be a simple, platform independent, open source replacement for XTCOM.
+A Python-based, open source, platform independent, utility to communicate with the ROM bootloader in Espressif ESP8266.
 
-[![Build Status](https://travis-ci.org/themadinventor/esptool.svg?branch=master)](https://travis-ci.org/themadinventor/esptool)
+esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/) as an unofficial community project. It is now also supported by Espressif. Current primary maintainer is Angus Gratton (@[projectgus](https://github.com/projectgus/).
+
+esptool.py is Free Software under a GPLv2 license.
+
+[![Build Status](https://travis-ci.org/espressif/esptool.svg?branch=master)](https://travis-ci.org/espressif/esptool)
 
 ## Installation / dependencies
 
@@ -153,7 +156,7 @@ Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/
 esptool.py chip_id
 ```
 
-This is the same as the output of the [system_get_chip_id()](http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29) SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero on most (all?) ESP8266s.
+This is the same as the output of the `system_get_chip_id()` SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero on most (all?) ESP8266s.
 
 ## Serial Connections
 
@@ -332,10 +335,10 @@ Note that not every serial program supports the unusual ESP8266 74880bps "boot l
 
 ## Internal Technical Documentation
 
-The [repository wiki](https://github.com/themadinventor/esptool/wiki) contains some technical documentation regarding the serial protocol and file format used by the ROM bootloader. This may be useful if you're developing esptool.py or hacking system internals:
+The [repository wiki](https://github.com/espressif/esptool/wiki) contains some technical documentation regarding the serial protocol and file format used by the ROM bootloader. This may be useful if you're developing esptool.py or hacking system internals:
 
-* [Firmware Image Format](https://github.com/themadinventor/esptool/wiki/Firmware-Image-Format)
-* [Serial Protocol](https://github.com/themadinventor/esptool/wiki/Serial-Protocol)
+* [Firmware Image Format](https://github.com/espressif/esptool/wiki/Firmware-Image-Format)
+* [Serial Protocol](https://github.com/espressif/esptool/wiki/Serial-Protocol)
 
 
 ## Boot log
@@ -359,6 +362,6 @@ csum 0x46
 
 ## About
 
-esptool.py was initially created by Fredrik Ahlberg (themadinventor, kongo), and is currently maintained by Fredrik and Angus Gratton (@projectgus). It has also received improvements from many members of the ESP8266 community - including pfalcon, tommie, 0ff and george-hopkins.
+esptool.py was initially created by Fredrik Ahlberg (@themadinventor, @kongo), and is currently maintained by Angus Gratton (@projectgus). It has also received improvements from many members of the ESP8266 community - including @rojer, @jimparis, @jms19, @pfalcon, @tommie, @0ff, @george-hopkins and others.
 
-This document and the attached source code is released under GPLv2.
+This document and the attached source code are released under GNU General Public License Version 2. See the accompanying file LICENSE for a copy.
