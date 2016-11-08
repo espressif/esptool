@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-# NB: Before sending a PR to change the above line to '#!/usr/bin/env python2', please read https://github.com/themadinventor/esptool/issues/21
+# NB: Before sending a PR to change the above line to '#!/usr/bin/env python2', please read https://github.com/espressif/esptool/issues/21
 #
 # ESP8266 ROM Bootloader Utility
-# https://github.com/themadinventor/esptool
+# https://github.com/espressif/esptool
 #
-# Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, other contributors as noted.
+# Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, Espressif Systems, other contributors as noted.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -73,7 +73,7 @@ class ESPROM(object):
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
         # sets), shouldn't matter for other platforms/drivers. See
-        # https://github.com/themadinventor/esptool/issues/44#issuecomment-107094446
+        # https://github.com/espressif/esptool/issues/44#issuecomment-107094446
         self._port.baudrate = baud
 
     """ Read a SLIP packet from the serial port """

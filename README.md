@@ -2,7 +2,7 @@
 
 A Python-based, open source, platform independent, utility to communicate with the ROM bootloader in Espressif ESP8266.
 
-esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/) as an unofficial community project. It is now also supported by Espressif. Current primary maintainer is Angus Gratton (@[projectgus](https://github.com/projectgus/).
+esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/)) as an unofficial community project. It is now also supported by Espressif. Current primary maintainer is Angus Gratton (@[projectgus](https://github.com/projectgus/)).
 
 esptool.py is Free Software under a GPLv2 license.
 
