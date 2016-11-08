@@ -39,6 +39,7 @@ EFUSES = [
     ('FLASH_CRYPT_CONFIG',   "config",   0, 5, 0x0F<<15,   10, 3, "int", "Flash encryption config"),
     ('CODING_SCHEME',        "efuse",    0, 6, 0x3,        10, 3, "int", "efuse controller coding scheme"),
     ('CONSOLE_DEBUG_DISABLE',"security", 0, 6, 1<<2,       15, None, "flag", "disable console debug output"),
+    ('DISABLE_SDIO_HOST',    "config",   0, 6, 1<<3,       None, None, "flag", "disable SDIO host"),
     ('ABS_DONE_0',           "security", 0, 6, 1<<4,       12, None, "flag", "secure boot enabled for bootloader"),
     ('ABS_DONE_1',           "security", 0, 6, 1<<5,       13, None, "flag", "secure boot abstract 1 locked"),
     ('JTAG_DISABLE',         "security", 0, 6, 1<<6,       14, None, "flag", "JTAG disabled"),
@@ -156,6 +157,8 @@ class EfuseField(object):
         return self.get()
 
     def is_writeable(self):
+        if self.write_disable_bit is None:
+            return True  # write cannot be disabled
         value = self.esp.read_efuse(0) & 0xFFFF   # WR_DIS values
         return (value & (1 << self.write_disable_bit)) == 0
 
