@@ -51,12 +51,13 @@ def digest_secure_bootloader(args):
     else:
         iv = os.urandom(128)
     plaintext_image = args.image.read()
-    plaintext = iv + plaintext_image
 
     # secure boot engine reads in 128 byte blocks (ie SHA512 block
     # size) , so pad plaintext image with 0xFF (ie unwritten flash)
-    if len(plaintext) % 128 != 0:
-        plaintext += "\xFF" * (128 - (len(plaintext) % 128))
+    if len(plaintext_image) % 128 != 0:
+        plaintext_image += "\xFF" * (128 - (len(plaintext_image) % 128))
+
+    plaintext = iv + plaintext_image
 
     # Secure Boot digest algorithm in hardware uses AES256 ECB to
     # produce a ciphertext, then feeds output through SHA-512 to
@@ -236,44 +237,56 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
     return b"".join(chr(k) for k in key)
 
 
-def decrypt_flash_data(args):
-    key = args.keyfile.read()
+def _flash_encryption_operation(output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt):
+    key = keyfile.read()
     if len(key) != 32:
         raise esptool.FatalError("Key file contains wrong length (%d bytes), 32 expected." % len(key))
 
-    if args.address % 16 != 0:
-        raise esptool.FatalError("Starting flash address must be a multiple of 16")
+    if flash_address % 16 != 0:
+        raise esptool.FatalError("Starting flash address 0x%x must be a multiple of 16" % flash_address)
 
-    if args.flash_crypt_conf == 0:
+    if flash_crypt_conf == 0:
         print "WARNING: Setting FLASH_CRYPT_CONF to zero is not recommended"
-    tweak_range = _flash_encryption_tweak_range(args.flash_crypt_conf)
+    tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
 
-    encrypted_file = args.encrypted_file
     aes = None
     while True:
-        block_offs = args.address + encrypted_file.tell()
-        block = encrypted_file.read(16)
-        if len(block) < 16:
-            if len(block) > 0:
-                print "WARNING: Discarding last %d bytes of encrypted input (must be multiple of 16)" % len(block)
+        block_offs = flash_address + input_file.tell()
+        block = input_file.read(16)
+        if len(block) == 0:
             break
+        elif len(block) < 16:
+            if do_decrypt:
+                raise esptool.FatalError("Data length is not a multiple of 16 bytes")
+            pad = 16 - len(block)
+            block = block + os.urandom(pad)
+            print "WARNING: Padding with %d bytes of random data (encrypted data must be multiple of 16 bytes long)" % pad
+
         if (block_offs % 32 == 0) or aes is None:
             # each bit of the flash encryption key is XORed with tweak bits derived from the offset of 32 byte block of flash
             block_key = _flash_encryption_tweak_key(key, block_offs, tweak_range)
             aes = pyaes.AESModeOfOperationECB(block_key)
 
-        # pre-process ciphertext block
-        block = block[::-1]
+        block = block[::-1]  # reverse input block byte order
 
         # note AES is used inverted for flash encryption, so
         # "decrypting" flash uses AES encrypt algorithm and vice
         # versa. (This does not weaken AES.)
-        block = aes.encrypt(block)
+        if do_decrypt:
+            block = aes.encrypt(block)
+        else:
+            block = aes.decrypt(block)
 
-        # post-process plaintext block
-        block = block[::-1]
+        block = block[::-1]  # reverse output block byte order
+        output_file.write(block)
 
-        args.output.write(block)
+
+def decrypt_flash_data(args):
+    return _flash_encryption_operation(args.output, args.encrypted_file, args.address, args.keyfile, args.flash_crypt_conf, True)
+
+
+def encrypt_flash_data(args):
+    return _flash_encryption_operation(args.output, args.plaintext_file, args.address, args.keyfile, args.flash_crypt_conf, False)
 
 
 def main():
@@ -316,14 +329,23 @@ def main():
                    required=True)
     p.add_argument('digest_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
 
-    p = subparsers.add_parser('decrypt_flash_data', help='Decrypt some data read from encrypted flash (if key is known)')
+    p = subparsers.add_parser('decrypt_flash_data', help='Decrypt some data read from encrypted flash (using known key)')
+    p.add_argument('encrypted_file', help="File with encrypted flash contents", type=argparse.FileType('rb'))
     p.add_argument('--keyfile', '-k', help="File with flash encryption key", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('--output', '-o', help="Output file for plaintext data.", type=argparse.FileType('wb'),
                    required=True)
     p.add_argument('--address', '-a', help="Address offset in flash that file was read from.", required=True, type=esptool.arg_auto_int)
     p.add_argument('--flash_crypt_conf', help="Override FLASH_CRYPT_CONF efuse value (default is 0XF).", required=False, default=0xF, type=esptool.arg_auto_int)
-    p.add_argument('encrypted_file', help="File with encrypted flash contents", type=argparse.FileType('rb'))
+
+    p = subparsers.add_parser('encrypt_flash_data', help='Encrypt some data suitable for encrypted flash (using known key)')
+    p.add_argument('--keyfile', '-k', help="File with flash encryption key", type=argparse.FileType('rb'),
+                   required=True)
+    p.add_argument('--output', '-o', help="Output file for encrypted data.", type=argparse.FileType('wb'),
+                   required=True)
+    p.add_argument('--address', '-a', help="Address offset in flash where file will be flashed.", required=True, type=esptool.arg_auto_int)
+    p.add_argument('--flash_crypt_conf', help="Override FLASH_CRYPT_CONF efuse value (default is 0XF).", required=False, default=0xF, type=esptool.arg_auto_int)
+    p.add_argument('plaintext_file', help="File with plaintext content for encrypting", type=argparse.FileType('rb'))
 
     args = parser.parse_args()
     print 'espsecure.py v%s' % esptool.__version__

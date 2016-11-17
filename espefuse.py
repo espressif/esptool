@@ -26,7 +26,7 @@ import struct
 EFUSES = [
     ('WR_DIS',               "efuse",    0, 0, 0x0000FFFF, 1, None, "int", "EFUSE write disable"),
     ('RD_DIS',               "efuse",    0, 0, 0x000F0000, 0, None, "int", "EFUSE read disable"),
-    ('RD_FLASH_CRYPT_CNT',   "security", 0, 0, 0x0FF00000, 2, None, "bitcount", "Flash encryption bit counter"),
+    ('FLASH_CRYPT_CNT',      "security", 0, 0, 0x0FF00000, 2, None, "bitcount", "Flash encryption bit counter"),
     ('MAC',                  "identity", 0, 1, 0xFFFFFFFF, 3, None, "mac", "MAC Address"),
     ('SPI_PAD_CONFIG_HD',    "config",   0, 3, 0x1F<<4,    3, None, "int", "SPI pad config hd"),
     ('XPD_SDIO_REG',         "config",   0, 4, 1<<14,      5, None, "flag", "?"),
@@ -36,7 +36,7 @@ EFUSES = [
     ('SPI_PAD_CONFIG_Q',     "config",   0, 5, 0x1F<<5,    6, None, "int", "Override SPI flash Q pad"),
     ('SPI_PAD_CONFIG_D',     "config",   0, 5, 0x1F<<10,   6, None, "int", "Override SPI flash D pad"),
     ('SPI_PAD_CONFIG_CS0',   "config",   0, 5, 0x1F<<15,   6, None, "int", "Override SPI flash CS pad"),
-    ('FLASH_CRYPT_CONFIG',   "config",   0, 5, 0x0F<<15,   10, 3, "int", "Flash encryption config"),
+    ('FLASH_CRYPT_CONFIG',   "config",   0, 5, 0x0F<<28,   10, 3, "int", "Flash encryption config (key tweak bits)"),
     ('CODING_SCHEME',        "efuse",    0, 6, 0x3,        10, 3, "int", "efuse controller coding scheme"),
     ('CONSOLE_DEBUG_DISABLE',"security", 0, 6, 1<<2,       15, None, "flag", "disable console debug output"),
     ('DISABLE_SDIO_HOST',    "config",   0, 6, 1<<3,       None, None, "flag", "disable SDIO host"),
@@ -107,7 +107,6 @@ class EfuseField(object):
         category = efuse_tuple[7]
         return {
             "mac" : EfuseMacField,
-            "bitcount" : EfuseBitcountField,
             "keyblock" : EfuseKeyblockField,
         }.get(category, EfuseField)(esp, *efuse_tuple)
 
@@ -215,11 +214,6 @@ class EfuseKeyblockField(EfuseField):
         return self.get()
 
 
-class EfuseBitcountField(EfuseField):
-    def get(self):
-        return bin(self.get_raw()).count('1')
-
-
 def dump(esp, _efuses, args):
     """ Dump raw efuse data registers """
     for block in range(len(EFUSE_BLOCK_OFFS)):
@@ -258,16 +252,35 @@ def _get_efuse(efuses, args):
 
 def burn_efuse(esp, efuses, args):
     efuse = _get_efuse(efuses, args)
+    old_value = efuse.get()
     if efuse.efuse_type == "flag":
-        old = efuse.get()
-        if old:
+        if not args.new_value in [ None, 1 ]:
+            raise esptool.FatalError("Efuse %s is type 'flag'. New value is not accepted for this efuse (will always burn 0->1)" % efuse.register_name)
+        args.new_value = 1
+        if old_value:
             print "Efuse %s is already burned." % efuse.register_name
             return
-        confirm("Burning efuse %s (%s)" % (efuse.register_name, efuse.description),
-                args)
-        new_value = efuse.burn(1)
-        if not new_value:
-            raise esptool.FatalError("Efuse %s failed to burn. Protected?" % efuse.register_name)
+    elif efuse.efuse_type == "int":
+        if args.new_value is None:
+            raise esptool.FatalError("New value required for efuse %s" % efuse.register_name)
+    elif efuse.efuse_type == "bitcount":
+        if args.new_value is None:  # find the first unset bit and set it
+            args.new_value = old_value
+            bit = 1
+            while args.new_value == old_value:
+                args.new_value = bit | old_value
+                bit <<= 1
+
+    if args.new_value & (efuse.mask >> efuse.shift) != args.new_value:
+        raise esptool.FatalError("Value mask for efuse %s is 0x%x. Value 0x%x is too large." % (efuse.register_name, efuse.mask >> efuse.shift, args.new_value))
+    if args.new_value | old_value != args.new_value:
+        print "WARNING: New value contains some bits that cannot be cleared (value will be 0x%x)" % (old_value | args.new_value)
+
+    confirm("Burning efuse %s (%s) 0x%x -> 0x%x" % (efuse.register_name, efuse.description, old_value, args.new_value | old_value), args)
+    burned_value = efuse.burn(args.new_value)
+    if burned_value == old_value:
+        raise esptool.FatalError("Efuse %s failed to burn. Protected?" % efuse.register_name)
+
 
 def read_protect_efuse(esp, efuses, args):
     efuse = _get_efuse(efuses, args)
@@ -362,6 +375,7 @@ def main():
                           help='Burn the efuse with the specified name')
     p.add_argument('efuse_name', help='Name of efuse register to burn',
                    choices=[efuse[0] for efuse in EFUSES])
+    p.add_argument('new_value', help='New value to burn (not needed for flag-type efuses', nargs='?', type=esptool.arg_auto_int)
 
     p = subparsers.add_parser('read_protect_efuse',
                               help='Disable readback for the efuse with the specified name')
