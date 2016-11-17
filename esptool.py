@@ -28,6 +28,7 @@ import sys
 import time
 import base64
 import zlib
+import shlex
 
 __version__ = "2.0-dev"
 
@@ -1855,6 +1856,8 @@ def main():
     for operation in subparsers.choices.keys():
         assert operation in globals(), "%s should be a module function" % operation
 
+    expand_file_arguments()
+
     args = parser.parse_args()
 
     print 'esptool.py v%s' % __version__
@@ -1896,6 +1899,24 @@ def main():
     else:
         operation_func(args)
 
+def expand_file_arguments():
+    """ Any argument starting with "@" gets replaced with all values read from a text file.
+    Text file arguments can be split by newline or by space.
+    Values are added "as-is", as if they were specified in this order on the command line.
+    """
+    new_args = []
+    expanded = False
+    for arg in sys.argv:
+        if arg.startswith("@"):
+            expanded = True
+            with open(arg[1:],"r") as f:
+                for line in f.readlines():
+                    new_args += shlex.split(line)
+        else:
+            new_args.append(arg)
+    if expanded:
+        print "esptool.py %s" % (" ".join(new_args[1:]))
+        sys.argv = new_args
 
 class FlashSizeAction(argparse.Action):
     """ Custom flash size parser class to support backwards compatibility with megabit size arguments.

@@ -56,6 +56,10 @@ Most hardware configurations will work with `-b 230400`, some with `-b 460800`, 
 
 If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output [boot log](#boot-log) information.
 
+## Specifying Arguments Via File
+
+Anywhere on the `esptool.py` command line, you can specify a file name as `@filename.txt` to read one or more arguments from text file `filename.txt`. Arguments can be separated by newlines or spaces, quotes can be used to enclose arguments that span multiple words. Arguments read from the text file are expanded exactly as if they had appeared in that order on the `esptool.py` command line.
+
 ## Commands
 
 ### Convert ELF to Binary
