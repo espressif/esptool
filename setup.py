@@ -85,6 +85,8 @@ setup(
     ],
     install_requires=[
         'pyserial',
+        'pyaes',
+        'ecdsa',
     ],
     scripts=[
         'esptool.py',
