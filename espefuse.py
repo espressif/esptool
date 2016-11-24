@@ -69,12 +69,12 @@ EFUSE_REG_WRITE = [ 0x3FF5A01C, 0x3FF5A098, 0x3FF5A0B8, 0x3FF5A0D8 ]
 
 def confirm(action, args):
     print("%s. This is an irreversible operation." % action)
-    print("Type 'BURN' (all capitals) to continue.")
-    yes = raw_input()
-    if yes != "BURN":
-        print "Aborting."
-        sys.exit(0)
-
+    if not args.do_not_confirm:
+        print("Type 'BURN' (all capitals) to continue.")
+        yes = raw_input()
+        if yes != "BURN":
+            print "Aborting."
+            sys.exit(0)
 
 def efuse_write_reg_addr(block, word):
     """
@@ -307,7 +307,7 @@ def write_protect_efuse(esp, efuses,args):
 
 def burn_key(esp, efuses, args):
     # check block choice
-    if args.block in ["flash_encrypt", "BLK1" ]:
+    if args.block in ["flash_encryption", "BLK1" ]:
         block_num = 1
     elif args.block in ["secure_boot", "BLK2" ]:
         block_num = 2
@@ -367,6 +367,9 @@ def main():
         '--port', '-p',
         help='Serial port device',
         default=os.environ.get('ESPTOOL_PORT', esptool.ESPLoader.DEFAULT_PORT))
+
+    parser.add_argument('--do-not-confirm',
+                        help='Do not pause for confirmation before permanently writing efuses. Use with caution.', action='store_true')
 
     subparsers = parser.add_subparsers(
         dest='operation',
