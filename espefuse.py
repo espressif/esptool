@@ -287,7 +287,10 @@ def read_protect_efuse(esp, efuses, args):
     if not efuse.is_readable():
         print "Efuse %s is already read protected" % efuse.register_name
     else:
-        confirm("Permanently read-disabling efuse %s (%s)" % (efuse.register_name, efuse.description), args)
+        # make full list of which efuses will be disabled (ie share a read disable bit)
+        all_disabling = [ e for e in efuses if e.read_disable_bit == efuse.read_disable_bit ]
+        names = ", ".join(e.register_name for e in all_disabling)
+        confirm("Permanently read-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "",names), args)
         efuse.disable_read()
 
 def write_protect_efuse(esp, efuses,args):
@@ -295,7 +298,10 @@ def write_protect_efuse(esp, efuses,args):
     if not efuse.is_writeable():
         print "Efuse %s is already write protected" % efuse.register_name
     else:
-        confirm("Permanently write-disabling efuse %s (%s)" % (efuse.register_name, efuse.description), args)
+        # make full list of which efuses will be disabled (ie share a write disable bit)
+        all_disabling = [ e for e in efuses if e.write_disable_bit == efuse.write_disable_bit ]
+        names = ", ".join(e.register_name for e in all_disabling)
+        confirm("Permanently write-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "",names), args)
         efuse.disable_write()
 
 
