@@ -237,6 +237,9 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
     return b"".join(chr(k) for k in key)
 
 
+def generate_flash_encryption_key(args):
+    args.key_file.write(os.urandom(32))
+
 def _flash_encryption_operation(output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt):
     key = keyfile.read()
     if len(key) != 32:
@@ -324,10 +327,13 @@ def main():
                    required=True)
     p.add_argument('public_keyfile', help="File to save new public key) into", type=argparse.FileType('wb'))
 
-    p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. This can be used as a reproducible secure bootloader key.')
+    p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. This can be used as a reproducible secure bootloader or flash encryption key.')
     p.add_argument('--keyfile', '-k', help="Private key file to generate a digest from.", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('digest_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
+
+    p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use 32 byte flash encryption key with random data.')
+    p.add_argument('key_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
 
     p = subparsers.add_parser('decrypt_flash_data', help='Decrypt some data read from encrypted flash (using known key)')
     p.add_argument('encrypted_file', help="File with encrypted flash contents", type=argparse.FileType('rb'))

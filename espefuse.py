@@ -397,10 +397,10 @@ def main():
                    choices=[efuse[0] for efuse in EFUSES])
 
     p = subparsers.add_parser('burn_key',
-                              help='Burn a 256-bit AES key to EFUSE BLK1,BLK2 or BLK3 (flash_encrypt, secure_boot).')
+                              help='Burn a 256-bit AES key to EFUSE BLK1,BLK2 or BLK3 (flash_encryption, secure_boot).')
     p.add_argument('--no-protect-key', help='Disable default read- and write-protecting of the key. If this option is not set, once the key is flashed it cannot be read back or changed.', action='store_true')
     p.add_argument('--force-write-always', help="Write the key even if it looks like it's already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.", action='store_true')
-    p.add_argument('block', help='Key block to burn. "flash_encrypt" is an alias for BLK1, "secure_boot" is an alias for BLK2.', choices=["secure_boot","flash_encrypt","BLK1","BLK2","BLK3"])
+    p.add_argument('block', help='Key block to burn. "flash_encryption" is an alias for BLK1, "secure_boot" is an alias for BLK2.', choices=["secure_boot","flash_encryption","BLK1","BLK2","BLK3"])
     p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=file)
 
     args = parser.parse_args()
