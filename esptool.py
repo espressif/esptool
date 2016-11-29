@@ -551,6 +551,7 @@ class ELFFile(object):
 class CesantaFlasher(object):
 
     # From stub_flasher.h
+    CMD_FLASH_ERASE = 0
     CMD_FLASH_WRITE = 1
     CMD_FLASH_READ = 2
     CMD_FLASH_DIGEST = 3
@@ -674,6 +675,19 @@ class CesantaFlasher(object):
         status_code = struct.unpack('<B', p)[0]
         if status_code != 0:
             raise FatalError('Boot failure, status: %x' % status_code)
+
+    def flash_erase(self, addr, size):
+        self._esp.write(struct.pack('<B', self.CMD_FLASH_ERASE))
+        self._esp.write(struct.pack('<II', addr, size))
+        otimeout = self._esp._port.timeout
+        self._esp._port.timeout = 60
+        p = self._esp.read()
+        self._esp._port.timeout = otimeout
+        if len(p) != 1:
+            raise FatalError('Expected status, got: %s' % hexify(p))
+        status_code = struct.unpack('<B', p)[0]
+        if status_code != 0:
+            raise FatalError('Erase failure, status: %x' % status_code)
 
     def flash_erase_chip(self):
         self._esp.write(struct.pack('<B', self.CMD_FLASH_ERASE_CHIP))
@@ -962,7 +976,10 @@ def erase_flash(esp, args):
     flasher = CesantaFlasher(esp, args.baud)
     print 'Erasing flash (this may take a while)...'
     t = time.time()
-    flasher.flash_erase_chip()
+    if args.erase_start is None:
+        flasher.flash_erase_chip()
+    else:
+        flasher.flash_erase(args.erase_start, args.erase_size)
     t = time.time() - t
     print 'Erase took %.1f seconds' % t
 
@@ -1154,9 +1171,11 @@ def main():
     parser_verify_flash.add_argument('--diff', '-d', help='Show differences',
                                      choices=['no', 'yes'], default='no')
 
-    subparsers.add_parser(
+    parser_erase_flash = subparsers.add_parser(
         'erase_flash',
-        help='Perform Chip Erase on SPI flash')
+        help='Perform Erase on SPI flash')
+    parser_erase_flash.add_argument('erase_start', help='Start address', type=arg_auto_int, nargs='?')
+    parser_erase_flash.add_argument('erase_size', help='Size to erase', type=arg_auto_int, nargs='?')
 
     subparsers.add_parser(
         'version', help='Print esptool version')
