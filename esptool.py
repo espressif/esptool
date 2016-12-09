@@ -18,7 +18,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function, unicode_literals, division
+from __future__ import print_function, division
 
 import argparse
 import hashlib

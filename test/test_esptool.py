@@ -7,7 +7,7 @@ WILL MESS UP THE DEVICE'S SPI FLASH CONTENTS
 Serial port and (optional) baud rate are passed in as arguments to test.
 
 """
-from __future__ import print_function, unicode_literals, division
+from __future__ import print_function, division
 
 
 import subprocess
