@@ -35,6 +35,8 @@ import time
 
 __version__ = "1.3-dev"
 
+PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
+
 
 class ESPROM(object):
     # These are the currently known commands supported by the ROM
@@ -629,7 +631,7 @@ class CesantaFlasher(object):
         # the on-chip FIFO. max_in_flight = 64 works for CH340G, other chips may
         # have longer FIFOs and could benefit from increasing max_in_flight.
         self._esp.write(struct.pack(b'<IIII', addr, length, 32, 64))
-        data = ''
+        data = b''
         while True:
             p = self._esp.read()
             data += p
@@ -774,7 +776,7 @@ def align_file_position(f, size):
 
 
 def hexify(s):
-    if sys.version_info >= (3, 0):  # python 2/3 compat
+    if not PYTHON2:
         return ''.join('%02X' % c for c in s)
     else:
         return ''.join('%02X' % ord(c) for c in s)
@@ -786,7 +788,7 @@ def unhexify(hs):
     for i in range(0, len(hs) - 1, 2):
         hex_string = hs[i:i + 2]
 
-        if sys.version_info >= (3, 0):  # python 2/3 compat
+        if not PYTHON2:
             s += bytes([int(hex_string, 16)])
         else:
             s += chr(int(hex_string, 16))
@@ -1041,7 +1043,12 @@ def _verify_flash(flasher, args, flash_params=None):
         diff = [i for i in range(image_size) if flash[i] != image[i]]
         print('-- verify FAILED: %d differences, first @ 0x%08x' % (len(diff), address + diff[0]))
         for d in diff:
-            print('   %08x %02x %02x') % (address + d, ord(flash[d]), ord(image[d]))
+            flash_byte = flash[d]
+            image_byte = image[d]
+            if PYTHON2:
+                flash_byte = ord(flash_byte)
+                image_byte = ord(image_byte)
+            print('   %08x %02x %02x' % (address + d, flash_byte, image_byte))
     if differences:
         raise FatalError("Verify failed.")
 
@@ -1114,7 +1121,7 @@ def main():
         if auto_detect:
             default = 'detect'
             choices.insert(0, 'detect')
-        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=str.lower,
+        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in Mbit', type=lambda s: s.lower(),
                             choices=choices,
                             default=os.environ.get('ESPTOOL_FS', default))
 
