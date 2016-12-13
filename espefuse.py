@@ -24,31 +24,31 @@ import struct
 # Table of efuse values - (category, block, word in block, mask, write disable bit, read disable bit, register name, type, description)
 # Match values in efuse_reg.h & Efuse technical reference chapter
 EFUSES = [
-    ('WR_DIS',               "efuse",    0, 0, 0x0000FFFF, 1, None, "int", "EFUSE write disable"),
-    ('RD_DIS',               "efuse",    0, 0, 0x000F0000, 0, None, "int", "EFUSE read disable"),
-    ('RD_FLASH_CRYPT_CNT',   "security", 0, 0, 0x0FF00000, 2, None, "bitcount", "Flash encryption bit counter"),
+    ('WR_DIS',               "efuse",    0, 0, 0x0000FFFF, 1, None, "int", "Efuse write disable mask"),
+    ('RD_DIS',               "efuse",    0, 0, 0x000F0000, 0, None, "int", "Efuse read disablemask"),
+    ('FLASH_CRYPT_CNT',      "security", 0, 0, 0x0FF00000, 2, None, "bitcount", "Flash encryption mode counter"),
     ('MAC',                  "identity", 0, 1, 0xFFFFFFFF, 3, None, "mac", "MAC Address"),
-    ('SPI_PAD_CONFIG_HD',    "config",   0, 3, 0x1F<<4,    3, None, "int", "SPI pad config hd"),
-    ('XPD_SDIO_REG',         "config",   0, 4, 1<<14,      5, None, "flag", "?"),
-    ('XPD_SDIO_TIEH',        "config",   0, 4, 1<<15,      5, None, "flag", "?"),
-    ('XPD_SDIO_FORCE',       "config",   0, 4, 1<<16,      5, None, "flag", "?"),
-    ('SPI_PAD_CONFIG_CLK',   "config",   0, 5, 0x1F<<0,    6, None, "int", "Override SPI flash CLK pad"),
-    ('SPI_PAD_CONFIG_Q',     "config",   0, 5, 0x1F<<5,    6, None, "int", "Override SPI flash Q pad"),
-    ('SPI_PAD_CONFIG_D',     "config",   0, 5, 0x1F<<10,   6, None, "int", "Override SPI flash D pad"),
-    ('SPI_PAD_CONFIG_CS0',   "config",   0, 5, 0x1F<<15,   6, None, "int", "Override SPI flash CS pad"),
-    ('FLASH_CRYPT_CONFIG',   "config",   0, 5, 0x0F<<15,   10, 3, "int", "Flash encryption config"),
-    ('CODING_SCHEME',        "efuse",    0, 6, 0x3,        10, 3, "int", "efuse controller coding scheme"),
-    ('CONSOLE_DEBUG_DISABLE',"security", 0, 6, 1<<2,       15, None, "flag", "disable console debug output"),
-    ('DISABLE_SDIO_HOST',    "config",   0, 6, 1<<3,       None, None, "flag", "disable SDIO host"),
+    ('XPD_SDIO_FORCE',       "config",   0, 4, 1<<16,      5, None, "flag", "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset"),
+    ('XPD_SDIO_REG',         "config",   0, 4, 1<<14,      5, None, "flag", "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset"),
+    ('XPD_SDIO_TIEH',        "config",   0, 4, 1<<15,      5, None, "flag", "If XPD_SDIO_FORCE & XPD_SDIO_REG, 1=3.3V 0=1.8V"),
+    ('SPI_PAD_CONFIG_CLK',   "config",   0, 5, 0x1F<<0,    6, None, "int", "Override SD_CLK pad (GPIO6/SPICLK)"),
+    ('SPI_PAD_CONFIG_Q',     "config",   0, 5, 0x1F<<5,    6, None, "int", "Override SD_DATA_0 pad (GPIO7/SPIQ)"),
+    ('SPI_PAD_CONFIG_D',     "config",   0, 5, 0x1F<<10,   6, None, "int", "Override SD_DATA_1 pad (GPIO8/SPID)"),
+    ('SPI_PAD_CONFIG_HD',    "config",   0, 3, 0x1F<<4,    3, None, "int", "Override SD_DATA_2 pad (GPIO9/SPIHD)"),
+    ('SPI_PAD_CONFIG_CS0',   "config",   0, 5, 0x1F<<15,   6, None, "int", "Override SD_CMD pad (GPIO11/SPICS0)"),
+    ('FLASH_CRYPT_CONFIG',   "security", 0, 5, 0x0F<<28,   10, 3, "int", "Flash encryption config (key tweak bits)"),
+    ('CODING_SCHEME',        "efuse",    0, 6, 0x3,        10, 3, "int", "Efuse variable block length scheme"),
+    ('CONSOLE_DEBUG_DISABLE',"security", 0, 6, 1<<2,       15, None, "flag", "Disable ROM BASIC interpreter fallback"),
+    ('DISABLE_SDIO_HOST',    "config",   0, 6, 1<<3,       None, None, "flag", "Disable SDIO host"),
     ('ABS_DONE_0',           "security", 0, 6, 1<<4,       12, None, "flag", "secure boot enabled for bootloader"),
     ('ABS_DONE_1',           "security", 0, 6, 1<<5,       13, None, "flag", "secure boot abstract 1 locked"),
-    ('JTAG_DISABLE',         "security", 0, 6, 1<<6,       14, None, "flag", "JTAG disabled"),
-    ('DISABLE_DL_ENCRYPT',   "security", 0, 6, 1<<7,       15, None, "flag", "Disable encrypted download"),
-    ('DISABLE_DL_DECRYPT',   "security", 0, 6, 1<<8,       15, None, "flag", "Disable decrypted download?"),
-    ('DISABLE_DL_CACHE',     "security", 0, 6, 1<<9,       15, None, "flag", "Disable cache when boot mode is download"),
-    ('KEY_STATUS',           "efuse",    0, 6, 1<<10,      10, 3, "flag", "Key status of efuse block 3"),
-    ('BLK1',                 "security", 1, 0, 0xFFFFFFFF, 7,  0, "keyblock", "Block holding flash encryption key"),
-    ('BLK2',                 "security", 2, 0, 0xFFFFFFFF, 8,  1, "keyblock", "Block holding secure boot key"),
+    ('JTAG_DISABLE',         "security", 0, 6, 1<<6,       14, None, "flag", "Disable JTAG"),
+    ('DISABLE_DL_ENCRYPT',   "security", 0, 6, 1<<7,       15, None, "flag", "Disable flash encryption in UART bootloader"),
+    ('DISABLE_DL_DECRYPT',   "security", 0, 6, 1<<8,       15, None, "flag", "Disable flash decryption in UART bootloader"),
+    ('DISABLE_DL_CACHE',     "security", 0, 6, 1<<9,       15, None, "flag", "Disable flash cache in UART bootloader"),
+    ('KEY_STATUS',           "efuse",    0, 6, 1<<10,      10, 3, "flag", "Usage of efuse block 3 (reserved)"),
+    ('BLK1',                 "security", 1, 0, 0xFFFFFFFF, 7,  0, "keyblock", "Flash encryption key"),
+    ('BLK2',                 "security", 2, 0, 0xFFFFFFFF, 8,  1, "keyblock", "Secure boot key"),
     ('BLK3',                 "security", 3, 0, 0xFFFFFFFF, 9,  2, "keyblock", "Variable Block 3"),
 ]
 
@@ -69,12 +69,12 @@ EFUSE_REG_WRITE = [ 0x3FF5A01C, 0x3FF5A098, 0x3FF5A0B8, 0x3FF5A0D8 ]
 
 def confirm(action, args):
     print("%s. This is an irreversible operation." % action)
-    print("Type 'BURN' (all capitals) to continue.")
-    yes = raw_input()
-    if yes != "BURN":
-        print "Aborting."
-        sys.exit(0)
-
+    if not args.do_not_confirm:
+        print("Type 'BURN' (all capitals) to continue.")
+        yes = raw_input()
+        if yes != "BURN":
+            print "Aborting."
+            sys.exit(0)
 
 def efuse_write_reg_addr(block, word):
     """
@@ -107,7 +107,6 @@ class EfuseField(object):
         category = efuse_tuple[7]
         return {
             "mac" : EfuseMacField,
-            "bitcount" : EfuseBitcountField,
             "keyblock" : EfuseKeyblockField,
         }.get(category, EfuseField)(esp, *efuse_tuple)
 
@@ -215,11 +214,6 @@ class EfuseKeyblockField(EfuseField):
         return self.get()
 
 
-class EfuseBitcountField(EfuseField):
-    def get(self):
-        return bin(self.get_raw()).count('1')
-
-
 def dump(esp, _efuses, args):
     """ Dump raw efuse data registers """
     for block in range(len(EFUSE_BLOCK_OFFS)):
@@ -249,7 +243,7 @@ def summary(esp, efuses, args):
             else:
                 perms = "-/-"
             value = str(e.get())
-            print "%-22s %-40s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw)
+            print "%-22s %-50s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw)
         print ""
 
 
@@ -258,23 +252,45 @@ def _get_efuse(efuses, args):
 
 def burn_efuse(esp, efuses, args):
     efuse = _get_efuse(efuses, args)
+    old_value = efuse.get()
     if efuse.efuse_type == "flag":
-        old = efuse.get()
-        if old:
+        if not args.new_value in [ None, 1 ]:
+            raise esptool.FatalError("Efuse %s is type 'flag'. New value is not accepted for this efuse (will always burn 0->1)" % efuse.register_name)
+        args.new_value = 1
+        if old_value:
             print "Efuse %s is already burned." % efuse.register_name
             return
-        confirm("Burning efuse %s (%s)" % (efuse.register_name, efuse.description),
-                args)
-        new_value = efuse.burn(1)
-        if not new_value:
-            raise esptool.FatalError("Efuse %s failed to burn. Protected?" % efuse.register_name)
+    elif efuse.efuse_type == "int":
+        if args.new_value is None:
+            raise esptool.FatalError("New value required for efuse %s" % efuse.register_name)
+    elif efuse.efuse_type == "bitcount":
+        if args.new_value is None:  # find the first unset bit and set it
+            args.new_value = old_value
+            bit = 1
+            while args.new_value == old_value:
+                args.new_value = bit | old_value
+                bit <<= 1
+
+    if args.new_value & (efuse.mask >> efuse.shift) != args.new_value:
+        raise esptool.FatalError("Value mask for efuse %s is 0x%x. Value 0x%x is too large." % (efuse.register_name, efuse.mask >> efuse.shift, args.new_value))
+    if args.new_value | old_value != args.new_value:
+        print "WARNING: New value contains some bits that cannot be cleared (value will be 0x%x)" % (old_value | args.new_value)
+
+    confirm("Burning efuse %s (%s) 0x%x -> 0x%x" % (efuse.register_name, efuse.description, old_value, args.new_value | old_value), args)
+    burned_value = efuse.burn(args.new_value)
+    if burned_value == old_value:
+        raise esptool.FatalError("Efuse %s failed to burn. Protected?" % efuse.register_name)
+
 
 def read_protect_efuse(esp, efuses, args):
     efuse = _get_efuse(efuses, args)
     if not efuse.is_readable():
         print "Efuse %s is already read protected" % efuse.register_name
     else:
-        confirm("Permanently read-disabling efuse %s (%s)" % (efuse.register_name, efuse.description), args)
+        # make full list of which efuses will be disabled (ie share a read disable bit)
+        all_disabling = [ e for e in efuses if e.read_disable_bit == efuse.read_disable_bit ]
+        names = ", ".join(e.register_name for e in all_disabling)
+        confirm("Permanently read-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "",names), args)
         efuse.disable_read()
 
 def write_protect_efuse(esp, efuses,args):
@@ -282,13 +298,16 @@ def write_protect_efuse(esp, efuses,args):
     if not efuse.is_writeable():
         print "Efuse %s is already write protected" % efuse.register_name
     else:
-        confirm("Permanently write-disabling efuse %s (%s)" % (efuse.register_name, efuse.description), args)
+        # make full list of which efuses will be disabled (ie share a write disable bit)
+        all_disabling = [ e for e in efuses if e.write_disable_bit == efuse.write_disable_bit ]
+        names = ", ".join(e.register_name for e in all_disabling)
+        confirm("Permanently write-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "",names), args)
         efuse.disable_write()
 
 
 def burn_key(esp, efuses, args):
     # check block choice
-    if args.block in ["flash_encrypt", "BLK1" ]:
+    if args.block in ["flash_encryption", "BLK1" ]:
         block_num = 1
     elif args.block in ["secure_boot", "BLK2" ]:
         block_num = 2
@@ -349,6 +368,9 @@ def main():
         help='Serial port device',
         default=os.environ.get('ESPTOOL_PORT', esptool.ESPLoader.DEFAULT_PORT))
 
+    parser.add_argument('--do-not-confirm',
+                        help='Do not pause for confirmation before permanently writing efuses. Use with caution.', action='store_true')
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run espefuse.py {command} -h for additional help')
@@ -362,6 +384,7 @@ def main():
                           help='Burn the efuse with the specified name')
     p.add_argument('efuse_name', help='Name of efuse register to burn',
                    choices=[efuse[0] for efuse in EFUSES])
+    p.add_argument('new_value', help='New value to burn (not needed for flag-type efuses', nargs='?', type=esptool.arg_auto_int)
 
     p = subparsers.add_parser('read_protect_efuse',
                               help='Disable readback for the efuse with the specified name')
@@ -374,10 +397,10 @@ def main():
                    choices=[efuse[0] for efuse in EFUSES])
 
     p = subparsers.add_parser('burn_key',
-                              help='Burn a 256-bit AES key to EFUSE BLK1,BLK2 or BLK3 (flash_encrypt, secure_boot).')
+                              help='Burn a 256-bit AES key to EFUSE BLK1,BLK2 or BLK3 (flash_encryption, secure_boot).')
     p.add_argument('--no-protect-key', help='Disable default read- and write-protecting of the key. If this option is not set, once the key is flashed it cannot be read back or changed.', action='store_true')
     p.add_argument('--force-write-always', help="Write the key even if it looks like it's already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.", action='store_true')
-    p.add_argument('block', help='Key block to burn. "flash_encrypt" is an alias for BLK1, "secure_boot" is an alias for BLK2.', choices=["secure_boot","flash_encrypt","BLK1","BLK2","BLK3"])
+    p.add_argument('block', help='Key block to burn. "flash_encryption" is an alias for BLK1, "secure_boot" is an alias for BLK2.', choices=["secure_boot","flash_encryption","BLK1","BLK2","BLK3"])
     p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=file)
 
     args = parser.parse_args()
