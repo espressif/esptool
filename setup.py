@@ -33,9 +33,9 @@ esptool.py
 ==========
 A command line utility to communicate with the ROM bootloader in Espressif ESP8266 WiFi microcontroller.
 
-Allows flashing firmware, reading back firmware, querying chip parameters, etc. Developed by the community, not by Espressif Systems.
+Allows flashing firmware, reading back firmware, querying chip parameters, etc.
 
-The esptool.py project is hosted on github: https://github.com/themadinventor/esptool
+The esptool.py project is hosted on github: https://github.com/espressif/esptool
 
 Installation
 ------------
@@ -49,13 +49,13 @@ esptool can be installed via pip:
 Usage
 -----
 
-Please see the `Usage section of the README.md file <https://github.com/themadinventor/esptool#usage>`_.
+Please see the `Usage section of the README.md file <https://github.com/espressif/esptool#usage>`_.
 
 You can also get help information by running `esptool.py --help`.
 
 Contributing
 ------------
-Please see the `CONTRIBUTING.md file on github <https://github.com/themadinventor/esptool/blob/master/CONTRIBUTING.md>`_.
+Please see the `CONTRIBUTING.md file on github <https://github.com/espressif/esptool/blob/master/CONTRIBUTING.md>`_.
 """
 
 setup(
@@ -64,9 +64,9 @@ setup(
     version=find_version('esptool.py'),
     description='A utility to communicate with the ROM bootloader in Espressif ESP8266.',
     long_description=long_description,
-    url='https://github.com/themadinventor/esptool',
+    url='https://github.com/espressif/esptool',
     author='Fredrik Ahlberg (themadinventor) & Angus Gratton (projectgus)',
-    author_email='gus@projectgus.com',
+    author_email='angus@espressif.com',
     license='GPLv2+',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -84,7 +84,7 @@ setup(
         'flake8<3.0.0',
     ],
     install_requires=[
-        'pyserial',
+        'pyserial>=2.5',
         'pyaes',
         'ecdsa',
     ],

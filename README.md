@@ -1,9 +1,12 @@
 # esptool.py
 
-A cute Python utility to communicate with the ROM bootloader in Espressif ESP8266.
-It is intended to be a simple, platform independent, open source replacement for XTCOM.
+A Python-based, open source, platform independent, utility to communicate with the ROM bootloader in Espressif ESP8266.
 
-[![Build Status](https://travis-ci.org/themadinventor/esptool.svg?branch=master)](https://travis-ci.org/themadinventor/esptool)
+esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/)) as an unofficial community project. It is now also supported by Espressif. Current primary maintainer is Angus Gratton (@[projectgus](https://github.com/projectgus/)).
+
+esptool.py is Free Software under a GPLv2 license.
+
+[![Build Status](https://travis-ci.org/espressif/esptool.svg?branch=master)](https://travis-ci.org/espressif/esptool)
 
 ## Installation / dependencies
 
@@ -25,7 +28,7 @@ After installing, you will have `esptool.py` installed into the default Python e
 
 Manual installation allows you to run the latest development version from this repository.
 
-esptool.py depends on [pySerial](https://github.com/pyserial/pyserial#readme) for serial communication with the target device.
+esptool.py depends on [pySerial](https://github.com/pyserial/pyserial#readme) version 2.5 or newer for serial communication with the target device.
 
 If you choose to install esptool.py system-wide by running `python setup.py install`, then this will be taken care of automatically.
 
@@ -97,7 +100,7 @@ The --port argument specifies the serial port. This may take the form of somethi
 
 The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For "version 2" images, the bootloader and linker script you are using determines the flash offset.
 
-You may need to specify arguments for [flash mode and flash size](#flash-modes) as well. For example:
+You may need to specify arguments for [flash mode and flash size](#flash-modes) as well (flash size is autodetected in the recent versions and usually can be omitted). For example:
 
 ```
 esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
@@ -157,7 +160,7 @@ Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/
 esptool.py chip_id
 ```
 
-This is the same as the output of the [system_get_chip_id()](http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29) SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero on most (all?) ESP8266s.
+This is the same as the output of the `system_get_chip_id()` SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero on most (all?) ESP8266s.
 
 ## Serial Connections
 
@@ -252,11 +255,11 @@ In `qio` mode, GPIOs 9 and 10 are used for SPI flash communications. If flash mo
 
 ### Flash Size (--flash_size, -fs)
 
-Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). The default is `4m` (4 megabits, 512 kilobytes.) This parameter can also be specified using the environment variable `ESPTOOL_FS`.
+Size of the SPI flash. Valid values are `4m`, `2m`, `8m`, `16m`, `32m`, `16m-c1`, `32m-c1`, `32m-c2` (megabits). For `write_flash` command, the default is `detect`, which tries to autodetect size based on SPI flash ID. If detection fails, older default of `4m` (4 megabits, 512 kilobytes) is used. This parameter can also be specified using the environment variable `ESPTOOL_FS`.
 
 The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
 
-ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 32 megabit (`32m` i.e. 4MB) flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)).
+ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 32 megabit (`32m` i.e. 4MB) flash. You can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)). If `--flash_size=detect` (recent default) is used, this process is performed automatically by `esptool.py` itself.
 
 ### Flash Frequency (--flash_freq, -ff)
 
@@ -273,7 +276,7 @@ ESP8266 problems can be fiddly to troubleshoot. Try the suggestions here if you'
 If you see errors like "Failed to connect to ESP8266" then your ESP8266 is probably not entering the bootloader properly:
 
 * Check you are passing the correct serial port on the command line.
-* Check you have permissions to access the serial port, and other software (such as modem-manager on Linux) is not trying to interact with it.
+* Check you have permissions to access the serial port, and other software (such as modem-manager on Linux) is not trying to interact with it. A common pitfall is leaving a serial terminal accessing this port open in another window and forgetting about it.
 * Check the ESP8266 is receiving 3.3V from a stable power source (see [Insufficient Power](#insufficient-power) for more details.)
 * Check that all pins are connected as described in [Entering the bootloader](#entering-the-bootloader). Check the voltages at each pin with a multimeter, "high" pins should be close to 3.3V and "low" pins should be close to 0V.
 * If you have connected other devices to GPIO0, GPIO2 or GPIO15 then try removing them and see if esptool.py starts working.
@@ -336,10 +339,10 @@ Note that not every serial program supports the unusual ESP8266 74880bps "boot l
 
 ## Internal Technical Documentation
 
-The [repository wiki](https://github.com/themadinventor/esptool/wiki) contains some technical documentation regarding the serial protocol and file format used by the ROM bootloader. This may be useful if you're developing esptool.py or hacking system internals:
+The [repository wiki](https://github.com/espressif/esptool/wiki) contains some technical documentation regarding the serial protocol and file format used by the ROM bootloader. This may be useful if you're developing esptool.py or hacking system internals:
 
-* [Firmware Image Format](https://github.com/themadinventor/esptool/wiki/Firmware-Image-Format)
-* [Serial Protocol](https://github.com/themadinventor/esptool/wiki/Serial-Protocol)
+* [Firmware Image Format](https://github.com/espressif/esptool/wiki/Firmware-Image-Format)
+* [Serial Protocol](https://github.com/espressif/esptool/wiki/Serial-Protocol)
 
 
 ## Boot log
@@ -363,6 +366,6 @@ csum 0x46
 
 ## About
 
-esptool.py was initially created by Fredrik Ahlberg (themadinventor, kongo), and is currently maintained by Fredrik and Angus Gratton (@projectgus). It has also received improvements from many members of the ESP8266 community - including pfalcon, tommie, 0ff and george-hopkins.
+esptool.py was initially created by Fredrik Ahlberg (@themadinventor, @kongo), and is currently maintained by Angus Gratton (@projectgus). It has also received improvements from many members of the ESP8266 community - including @rojer, @jimparis, @jms19, @pfalcon, @tommie, @0ff, @george-hopkins and others.
 
-This document and the attached source code is released under GPLv2.
+This document and the attached source code are released under GNU General Public License Version 2. See the accompanying file LICENSE for a copy.

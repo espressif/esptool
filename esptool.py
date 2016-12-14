@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-# NB: Before sending a PR to change the above line to '#!/usr/bin/env python2', please read https://github.com/themadinventor/esptool/issues/21
+# NB: Before sending a PR to change the above line to '#!/usr/bin/env python2', please read https://github.com/espressif/esptool/issues/21
 #
 # ESP8266 & ESP32 ROM Bootloader Utility
-# https://github.com/themadinventor/esptool
-#
 # Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) PTE LTD, other contributors as noted.
+# https://github.com/espressif/esptool
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -31,7 +30,6 @@ import zlib
 import shlex
 
 __version__ = "2.0-dev"
-
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
@@ -152,12 +150,12 @@ class ESPLoader(object):
         if isinstance(port, serial.Serial):
             self._port = port
         else:
-            self._port = serial.Serial(port)
+            self._port = serial.serial_for_url(port)
         self._slip_reader = slip_reader(self._port)
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
         # sets), shouldn't matter for other platforms/drivers. See
-        # https://github.com/themadinventor/esptool/issues/44#issuecomment-107094446
+        # https://github.com/espressif/esptool/issues/44#issuecomment-107094446
         self._port.baudrate = baud
         if do_connect:
             self.connect()
@@ -602,6 +600,8 @@ class ESPLoader(object):
             raise FatalError("Writing more than 64 bytes of data with one SPI command is unsupported")
 
         data_bits = len(data) * 8
+        old_spi_usr = self.read_reg(SPI_USR_REG)
+        old_spi_usr2 = self.read_reg(SPI_USR2_REG)
         flags = SPI_USR_COMMAND
         if read_bits > 0:
             flags |= SPI_USR_MISO
@@ -631,6 +631,9 @@ class ESPLoader(object):
         wait_done()
 
         status = self.read_reg(SPI_W0_REG)
+        # restore some SPI controller registers
+        self.write_reg(SPI_USR_REG, old_spi_usr)
+        self.write_reg(SPI_USR2_REG, old_spi_usr2)
         return status
 
     def read_status(self, num_bytes=2):
@@ -717,10 +720,17 @@ class ESP8266ROM(ESPLoader):
         '4MB-c2':0x70}
 
     def flash_spi_attach(self, is_spi, is_legacy):
-        pass  # not implemented in ROM, but OK to silently skip
+        if self.IS_STUB:
+            super(ESP8266ROM, self).flash_spi_attach(is_spi, is_legacy)
+        else:
+            # ESP8266 ROM has no flash_spi_attach command in serial protocol,
+            # but flash_begin will do it
+            self.flash_begin(0, 0)
 
     def flash_set_parameters(self, size):
-        pass  # not implemented in ROM, but OK to silently skip
+        # not implemented in ROM, but OK to silently skip for ROM
+        if self.IS_STUB:
+            super(ESP8266ROM, self).flash_set_parameters(size)
 
     def chip_id(self):
         """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
@@ -1289,6 +1299,18 @@ class ELFFile(object):
                          if lma != 0]
         self.sections = prog_sections
 
+    def flash_erase_chip(self):
+        self._esp.write(struct.pack('<B', self.CMD_FLASH_ERASE_CHIP))
+        otimeout = self._esp._port.timeout
+        self._esp._port.timeout = 60
+        p = self._esp.read()
+        self._esp._port.timeout = otimeout
+        if len(p) != 1:
+            raise FatalError('Expected status, got: %s' % hexify(p))
+        status_code = struct.unpack('<B', p)[0]
+        if status_code != 0:
+            raise FatalError('Erase chip failure, status: %x' % status_code)
+
 
 def slip_reader(port):
     """Generator to read SLIP packets from a serial port.
@@ -1440,9 +1462,23 @@ def dump_mem(esp, args):
     print 'Done!'
 
 
+def detect_flash_size(esp, args):
+    if args.flash_size == 'detect':
+        flash_id = esp.flash_id()
+        size_id = flash_id >> 16
+        args.flash_size = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB', 0x15: '2MB', 0x16: '4MB', 0x17: '8MB', 0x18: '16MB'}.get(size_id)
+        if args.flash_size is None:
+            print 'Warning: Could not auto-detect Flash size (FlashID=0x%x, SizeID=0x%x), defaulting to 4m' % (flash_id, size_id)
+            args.flash_size = '4m'
+        else:
+            print 'Auto-detected Flash size:', args.flash_size
+
+
 def write_flash(esp, args):
     """Write data to flash
     """
+    detect_flash_size(esp, args)
+
     flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
     flash_size_freq = esp.parse_flash_size_arg(args.flash_size)
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
@@ -1745,7 +1781,7 @@ def main():
     parser_write_mem.add_argument('value', help='Value', type=arg_auto_int)
     parser_write_mem.add_argument('mask', help='Mask of bits to write', type=arg_auto_int)
 
-    def add_spi_flash_subparsers(parent):
+    def add_spi_flash_subparsers(parent, auto_detect=False):
         """ Add common parser arguments for SPI flash properties """
         parent.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
                             choices=['40m', '26m', '20m', '80m'],
@@ -1755,8 +1791,8 @@ def main():
                             default=os.environ.get('ESPTOOL_FM', 'qio'))
         parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M)'
                             ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1, 4MB-2)',
-                            action=FlashSizeAction,
-                            default=os.environ.get('ESPTOOL_FS', '1MB'))
+                            action=FlashSizeAction, auto_detect=auto_detect,
+                            default=os.environ.get('ESPTOOL_FS', 'detect' if auto_detect else '1MB'))
         parent.add_argument('--ucIsHspi', '-ih', help='Config SPI PORT/PINS (Espressif internal feature)',action='store_true')
         parent.add_argument('--ucIsLegacy', '-il', help='Config SPI LEGACY (Espressif internal feature)',action='store_true')
 
@@ -1765,7 +1801,7 @@ def main():
         help='Write a binary blob to flash')
     parser_write_flash.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
                                     action=AddrFilenamePairAction)
-    add_spi_flash_subparsers(parser_write_flash)
+    add_spi_flash_subparsers(parser_write_flash, auto_detect=True)
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
     parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
     parser_write_flash.add_argument('--compress', '-z', help='Compress data in transfer',action="store_true")
@@ -1893,6 +1929,7 @@ def main():
             esp.flash_spi_attach(0, 0)
         if hasattr(args, "flash_size"):
             print "Configuring flash size..."
+            detect_flash_size(esp, args)
             esp.flash_set_parameters(flash_size_bytes(args.flash_size))
 
         operation_func(esp, args)
@@ -1923,8 +1960,9 @@ class FlashSizeAction(argparse.Action):
 
     (At next major relase, remove deprecated sizes and this can become a 'normal' choices= argument again.)
     """
-    def __init__(self, option_strings, dest, nargs=1, **kwargs):
+    def __init__(self, option_strings, dest, nargs=1, auto_detect=False, **kwargs):
         super(FlashSizeAction, self).__init__(option_strings, dest, nargs, **kwargs)
+        self._auto_detect = auto_detect
 
     def __call__(self, parser, namespace, values, option_string=None):
         try:
@@ -1946,6 +1984,8 @@ class FlashSizeAction(argparse.Action):
 
         known_sizes = dict(ESP8266ROM.FLASH_SIZES)
         known_sizes.update(ESP32ROM.FLASH_SIZES)
+        if self._auto_detect:
+            known_sizes['detect'] = 'detect'
         if value not in known_sizes:
             raise argparse.ArgumentError(self, '%s is not a known flash size. Known sizes: %s' % (value, ", ".join(known_sizes.keys())))
         setattr(namespace, self.dest, value)
