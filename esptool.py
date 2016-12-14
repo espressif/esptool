@@ -786,6 +786,7 @@ class ESP8266StubLoader(ESP8266ROM):
     def get_erase_size(self, offset, size):
         return size  # stub doesn't have same size bug as ROM loader
 
+
 ESP8266ROM.STUB_CLASS = ESP8266StubLoader
 
 
@@ -855,6 +856,7 @@ class ESP32StubLoader(ESP32ROM):
     def __init__(self, rom_loader):
         self._port = rom_loader._port
         self.flush_input()  # resets _slip_reader
+
 
 ESP32ROM.STUB_CLASS = ESP32StubLoader
 
@@ -1360,6 +1362,7 @@ def div_roundup(a, b):
     """
     return (int(a) + int(b) - 1) / int(b)
 
+
 def align_file_position(f, size):
     """ Align the position in the file to the next block of specified size """
     align = (size - 1) - (f.tell() % size)
@@ -1620,6 +1623,7 @@ def elf2image(args):
 
 def read_mac(esp, args):
     mac = esp.read_mac()
+
     def print_mac(label, mac):
         print '%s: %s' % (label, ':'.join(map(lambda x: '%02x' % x, mac)))
     print("%r" % (mac,))
@@ -1628,6 +1632,7 @@ def read_mac(esp, args):
     else:
         print_mac("WiFi MAC", mac[0])
         print_mac("BT MAC", mac[1])
+
 
 def chip_id(esp, args):
     chipid = esp.chip_id()
@@ -1936,6 +1941,7 @@ def main():
     else:
         operation_func(args)
 
+
 def expand_file_arguments():
     """ Any argument starting with "@" gets replaced with all values read from a text file.
     Text file arguments can be split by newline or by space.
@@ -1954,6 +1960,7 @@ def expand_file_arguments():
     if expanded:
         print "esptool.py %s" % (" ".join(new_args[1:]))
         sys.argv = new_args
+
 
 class FlashSizeAction(argparse.Action):
     """ Custom flash size parser class to support backwards compatibility with megabit size arguments.
@@ -2012,6 +2019,7 @@ class AddrFilenamePairAction(argparse.Action):
                 raise argparse.ArgumentError(self,'Must be pairs of an address and the binary filename to write there')
             pairs.append((address, argfile))
         setattr(namespace, self.dest, pairs)
+
 
 # Binary stub code (see flasher_stub dir for source & details)
 ESP8266ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""

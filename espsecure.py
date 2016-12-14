@@ -24,15 +24,18 @@ import struct
 import pyaes
 import ecdsa
 
+
 def get_chunks(source, chunk_len):
     """ Returns an iterator over 'chunk_len' chunks of 'source' """
-    return (source[i: i+chunk_len] for i in range(0, len(source), chunk_len))
+    return (source[i: i + chunk_len] for i in range(0, len(source), chunk_len))
+
 
 def endian_swap_words(source):
     """ Endian-swap each word in 'source' bitstring """
     assert len(source) % 4 == 0
     words = "I" * (len(source) / 4)
-    return struct.pack("<"+words,*struct.unpack(">"+words, source))
+    return struct.pack("<" + words, *struct.unpack(">" + words, source))
+
 
 def swap_word_order(source):
     """ Swap the order of the words in 'source' bitstring """
@@ -132,6 +135,7 @@ def sign_data(args):
     outfile.close()
     print "Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile.name)
 
+
 def verify_signature(args):
     """ Verify a previously signed binary image, using the ECDSA public key """
     try:
@@ -198,6 +202,7 @@ _FLASH_ENCRYPTION_TWEAK_PATTERN = [
 ]
 assert len(_FLASH_ENCRYPTION_TWEAK_PATTERN) == 256
 
+
 def _flash_encryption_tweak_range(flash_crypt_config=0xF):
     """ Return a list of the bit indexes that the "key tweak" applies to,
     as determined by the FLASH_CRYPT_CONFIG 4 bit efuse value.
@@ -213,6 +218,7 @@ def _flash_encryption_tweak_range(flash_crypt_config=0xF):
         tweak_range += range(195, 256)
     return tweak_range
 
+
 def _flash_encryption_tweak_key(key, offset, tweak_range):
     """Apply XOR "tweak" values to the key, derived from flash offset
     'offset'. This matches the ESP32 hardware flash encryption.
@@ -223,10 +229,8 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
 
     Return tweaked key
     """
-
-    key = [ ord(k) for k in key ]
-
-    offset_bits = [ (offset & (1 << x)) != 0 for x in range(24) ]
+    key = [ord(k) for k in key]
+    offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
 
     for bit in tweak_range:
         if offset_bits[_FLASH_ENCRYPTION_TWEAK_PATTERN[bit]]:
@@ -239,6 +243,7 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
 
 def generate_flash_encryption_key(args):
     args.key_file.write(os.urandom(32))
+
 
 def _flash_encryption_operation(output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt):
     key = keyfile.read()
@@ -300,25 +305,30 @@ def main():
         help='Run espefuse.py {command} -h for additional help')
 
     p = subparsers.add_parser('digest_secure_bootloader',
-                          help='Take a bootloader binary image and a secure boot key, and output a combined digest+binary suitable for flashing along with the precalculated secure boot key.')
+                              help='Take a bootloader binary image and a secure boot key, and output a combined digest+binary ' +
+                              'suitable for flashing along with the precalculated secure boot key.')
     p.add_argument('--keyfile', '-k', help="256 bit key for secure boot digest.", type=argparse.FileType('rb'), required=True)
     p.add_argument('--output', '-o', help="Output file for signed digest image.")
-    p.add_argument('--iv', help="128 byte IV file. Supply a file for testing purposes only, if not supplied an IV will be randomly generated.", type=argparse.FileType('rb'))
+    p.add_argument('--iv', help="128 byte IV file. Supply a file for testing purposes only, if not supplied an IV will be randomly generated.",
+                   type=argparse.FileType('rb'))
     p.add_argument('image', help="Bootloader image file to calculate digest from", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('generate_signing_key',
-                              help='Generate a private key for signing secure boot images. Key file is generated in PEM format, and contains a ECDSA NIST256p private key and matching public key.')
+                              help='Generate a private key for signing secure boot images. Key file is generated in PEM format, ' +
+                              'and contains a ECDSA NIST256p private key and matching public key.')
     p.add_argument('keyfile', help="Filename for private key file (embedded public key)")
 
     p = subparsers.add_parser('sign_data',
                               help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512.')
-    p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format, ECDSA NIST256p curve. generate_signing_key command can be used to generate a suitable signing key.", type=argparse.FileType('rb'), required=True)
+    p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format, ECDSA NIST256p curve. " +
+                   "generate_signing_key command can be used to generate a suitable signing key.", type=argparse.FileType('rb'), required=True)
     p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to append signature to existing file.")
     p.add_argument('datafile', help="Data file to sign.", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('verify_signature',
                               help='Verify a data file previously signed by "sign_data", using the public key.')
-    p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be the private key file (public key is embedded).", type=argparse.FileType('rb'), required=True)
+    p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be the private key file (public key is embedded).",
+                   type=argparse.FileType('rb'), required=True)
     p.add_argument('datafile', help="Signed data file to verify signature.", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('extract_public_key',
@@ -327,7 +337,8 @@ def main():
                    required=True)
     p.add_argument('public_keyfile', help="File to save new public key) into", type=argparse.FileType('wb'))
 
-    p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. This can be used as a reproducible secure bootloader or flash encryption key.')
+    p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. ' +
+                              'This can be used as a reproducible secure bootloader or flash encryption key.')
     p.add_argument('--keyfile', '-k', help="Private key file to generate a digest from.", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('digest_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
