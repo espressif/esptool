@@ -719,6 +719,8 @@ class ESP8266ROM(ESPLoader):
         '4MB-c1':0x60,
         '4MB-c2':0x70}
 
+    FLASH_HEADER_OFFSET = 0
+
     def flash_spi_attach(self, is_spi, is_legacy):
         if self.IS_STUB:
             super(ESP8266ROM, self).flash_spi_attach(is_spi, is_legacy)
@@ -820,6 +822,8 @@ class ESP32ROM(ESPLoader):
         '8MB':0x30,
         '16MB':0x40
     }
+
+    FLASH_HEADER_OFFSET = 0x1000
 
     def read_efuse(self, n):
         """ Read the nth word of the ESP3x EFUSE region. """
@@ -1502,7 +1506,7 @@ def write_flash(esp, args):
             print 'Erasing flash...'
         image = argfile.read()
         # Update header with flash parameters
-        if address == 0 and image[0] == '\xe9':
+        if address == esp.FLASH_HEADER_OFFSET and image[0] == '\xe9':
             image = image[0:2] + flash_info + image[4:]
         calcmd5 = hashlib.md5(image).hexdigest()
         uncsize = len(image)

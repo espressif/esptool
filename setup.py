@@ -90,5 +90,7 @@ setup(
     ],
     scripts=[
         'esptool.py',
+        'espsecure.py',
+        'espefuse.py',
     ],
 )
