@@ -375,6 +375,12 @@ def main():
         help='Serial port device',
         default=os.environ.get('ESPTOOL_PORT', esptool.ESPLoader.DEFAULT_PORT))
 
+    parser.add_argument(
+        '--before',
+        help='What to do before connecting to the chip',
+        choices=['default_reset', 'no_reset', 'esp32r1'],
+        default='default_reset')
+
     parser.add_argument('--do-not-confirm',
                         help='Do not pause for confirmation before permanently writing efuses. Use with caution.', action='store_true')
 
@@ -418,6 +424,7 @@ def main():
     operation_func = globals()[args.operation]
 
     esp = esptool.ESP32ROM(args.port)
+    esp.connect(args.before)
 
     # dict mapping register name to its efuse object
     efuses = [EfuseField.from_tuple(esp, efuse) for efuse in EFUSES]

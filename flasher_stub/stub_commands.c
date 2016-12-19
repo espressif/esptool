@@ -122,3 +122,41 @@ esp_command_error handle_spi_attach(bool isHspi, bool isLegacy)
 #endif
         return ESP_OK; /* neither function/attach command takes an arg */
 }
+
+static uint32_t *mem_offset;
+static uint32_t mem_remaining;
+
+esp_command_error handle_mem_begin(uint32_t size, uint32_t offset)
+{
+    mem_offset = (uint32_t *)offset;
+    mem_remaining = size;
+    return ESP_OK;
+}
+
+esp_command_error handle_mem_data(void *data, uint32_t length)
+{
+    uint32_t *data_words = (uint32_t *)data;
+    if (mem_offset == NULL && length > 0) {
+        return ESP_NOT_IN_FLASH_MODE;
+    }
+    if (length > mem_remaining) {
+        return ESP_TOO_MUCH_DATA;
+    }
+    if (length % 4 != 0) {
+        return ESP_BAD_DATA_LEN;
+    }
+
+    for(int i = 0; i < length; i+= 4) {
+        *mem_offset++ = *data_words++;
+        mem_remaining -= 4;
+    }
+    return ESP_OK;
+}
+
+esp_command_error handle_mem_finish()
+{
+    esp_command_error res = mem_remaining > 0 ? ESP_NOT_ENOUGH_DATA : ESP_OK;
+    mem_remaining = 0;
+    mem_offset = NULL;
+    return res;
+}

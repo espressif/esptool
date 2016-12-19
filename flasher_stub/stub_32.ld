@@ -40,4 +40,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "components/esp32/ld/esp32.rom.ld"
+INCLUDE "rom_32.ld"

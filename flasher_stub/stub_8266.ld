@@ -20,7 +20,7 @@ MEMORY {
   dram : org = 0x3FFE8000, len = 0x14000
 }
 
-ENTRY(stub_main)
+ENTRY(stub_main_8266)
 
 SECTIONS {
   .text : ALIGN(4) {
@@ -40,7 +40,7 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "eagle.rom.addr.v6.ld"
+INCLUDE "rom_8266.ld"
 
 PROVIDE(SPIFlashModeConfig = 0x40004568);
 PROVIDE(SPIParamCfg = 0x40004c2c);

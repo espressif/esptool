@@ -129,7 +129,7 @@ static esp_command_error verify_data_len(esp_command_req_t *command, uint8_t len
   return (command->data_len == len) ? ESP_OK : ESP_BAD_DATA_LEN;
 }
 
-uint8_t cmd_loop() {
+void cmd_loop() {
   while(1) {
     /* Wait for a command */
     while(ub.command == NULL) { }
@@ -261,6 +261,21 @@ uint8_t cmd_loop() {
       /* actual READ_REG operation happens higher up */
       error = verify_data_len(command, 4);
       break;
+    case ESP_MEM_BEGIN:
+        error = verify_data_len(command, 16) || handle_mem_begin(data_words[0], data_words[3]);
+        break;
+    case ESP_MEM_DATA:
+        error = handle_mem_data(command->data_buf + 16, command->data_len - 16);
+        break;
+    case ESP_MEM_END:
+        error = verify_data_len(command, 8) || handle_mem_finish();
+        break;
+    case ESP_RUN_USER_CODE:
+        /* Returning from here will run user code, ie standard boot process
+
+           This command does not send a response.
+        */
+        return;
     }
 
     SLIP_send_frame_data(error);
@@ -287,31 +302,69 @@ uint8_t cmd_loop() {
       case ESP_FLASH_DEFLATED_DATA:
         handle_flash_deflated_data(command->data_buf + 16, command->data_len - 16);
         break;
+      case ESP_FLASH_DEFLATED_END:
       case ESP_FLASH_END:
         /* passing 0 as parameter for ESP_FLASH_END means reboot now */
         if (data_words[0] == 0) {
           /* Flush the FLASH_END response before rebooting */
 #ifdef ESP32
           uart_tx_flush(0);
-#else
-          ets_delay_us(10000);
 #endif
+          ets_delay_us(10000);
           software_reset();
         }
         break;
+      case ESP_MEM_END:
+          if (data_words[1] != 0) {
+              void (*entrypoint_fn)(void) = (void (*))data_words[1];
+              /* this is a little different from the ROM loader,
+                 which exits the loader routine and _then_ calls this
+                 function. But for our purposes so far, having a bit of
+                 extra stuff on the stack doesn't really matter.
+              */
+              entrypoint_fn();
+          }
+          break;
       }
     }
   }
-  return 0;
 }
 
 
 extern uint32_t _bss_start;
 extern uint32_t _bss_end;
 
-void stub_main() {
-  uint32_t greeting = 0x4941484f; /* OHAI */
-  uint32_t last_cmd;
+void __attribute__((used)) stub_main();
+
+
+#ifdef ESP8266
+__asm__ (
+  ".global stub_main_8266\n"
+  ".literal_position\n"
+  ".align 4\n"
+  "stub_main_8266:\n"
+/* ESP8266 wrapper for "stub_main()" manipulates the return address in
+ * a0, so 'return' from here runs user code.
+ *
+ * After setting a0, we jump directly to stub_main_inner() which is a
+ * normal C function
+ *
+ * Adapted from similar approach used by Cesanta Software for ESP8266
+ * flasher stub.
+ *
+ */
+  "movi a0, 0x400010a8;"
+  "j stub_main;");
+#endif
+
+/* This function is called from stub_main, with return address
+   reset to point to user code. */
+void stub_main()
+{
+  const uint32_t greeting = 0x4941484f; /* OHAI */
+
+  /* this points to stub_main now, clear for next boot */
+  ets_set_user_start(0);
 
   /* zero bss */
   for(uint32_t *p = &_bss_start; p < &_bss_end; p++) {
@@ -326,13 +379,6 @@ void stub_main() {
   SET_PERI_REG_MASK(UART_INT_ENA(0), UART_RX_INTS);
   ets_isr_unmask(1 << ETS_UART0_INUM);
 
-#ifdef ESP8266
-  /* This points at us right now, reset for next boot. */
-  ets_set_user_start(NULL);
-#else
-  // TODO for ESP32
-#endif
-
   /* Configure default SPI flash functionality.
      Can be changed later by esptool.py. */
 #ifdef ESP8266
@@ -343,30 +389,9 @@ void stub_main() {
         SPIParamCfg(0, 16*1024*1024, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
                     FLASH_PAGE_SIZE, FLASH_STATUS_MASK);
 
-  last_cmd = cmd_loop();
+  cmd_loop();
 
-  ets_delay_us(10000);
+  /* if cmd_loop returns, it's due to ESP_RUN_USER_CODE command. */
 
-  if (last_cmd == -1/*CMD_BOOT_FW*/) {
-    /*
-     * Find the return address in our own stack and change it.
-     * "flash_finish" it gets to the same point, except it doesn't need to
-     * patch up its RA: it returns from UartDwnLdProc, then from f_400011ac,
-     * then jumps to 0x4000108a, then checks strapping bits again (which will
-     * not have changed), and then proceeds to 0x400010a8.
-     */
-    volatile uint32_t *sp = &last_cmd;
-    while (*sp != (uint32_t) 0x40001100) sp++;
-    *sp = 0x400010a8;
-    /*
-     * The following dummy asm fragment acts as a barrier, to make sure function
-     * epilogue, including return address loading, is added after our stack
-     * patching.
-     */
-    __asm volatile("nop.n");
-    return; /* To 0x400010a8 */
-  } else {
-    //_ResetVector();
-  }
-  /* Not reached */
+  return;
 }

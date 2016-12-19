@@ -28,7 +28,6 @@ def wrap_stub(elf_file):
     """ Wrap an ELF file into a stub 'dict' """
     print 'Wrapping ELF file %s...' % elf_file
     e = esptool.ELFFile(elf_file)
-    entry = 'stub_main'
 
     text_section = e.get_section('.text')
     try:
@@ -49,10 +48,10 @@ def wrap_stub(elf_file):
         stub['text'] += (4 - (len(stub['text']) % 4)) * '\0'
 
     print >>sys.stderr, (
-        'Stub text: %d @ 0x%08x, data: %d @ 0x%08x, entry: %s @ 0x%x' % (
+        'Stub text: %d @ 0x%08x, data: %d @ 0x%08x, entry @ 0x%x' % (
             len(stub['text']), stub['text_start'],
             len(stub.get('data', '')), stub.get('data_start', 0),
-            entry, stub['entry']))
+            stub['entry']))
     return stub
 
 PYTHON_TEMPLATE = """\
