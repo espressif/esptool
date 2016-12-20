@@ -93,13 +93,19 @@ class EsptoolTestCase(unittest.TestCase):
         self.assertEqual(length, len(rb), "read_flash length %d offset 0x%x yielded %d bytes!" % (length, offset, len(rb)))
         return rb
 
-    def verify_readback(self, offset, length, compare_to):
+    def verify_readback(self, offset, length, compare_to, is_bootloader=False):
         rb = self.readback(offset, length)
         with open(compare_to) as f:
             ct = f.read()
         if len(rb) != len(ct):
             print "WARNING: Expected length %d doesn't match comparison %d"
         print("Readback %d bytes" % len(rb))
+        if is_bootloader:
+            # writing a bootloader image to bootloader offset can set flash size/etc,
+            # so don't compare the 8 byte header
+            self.assertEqual(ct[0], rb[0], "First bytes should be identical")
+            rb = rb[8:]
+            ct = ct[8:]
         for rb_b,ct_b,offs in zip(rb,ct,range(len(rb))):
             if rb_b != ct_b:
                 self.fail("First difference at offset 0x%x Expected %r got %r" % (offs, ct_b, rb_b))
@@ -147,7 +153,7 @@ class TestFlashing(EsptoolTestCase):
         self.run_esptool(args + " 0x4000 images/partitions_singleapp.bin")
         self.verify_readback(0x4000, 96, "images/partitions_singleapp.bin")
         self.run_esptool(args + " 0x1000 images/bootloader.bin")
-        self.verify_readback(0x1000, 7888, "images/bootloader.bin")
+        self.verify_readback(0x1000, 7888, "images/bootloader.bin", True)
         self.verify_readback(0x4000, 96, "images/partitions_singleapp.bin")
 
     def test_partition_table_then_bootloader(self):
