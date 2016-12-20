@@ -869,21 +869,15 @@ class ESP32ROM(ESPLoader):
         return self.read_reg(self.EFUSE_REG_BASE + (4 * n))
 
     def chip_id(self):
-        word16 = self.read_efuse(16)
-        word17 = self.read_efuse(17)
+        word16 = self.read_efuse(1)
+        word17 = self.read_efuse(2)
         return ((word17 & MAX_UINT24) << 24) | (word16 >> 8) & MAX_UINT24
 
     def read_mac(self):
         """ Read MAC from EFUSE region """
-        word16 = self.read_efuse(16)
-        word17 = self.read_efuse(17)
-        word18 = self.read_efuse(18)
-        word19 = self.read_efuse(19)
-        wifi_mac = (((word17 >> 16) & 0xff), ((word17 >> 8) & 0xff), ((word17 >> 0) & 0xff),
-                    ((word16 >> 24) & 0xff), ((word16 >> 16) & 0xff), ((word16 >> 8) & 0xff))
-        bt_mac = (((word19 >> 16) & 0xff), ((word19 >> 8) & 0xff), ((word19 >> 0) & 0xff),
-                  ((word18 >> 24) & 0xff), ((word18 >> 16) & 0xff), ((word18 >> 8) & 0xff))
-        return (wifi_mac,bt_mac)
+        words = [self.read_efuse(1), self.read_efuse(2)]
+        bitstring = struct.pack(">II", *words)
+        return tuple(ord(b) for b in bitstring[:6])  # trim 2 byte CRC
 
     def get_erase_size(self, offset, size):
         return size
@@ -1659,11 +1653,7 @@ def read_mac(esp, args):
 
     def print_mac(label, mac):
         print '%s: %s' % (label, ':'.join(map(lambda x: '%02x' % x, mac)))
-    if esp.CHIP_NAME == "ESP8266":
-        print_mac("MAC", mac)
-    else:
-        print_mac("WiFi MAC", mac[0])
-        print_mac("BT MAC", mac[1])
+    print_mac("MAC", mac)
 
 
 def chip_id(esp, args):

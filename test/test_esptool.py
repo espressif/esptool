@@ -15,6 +15,7 @@ import os.path
 import os
 import warnings
 import time
+import re
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(os.path.dirname(__file__))
@@ -242,6 +243,24 @@ class TestVerifyCommand(EsptoolTestCase):
         self.assertIn("verify FAILED", output)
         self.assertIn("first @ 0x00006000", output)
 
+
+class TestReadIdentityValues(EsptoolTestCase):
+
+    def test_read_mac(self):
+        output = self.run_esptool("read_mac")
+        mac = re.search(r"[0-9a-f:]{17}", output)
+        self.assertIsNotNone(mac)
+        mac = mac.group(0)
+        self.assertNotEqual("00:00:00:00:00:00", mac)
+        self.assertNotEqual("ff:ff:ff:ff:ff:ff", mac)
+
+    def test_read_chip_id(self):
+        output = self.run_esptool("chip_id")
+        idstr = re.search("Chip ID: 0x([0-9a-f]+)", output)
+        self.assertIsNotNone(idstr)
+        idstr = idstr.group(1)
+        self.assertNotEqual("0"*8, idstr)
+        self.assertNotEqual("f"*8, idstr)
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
