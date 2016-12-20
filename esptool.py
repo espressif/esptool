@@ -1659,8 +1659,7 @@ def read_mac(esp, args):
 
     def print_mac(label, mac):
         print '%s: %s' % (label, ':'.join(map(lambda x: '%02x' % x, mac)))
-    print("%r" % (mac,))
-    if len(mac) == 1:
+    if esp.CHIP_NAME == "ESP8266":
         print_mac("MAC", mac)
     else:
         print_mac("WiFi MAC", mac[0])
