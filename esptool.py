@@ -282,12 +282,12 @@ class ESPLoader(object):
                 time.sleep(0.05)
                 self._port.setDTR(True)   # IO0=LOW
                 self._port.setRTS(False)  # EN=HIGH, chip out of reset
-                if mode == 'esp32r1':
+                if mode == 'esp32r0':
                     # this is a workaround for a bug with the most
                     # common auto reset circuit and Windows, if the EN
                     # pin on the dev board does not have enough
                     # capacitance. This workaround only works on
-                    # revision 1 ESP32 chips, it exploits a silicon
+                    # revision 0 ESP32 chips, it exploits a silicon
                     # bug spurious watchdog reset.
                     #
                     # Details: https://github.com/espressif/esptool/issues/136
@@ -1778,7 +1778,7 @@ def main():
     parser.add_argument(
         '--before',
         help='What to do before connecting to the chip',
-        choices=['default_reset', 'no_reset', 'esp32r1'],
+        choices=['default_reset', 'no_reset', 'esp32r0'],
         default=os.environ.get('ESPTOOL_BEFORE', 'default_reset'))
 
     parser.add_argument(
