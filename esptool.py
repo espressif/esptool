@@ -1019,15 +1019,19 @@ def _verify_flash(flasher, args, flash_params=None):
     for address, argfile in args.addr_filename:
         image = argfile.read()
         argfile.seek(0)  # rewind in case we need it again
-        if address == 0 and (image[0] == b'\xe9' or image[0] == 0xE9) and flash_params is not None:
-            image = image[0:2] + flash_params + image[4:]
+        
+        # Skip the flash_params
+        skip = 0
+        if address < 4:
+            skip = 4 - address
 
         image_size = len(image)
         print('Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name))
+
         # Try digest first, only read if there are differences.
-        digest, _ = flasher.flash_digest(address, image_size)
+        digest, _ = flasher.flash_digest(address + skip, image_size - skip)
         digest = hexify(digest).upper()
-        expected_digest = hashlib.md5(image).hexdigest().upper()
+        expected_digest = hashlib.md5(image[skip:]).hexdigest().upper()
 
         if digest == expected_digest:
             print('-- verify OK (digest matched)')
@@ -1040,7 +1044,7 @@ def _verify_flash(flasher, args, flash_params=None):
 
         flash = flasher.flash_read(address, image_size)
         assert flash != image
-        diff = [i for i in range(image_size) if flash[i] != image[i]]
+        diff = [i for i in range(skip, image_size) if flash[i] != image[i]]
         print('-- verify FAILED: %d differences, first @ 0x%08x' % (len(diff), address + diff[0]))
         for d in diff:
             flash_byte = flash[d]
@@ -1132,7 +1136,9 @@ def main():
                                     action=AddrFilenamePairAction)
     add_spi_flash_subparsers(parser_write_flash, auto_detect=True)
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
-    parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
+    verify_group = parser_write_flash.add_mutually_exclusive_group()
+    verify_group.add_argument('--verify', help='Force verification of just-written data (default)', action='store_true', default=True)
+    verify_group.add_argument('--no-verify', help='Skip verification of just-written data', action='store_false', dest='verify')
 
     subparsers.add_parser(
         'run',
