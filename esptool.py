@@ -515,7 +515,7 @@ class ELFFile(object):
             print("Error calling %s, do you have Xtensa toolchain in PATH?" % tool_nm)
             sys.exit(1)
         for l in proc.stdout:
-            fields = l.strip().split()
+            fields = l.strip().decode("utf-8", "strict").split()
             try:
                 if fields[0] == "U":
                     print("Warning: ELF binary has undefined symbol %s" % fields[1])
@@ -540,7 +540,7 @@ class ELFFile(object):
             print("Error calling %s, do you have Xtensa toolchain in PATH?" % tool_readelf)
             sys.exit(1)
         for l in proc.stdout:
-            fields = l.strip().split()
+            fields = l.strip().decode("utf-8", "strict").split()
             if fields[0] == "Entry":
                 return int(fields[3], 0)
 
