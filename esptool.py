@@ -879,13 +879,25 @@ def detect_flash_size(esp, args):
             print('Auto-detected Flash size:', args.flash_size)
 
 
-def write_flash(esp, args):
+def _get_flash_params(esp, args):
+    """ Return binary flash parameters (bitstring length 2) for args """
     detect_flash_size(esp, args)
     flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
     flash_size_freq = {'4m':0x00, '2m':0x10, '8m':0x20, '16m':0x30, '32m':0x40, '16m-c1': 0x50, '32m-c1':0x60, '32m-c2':0x70}[args.flash_size]
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
-    flash_params = struct.pack(b'BB', flash_mode, flash_size_freq)
+    return struct.pack(b'BB', flash_mode, flash_size_freq)
 
+
+def _update_image_flash_params(address, flash_params, image):
+    """ Modify the flash mode & size bytes if this looks like an executable image """
+    if address == 0 and (image[0] == b'\xe9' or image[0] == 0xE9):  # python 2/3 compat
+        print('Flash params set to 0x%04x' % struct.unpack(">H", flash_params))
+        image = image[0:2] + flash_params + image[4:]
+    return image
+
+
+def write_flash(esp, args):
+    flash_params = _get_flash_params(esp, args)
     flasher = CesantaFlasher(esp, args.baud)
 
     for address, argfile in args.addr_filename:
@@ -893,10 +905,7 @@ def write_flash(esp, args):
         argfile.seek(0)  # rewind in case we need it again
         if address + len(image) > int(args.flash_size.split('m')[0]) * (1 << 17):
             print('WARNING: Unlikely to work as data goes beyond end of flash. Hint: Use --flash_size')
-        # Fix sflash config data.
-        if address == 0 and (image[0] == b'\xe9' or image[0] == 0xE9):  # python 2/3 compat
-            print('Flash params set to 0x%02x%02x' % (flash_mode, flash_size_freq))
-            image = image[0:2] + flash_params + image[4:]
+        image = _update_image_flash_params(address, flash_params, image)
         # Pad to sector size, which is the minimum unit of writing (erasing really).
         if len(image) % esp.ESP_FLASH_SECTOR != 0:
             image += b'\xff' * (esp.ESP_FLASH_SECTOR - (len(image) % esp.ESP_FLASH_SECTOR))
@@ -908,7 +917,7 @@ def write_flash(esp, args):
     print('Leaving...')
     if args.verify:
         print('Verifying just-written flash...')
-        _verify_flash(flasher, args, flash_params)
+        _verify_flash(esp, args, flasher)
     flasher.boot_fw()
 
 
@@ -1021,13 +1030,17 @@ def read_flash(esp, args):
     open(args.filename, 'wb').write(data)
 
 
-def _verify_flash(flasher, args, flash_params=None):
+def _verify_flash(esp, args, flasher=None):
     differences = False
+    flash_params = _get_flash_params(esp, args)
+    if flasher is None:  # get flash params before launching flasher
+        flasher = CesantaFlasher(esp)
+
     for address, argfile in args.addr_filename:
         image = argfile.read()
         argfile.seek(0)  # rewind in case we need it again
-        if address == 0 and (image[0] == b'\xe9' or image[0] == 0xE9) and flash_params is not None:
-            image = image[0:2] + flash_params + image[4:]
+
+        image = _update_image_flash_params(address, flash_params, image)
 
         image_size = len(image)
         print('Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name))
@@ -1061,8 +1074,7 @@ def _verify_flash(flasher, args, flash_params=None):
 
 
 def verify_flash(esp, args, flash_params=None):
-    flasher = CesantaFlasher(esp)
-    _verify_flash(flasher, args, flash_params)
+    _verify_flash(esp, args)
 
 
 def version(args):
@@ -1139,7 +1151,7 @@ def main():
                                     action=AddrFilenamePairAction)
     add_spi_flash_subparsers(parser_write_flash, auto_detect=True)
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
-    parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
+    parser_write_flash.add_argument('--verify', help='Verify just-written data on flash (recommended if concerned about flash integrity)', action='store_true')
 
     subparsers.add_parser(
         'run',
@@ -1193,6 +1205,7 @@ def main():
                                      action=AddrFilenamePairAction)
     parser_verify_flash.add_argument('--diff', '-d', help='Show differences',
                                      choices=['no', 'yes'], default='no')
+    add_spi_flash_subparsers(parser_verify_flash, auto_detect=True)
 
     subparsers.add_parser(
         'erase_flash',
