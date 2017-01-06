@@ -133,34 +133,41 @@ class ESPROM(object):
 
     """ Try connecting repeatedly until successful, or giving up """
     def connect(self):
-        print('Connecting...')
+        print('Connecting...', end='')
+        sys.stdout.flush()
+        last_error = None
 
-        for _ in range(4):
-            # issue reset-to-bootloader:
-            # RTS = either CH_PD or nRESET (both active low = chip in reset)
-            # DTR = GPIO0 (active low = boot to flasher)
-            self._port.setDTR(False)
-            self._port.setRTS(True)
-            time.sleep(0.05)
-            self._port.setDTR(True)
-            self._port.setRTS(False)
-            time.sleep(0.05)
-            self._port.setDTR(False)
-
-            # worst-case latency timer should be 255ms (probably <20ms)
-            self._port.timeout = 0.3
+        try:
             for _ in range(4):
-                try:
-                    self._port.flushInput()
-                    self._slip_reader = slip_reader(self._port)
-                    self._port.flushOutput()
-                    self.sync()
-                    self._port.timeout = 5
-                    return
-                except Exception as e:
-                    print("Couldn't connect. [%s; %s]. Retrying..." % (type(e), str(e)))  # not sure about this
-                    time.sleep(0.05)
-        raise FatalError('Failed to connect to ESP8266')
+                # issue reset-to-bootloader:
+                # RTS = either CH_PD or nRESET (both active low = chip in reset)
+                # DTR = GPIO0 (active low = boot to flasher)
+                self._port.setDTR(False)
+                self._port.setRTS(True)
+                time.sleep(0.05)
+                self._port.setDTR(True)
+                self._port.setRTS(False)
+                time.sleep(0.05)
+                self._port.setDTR(False)
+
+                # worst-case latency timer should be 255ms (probably <20ms)
+                self._port.timeout = 0.3
+                for _ in range(4):
+                    try:
+                        self._port.flushInput()
+                        self._slip_reader = slip_reader(self._port)
+                        self._port.flushOutput()
+                        self.sync()
+                        self._port.timeout = 5
+                        return
+                    except Exception as e:
+                        print('.', end='')
+                        sys.stdout.flush()
+                        time.sleep(0.05)
+                        last_error = e
+        finally:
+            print('')  # end 'Connecting...' line
+        raise FatalError('Failed to connect to ESP8266: %s' % last_error)
 
     """ Read memory address in target """
     def read_reg(self, addr):
