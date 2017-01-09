@@ -71,7 +71,7 @@ class BaseTestCase(unittest.TestCase):
         """
         cmd = [ sys.executable, ESPTOOL_PY, "--chip", chip, "image_info", binpath ]
         try:
-            output = subprocess.check_output(cmd)
+            output = subprocess.check_output(cmd).decode("utf-8")
             print(output)
         except subprocess.CalledProcessError as e:
             print(e.output)
@@ -85,7 +85,7 @@ class BaseTestCase(unittest.TestCase):
         if version is not None:
             cmd += [ "--version", str(version) ]
         cmd += [ elf_path ] + extra_args
-        print "Executing %s" % (" ".join(cmd))
+        print("Executing %s" % (" ".join(cmd)))
         try:
             output = str(subprocess.check_output(cmd))
             print(output)
@@ -190,7 +190,7 @@ class ESP8266FlashHeaderTests(BaseTestCase):
         BIN="esp8266-nonossdkv20-at-v2-0x01000.bin"
         try:
             self.run_elf2image("esp8266", ELF, version=2, extra_args=["--flash_size", "2MB", "--flash_mode", "dio"])
-            with open(BIN, "r") as f:
+            with open(BIN, "rb") as f:
                 header = f.read(4)
                 print("header %r" % header)
                 self.assertEqualHex(0xea, header[0])
@@ -205,7 +205,7 @@ class ESP32FlashHeaderTests(BaseTestCase):
         BIN="esp32-app-template.bin"
         try:
             self.run_elf2image("esp32", ELF, extra_args=["--flash_size", "16MB", "--flash_mode", "dio"])
-            with open(BIN, "r") as f:
+            with open(BIN, "rb") as f:
                 header = f.read(4)
                 self.assertEqualHex(0xe9, header[0])
                 self.assertEqualHex(0x02, header[2])
@@ -215,5 +215,5 @@ class ESP32FlashHeaderTests(BaseTestCase):
 
 
 if __name__ == '__main__':
-    print "Running image generation tests..."
+    print("Running image generation tests...")
     unittest.main(buffer=True)

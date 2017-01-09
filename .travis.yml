@@ -47,6 +47,7 @@ script:
   # doesn't allow running esptool.py as a script...
   - pip install pyserial pyelftools
   - python test/test_imagegen.py
+  - pip install flake8 flake8-future-import  # matches tests_require in setup.py, a bit hacky
   - python setup.py flake8
   - python setup.py install
   # build stub

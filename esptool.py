@@ -282,47 +282,53 @@ class ESPLoader(object):
 
     def connect(self, mode='default_reset'):
         """ Try connecting repeatedly until successful, or giving up """
-        print('Connecting...')
+        print('Connecting...', end='')
+        sys.stdout.flush()
+        last_error = None
 
-        for _ in range(10):
-            # issue reset-to-bootloader:
-            # RTS = either CH_PD/EN or nRESET (both active low = chip in reset
-            # DTR = GPIO0 (active low = boot to flasher)
-            #
-            # DTR & RTS are active low signals,
-            # ie True = pin @ 0V, False = pin @ VCC.
-            if mode != 'no_reset':
-                self._port.setDTR(False)  # IO0=HIGH
-                self._port.setRTS(True)   # EN=LOW, chip in reset
-                time.sleep(0.05)
-                self._port.setDTR(True)   # IO0=LOW
-                self._port.setRTS(False)  # EN=HIGH, chip out of reset
-                if mode == 'esp32r0':
-                    # this is a workaround for a bug with the most
-                    # common auto reset circuit and Windows, if the EN
-                    # pin on the dev board does not have enough
-                    # capacitance. This workaround only works on
-                    # revision 0 ESP32 chips, it exploits a silicon
-                    # bug spurious watchdog reset.
-                    #
-                    # Details: https://github.com/espressif/esptool/issues/136
-                    time.sleep(0.4)  # allow watchdog reset to occur
-                time.sleep(0.05)
-                self._port.setDTR(False)  # IO0=HIGH, done
-
-            self._port.timeout = 0.1
-            last_exception = None
-            for _ in range(4):
-                try:
-                    self.flush_input()
-                    self._port.flushOutput()
-                    self.sync()
-                    self._port.timeout = 5
-                    return
-                except FatalError as e:
-                    last_exception = e
+        try:
+            for _ in range(10):
+                # issue reset-to-bootloader:
+                # RTS = either CH_PD/EN or nRESET (both active low = chip in reset
+                # DTR = GPIO0 (active low = boot to flasher)
+                #
+                # DTR & RTS are active low signals,
+                # ie True = pin @ 0V, False = pin @ VCC.
+                if mode != 'no_reset':
+                    self._port.setDTR(False)  # IO0=HIGH
+                    self._port.setRTS(True)   # EN=LOW, chip in reset
                     time.sleep(0.05)
-        raise FatalError('Failed to connect to %s: %s' % (self.CHIP_NAME, last_exception))
+                    self._port.setDTR(True)   # IO0=LOW
+                    self._port.setRTS(False)  # EN=HIGH, chip out of reset
+                    if mode == 'esp32r0':
+                        # this is a workaround for a bug with the most
+                        # common auto reset circuit and Windows, if the EN
+                        # pin on the dev board does not have enough
+                        # capacitance. This workaround only works on
+                        # revision 0 ESP32 chips, it exploits a silicon
+                        # bug spurious watchdog reset.
+                        #
+                        # Details: https://github.com/espressif/esptool/issues/136
+                        time.sleep(0.4)  # allow watchdog reset to occur
+                    time.sleep(0.05)
+                    self._port.setDTR(False)  # IO0=HIGH, done
+
+                self._port.timeout = 0.1
+                for _ in range(4):
+                    try:
+                        self.flush_input()
+                        self._port.flushOutput()
+                        self.sync()
+                        self._port.timeout = 5
+                        return
+                    except FatalError as e:
+                        print('.', end='')
+                        sys.stdout.flush()
+                        time.sleep(0.05)
+                        last_error = e
+        finally:
+            print('')  # end 'Connecting...' line
+        raise FatalError('Failed to connect to %s: %s' % (self.CHIP_NAME, last_error))
 
     """ Read memory address in target """
     def read_reg(self, addr):
@@ -955,7 +961,7 @@ class ImageSegment(object):
         # pad all ImageSegments to at least 4 bytes length
         pad_mod = len(data) % 4
         if pad_mod != 0:
-            data += "\x00" * (4 - pad_mod)
+            data += b"\x00" * (4 - pad_mod)
         self.data = data
         self.file_offs = file_offs
         self.include_in_checksum = True
@@ -1270,7 +1276,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     if pad_len < 0:
                         pad_len += IROM_ALIGN
                     if pad_len > 0:
-                        null = ImageSegment(0, '\x00' * pad_len, f.tell())
+                        null = ImageSegment(0, b'\x00' * pad_len, f.tell())
                         checksum = self.save_segment(f, null, checksum)
                         padding_segments += 1
                     # verify that after the 8 byte header is added, were are at the correct offset relative to the segment's vaddr
@@ -1280,7 +1286,10 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             # kinda hacky: go back to the initial header and write the new segment count
             # that includes padding segments. Luckily(?) this header is not checksummed
             f.seek(1)
-            f.write(chr(len(self.segments) + padding_segments))
+            try:
+                f.write(chr(len(self.segments) + padding_segments))
+            except TypeError:  # Python 3
+                f.write(bytes([len(self.segments) + padding_segments]))
 
 
 class ELFFile(object):
@@ -1310,7 +1319,6 @@ class ELFFile(object):
         except struct.error as e:
             raise FatalError("Failed to read a valid ELF header from %s: %s" % (self.name, e))
 
-        print(repr(ident), ident[0], ident[1:4])
         if byte(ident, 0) != 0x7f or ident[1:4] != b'ELF':
             raise FatalError("%s has invalid ELF magic header" % self.name)
         if machine != 0x5e:
@@ -1531,21 +1539,32 @@ def detect_flash_size(esp, args):
         size_id = flash_id >> 16
         args.flash_size = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB', 0x15: '2MB', 0x16: '4MB', 0x17: '8MB', 0x18: '16MB'}.get(size_id)
         if args.flash_size is None:
-            print('Warning: Could not auto-detect Flash size (FlashID=0x%x, SizeID=0x%x), defaulting to 4m' % (flash_id, size_id))
-            args.flash_size = '4m'
+            print('Warning: Could not auto-detect Flash size (FlashID=0x%x, SizeID=0x%x), defaulting to 4MB' % (flash_id, size_id))
+            args.flash_size = '4MB'
         else:
             print('Auto-detected Flash size:', args.flash_size)
 
 
-def write_flash(esp, args):
-    """Write data to flash
-    """
+def _get_flash_params(esp, args):
+    """ Return binary flash parameters (bitstring length 2) for args """
     detect_flash_size(esp, args)
 
     flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
     flash_size_freq = esp.parse_flash_size_arg(args.flash_size)
     flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
-    flash_info = struct.pack(b'BB', flash_mode, flash_size_freq)
+    return struct.pack(b'BB', flash_mode, flash_size_freq)
+
+
+def _update_image_flash_params(esp, address, flash_params, image):
+    """ Modify the flash mode & size bytes if this looks like an executable image """
+    if address == esp.FLASH_HEADER_OFFSET and (image[0] == '\xe9' or image[0] == 0xE9):  # python 2/3 compat:
+        print('Flash params set to 0x%04x' % struct.unpack(">H", flash_params))
+        image = image[0:2] + flash_params + image[4:]
+    return image
+
+
+def write_flash(esp, args):
+    flash_params = _get_flash_params(esp, args)
 
     # verify file sizes fit in flash
     flash_end = flash_size_bytes(args.flash_size)
@@ -1561,9 +1580,7 @@ def write_flash(esp, args):
         if args.no_stub:
             print('Erasing flash...')
         image = argfile.read()
-        # Update header with flash parameters
-        if address == esp.FLASH_HEADER_OFFSET and image[0] == '\xe9':
-            image = image[0:2] + flash_info + image[4:]
+        image = _update_image_flash_params(esp, address, flash_params, image)
         calcmd5 = hashlib.md5(image).hexdigest()
         uncsize = len(image)
         if args.compress:
@@ -1576,7 +1593,6 @@ def write_flash(esp, args):
         seq = 0
         written = 0
         t = time.time()
-        header_block = None
         while len(image) > 0:
             print('\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks),)
             sys.stdout.flush()
@@ -1624,7 +1640,7 @@ def write_flash(esp, args):
 
     if args.verify:
         print('Verifying just-written flash...')
-        verify_flash(esp, args, header_block)
+        _verify_flash(esp, args)
 
 
 def image_info(args):
@@ -1740,12 +1756,18 @@ def read_flash(esp, args):
 
 
 def verify_flash(esp, args, flash_params=None):
+    _verify_flash(esp, args)
+
+
+def _verify_flash(esp, args):
     differences = False
+    flash_params = _get_flash_params(esp, args)
+
     for address, argfile in args.addr_filename:
         image = argfile.read()
         argfile.seek(0)  # rewind in case we need it again
-        if address == 0 and (image[0] == b'\xe9' or image[0] == 0xE9) and flash_params is not None:
-            image = image[0:2] + flash_params + image[4:]
+
+        image = _update_image_flash_params(esp, address, flash_params, image)
 
         image_size = len(image)
         print('Verifying 0x%x (%d) bytes @ 0x%08x in flash against %s...' % (image_size, image_size, address, argfile.name))
@@ -1883,7 +1905,8 @@ def main():
                                     action=AddrFilenamePairAction)
     add_spi_flash_subparsers(parser_write_flash, auto_detect=True)
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
-    parser_write_flash.add_argument('--verify', help='Verify just-written data (only necessary if very cautious, data is already CRCed', action='store_true')
+    parser_write_flash.add_argument('--verify', help='Verify just-written data on flash ' +
+                                    '(mostly superfluous, data is read back during flashing)', action='store_true')
     parser_write_flash.add_argument('--compress', '-z', help='Compress data in transfer',action="store_true")
 
     subparsers.add_parser(
@@ -1954,6 +1977,7 @@ def main():
                                      action=AddrFilenamePairAction)
     parser_verify_flash.add_argument('--diff', '-d', help='Show differences',
                                      choices=['no', 'yes'], default='no')
+    add_spi_flash_subparsers(parser_verify_flash, auto_detect=True)
 
     subparsers.add_parser(
         'erase_flash',

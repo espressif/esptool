@@ -42,7 +42,7 @@ esptool can be installed via pip:
 
   $ pip install --upgrade esptool
 
-(esptool.py requires Python 2. If your default pip version is Python 3, install via ``pip2 install esptool``.)
+Since version 1.3, esptool supports both Python 2.7 and Python 3.4 or newer.
 
 Usage
 -----
@@ -77,9 +77,12 @@ setup(
         'Environment :: Console',
         'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
-    setup_requires=[
-        'flake8<3.0.0',
+    tests_require=[
+        'flake8>=3.2.0',
         'flake8-future-import',
     ],
     install_requires=[
