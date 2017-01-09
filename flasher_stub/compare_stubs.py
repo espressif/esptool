@@ -18,12 +18,12 @@ if __name__ == "__main__":
     import esptool_test_stub
 
     if esptool.ESP8266ROM.STUB_CODE != old_8266_stub:
-        print "ESP8266 stub code in esptool.py is different to just-built stub"
+        print("ESP8266 stub code in esptool.py is different to just-built stub")
         same = False
     if esptool.ESP32ROM.STUB_CODE != old_32_stub:
-        print "ESP32 stub code in esptool.py is different to just-built stub."
+        print("ESP32 stub code in esptool.py is different to just-built stub.")
         same = False
     if same:
-        print "Stub code is the same"
+        print("Stub code is the same")
 
     sys.exit(0 if same else 1)
