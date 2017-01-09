@@ -78,8 +78,8 @@ setup(
         'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
         'Programming Language :: Python :: 2.7',
     ],
-    setup_requires=[
-        'flake8<3.0.0',
+    tests_require=[
+        'flake8>=3.2.0',
         'flake8-future-import',
     ],
     install_requires=[

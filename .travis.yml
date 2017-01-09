@@ -8,4 +8,5 @@ python:
 
 script:
   - python setup.py build
+  - pip install flake8 flake8-future-import  # matches tests_require in setup.py, a bit hacky
   - python setup.py flake8
