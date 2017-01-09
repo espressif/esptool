@@ -33,14 +33,14 @@ def get_chunks(source, chunk_len):
 def endian_swap_words(source):
     """ Endian-swap each word in 'source' bitstring """
     assert len(source) % 4 == 0
-    words = "I" * (len(source) / 4)
+    words = "I" * (len(source) // 4)
     return struct.pack("<" + words, *struct.unpack(">" + words, source))
 
 
 def swap_word_order(source):
     """ Swap the order of the words in 'source' bitstring """
     assert len(source) % 4 == 0
-    words = "I" * (len(source) / 4)
+    words = "I" * (len(source) // 4)
     return struct.pack(words, *reversed(struct.unpack(words, source)))
 
 
@@ -90,7 +90,7 @@ def digest_secure_bootloader(args):
         digest = digest.digest()
         for word in get_chunks(digest, 4):
             f.write(word[::-1])  # swap word order in the result
-        f.write('\xFF' * (0x1000 - f.tell()))  # pad to 0x1000
+        f.write(b'\xFF' * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
     print("digest+image written to %s" % args.output)
 

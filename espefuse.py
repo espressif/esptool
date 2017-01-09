@@ -192,7 +192,7 @@ class EfuseMacField(EfuseField):
         return bitstring[:6]  # currently trims 2 byte CRC
 
     def get(self):
-        return ":".join("%02x" % ord(b) for b in self.get_raw())
+        return hexify(self.get_raw(), ":")
 
     def burn(self, new_value):
         # need to calculate the CRC before we can write the MAC
@@ -209,7 +209,7 @@ class EfuseKeyblockField(EfuseField):
         return bitstring
 
     def get(self):
-        return " ".join("%02x" % ord(b) for b in self.get_raw())
+        return hexify(self.get_raw(), " ")
 
     def burn(self, new_value):
         words = struct.unpack(">" + ("I" * 8), new_value)  # endian-swap
@@ -227,7 +227,6 @@ def dump(esp, _efuses, args):
     for block in range(len(EFUSE_BLOCK_OFFS)):
         print("EFUSE block %d:" % block)
         offsets = [x + EFUSE_BLOCK_OFFS[block] for x in range(EFUSE_BLOCK_LEN[block])]
-        print(offsets)
         print(" ".join(["%08x" % esp.read_efuse(offs) for offs in offsets]))
 
 
@@ -368,6 +367,14 @@ def burn_key(esp, efuses, args):
             print("WARNING: Key does not appear to have been write protected. Perhaps write disable efuse is write protected?")
     else:
         print("Key is left unprotected as per --no-protect-key argument.")
+
+
+def hexify(bitstring, separator):
+    try:
+        as_bytes = tuple(ord(b) for b in bitstring)
+    except TypeError:  # python 3, items in bitstring already ints
+        as_bytes = tuple(b for b in bitstring)
+    return separator.join(("%02x" % b) for b in as_bytes)
 
 
 def main():

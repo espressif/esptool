@@ -1646,6 +1646,7 @@ def write_flash(esp, args):
 
     if args.verify:
         print('Verifying just-written flash...')
+        print('(This option is deprecated, flash contents are now always read back after flashing.)')
         _verify_flash(esp, args)
 
 
@@ -1830,7 +1831,7 @@ def main():
 
     parser.add_argument('--chip', '-c',
                         help='Target chip type',
-                        choices=['auto', 'esp8266', 'esp31', 'esp32'],
+                        choices=['auto', 'esp8266', 'esp32'],
                         default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
     parser.add_argument(
