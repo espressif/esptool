@@ -1,11 +1,9 @@
+from __future__ import division, print_function
+
 from setuptools import setup
 import io
 import os
 import re
-import sys
-
-if sys.version_info[0] > 2:
-    raise RuntimeError("esptool.py only supports Python 2.x")
 
 
 # Example code to pull version from esptool.py with regex, taken from
@@ -82,6 +80,7 @@ setup(
     ],
     setup_requires=[
         'flake8<3.0.0',
+        'flake8-future-import',
     ],
     install_requires=[
         'pyserial>=2.5',

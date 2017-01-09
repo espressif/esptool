@@ -74,9 +74,12 @@ def confirm(action, args):
     print("%s. This is an irreversible operation." % action)
     if not args.do_not_confirm:
         print("Type 'BURN' (all capitals) to continue.")
-        yes = raw_input()
+        try:
+            yes = raw_input()  # raw_input renamed to input in Python 3
+        except NameError:
+            yes = input()
         if yes != "BURN":
-            print "Aborting."
+            print("Aborting.")
             sys.exit(0)
 
 
@@ -222,16 +225,16 @@ class EfuseKeyblockField(EfuseField):
 def dump(esp, _efuses, args):
     """ Dump raw efuse data registers """
     for block in range(len(EFUSE_BLOCK_OFFS)):
-        print "EFUSE block %d:" % block
+        print("EFUSE block %d:" % block)
         offsets = [x + EFUSE_BLOCK_OFFS[block] for x in range(EFUSE_BLOCK_LEN[block])]
         print(offsets)
-        print " ".join(["%08x" % esp.read_efuse(offs) for offs in offsets])
+        print(" ".join(["%08x" % esp.read_efuse(offs) for offs in offsets]))
 
 
 def summary(esp, efuses, args):
     """ Print a human-readable summary of efuse contents """
     for category in set(e.category for e in efuses):
-        print "%s fuses:" % category.title()
+        print("%s fuses:" % category.title())
         for e in (e for e in efuses if e.category == category):
             raw = e.get_raw()
             try:
@@ -248,8 +251,8 @@ def summary(esp, efuses, args):
             else:
                 perms = "-/-"
             value = str(e.get())
-            print "%-22s %-50s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw)
-        print ""
+            print("%-22s %-50s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw))
+        print("")
 
 
 def _get_efuse(efuses, args):
@@ -264,7 +267,7 @@ def burn_efuse(esp, efuses, args):
             raise esptool.FatalError("Efuse %s is type 'flag'. New value is not accepted for this efuse (will always burn 0->1)" % efuse.register_name)
         args.new_value = 1
         if old_value:
-            print "Efuse %s is already burned." % efuse.register_name
+            print("Efuse %s is already burned." % efuse.register_name)
             return
     elif efuse.efuse_type == "int":
         if args.new_value is None:
@@ -280,7 +283,7 @@ def burn_efuse(esp, efuses, args):
     if args.new_value & (efuse.mask >> efuse.shift) != args.new_value:
         raise esptool.FatalError("Value mask for efuse %s is 0x%x. Value 0x%x is too large." % (efuse.register_name, efuse.mask >> efuse.shift, args.new_value))
     if args.new_value | old_value != args.new_value:
-        print "WARNING: New value contains some bits that cannot be cleared (value will be 0x%x)" % (old_value | args.new_value)
+        print("WARNING: New value contains some bits that cannot be cleared (value will be 0x%x)" % (old_value | args.new_value))
 
     confirm("Burning efuse %s (%s) 0x%x -> 0x%x" % (efuse.register_name, efuse.description, old_value, args.new_value | old_value), args)
     burned_value = efuse.burn(args.new_value)
@@ -291,7 +294,7 @@ def burn_efuse(esp, efuses, args):
 def read_protect_efuse(esp, efuses, args):
     efuse = _get_efuse(efuses, args)
     if not efuse.is_readable():
-        print "Efuse %s is already read protected" % efuse.register_name
+        print("Efuse %s is already read protected" % efuse.register_name)
     else:
         # make full list of which efuses will be disabled (ie share a read disable bit)
         all_disabling = [e for e in efuses if e.read_disable_bit == efuse.read_disable_bit]
@@ -303,7 +306,7 @@ def read_protect_efuse(esp, efuses, args):
 def write_protect_efuse(esp, efuses,args):
     efuse = _get_efuse(efuses, args)
     if not efuse.is_writeable():
-        print "Efuse %s is already write protected" % efuse.register_name
+        print("Efuse %s is already write protected" % efuse.register_name)
     else:
         # make full list of which efuses will be disabled (ie share a write disable bit)
         all_disabling = [e for e in efuses if e.write_disable_bit == efuse.write_disable_bit]
@@ -339,12 +342,12 @@ def burn_key(esp, efuses, args):
         if not args.force_write_always:
             raise esptool.FatalError("Key block already has value %s." % efuse.get())
         else:
-            print "WARNING: Key appears to have a value already. Trying anyhow, due to --force-write-always (result will be bitwise OR of new and old values.)"
+            print("WARNING: Key appears to have a value already. Trying anyhow, due to --force-write-always (result will be bitwise OR of new and old values.)")
     if not efuse.is_writeable():
         if not args.force_write_always:
             raise esptool.FatalError("The efuse block has already been write protected.")
         else:
-            print "WARNING: Key appears to be write protected. Trying anyhow, due to --force-write-always"
+            print("WARNING: Key appears to be write protected. Trying anyhow, due to --force-write-always")
     msg = "Write key in efuse block %d. " % block_num
     if args.no_protect_key:
         msg += "The key block will left readable and writeable (due to --no-protect-key)"
@@ -354,17 +357,17 @@ def burn_key(esp, efuses, args):
 
     new_value = keyfile.read(32)
     new = efuse.burn(new_value)
-    print "Burned key data. New value: %s" % (new,)
+    print("Burned key data. New value: %s" % (new,))
     if not args.no_protect_key:
-        print "Disabling read/write to key efuse block..."
+        print("Disabling read/write to key efuse block...")
         efuse.disable_write()
         efuse.disable_read()
         if efuse.is_readable():
-            print "WARNING: Key does not appear to have been read protected. Perhaps read disable efuse is write protected?"
+            print("WARNING: Key does not appear to have been read protected. Perhaps read disable efuse is write protected?")
         if efuse.is_writeable():
-            print "WARNING: Key does not appear to have been write protected. Perhaps write disable efuse is write protected?"
+            print("WARNING: Key does not appear to have been write protected. Perhaps write disable efuse is write protected?")
     else:
-        print "Key is left unprotected as per --no-protect-key argument."
+        print("Key is left unprotected as per --no-protect-key argument.")
 
 
 def main():
@@ -416,10 +419,10 @@ def main():
                    "Note that this option can't disable write protection, or clear any bit which has already been set.", action='store_true')
     p.add_argument('block', help='Key block to burn. "flash_encryption" is an alias for BLK1, ' +
                    '"secure_boot" is an alias for BLK2.', choices=["secure_boot", "flash_encryption","BLK1","BLK2","BLK3"])
-    p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=file)
+    p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=argparse.FileType('rb'))
 
     args = parser.parse_args()
-    print 'espefuse.py v%s' % esptool.__version__
+    print('espefuse.py v%s' % esptool.__version__)
     # each 'operation' is a module-level function of the same name
     operation_func = globals()[args.operation]
 
@@ -435,5 +438,5 @@ if __name__ == '__main__':
     try:
         main()
     except esptool.FatalError as e:
-        print '\nA fatal error occurred: %s' % e
+        print('\nA fatal error occurred: %s' % e)
         sys.exit(2)

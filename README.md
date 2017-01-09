@@ -12,7 +12,7 @@ esptool.py is Free Software under a GPLv2 license.
 
 ### Easy Installation
 
-You will need [Python 2.7 or newer](https://www.python.org/downloads/) installed on your system.
+You will need [either Python 2.7 or Python 3.4 or newer](https://www.python.org/downloads/) installed on your system. Since esptool.py v1.3, esptool.py works on either Python 2.7 or Python 3.x.
 
 The latest stable esptool.py release can be installed from [pypi](http://pypi.python.org/pypi/esptool) via pip:
 

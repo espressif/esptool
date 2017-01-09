@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+#
+# Stub has to be generated via Python 3, for correct repr() output
 #
 # Copyright (c) 2016 Cesanta Software Limited
 # All rights reserved
@@ -26,7 +28,7 @@ import esptool
 
 def wrap_stub(elf_file):
     """ Wrap an ELF file into a stub 'dict' """
-    print 'Wrapping ELF file %s...' % elf_file
+    print('Wrapping ELF file %s...' % elf_file)
     e = esptool.ELFFile(elf_file)
 
     text_section = e.get_section('.text')
@@ -47,11 +49,10 @@ def wrap_stub(elf_file):
     if len(stub['text']) % 4 != 0:
         stub['text'] += (4 - (len(stub['text']) % 4)) * '\0'
 
-    print >>sys.stderr, (
-        'Stub text: %d @ 0x%08x, data: %d @ 0x%08x, entry @ 0x%x' % (
-            len(stub['text']), stub['text_start'],
-            len(stub.get('data', '')), stub.get('data_start', 0),
-            stub['entry']))
+    print('Stub text: %d @ 0x%08x, data: %d @ 0x%08x, entry @ 0x%x' % (
+        len(stub['text']), stub['text_start'],
+        len(stub.get('data', '')), stub.get('data_start', 0),
+        stub['entry']), file=sys.stderr)
     return stub
 
 PYTHON_TEMPLATE = """\
@@ -64,7 +65,7 @@ def write_python_snippet(stubs):
         f.write("# Binary stub code (see flasher_stub dir for source & details)\n")
         for key in "8266", "32":
             stub_data = stubs["stub_flasher_%s" % key]
-            encoded = base64.b64encode(zlib.compress(repr(stub_data), 9))
+            encoded = base64.b64encode(zlib.compress(repr(stub_data).encode("utf-8"), 9)).decode("utf-8")
             in_lines = ""
             # split encoded data into 160 character lines
             LINE_LEN=160
@@ -79,5 +80,5 @@ def stub_name(filename):
 
 if __name__ == '__main__':
     stubs = dict( (stub_name(elf_file),wrap_stub(elf_file)) for elf_file in sys.argv[1:-1] )
-    print 'Dumping to Python snippet file %s.' % sys.argv[-1]
+    print('Dumping to Python snippet file %s.' % sys.argv[-1])
     write_python_snippet(stubs)

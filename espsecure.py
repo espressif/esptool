@@ -49,7 +49,7 @@ def digest_secure_bootloader(args):
     secure boot engine would do so. Can be used with a pre-loaded key to update a
     secure bootloader. """
     if args.iv is not None:
-        print "WARNING: --iv argument is for TESTING PURPOSES ONLY"
+        print("WARNING: --iv argument is for TESTING PURPOSES ONLY")
         iv = args.iv.read(128)
     else:
         iv = os.urandom(128)
@@ -92,7 +92,7 @@ def digest_secure_bootloader(args):
             f.write(word[::-1])  # swap word order in the result
         f.write('\xFF' * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
-    print "digest+image written to %s" % args.output
+    print("digest+image written to %s" % args.output)
 
 
 def generate_signing_key(args):
@@ -133,7 +133,7 @@ def sign_data(args):
     outfile.write(struct.pack("I", 0))  # Version indicator, allow for different curves/formats later
     outfile.write(signature)
     outfile.close()
-    print "Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile.name)
+    print("Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile.name))
 
 
 def verify_signature(args):
@@ -152,10 +152,10 @@ def verify_signature(args):
     sig_version, signature = struct.unpack("I64s", binary_content[-68:])
     if sig_version != 0:
         raise esptool.FatalError("Signature block has version %d. This version  of espsecure only supports version 0." % sig_version)
-    print "Verifying %d bytes of data" % len(data)
+    print("Verifying %d bytes of data" % len(data))
     try:
         if vk.verify(signature, data, hashlib.sha256):
-            print "Signature is valid"
+            print("Signature is valid")
         else:
             raise esptool.FatalError("Signature is not valid")
     except ecdsa.keys.BadSignatureError:
@@ -167,7 +167,7 @@ def extract_public_key(args):
     sk = _load_key(args)
     vk = sk.get_verifying_key()
     args.public_keyfile.write(vk.to_string())
-    print "%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name)
+    print("%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name))
 
 
 def digest_private_key(args):
@@ -176,7 +176,7 @@ def digest_private_key(args):
     digest = hashlib.sha256()
     digest.update(sk.to_string())
     args.digest_file.write(digest.digest())
-    print "SHA-256 digest of private key %s written to %s" % (args.keyfile.name, args.digest_file.name)
+    print("SHA-256 digest of private key %s written to %s" % (args.keyfile.name, args.digest_file.name))
 
 
 # flash encryption key tweaking pattern: the nth bit of the key is
@@ -254,7 +254,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         raise esptool.FatalError("Starting flash address 0x%x must be a multiple of 16" % flash_address)
 
     if flash_crypt_conf == 0:
-        print "WARNING: Setting FLASH_CRYPT_CONF to zero is not recommended"
+        print("WARNING: Setting FLASH_CRYPT_CONF to zero is not recommended")
     tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
 
     aes = None
@@ -268,7 +268,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
                 raise esptool.FatalError("Data length is not a multiple of 16 bytes")
             pad = 16 - len(block)
             block = block + os.urandom(pad)
-            print "WARNING: Padding with %d bytes of random data (encrypted data must be multiple of 16 bytes long)" % pad
+            print("WARNING: Padding with %d bytes of random data (encrypted data must be multiple of 16 bytes long)" % pad)
 
         if (block_offs % 32 == 0) or aes is None:
             # each bit of the flash encryption key is XORed with tweak bits derived from the offset of 32 byte block of flash
@@ -365,7 +365,7 @@ def main():
     p.add_argument('plaintext_file', help="File with plaintext content for encrypting", type=argparse.FileType('rb'))
 
     args = parser.parse_args()
-    print 'espsecure.py v%s' % esptool.__version__
+    print('espsecure.py v%s' % esptool.__version__)
     # each 'operation' is a module-level function of the same name
     operation_func = globals()[args.operation]
     operation_func(args)
@@ -375,5 +375,5 @@ if __name__ == '__main__':
     try:
         main()
     except esptool.FatalError as e:
-        print '\nA fatal error occurred: %s' % e
+        print('\nA fatal error occurred: %s' % e)
         sys.exit(2)
