@@ -141,8 +141,8 @@ class TestFlashing(EsptoolTestCase):
             ct = f.read()
         self.assertEqual(last_sector, ct)
 
-    def test_compressed_flash(self):
-        self.run_esptool("write_flash -z 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
+    def test_no_compression_flash(self):
+        self.run_esptool("write_flash -u 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
         self.verify_readback(0, 4096, "images/sector.bin")
         self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
 
@@ -156,8 +156,8 @@ class TestFlashing(EsptoolTestCase):
     def test_partition_table_then_bootloader(self):
         self._test_partition_table_then_bootloader("write_flash")
 
-    def test_partition_table_then_bootloader_compressed(self):
-        self._test_partition_table_then_bootloader("write_flash -z")
+    def test_partition_table_then_bootloader_no_compression(self):
+        self._test_partition_table_then_bootloader("write_flash -u")
 
     def test_partition_table_then_bootloader_nostub(self):
         self._test_partition_table_then_bootloader("--no-stub write_flash")
@@ -168,16 +168,16 @@ class TestFlashSizes(EsptoolTestCase):
         self.run_esptool("write_flash -fs 4MB 0x300000 images/one_kb.bin")
         self.verify_readback(0x300000, 1024, "images/one_kb.bin")
 
-    def test_high_offset_compressed(self):
-        self.run_esptool("write_flash -z -fs 4MB 0x300000 images/one_kb.bin")
+    def test_high_offset_no_compression(self):
+        self.run_esptool("write_flash -u -fs 4MB 0x300000 images/one_kb.bin")
         self.verify_readback(0x300000, 1024, "images/one_kb.bin")
 
     def test_large_image(self):
         self.run_esptool("write_flash -fs 4MB 0x280000 images/one_mb.bin")
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
 
-    def test_large_compressed(self):
-        self.run_esptool("write_flash -z -fs 4MB 0x280000 images/one_mb.bin")
+    def test_large_no_compression(self):
+        self.run_esptool("write_flash -u -fs 4MB 0x280000 images/one_mb.bin")
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
 
     def test_invalid_size_arg(self):
@@ -188,8 +188,8 @@ class TestFlashSizes(EsptoolTestCase):
         self.assertIn("File images/one_kb.bin", output)
         self.assertIn("will not fit", output)
 
-    def test_write_compressed_past_end_fails(self):
-        output = self.run_esptool_error("write_flash -z -fs 1MB 0x280000 images/one_kb.bin")
+    def test_write_no_compression_past_end_fails(self):
+        output = self.run_esptool_error("write_flash -u -fs 1MB 0x280000 images/one_kb.bin")
         self.assertIn("File images/one_kb.bin", output)
         self.assertIn("will not fit", output)
 

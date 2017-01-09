@@ -1566,6 +1566,12 @@ def _update_image_flash_params(esp, address, flash_params, image):
 def write_flash(esp, args):
     flash_params = _get_flash_params(esp, args)
 
+    # set args.compress based on default behaviour:
+    # -> if either --compress or --no-compress is set, honour that
+    # -> otherwise, set --compress unless --no-stub is set
+    if args.compress is None and not args.no_compress:
+        args.compress = not args.no_stub
+
     # verify file sizes fit in flash
     flash_end = flash_size_bytes(args.flash_size)
     for address, argfile in args.addr_filename:
@@ -1907,7 +1913,9 @@ def main():
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
     parser_write_flash.add_argument('--verify', help='Verify just-written data on flash ' +
                                     '(mostly superfluous, data is read back during flashing)', action='store_true')
-    parser_write_flash.add_argument('--compress', '-z', help='Compress data in transfer',action="store_true")
+    compress_args = parser_write_flash.add_mutually_exclusive_group(required=False)
+    compress_args.add_argument('--compress', '-z', help='Compress data in transfer (default unless --no-stub is specified)',action="store_true", default=None)
+    compress_args.add_argument('--no-compress', '-u', help='Disable data compression during transfer (default if --no-stub is specified)',action="store_true")
 
     subparsers.add_parser(
         'run',
