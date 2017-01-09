@@ -33,7 +33,7 @@ import tempfile
 import time
 
 
-__version__ = "1.3-dev"
+__version__ = "1.3"
 
 PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
 
