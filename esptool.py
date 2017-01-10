@@ -185,14 +185,15 @@ class ESPLoader(object):
         """
         detect_port = ESPLoader(port, baud)
         detect_port.connect(connect_mode)
-        sys.stdout.write('Detecting chip type... ')
+        print('Detecting chip type...', end='')
+        sys.stdout.flush()
         date_reg = detect_port.read_reg(ESPLoader.UART_DATA_REG_ADDR)
 
         for cls in [ESP8266ROM, ESP32ROM]:
             if date_reg == cls.DATE_REG_VALUE:
                 # don't connect a second time
                 inst = cls(detect_port._port, baud)
-                print('%s' % inst.CHIP_NAME)
+                print(' %s' % inst.CHIP_NAME)
                 return inst
         print('')
         raise FatalError("Unexpected UART datecode value 0x%08x. Failed to autodetect chip type." % date_reg)
@@ -1604,7 +1605,7 @@ def write_flash(esp, args):
         written = 0
         t = time.time()
         while len(image) > 0:
-            print('\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks),)
+            print('\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks), end='')
             sys.stdout.flush()
             block = image[0:esp.FLASH_WRITE_SIZE]
             if args.compress:
