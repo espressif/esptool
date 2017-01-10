@@ -63,10 +63,6 @@ Most hardware configurations will work with `-b 230400`, some with `-b 460800`, 
 
 If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output [boot log](#boot-log) information.
 
-## Specifying Arguments Via File
-
-Anywhere on the `esptool.py` command line, you can specify a file name as `@filename.txt` to read one or more arguments from text file `filename.txt`. Arguments can be separated by newlines or spaces, quotes can be used to enclose arguments that span multiple words. Arguments read from the text file are expanded exactly as if they had appeared in that order on the `esptool.py` command line.
-
 ## Commands
 
 ### Convert ELF to Binary
@@ -125,6 +121,8 @@ esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0
 ```
 
 The [Flash Modes](#flash-modes) section below explains the meaning of these additional arguments.
+
+By default, uploads are compressed. The `-u/--no-compress` option disables this behaviour.
 
 See the [Troubleshooting](#troubleshooting) section if the write_flash command is failing, or the flashed module fails to boot.
 
@@ -278,6 +276,40 @@ The ESP32 esp-idf flashes a partition table to the flash at offset 0x8000. All o
 Clock frequency for SPI flash interactions. Valid values are 40m, 26m, 20m, 80m (MHz). The default is 40m (40MHz). This parameter can also be specified using the environment variable `ESPTOOL_FF`.
 
 The flash chip connected to most chips works with 40MHz clock speeds, but you can try lower values if the device won't boot.
+
+## Advanced Options
+
+The following advanced configuration options can be used for all esptool.py commands (they are placed before the command name on the command line).
+
+### Reset Modes
+
+By default, esptool.py tries to hard reset the chip into bootloader mode before it starts and hard resets the chip to run the normal program once it is complete. The `--before` and `--after` options allow this behaviour to be changed:
+
+#### Reset Before Operation
+
+The `--before` argument allows you to specify whether the chip needs resetting into bootloader mode before esptool.py talks to it.
+
+* `--before default_reset` is the default, which uses DTR & RTS serial control lines (see [Entering The Bootloader](#entering-the-bootloader)) to try and reset the chip into bootloader mode.
+* `--before no_reset` will skip any DTR/RTS control signals and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
+* `--before esp32r0` is a special reset sequence that can work around an automatic reset bug when using Windows with first generation ESP32 chips.
+
+#### Reset After Operation
+
+The `--after` argument allows you to specify whether the chip should be reset after the esptool.py operation completes:
+
+* `--after hard_reset` is the default. The DTR serial control line is used to reset the chip into a normal boot sequence.
+* `--after soft_reset` is currently only supported on ESP8266. This runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool.py v1.x.
+* `--after no_reset` leaves the chip in the serial bootloader, no reset is performed.
+
+## Disabling Boot Stub
+
+The `--no-stub` option disables uploading of a software "stub loader" that manages flash operations, and only talks directly to the loader in ROM.
+
+Passing `--no-stub` will disable certain options, as not all options are implemented in every chip's ROM loader.
+
+## Specifying Arguments Via File
+
+Anywhere on the `esptool.py` command line, you can specify a file name as `@filename.txt` to read one or more arguments from text file `filename.txt`. Arguments can be separated by newlines or spaces, quotes can be used to enclose arguments that span multiple words. Arguments read from the text file are expanded exactly as if they had appeared in that order on the `esptool.py` command line.
 
 ## Troubleshooting
 
