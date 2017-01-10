@@ -146,6 +146,12 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0, 4096, "images/sector.bin")
         self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
 
+    def test_compressed_nostub_flash(self):
+        if chip == "esp32":
+            self.run_esptool("--no-stub write_flash -z 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
+            self.verify_readback(0, 4096, "images/sector.bin")
+            self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
+
     def _test_partition_table_then_bootloader(self, args):
         self.run_esptool(args + " 0x4000 images/partitions_singleapp.bin")
         self.verify_readback(0x4000, 96, "images/partitions_singleapp.bin")
@@ -161,6 +167,12 @@ class TestFlashing(EsptoolTestCase):
 
     def test_partition_table_then_bootloader_nostub(self):
         self._test_partition_table_then_bootloader("--no-stub write_flash")
+
+    # note: there is no "partition table then bootloader" test that
+    # uses --no-stub and -z, as the ESP32 ROM over-erases and can't
+    # flash this set of files in this order.  we do
+    # test_compressed_nostub_flash() instead.
+
 
 class TestFlashSizes(EsptoolTestCase):
 
@@ -226,6 +238,12 @@ class TestSectorBoundaries(EsptoolTestCase):
     def test_end_sector(self):
         self.run_esptool("write_flash 0x10000 images/sector.bin")
         self.run_esptool("write_flash 0x0FC00 images/one_kb.bin")
+        self.verify_readback(0x0FC00, 0x400, "images/one_kb.bin")
+        self.verify_readback(0x10000, 0x1000, "images/sector.bin")
+
+    def test_end_sector_uncompressed(self):
+        self.run_esptool("write_flash -u 0x10000 images/sector.bin")
+        self.run_esptool("write_flash -u 0x0FC00 images/one_kb.bin")
         self.verify_readback(0x0FC00, 0x400, "images/one_kb.bin")
         self.verify_readback(0x10000, 0x1000, "images/sector.bin")
 

@@ -449,9 +449,13 @@ class ESPLoader(object):
 
         self._port.timeout = 20
         t = time.time()
+        if self.IS_STUB:
+            write_size = size  # stub expects number of bytes here, manages erasing internally
+        else:
+            write_size = erase_blocks * self.FLASH_WRITE_SIZE  # ROM expects rounded up to erase block size
         print("Compressed %d bytes to %d..." % (size, compsize))
         self.check_command("enter compressed flash mode", self.ESP_FLASH_DEFL_BEGIN,
-                           struct.pack('<IIII', erase_blocks * self.FLASH_WRITE_SIZE, num_blocks, self.FLASH_WRITE_SIZE, offset))
+                           struct.pack('<IIII', write_size, num_blocks, self.FLASH_WRITE_SIZE, offset))
         if size != 0 and not self.IS_STUB:
             # (stub erases as it writes, but ROM loaders erase on begin)
             print("Took %.2fs to erase flash block" % (time.time() - t))

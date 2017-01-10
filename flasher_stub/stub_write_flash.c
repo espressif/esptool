@@ -179,7 +179,7 @@ static void start_next_erase(void)
   uint32_t sectors_to_erase = 1;
   if(fs.remaining_erase_sector >= SECTORS_PER_BLOCK
      && fs.next_erase_sector % SECTORS_PER_BLOCK == 0) {
-    /* perform a 32KB block erase if we have space for it */
+    /* perform a 64KB block erase if we have space for it */
     command = SPI_FLASH_BE;
     sectors_to_erase = SECTORS_PER_BLOCK;
   }
