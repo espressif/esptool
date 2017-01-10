@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cesanta Software Limited
+ * Copyright (c) 2016 Cesanta Software Limited & Espressif Systems (Shanghai) PTE LTD
  * All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -18,7 +18,23 @@
 #ifndef ROM_FUNCTIONS_H_
 #define ROM_FUNCTIONS_H_
 
-#include <inttypes.h>
+#ifndef ESP8266
+/* ESP32 has headers for ROM functions*/
+#include <stdbool.h>
+#include <stdint.h>
+#include "rom/ets_sys.h"
+#include "rom/spi_flash.h"
+#include "rom/md5_hash.h"
+#include "rom/uart.h"
+#include "rom/rtc.h"
+
+/* I think the difference is \r\n auto-escaping */
+#define uart_tx_one_char uart_tx_one_char2
+
+#else
+
+/* ESP8266 we provide our own */
+#include <c_types.h>
 
 int uart_rx_one_char(uint8_t *ch);
 uint8_t uart_rx_one_char_block();
@@ -46,6 +62,7 @@ void spi_flash_attach();
 void SelectSpiFunction();
 void SPIFlashModeConfig(uint32_t a, uint32_t b);
 void SPIReadModeCnfig(uint32_t a);
+uint32_t SPIParamCfg(uint32_t deviceId, uint32_t chip_size, uint32_t block_size, uint32_t sector_size, uint32_t page_size, uint32_t status_mask);
 
 void Cache_Read_Disable();
 
@@ -85,5 +102,7 @@ struct MD5Context {
 void MD5Init(struct MD5Context *ctx);
 void MD5Update(struct MD5Context *ctx, void *buf, uint32_t len);
 void MD5Final(uint8_t digest[16], struct MD5Context *ctx);
+
+#endif /* ESP8266 */
 
 #endif /* ROM_FUNCTIONS_H_ */

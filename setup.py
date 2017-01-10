@@ -87,8 +87,12 @@ setup(
     ],
     install_requires=[
         'pyserial>=2.5',
+        'pyaes',
+        'ecdsa',
     ],
     scripts=[
         'esptool.py',
+        'espsecure.py',
+        'espefuse.py',
     ],
 )
