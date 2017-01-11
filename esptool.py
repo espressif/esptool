@@ -1210,15 +1210,13 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.flash_mode = 0
         self.flash_size_freq = 0
         self.version = 1
-        self.encrypt_flag = False
 
         if load_file is not None:
             segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
             additional_header = list(struct.unpack("B" * 16, load_file.read(16)))
-            self.encrypt_flag = (additional_header[0] == 0x01)
 
-            # check remaining 14 bytes are unused
-            if additional_header[2:] != [0] * 14:
+            # check these bytes are unused
+            if additional_header != [0] * 16:
                 print("WARNING: ESP32 image header contains unknown flags. Possibly this image is from a newer version of esptool.py")
 
             for _ in range(segments):
@@ -1241,9 +1239,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         with open(filename, 'wb') as f:
             self.write_common_header(f, self.segments)
 
-            f.write(b'\x01' if self.encrypt_flag else b'\x00')
-            # remaining 15 bytes of header are unused
-            f.write(b'\x00' * 15)
+            # first 4 bytes of header are read by ROM bootloader for SPI
+            # config, but currently unused
+            f.write(b'\x00' * 16)
 
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
             last_addr = None
@@ -1689,10 +1687,6 @@ def elf2image(args):
         print("Creating image for ESP8266...")
         args.chip == 'esp8266'
 
-    if args.chip != 'esp32':
-        if args.set_encrypt_flag:
-            raise FatalError("--encrypt-flag only applies to ESP32 images")
-
     if args.chip == 'esp32':
         image = ESP32FirmwareImage()
     elif args.version == '1':  # ESP8266
@@ -1704,7 +1698,6 @@ def elf2image(args):
     image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
     image.flash_size_freq = image.ROM_LOADER.FLASH_SIZES[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
-    image.encrypt_flag = args.set_encrypt_flag
 
     if args.output is None:
         args.output = image.default_output_name(args.input)
@@ -1946,7 +1939,6 @@ def main():
     parser_elf2image.add_argument('input', help='Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
     parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1','2'], default='1')
-    parser_elf2image.add_argument('--set-encrypt-flag', help='Flag image to be encrypted by bootloader after flashing.', action="store_true")
 
     add_spi_flash_subparsers(parser_elf2image)
 
