@@ -653,8 +653,7 @@ class ESPLoader(object):
         if data_bits == 0:
             self.write_reg(SPI_W0_REG, 0)  # clear data register before we read it
         else:
-            if len(data) % 4 != 0:  # pad to 32-bit multiple
-                data += b'\0' * (4 - (len(data) % 4))
+            data = pad_to(data, 4, b'\00')  # pad to 32-bit multiple
             words = struct.unpack("I" * (len(data) // 4), data)
             next_reg = SPI_W0_REG
             for word in words:
@@ -964,10 +963,7 @@ class ImageSegment(object):
     def __init__(self, addr, data, file_offs=None):
         self.addr = addr
         # pad all ImageSegments to at least 4 bytes length
-        pad_mod = len(data) % 4
-        if pad_mod != 0:
-            data += b"\x00" * (4 - pad_mod)
-        self.data = data
+        self.data = pad_to(data, 4, b'\x00')
         self.file_offs = file_offs
         self.include_in_checksum = True
 
@@ -1462,6 +1458,14 @@ def unhexify(hs):
     return s
 
 
+def pad_to(data, alignment, pad_character=b'\xFF'):
+    """ Pad to the next alignment boundary """
+    pad_mod = len(data) % alignment
+    if pad_mod != 0:
+        data += pad_character * (alignment - pad_mod)
+    return data
+
+
 class FatalError(RuntimeError):
     """
     Wrapper class for runtime errors that aren't caused by internal bugs, but by
@@ -1588,7 +1592,7 @@ def write_flash(esp, args):
     for address, argfile in args.addr_filename:
         if args.no_stub:
             print('Erasing flash...')
-        image = argfile.read()
+        image = pad_to(argfile.read(), 4)
         image = _update_image_flash_params(esp, address, flash_params, image)
         calcmd5 = hashlib.md5(image).hexdigest()
         uncsize = len(image)
@@ -1769,7 +1773,7 @@ def _verify_flash(esp, args):
     flash_params = _get_flash_params(esp, args)
 
     for address, argfile in args.addr_filename:
-        image = argfile.read()
+        image = pad_to(argfile.read(), 4)
         argfile.seek(0)  # rewind in case we need it again
 
         image = _update_image_flash_params(esp, address, flash_params, image)

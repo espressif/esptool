@@ -18,6 +18,9 @@ import warnings
 import time
 import re
 
+# point is this file is not 4 byte aligned in length
+NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(os.path.dirname(__file__))
 try:
@@ -173,6 +176,13 @@ class TestFlashing(EsptoolTestCase):
     # flash this set of files in this order.  we do
     # test_compressed_nostub_flash() instead.
 
+    def test_length_not_aligned_4bytes(self):
+        nodemcu = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
+        size = 390411
+        self.run_esptool("write_flash 0x0 images/%s" % nodemcu)
+
+    def test_length_not_aligned_4bytes_no_compression(self):
+        self.run_esptool("write_flash -u 0x0 images/%s" % NODEMCU_FILE)
 
 class TestFlashSizes(EsptoolTestCase):
 
@@ -263,6 +273,10 @@ class TestVerifyCommand(EsptoolTestCase):
         output = self.run_esptool_error("verify_flash --diff=yes 0x6000 images/one_kb.bin")
         self.assertIn("verify FAILED", output)
         self.assertIn("first @ 0x00006000", output)
+
+    def test_verify_unaligned_length(self):
+        self.run_esptool("write_flash 0x0 images/%s" % NODEMCU_FILE)
+        self.run_esptool("verify_flash 0x0 images/%s" % NODEMCU_FILE)
 
 
 class TestReadIdentityValues(EsptoolTestCase):
