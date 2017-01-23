@@ -291,7 +291,6 @@ The `--before` argument allows you to specify whether the chip needs resetting i
 
 * `--before default_reset` is the default, which uses DTR & RTS serial control lines (see [Entering The Bootloader](#entering-the-bootloader)) to try and reset the chip into bootloader mode.
 * `--before no_reset` will skip any DTR/RTS control signals and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
-* `--before esp32r0` is a special reset sequence that can work around an automatic reset bug when using Windows with first generation ESP32 chips.
 
 #### Reset After Operation
 
