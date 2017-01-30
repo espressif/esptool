@@ -69,7 +69,7 @@ If you have connectivity problems then you can also set baud rates below 115200.
 
 The `elf2image` command converts an ELF file (from compiler/linker output) into the binary blobs to be flashed:
 ```
-esptool.py elf2image --chip esp8266 my_app.elf
+esptool.py --chip esp8266 elf2image my_app.elf
 ```
 
 This command does not require a serial connection.
@@ -89,7 +89,7 @@ esptool.py --chip esp8266 elf2image --version=2 -o my_app-ota.bin my_app.elf
 For esp32, elf2image produces a single output file. By default this has the same name as the .elf file, with a .bin extension. ie:
 
 ```
-esptool.py elf2image --chip esp32 elf2image my_esp32_app.elf
+esptool.py --chip esp32 elf2image my_esp32_app.elf
 ```
 
 In the above example, the output image would be called `my_esp32_app.bin`.
