@@ -2148,6 +2148,19 @@ class AddrFilenamePairAction(argparse.Action):
             except IndexError:
                 raise argparse.ArgumentError(self,'Must be pairs of an address and the binary filename to write there')
             pairs.append((address, argfile))
+
+        # Sort the addresses and check for overlapping
+        end = 0
+        for address, argfile in sorted(pairs):
+            argfile.seek(0,2)  # seek to end
+            size = argfile.tell()
+            argfile.seek(0)
+            sector_start = address & ~(ESPLoader.FLASH_SECTOR_SIZE - 1)
+            sector_end = ((address + size + ESPLoader.FLASH_SECTOR_SIZE - 1) & ~(ESPLoader.FLASH_SECTOR_SIZE - 1)) - 1
+            if sector_start < end:
+                message = 'Detected overlap at address: 0x%x for file: %s' % (address, argfile.name)
+                raise argparse.ArgumentError(self, message)
+            end = sector_end
         setattr(namespace, self.dest, pairs)
 
 
