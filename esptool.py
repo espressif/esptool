@@ -1916,10 +1916,6 @@ def main():
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
     parser_write_flash.add_argument('--verify', help='Verify just-written data on flash ' +
                                     '(mostly superfluous, data is read back during flashing)', action='store_true')
-    parser_write_flash.add_argument('--check-overlap', '-o',
-                                    help='Checks the specified addresses and ROMS for possible overlaps.',
-                                    choices=['error', 'warning'],
-                                    action=CheckOverlapAction)
     compress_args = parser_write_flash.add_mutually_exclusive_group(required=False)
     compress_args.add_argument('--compress', '-z', help='Compress data in transfer (default unless --no-stub is specified)',action="store_true", default=None)
     compress_args.add_argument('--no-compress', '-u', help='Disable data compression during transfer (default if --no-stub is specified)',action="store_true")
@@ -2153,27 +2149,17 @@ class AddrFilenamePairAction(argparse.Action):
                 raise argparse.ArgumentError(self,'Must be pairs of an address and the binary filename to write there')
             pairs.append((address, argfile))
 
-        if namespace.check_overlap:
-            # Sort the addresses and check for overlapping
-            end = 0
-            for address, argfile in sorted(pairs):
-                argfile.seek(0,2)  # seek to end
-                size = argfile.tell()
-                argfile.seek(0)
-                if end > address + size:
-                    message = 'Detected overlap at address: 0x%08x for file: %s' % (address, argfile.name)
-                    if namespace.check_overlap == 'e':
-                        raise argparse.ArgumentError(self, message)
-                    print("WARNING: %s" % message)
-                end = address + size
-
+        # Sort the addresses and check for overlapping
+        end = 0
+        for address, argfile in sorted(pairs):
+            argfile.seek(0,2)  # seek to end
+            size = argfile.tell()
+            argfile.seek(0)
+            if end > address:
+                message = 'Detected overlap at address: 0x%08x for file: %s' % (address, argfile.name)
+                raise argparse.ArgumentError(self, message)
+            end = address + size
         setattr(namespace, self.dest, pairs)
-
-
-class CheckOverlapAction(argparse.Action):
-    """ Sets the overlapping check """
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, values[0])
 
 
 # Binary stub code (see flasher_stub dir for source & details)
