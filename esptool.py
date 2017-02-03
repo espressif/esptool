@@ -2155,10 +2155,12 @@ class AddrFilenamePairAction(argparse.Action):
             argfile.seek(0,2)  # seek to end
             size = argfile.tell()
             argfile.seek(0)
-            if end > address:
+            sector_start = address & ~(ESPLoader.FLASH_SECTOR_SIZE - 1)
+            sector_end = ((address + size + ESPLoader.FLASH_SECTOR_SIZE - 1) & ~(ESPLoader.FLASH_SECTOR_SIZE - 1)) - 1
+            if sector_start < end:
                 message = 'Detected overlap at address: 0x%08x for file: %s' % (address, argfile.name)
                 raise argparse.ArgumentError(self, message)
-            end = address + size
+            end = sector_end
         setattr(namespace, self.dest, pairs)
 
 

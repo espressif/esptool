@@ -183,6 +183,14 @@ class TestFlashing(EsptoolTestCase):
 
     def test_length_not_aligned_4bytes_no_compression(self):
         self.run_esptool("write_flash -u 0x0 images/%s" % NODEMCU_FILE)
+        
+    def test_write_overlap(self):
+        output = self.run_esptool("write_flash 0x0 images/bootloader.bin 0x1000 images/one_kb.bin")
+        self.assertIn("Detected overlap at address: 0x00001000 ", output)
+        
+    def test_write_no_overlap(self):
+        output = self.run_esptool("write_flash 0x0 images/bootloader.bin 0x2000 images/one_kb.bin")
+        self.asserNotIn("Detected overlap at address: ", output)
 
 class TestFlashSizes(EsptoolTestCase):
 
