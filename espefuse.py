@@ -71,7 +71,7 @@ EFUSE_REG_WRITE = [0x3FF5A01C, 0x3FF5A098, 0x3FF5A0B8, 0x3FF5A0D8]
 
 
 def confirm(action, args):
-    print("%s. This is an irreversible operation." % action)
+    print("%s%sThis is an irreversible operation." % (action, "" if action.endswith("\n") else ". "))
     if not args.do_not_confirm:
         print("Type 'BURN' (all capitals) to continue.")
         try:
@@ -252,14 +252,21 @@ def summary(esp, efuses, args):
             value = str(e.get())
             print("%-22s %-50s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw))
         print("")
-
-
-def _get_efuse(efuses, args):
-    return [e for e in efuses if args.efuse_name == e.register_name][0]
+    sdio_force = _get_efuse(efuses, "XPD_SDIO_FORCE")
+    sdio_tieh = _get_efuse(efuses, "XPD_SDIO_TIEH")
+    sdio_reg = _get_efuse(efuses, "XPD_SDIO_REG")
+    if sdio_force.get() == 0:
+        print("Flash voltage (VDD_SDIO) determined by GPIO12 on reset (High for 1.8V, Low for 3.3V).")
+    elif sdio_reg.get() == 0:
+        print("Flash voltage (VDD_SDIO) internal regulator disabled by efuse.")
+    elif sdio_tieh.get() == 0:
+        print("Flash voltage (VDD_SDIO) set to 1.8V by efuse.")
+    else:
+        print("Flash voltage (VDD_SDIO) set to 3.3V by efuse.")
 
 
 def burn_efuse(esp, efuses, args):
-    efuse = _get_efuse(efuses, args)
+    efuse = _get_efuse(efuses, args.efuse_name)
     old_value = efuse.get()
     if efuse.efuse_type == "flag":
         if args.new_value not in [None, 1]:
@@ -291,7 +298,7 @@ def burn_efuse(esp, efuses, args):
 
 
 def read_protect_efuse(esp, efuses, args):
-    efuse = _get_efuse(efuses, args)
+    efuse = _get_efuse(efuses, args.efuse_name)
     if not efuse.is_readable():
         print("Efuse %s is already read protected" % efuse.register_name)
     else:
@@ -303,7 +310,7 @@ def read_protect_efuse(esp, efuses, args):
 
 
 def write_protect_efuse(esp, efuses,args):
-    efuse = _get_efuse(efuses, args)
+    efuse = _get_efuse(efuses, args.efuse_name)
     if not efuse.is_writeable():
         print("Efuse %s is already write protected" % efuse.register_name)
     else:
@@ -369,6 +376,46 @@ def burn_key(esp, efuses, args):
         print("Key is left unprotected as per --no-protect-key argument.")
 
 
+def set_flash_voltage(esp, efuses, args):
+    sdio_force = _get_efuse(efuses, "XPD_SDIO_FORCE")
+    sdio_tieh = _get_efuse(efuses, "XPD_SDIO_TIEH")
+    sdio_reg = _get_efuse(efuses, "XPD_SDIO_REG")
+
+    # check efuses aren't burned in a way which makes this impossible
+    if args.voltage == 'OFF' and sdio_reg.get() != 0:
+        raise esptool.FatalError("Can't set flash regulator to OFF as XPD_SDIO_REG efuse is already burned")
+
+    if args.voltage == '1.8V' and sdio_tieh.get() != 0:
+        raise esptool.FatalError("Can't set regulator to 1.8V is XPD_SDIO_TIEH efuse is already burned")
+
+    if args.voltage == 'OFF':
+        msg = """
+Disable internal flash voltage regulator (VDD_SDIO). SPI flash will need to be powered from an external source.
+The following efuse is burned: XPD_SDIO_FORCE.
+It is possible to later re-enable the internal regulator (%s) by burning an additional efuse
+""" % ("to 3.3V" if sdio_tieh.get() != 0 else "to 1.8V or 3.3V")
+    elif args.voltage == '1.8V':
+        msg = """
+Set internal flash voltage regulator (VDD_SDIO) to 1.8V.
+The following efuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG.
+It is possible to later increase the voltage to 3.3V (permanently) by burning additional efuse XPD_SDIO_TIEH
+"""
+    elif args.voltage == '3.3V':
+        msg = """
+Enable internal flash voltage regulator (VDD_SDIO) to 3.3V.
+The following efuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG, XPD_SDIO_TIEH.
+"""
+
+    confirm(msg, args)
+
+    sdio_force.burn(1)   # Disable GPIO12
+    if args.voltage != 'OFF':
+        sdio_reg.burn(1)  # Enable internal regulator
+    if args.voltage == '3.3V':
+        sdio_tieh.burn(1)
+    print("VDD_SDIO setting complete.")
+
+
 def hexify(bitstring, separator):
     try:
         as_bytes = tuple(ord(b) for b in bitstring)
@@ -428,6 +475,12 @@ def main():
                    '"secure_boot" is an alias for BLK2.', choices=["secure_boot", "flash_encryption","BLK1","BLK2","BLK3"])
     p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=argparse.FileType('rb'))
 
+    p = subparsers.add_parser('set_flash_voltage',
+                              help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF, ' +
+                              'meaning GPIO12 can be high or low at reset without changing the flash voltage.')
+    p.add_argument('voltage', help='Voltage selection',
+                   choices=['1.8V', '3.3V', 'OFF'])
+
     args = parser.parse_args()
     print('espefuse.py v%s' % esptool.__version__)
     # each 'operation' is a module-level function of the same name
@@ -439,6 +492,10 @@ def main():
     # dict mapping register name to its efuse object
     efuses = [EfuseField.from_tuple(esp, efuse) for efuse in EFUSES]
     operation_func(esp, efuses, args)
+
+
+def _get_efuse(efuses, efuse_name):
+    return [e for e in efuses if efuse_name == e.register_name][0]
 
 
 if __name__ == '__main__':
