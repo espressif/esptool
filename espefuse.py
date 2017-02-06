@@ -256,7 +256,7 @@ def summary(esp, efuses, args):
     sdio_tieh = _get_efuse(efuses, "XPD_SDIO_TIEH")
     sdio_reg = _get_efuse(efuses, "XPD_SDIO_REG")
     if sdio_force.get() == 0:
-        print("Flash voltage (VDD_SDIO) determined by GPIO12 on reset (High for 1.8V, Low for 3.3V).")
+        print("Flash voltage (VDD_SDIO) determined by GPIO12 on reset (High for 1.8V, Low/NC for 3.3V).")
     elif sdio_reg.get() == 0:
         print("Flash voltage (VDD_SDIO) internal regulator disabled by efuse.")
     elif sdio_tieh.get() == 0:
@@ -476,8 +476,8 @@ def main():
     p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('set_flash_voltage',
-                              help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF, ' +
-                              'meaning GPIO12 can be high or low at reset without changing the flash voltage.')
+                              help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF. ' +
+                              'This means GPIO12 can be high or low at reset without changing the flash voltage.')
     p.add_argument('voltage', help='Voltage selection',
                    choices=['1.8V', '3.3V', 'OFF'])
 
