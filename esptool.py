@@ -900,11 +900,11 @@ class ESP32ROM(ESPLoader):
 
     def read_mac(self):
         """ Read MAC from EFUSE region """
-        words = [self.read_efuse(1), self.read_efuse(2)]
+        words = [self.read_efuse(2), self.read_efuse(1)]
         bitstring = struct.pack(">II", *words)
-        bitstring = bitstring[:6]  # trim 2 byte CRC
+        bitstring = bitstring[2:8]  # trim the 2 byte CRC
         try:
-            return tuple(ord(b) for b in bitstring)  # trim 2 byte CRC
+            return tuple(ord(b) for b in bitstring)
         except TypeError:  # Python 3, bitstring elements are already bytes
             return tuple(bitstring)
 
