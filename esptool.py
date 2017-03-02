@@ -281,11 +281,16 @@ class ESPLoader(object):
         for i in range(7):
             self.command()
 
-    def _connect_attempt(self, mode='default_reset', latency_delay=False, esp32r0_delay=False):
+    def _connect_attempt(self, mode='default_reset', esp32r0_delay=False):
         """ A single connection attempt, with esp32r0 workaround options """
-        # esp32r0_delay and latency_delay are workarounds for a bug with
-        # the most common auto reset circuit and Windows, if the EN
-        # pin on the dev board does not have enough capacitance.
+        # esp32r0_delay is a workaround for bugs with the most common auto reset
+        # circuit and Windows, if the EN pin on the dev board does not have
+        # enough capacitance.
+        #
+        # Newer dev boards shouldn't have this problem (higher value capacitor
+        # on the EN pin), and ESP32 revision 1 can't use this workaround as it
+        # relies on a silicon bug.
+        #
         # Details: https://github.com/espressif/esptool/issues/136
         last_error = None
 
@@ -299,8 +304,11 @@ class ESPLoader(object):
             self._port.setDTR(False)  # IO0=HIGH
             self._port.setRTS(True)   # EN=LOW, chip in reset
             time.sleep(0.1)
-            if latency_delay:
-                time.sleep(1.2)  # Sleep longer during reset
+            if esp32r0_delay:
+                # Some chips are more likely to trigger the esp32r0
+                # watchdog reset silicon bug if they're held with EN=LOW
+                # for a longer period
+                time.sleep(1.2)
             self._port.setDTR(True)   # IO0=LOW
             self._port.setRTS(False)  # EN=HIGH, chip out of reset
             if esp32r0_delay:
@@ -320,7 +328,7 @@ class ESPLoader(object):
                 self._port.timeout = 5
                 return None
             except FatalError as e:
-                if latency_delay or esp32r0_delay:
+                if esp32r0_delay:
                     print('_', end='')
                 else:
                     print('.', end='')
@@ -337,10 +345,10 @@ class ESPLoader(object):
 
         try:
             for _ in range(10):
-                last_error = self._connect_attempt(mode=mode, latency_delay=False, esp32r0_delay=False)
+                last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
                     return
-                last_error = self._connect_attempt(mode=mode, latency_delay=True, esp32r0_delay=True)
+                last_error = self._connect_attempt(mode=mode, esp32r0_delay=True)
                 if last_error is None:
                     return
         finally:
