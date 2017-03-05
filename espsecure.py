@@ -371,9 +371,13 @@ def main():
     operation_func(args)
 
 
-if __name__ == '__main__':
+def _main():
     try:
         main()
     except esptool.FatalError as e:
         print('\nA fatal error occurred: %s' % e)
         sys.exit(2)
+
+
+if __name__ == '__main__':
+    _main()

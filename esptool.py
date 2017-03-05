@@ -2289,9 +2289,13 @@ V8ZPp6X82ggwJrsl96cptxlIzDaUwmfz/kcmucr4Y7ba3SRrKc0mTJzssSXkDCPxACddCSNp96Lr3qdK
 """)))
 
 
-if __name__ == '__main__':
+def _main():
     try:
         main()
     except FatalError as e:
         print('\nA fatal error occurred: %s' % e)
         sys.exit(2)
+
+
+if __name__ == '__main__':
+    _main()
