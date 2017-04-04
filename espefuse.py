@@ -37,6 +37,8 @@ EFUSES = [
     ('SPI_PAD_CONFIG_HD',    "config",   0, 3, 0x1F << 4,  3, None, "int", "Override SD_DATA_2 pad (GPIO9/SPIHD)"),
     ('SPI_PAD_CONFIG_CS0',   "config",   0, 5, 0x1F << 15, 6, None, "int", "Override SD_CMD pad (GPIO11/SPICS0)"),
     ('FLASH_CRYPT_CONFIG',   "security", 0, 5, 0x0F << 28, 10, 3, "int", "Flash encryption config (key tweak bits)"),
+    ('CHIP_VERSION',         "identity", 0, 3, 0x0F << 12, 0,  0, "int", "Chip version"),
+    ('CHIP_PACKAGE',         "identity", 0, 3, 0x07 << 9,  0,  0, "int", "Chip package identifier"),
     ('CODING_SCHEME',        "efuse",    0, 6, 0x3,        10, 3, "int", "Efuse variable block length scheme"),
     ('CONSOLE_DEBUG_DISABLE',"security", 0, 6, 1 << 2,     15, None, "flag", "Disable ROM BASIC interpreter fallback"),
     ('DISABLE_SDIO_HOST',    "config",   0, 6, 1 << 3,     None, None, "flag", "Disable SDIO host"),
