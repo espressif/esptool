@@ -498,9 +498,14 @@ def _get_efuse(efuses, efuse_name):
     return [e for e in efuses if efuse_name == e.register_name][0]
 
 
-if __name__ == '__main__':
+def _main():
     try:
         main()
     except esptool.FatalError as e:
         print('\nA fatal error occurred: %s' % e)
         sys.exit(2)
+
+
+if __name__ == '__main__':
+    _main()
+
