@@ -31,11 +31,11 @@ EFUSES = [
     ('XPD_SDIO_FORCE',       "config",   0, 4, 1 << 16,    5, None, "flag", "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset"),
     ('XPD_SDIO_REG',         "config",   0, 4, 1 << 14,    5, None, "flag", "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset"),
     ('XPD_SDIO_TIEH',        "config",   0, 4, 1 << 15,    5, None, "flag", "If XPD_SDIO_FORCE & XPD_SDIO_REG, 1=3.3V 0=1.8V"),
-    ('SPI_PAD_CONFIG_CLK',   "config",   0, 5, 0x1F << 0,  6, None, "int", "Override SD_CLK pad (GPIO6/SPICLK)"),
-    ('SPI_PAD_CONFIG_Q',     "config",   0, 5, 0x1F << 5,  6, None, "int", "Override SD_DATA_0 pad (GPIO7/SPIQ)"),
-    ('SPI_PAD_CONFIG_D',     "config",   0, 5, 0x1F << 10, 6, None, "int", "Override SD_DATA_1 pad (GPIO8/SPID)"),
-    ('SPI_PAD_CONFIG_HD',    "config",   0, 3, 0x1F << 4,  3, None, "int", "Override SD_DATA_2 pad (GPIO9/SPIHD)"),
-    ('SPI_PAD_CONFIG_CS0',   "config",   0, 5, 0x1F << 15, 6, None, "int", "Override SD_CMD pad (GPIO11/SPICS0)"),
+    ('SPI_PAD_CONFIG_CLK',   "config",   0, 5, 0x1F << 0,  6, None, "spipin", "Override SD_CLK pad (GPIO6/SPICLK)"),
+    ('SPI_PAD_CONFIG_Q',     "config",   0, 5, 0x1F << 5,  6, None, "spipin", "Override SD_DATA_0 pad (GPIO7/SPIQ)"),
+    ('SPI_PAD_CONFIG_D',     "config",   0, 5, 0x1F << 10, 6, None, "spipin", "Override SD_DATA_1 pad (GPIO8/SPID)"),
+    ('SPI_PAD_CONFIG_HD',    "config",   0, 3, 0x1F << 4,  3, None, "spipin", "Override SD_DATA_2 pad (GPIO9/SPIHD)"),
+    ('SPI_PAD_CONFIG_CS0',   "config",   0, 5, 0x1F << 15, 6, None, "spipin", "Override SD_CMD pad (GPIO11/SPICS0)"),
     ('FLASH_CRYPT_CONFIG',   "security", 0, 5, 0x0F << 28, 10, 3, "int", "Flash encryption config (key tweak bits)"),
     ('CHIP_VERSION',         "identity", 0, 3, 0x0F << 12, 0,  0, "int", "Chip version"),
     ('CHIP_PACKAGE',         "identity", 0, 3, 0x07 << 9,  0,  0, "int", "Chip package identifier"),
@@ -118,6 +118,7 @@ class EfuseField(object):
         return {
             "mac": EfuseMacField,
             "keyblock": EfuseKeyblockField,
+            "spipin": EfuseSpiPinField,
         }.get(category, EfuseField)(esp, *efuse_tuple)
 
     def __init__(self, esp, register_name, category, block, word, mask, write_disable_bit, read_disable_bit, efuse_type, description):
@@ -224,6 +225,23 @@ class EfuseKeyblockField(EfuseField):
         return self.get()
 
 
+class EfuseSpiPinField(EfuseField):
+    def get(self):
+        val = self.get_raw()
+        if val >= 30:
+            val += 2  # values 30,31 map to 32, 33
+        return val
+
+    def burn(self, new_value):
+        if new_value in [30, 31]:
+            raise esptool.FatalError("IO pins 30 & 31 cannot be set for SPI flash. 0-29, 32 & 33 only.")
+        if new_value > 33:
+            raise esptool.FatalError("IO pin %d cannot be set for SPI flash. 0-29, 32 & 33 only." % new_value)
+        if new_value > 30:
+            new_value -= 2  # values 32,33 map to 30, 31
+        return super(EfuseSpiPinField, self).burn(new_value)
+
+
 def dump(esp, _efuses, args):
     """ Dump raw efuse data registers """
     for block in range(len(EFUSE_BLOCK_OFFS)):
@@ -279,6 +297,9 @@ def burn_efuse(esp, efuses, args):
             return
     elif efuse.efuse_type == "int":
         if args.new_value is None:
+            raise esptool.FatalError("New value required for efuse %s" % efuse.register_name)
+    elif efuse.efuse_type == "spipin":
+        if args.new_value is None or args.new_value == 0:
             raise esptool.FatalError("New value required for efuse %s" % efuse.register_name)
     elif efuse.efuse_type == "bitcount":
         if args.new_value is None:  # find the first unset bit and set it
@@ -510,4 +531,3 @@ def _main():
 
 if __name__ == '__main__':
     _main()
-
