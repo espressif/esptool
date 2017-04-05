@@ -1,5 +1,6 @@
-/*
- * Copyright (c) 2016-2017 Cesanta Software Limited & Espressif Systems (Shanghai) PTE LTD
+/* Declarations for functions in ESP32 ROM code
+ *
+ * Copyright (c) 2016-2017 Espressif Systems (Shanghai) PTE LTD
  * All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -16,8 +17,18 @@
  */
 #pragma once
 
-#ifndef ESP8266
-#include "rom_esp32.h"
-#else
-#include "rom_esp8266.h"
-#endif
+#include <stdbool.h>
+#include <stdint.h>
+
+/* Unlike ESP8266, most of these functions are declared in IDF headers
+   so we can include these directly.
+*/
+#include "rom/ets_sys.h"
+#include "rom/spi_flash.h"
+#include "rom/md5_hash.h"
+#include "rom/uart.h"
+#include "rom/efuse.h"
+#include "rom/rtc.h"
+
+/* I think the difference is \r\n auto-escaping */
+#define uart_tx_one_char uart_tx_one_char2

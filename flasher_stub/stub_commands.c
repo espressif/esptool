@@ -113,7 +113,7 @@ esp_command_error handle_spi_set_params(uint32_t *args, int *status)
   return *status ? ESP_FAILED_SPI_OP : ESP_OK;
 }
 
-esp_command_error handle_spi_attach(bool isHspi, bool isLegacy)
+esp_command_error handle_spi_attach(uint32_t hspi_config_arg)
 {
 #ifdef ESP8266
         /* ESP8266 doesn't yet support SPI flash on HSPI, but could:
@@ -121,8 +121,11 @@ esp_command_error handle_spi_attach(bool isHspi, bool isLegacy)
         SelectSpiFunction();
 #else
         /* spi_flash_attach calls SelectSpiFunction() and another
-           function to initialise SPI flash interface. */
-        spi_flash_attach(isHspi, isLegacy);
+           function to initialise SPI flash interface.
+
+           Second argument 'legacy' mode is not currently supported.
+        */
+        spi_flash_attach(hspi_config_arg, 0);
 #endif
         return ESP_OK; /* neither function/attach command takes an arg */
 }

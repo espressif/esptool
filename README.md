@@ -279,36 +279,7 @@ The flash chip connected to most chips works with 40MHz clock speeds, but you ca
 
 ## Advanced Options
 
-The following advanced configuration options can be used for all esptool.py commands (they are placed before the command name on the command line).
-
-### Reset Modes
-
-By default, esptool.py tries to hard reset the chip into bootloader mode before it starts and hard resets the chip to run the normal program once it is complete. The `--before` and `--after` options allow this behaviour to be changed:
-
-#### Reset Before Operation
-
-The `--before` argument allows you to specify whether the chip needs resetting into bootloader mode before esptool.py talks to it.
-
-* `--before default_reset` is the default, which uses DTR & RTS serial control lines (see [Entering The Bootloader](#entering-the-bootloader)) to try and reset the chip into bootloader mode.
-* `--before no_reset` will skip any DTR/RTS control signals and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
-
-#### Reset After Operation
-
-The `--after` argument allows you to specify whether the chip should be reset after the esptool.py operation completes:
-
-* `--after hard_reset` is the default. The DTR serial control line is used to reset the chip into a normal boot sequence.
-* `--after soft_reset` is currently only supported on ESP8266. This runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool.py v1.x.
-* `--after no_reset` leaves the chip in the serial bootloader, no reset is performed.
-
-## Disabling Boot Stub
-
-The `--no-stub` option disables uploading of a software "stub loader" that manages flash operations, and only talks directly to the loader in ROM.
-
-Passing `--no-stub` will disable certain options, as not all options are implemented in every chip's ROM loader.
-
-## Specifying Arguments Via File
-
-Anywhere on the `esptool.py` command line, you can specify a file name as `@filename.txt` to read one or more arguments from text file `filename.txt`. Arguments can be separated by newlines or spaces, quotes can be used to enclose arguments that span multiple words. Arguments read from the text file are expanded exactly as if they had appeared in that order on the `esptool.py` command line.
+See the [Advanced Options wiki page](https://github.com/espressif/esptool/wiki/Advanced-Options) for some of the more unusual esptool.py command line options.
 
 ## Troubleshooting
 

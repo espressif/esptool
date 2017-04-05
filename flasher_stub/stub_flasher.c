@@ -247,8 +247,8 @@ void cmd_loop() {
       error = verify_data_len(command, 24) || handle_spi_set_params(data_words, &status);
       break;
     case ESP_SPI_ATTACH:
-      /* params are isHSPI, isLegacy */
-      error = verify_data_len(command, 8) || handle_spi_attach(data_words[0], data_words[1] & 0xFF);
+      /* parameter is 'hspi mode' (0, 1 or a pin mask for ESP32. Ignored on ESP8266.) */
+      error = verify_data_len(command, 4) || handle_spi_attach(data_words[0]);
       break;
     case ESP_WRITE_REG:
       /* params are addr, value, mask (ignored), delay_us (ignored) */
@@ -380,11 +380,19 @@ void stub_main()
   ets_isr_unmask(1 << ETS_UART0_INUM);
 
   /* Configure default SPI flash functionality.
-     Can be changed later by esptool.py. */
+     Can be overriden later by esptool.py. */
 #ifdef ESP8266
         SelectSpiFunction();
 #else
-        spi_flash_attach(0, 0);
+        uint32_t spiconfig = ets_efuse_get_spiconfig();
+        uint32_t strapping = REG_READ(GPIO_STRAP_REG);
+        /* If GPIO1 (U0TXD) is pulled low and no other boot mode is
+           set in efuse, assume HSPI flash mode (same as normal boot)
+        */
+        if (spiconfig == 0 && (strapping & 0x1c) == 0x08) {
+            spiconfig = 1; /* HSPI flash mode */
+        }
+        spi_flash_attach(spiconfig, 0);
 #endif
         SPIParamCfg(0, 16*1024*1024, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
                     FLASH_PAGE_SIZE, FLASH_STATUS_MASK);

@@ -28,7 +28,7 @@
 
 #define ETS_UART0_INUM ETS_UART_INUM
 
-#else
+#else /* ESP32 */
 #define SPI_IDX 1
 
 #include <stdint.h>
@@ -36,4 +36,5 @@
 #include <stddef.h>
 #include "soc/soc.h"
 #include "soc/uart_reg.h"
+#include "soc/gpio_reg.h"
 #endif
