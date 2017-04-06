@@ -810,7 +810,10 @@ class ESP8266ROM(ESPLoader):
         '4MB':0x40,
         '2MB-c1': 0x50,
         '4MB-c1':0x60,
-        '4MB-c2':0x70}
+        '4MB-c2':0x70,
+        '8MB':0x80,
+        '16MB':0x90,
+    }
 
     FLASH_HEADER_OFFSET = 0
 
