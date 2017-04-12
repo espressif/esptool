@@ -14,7 +14,7 @@ env:
 
   # Toolchains
   ESP8266_TOOLCHAIN_URL="http://arduino.esp8266.com/linux64-xtensa-lx106-elf.tar.gz"
-  ESP32_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-59.tar.gz"
+  ESP32_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz"
   TOOLCHAIN_DIR="${HOME}/toolchain"
   ESP8266_BINDIR="${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"
   ESP32_BINDIR="${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
