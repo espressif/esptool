@@ -50,6 +50,9 @@ script:
   - pip install flake8 flake8-future-import  # matches tests_require in setup.py, a bit hacky
   - python setup.py flake8
   - python setup.py install
+  - ( cd / && esptool.py --help )  # check the installed versions can run
+  - ( cd / && espefuse.py --help )
+  - ( cd / && espsecure.py --help )
   # build stub (Python 3 only)
   - if [[ $TRAVIS_PYTHON_VERSION == 3* ]]; then make -C flasher_stub V=1; fi
   # check the just-built stub matches the one in esptool.py
