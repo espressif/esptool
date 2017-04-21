@@ -56,9 +56,26 @@ Contributing
 Please see the `CONTRIBUTING.md file on github <https://github.com/espressif/esptool/blob/master/CONTRIBUTING.md>`_.
 """
 
+# For Windows, we want to install esptool.py.exe, etc. so that normal Windows command line can run them
+# For Linux/macOS, we can't use console_scripts with extension .py as their names will clash with the modules' names.
+if os.name == "nt":
+    scripts = None
+    entry_points = {
+        'console_scripts': [
+            'esptool.py=esptool:_main',
+            'espsecure.py=espsecure:_main',
+            'espefuse.py=espefuse:_main',
+        ],
+    }
+else:
+    scripts = ['esptool.py',
+               'espsecure.py',
+               'espefuse.py']
+    entry_points = None
+
 setup(
     name='esptool',
-    py_modules=['esptool'],
+    py_modules=['esptool', 'espsecure', 'espefuse'],
     version=find_version('esptool.py'),
     description='A utility to communicate with the ROM bootloader in Espressif ESP8266.',
     long_description=long_description,
@@ -90,11 +107,6 @@ setup(
         'pyaes',
         'ecdsa',
     ],
-    entry_points={
-        'console_scripts': [
-            'esptool.py=esptool:_main',
-            'espsecure.py=espsecure:_main',
-            'espefuse.py=espefuse:_main',
-        ],
-    },
+    scripts=scripts,
+    entry_points=entry_points,
 )
