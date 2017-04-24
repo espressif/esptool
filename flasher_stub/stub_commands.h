@@ -16,7 +16,7 @@ int handle_flash_read_chip_id();
 
 esp_command_error handle_spi_set_params(uint32_t *args, int *status);
 
-esp_command_error handle_spi_attach(bool isHspi, bool isLegacy);
+esp_command_error handle_spi_attach(uint32_t hspi_config_arg);
 
 esp_command_error handle_mem_begin(uint32_t size, uint32_t offset);
 
