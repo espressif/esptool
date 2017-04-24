@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
+from __future__ import print_function, division
+
 import esptool
 import argparse
 import sys
@@ -236,7 +238,7 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
         if offset_bits[_FLASH_ENCRYPTION_TWEAK_PATTERN[bit]]:
             # note that each byte has a backwards bit order, compared
             # to how it is looked up in the tweak pattern table
-            key[bit / 8] ^= 1 << (7 - (bit % 8))
+            key[bit // 8] ^= 1 << (7 - (bit % 8))
 
     return b"".join(chr(k) for k in key)
 
