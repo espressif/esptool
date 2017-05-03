@@ -280,12 +280,10 @@ If using OTA, some additional sizes & layouts for OTA "firmware slots" are avail
 |4MB            | 2                   | 512KB         | 3072KB        |
 |2MB-c1         | 2                   | 1024KB        | 0KB           |
 |4MB-c1         | 2                   | 1024KB        | 2048KB        |
-|4MB-c2 [^]     | 2                   | 2048KB        | 0KB           |
-|8MB [^^]       | 2                   | 1024KB        | 6144KB        |
-|16MB [^^]      | 2                   | 1024KB        | 14336KB       |
+|8MB [^]        | 2                   | 1024KB        | 6144KB        |
+|16MB [^]       | 2                   | 1024KB        | 14336KB       |
 
-* [^] The 4MB-c2 configuration is not supported in Espressif's SDKs, however some third party SDKs (like NodeMCU) support it.
-* [^^] Support for 8MB & 16MB flash size is not present in all ESP8266 SDKs. If your SDK doesn't support these flash sizes, use `--flash_size 4MB`.
+* [^] Support for 8MB & 16MB flash size is not present in all ESP8266 SDKs. If your SDK doesn't support these flash sizes, use `--flash_size 4MB`.
 
 #### ESP32 and Flash Size
 
