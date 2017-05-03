@@ -1324,6 +1324,8 @@ class ELFFile(object):
     SEC_TYPE_PROGBITS = 0x01
     SEC_TYPE_STRTAB = 0x03
 
+    LEN_SEC_HEADER = 0x28
+
     def __init__(self, name):
         # Load sections from the ELF file
         self.name = name
@@ -1342,8 +1344,8 @@ class ELFFile(object):
         try:
             (ident,_type,machine,_version,
              self.entrypoint,_phoff,shoff,_flags,
-             _ehsize, _phentsize,_phnum,_shentsize,
-             _shnum,shstrndx) = struct.unpack("<16sHHLLLLLHHHHHH", f.read(LEN_FILE_HEADER))
+             _ehsize, _phentsize,_phnum, shentsize,
+             shnum,shstrndx) = struct.unpack("<16sHHLLLLLHHHHHH", f.read(LEN_FILE_HEADER))
         except struct.error as e:
             raise FatalError("Failed to read a valid ELF header from %s: %s" % (self.name, e))
 
@@ -1351,19 +1353,23 @@ class ELFFile(object):
             raise FatalError("%s has invalid ELF magic header" % self.name)
         if machine != 0x5e:
             raise FatalError("%s does not appear to be an Xtensa ELF file. e_machine=%04x" % (self.name, machine))
-        self._read_sections(f, shoff, shstrndx)
+        if shentsize != self.LEN_SEC_HEADER:
+            raise FatalError("%s has unexpected section header entry size 0x%x (not 0x28)" % (self.name, shentsize, self.LEN_SEC_HEADER))
+        if shnum == 0:
+            raise FatalError("%s has 0 section headers" % (self.name))
+        self._read_sections(f, shoff, shnum, shstrndx)
 
-    def _read_sections(self, f, section_header_offs, shstrndx):
+    def _read_sections(self, f, section_header_offs, section_header_count, shstrndx):
         f.seek(section_header_offs)
-        section_header = f.read()
-        LEN_SEC_HEADER = 0x28
+        len_bytes = section_header_count * self.LEN_SEC_HEADER
+        section_header = f.read(len_bytes)
         if len(section_header) == 0:
             raise FatalError("No section header found at offset %04x in ELF file." % section_header_offs)
-        if len(section_header) % LEN_SEC_HEADER != 0:
-            print('WARNING: Unexpected ELF section header length %04x is not mod-%02x' % (len(section_header),LEN_SEC_HEADER))
+        if len(section_header) != (len_bytes):
+            raise FatalError("Only read 0x%x bytes from section header (expected 0x%x.) Truncated ELF file?" % (len(section_header), len_bytes))
 
         # walk through the section header and extract all sections
-        section_header_offsets = range(0, len(section_header), LEN_SEC_HEADER)
+        section_header_offsets = range(0, len(section_header), self.LEN_SEC_HEADER)
 
         def read_section_header(offs):
             name_offs,sec_type,_flags,lma,sec_offs,size = struct.unpack_from("<LLLLLL", section_header[offs:])
@@ -1372,9 +1378,9 @@ class ELFFile(object):
         prog_sections = [s for s in all_sections if s[1] == ELFFile.SEC_TYPE_PROGBITS]
 
         # search for the string table section
-        if not shstrndx * LEN_SEC_HEADER in section_header_offsets:
+        if not (shstrndx * self.LEN_SEC_HEADER) in section_header_offsets:
             raise FatalError("ELF file has no STRTAB section at shstrndx %d" % shstrndx)
-        _,sec_type,_,sec_size,sec_offs = read_section_header(shstrndx * LEN_SEC_HEADER)
+        _,sec_type,_,sec_size,sec_offs = read_section_header(shstrndx * self.LEN_SEC_HEADER)
         if sec_type != ELFFile.SEC_TYPE_STRTAB:
             print('WARNING: ELF file has incorrect STRTAB section type 0x%02x' % sec_type)
         f.seek(sec_offs)

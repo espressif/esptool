@@ -115,11 +115,28 @@ class ESP8266V1ImageTests(BaseTestCase):
                              "IROM raw binary file should be same length as .irom0.text section")
 
     def test_loaded_sections(self):
-            image = esptool.LoadFirmwareImage("esp8266", self.BIN_LOAD)
-            self.assertEqual(3, len(image.segments))
-            self.assertImageContainsSection(image, self.ELF, ".data")
-            self.assertImageContainsSection(image, self.ELF, ".text")
-            self.assertImageContainsSection(image, self.ELF, ".rodata")
+        image = esptool.LoadFirmwareImage("esp8266", self.BIN_LOAD)
+        self.assertEqual(3, len(image.segments))
+        self.assertImageContainsSection(image, self.ELF, ".data")
+        self.assertImageContainsSection(image, self.ELF, ".text")
+        self.assertImageContainsSection(image, self.ELF, ".rodata")
+
+class ESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
+    """ Ref https://github.com/espressif/esptool/issues/197 -
+    this ELF image has the section header not at the end of the file """
+    ELF="esp8266-nonossdkv12-example.elf"
+    BIN=ELF+"-0x00000.bin"
+
+    def test_elf_section_header_not_at_end(self):
+        self.run_elf2image("esp8266", self.ELF)
+        image = esptool.LoadFirmwareImage("esp8266", self.BIN)
+        self.assertEqual(3, len(image.segments))
+        self.assertImageContainsSection(image, self.ELF, ".data")
+        self.assertImageContainsSection(image, self.ELF, ".text")
+        self.assertImageContainsSection(image, self.ELF, ".rodata")
+
+    def tearDown(self):
+        try_delete(self.BIN)
 
 class ESP8266V2ImageTests(BaseTestCase):
 
