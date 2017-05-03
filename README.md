@@ -250,10 +250,12 @@ In `qio` mode, two additional GPIOs (9 and 10) are used for SPI flash communicat
 
 Size of the SPI flash, given in megabytes. Valid values vary by chip type:
 
-Chip     | Flash Sizes
----------|-----------------------------------------------------
-ESP8266  | 256KB, 512KB, 1MB, 2MB, 4MB, 2MB-c1, 4MB-c1, 4MB-c2
-ESP32    | 1MB, 2MB, 4MB, 8MB, 16MB
+Chip     | flash_size values
+---------|---------------------------------------------------------------
+ESP32    | detect, 1MB, 2MB, 4MB, 8MB, 16MB
+ESP8266  | detect, 256KB, 512KB, 1MB, 2MB, 4MB, 2MB-c1, 4MB-c1, 4MB-c2, 8MB, 16MB
+
+For ESP8266, some [additional sizes & layouts for OTA "firmware slots" are available](#esp8266-and-flash-size).
 
 The default `--flash_size` parameter is `detect`, which tries to autodetect size based on SPI flash ID. If detection fails, a warning is printed and a default value of of `4MB` (4 megabytes) is used.
 
@@ -266,6 +268,22 @@ The default `flash_size`  parameter can also be overriden using the environment 
 The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
 
 ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 4 megabyte / `4MB` (sometimes labelled 32 megabit) flash.
+
+If using OTA, some additional sizes & layouts for OTA "firmware slots" are available. If not using OTA updates then you can ignore these extra sizes:
+
+|flash_size arg | Number of OTA slots | OTA Slot Size | Non-OTA Space |
+|---------------|---------------------|---------------|---------------|
+|256KB          | 1 (no OTA)          | 256KB         | N/A           |
+|512KB          | 1 (no OTA)          | 512KB         | N/A           |
+|1MB            | 2                   | 512KB         | 0KB           |
+|2MB            | 2                   | 512KB         | 1024KB        |
+|4MB            | 2                   | 512KB         | 3072KB        |
+|2MB-c1         | 2                   | 1024KB        | 0KB           |
+|4MB-c1         | 2                   | 1024KB        | 2048KB        |
+|8MB [^]        | 2                   | 1024KB        | 6144KB        |
+|16MB [^]       | 2                   | 1024KB        | 14336KB       |
+
+* [^] Support for 8MB & 16MB flash size is not present in all ESP8266 SDKs. If your SDK doesn't support these flash sizes, use `--flash_size 4MB`.
 
 #### ESP32 and Flash Size
 

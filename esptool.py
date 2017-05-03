@@ -810,7 +810,9 @@ class ESP8266ROM(ESPLoader):
         '4MB':0x40,
         '2MB-c1': 0x50,
         '4MB-c1':0x60,
-        '4MB-c2':0x70}
+        '8MB':0x80,
+        '16MB':0x90,
+    }
 
     FLASH_HEADER_OFFSET = 0
 
@@ -1941,7 +1943,7 @@ def main():
                             choices=['qio', 'qout', 'dio', 'dout'],
                             default=os.environ.get('ESPTOOL_FM', 'qio'))
         parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M)'
-                            ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1, 4MB-2)',
+                            ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1)',
                             action=FlashSizeAction, auto_detect=auto_detect,
                             default=os.environ.get('ESPTOOL_FS', 'detect' if auto_detect else '1MB'))
         add_spi_connection_arg(parent)
@@ -2161,7 +2163,6 @@ class FlashSizeAction(argparse.Action):
                 '32m': '4MB',
                 '16m-c1': '2MB-c1',
                 '32m-c1': '4MB-c1',
-                '32m-c2': '4MB-c2'
             }[values[0]]
             print("WARNING: Flash size arguments in megabits like '%s' are deprecated." % (values[0]))
             print("Please use the equivalent size '%s'." % (value))
