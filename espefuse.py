@@ -369,7 +369,7 @@ def burn_key(esp, efuses, args):
     # check existing data
     efuse = [e for e in efuses if e.register_name == "BLK%d" % block_num][0]
     original = efuse.get_raw()
-    EMPTY_KEY = '\x00' * 32
+    EMPTY_KEY = b'\x00' * 32
     if original != EMPTY_KEY:
         if not args.force_write_always:
             raise esptool.FatalError("Key block already has value %s." % efuse.get())
