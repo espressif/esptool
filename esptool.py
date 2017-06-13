@@ -41,6 +41,10 @@ CHIP_ERASE_TIMEOUT = 120  # timeout for full chip erase
 SYNC_TIMEOUT = 0.1        # timeout for syncing with bootloader
 
 
+DETECTED_FLASH_SIZES = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB',
+                        0x15: '2MB', 0x16: '4MB', 0x17: '8MB', 0x18: '16MB'}
+
+
 def check_supported_function(func, check_func):
     """
     Decorator implementation that wraps a check around an ESPLoader
@@ -1604,7 +1608,7 @@ def detect_flash_size(esp, args):
     if args.flash_size == 'detect':
         flash_id = esp.flash_id()
         size_id = flash_id >> 16
-        args.flash_size = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB', 0x15: '2MB', 0x16: '4MB', 0x17: '8MB', 0x18: '16MB'}.get(size_id)
+        args.flash_size = DETECTED_FLASH_SIZES.get(size_id)
         if args.flash_size is None:
             print('Warning: Could not auto-detect Flash size (FlashID=0x%x, SizeID=0x%x), defaulting to 4MB' % (flash_id, size_id))
             args.flash_size = '4MB'
@@ -1808,7 +1812,9 @@ def run(esp, args):
 def flash_id(esp, args):
     flash_id = esp.flash_id()
     print('Manufacturer: %02x' % (flash_id & 0xff))
-    print('Device: %02x%02x' % ((flash_id >> 8) & 0xff, (flash_id >> 16) & 0xff))
+    flid_lowbyte = (flash_id >> 16) & 0xFF
+    print('Device: %02x%02x' % ((flash_id >> 8) & 0xff, flid_lowbyte))
+    print('Detected flash size: %s' % (DETECTED_FLASH_SIZES.get(flid_lowbyte, "Unknown")))
 
 
 def read_flash(esp, args):

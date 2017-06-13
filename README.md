@@ -175,6 +175,14 @@ The following commands for ESP32, bundled with esptool.py, are documented on the
 esptool.py flash_id
 ```
 
+Example output:
+
+```
+Manufacturer: e0
+Device: 4016
+Detected flash size: 4MB
+```
+
 Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/HEAD/trunk/flashchips.h) for flash chip manufacturer name and part number.
 
 #### Read internal chip id:
@@ -185,7 +193,7 @@ esptool.py chip_id
 
 On ESP8266, this is the same as the output of the `system_get_chip_id()` SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero on most (all?) ESP8266s.
 
-On ESP32, this ID is derived from the MAC address stored in on-chip efuse.
+On ESP32, this ID is derived from the base MAC address stored in on-chip efuse.
 
 ## Serial Connections
 
