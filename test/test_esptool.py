@@ -197,6 +197,9 @@ class TestFlashing(EsptoolTestCase):
         output = self.run_esptool("write_flash 0x0 images/bootloader.bin 0x2000 images/one_kb.bin")
         self.assertNotIn("Detected overlap at address", output)
 
+    def test_compressible_file(self):
+        self.run_esptool("write_flash 0x10000 images/one_mb_zeroes.bin")
+
 class TestFlashSizes(EsptoolTestCase):
 
     def test_high_offset(self):

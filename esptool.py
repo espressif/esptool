@@ -35,6 +35,11 @@ __version__ = "2.0-beta3"
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
 
+DEFAULT_TIMEOUT = 3       # timeout for most flash operations
+START_FLASH_TIMEOUT = 20  # timeout for starting flash (may perform erase)
+CHIP_ERASE_TIMEOUT = 120  # timeout for full chip erase
+SYNC_TIMEOUT = 0.1        # timeout for syncing with bootloader
+
 
 def check_supported_function(func, check_func):
     """
@@ -319,13 +324,13 @@ class ESPLoader(object):
             time.sleep(0.05)
             self._port.setDTR(False)  # IO0=HIGH, done
 
-        self._port.timeout = 0.1
+        self._port.timeout = SYNC_TIMEOUT
         for _ in range(5):
             try:
                 self.flush_input()
                 self._port.flushOutput()
                 self.sync()
-                self._port.timeout = 5
+                self._port.timeout = DEFAULT_TIMEOUT
                 return None
             except FatalError as e:
                 if esp32r0_delay:
@@ -391,17 +396,16 @@ class ESPLoader(object):
     Returns number of blocks (of size self.FLASH_WRITE_SIZE) to write.
     """
     def flash_begin(self, size, offset):
-        old_tmo = self._port.timeout
         num_blocks = (size + self.FLASH_WRITE_SIZE - 1) // self.FLASH_WRITE_SIZE
         erase_size = self.get_erase_size(offset, size)
 
-        self._port.timeout = 20
+        self._port.timeout = START_FLASH_TIMEOUT
         t = time.time()
         self.check_command("enter Flash download mode", self.ESP_FLASH_BEGIN,
                            struct.pack('<IIII', erase_size, num_blocks, self.FLASH_WRITE_SIZE, offset))
         if size != 0 and not self.IS_STUB:
             print("Took %.2fs to erase flash block" % (time.time() - t))
-        self._port.timeout = old_tmo
+        self._port.timeout = DEFAULT_TIMEOUT
         return num_blocks
 
     """ Write block to flash """
@@ -468,11 +472,10 @@ class ESPLoader(object):
 
         Returns number of blocks (size self.FLASH_WRITE_SIZE) to write.
         """
-        old_tmo = self._port.timeout
         num_blocks = (compsize + self.FLASH_WRITE_SIZE - 1) // self.FLASH_WRITE_SIZE
         erase_blocks = (size + self.FLASH_WRITE_SIZE - 1) // self.FLASH_WRITE_SIZE
 
-        self._port.timeout = 20
+        self._port.timeout = START_FLASH_TIMEOUT
         t = time.time()
         if self.IS_STUB:
             write_size = size  # stub expects number of bytes here, manages erasing internally
@@ -484,7 +487,7 @@ class ESPLoader(object):
         if size != 0 and not self.IS_STUB:
             # (stub erases as it writes, but ROM loaders erase on begin)
             print("Took %.2fs to erase flash block" % (time.time() - t))
-        self._port.timeout = old_tmo
+        self._port.timeout = DEFAULT_TIMEOUT
         return num_blocks
 
     """ Write block to flash, send compressed """
@@ -528,13 +531,12 @@ class ESPLoader(object):
 
     @stub_function_only
     def erase_flash(self):
-        oldtimeout = self._port.timeout
         # depending on flash chip model the erase may take this long (maybe longer!)
-        self._port.timeout = 128
+        self._port.timeout = CHIP_ERASE_TIMEOUT
         try:
             self.check_command("erase flash", self.ESP_ERASE_FLASH)
         finally:
-            self._port.timeout = oldtimeout
+            self._port.timeout = DEFAULT_TIMEOUT
 
     @stub_function_only
     def erase_region(self, offset, size):
@@ -1636,13 +1638,17 @@ def write_flash(esp, args):
         if args.compress:
             uncimage = image
             image = zlib.compress(uncimage, 9)
+            ratio = uncsize / len(image)
             blocks = esp.flash_defl_begin(uncsize, len(image), address)
         else:
+            ratio = 1.0
             blocks = esp.flash_begin(uncsize, address)
         argfile.seek(0)  # in case we need it again
         seq = 0
         written = 0
         t = time.time()
+        esp._port.timeout = min(DEFAULT_TIMEOUT * ratio,
+                                CHIP_ERASE_TIMEOUT * 2)
         while len(image) > 0:
             print('\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks), end='')
             sys.stdout.flush()
@@ -1677,6 +1683,8 @@ def write_flash(esp, args):
                 print('Hash of data verified.')
         except NotImplementedInROMError:
             pass
+        esp._port.timeout = DEFAULT_TIMEOUT
+
     print('\nLeaving...')
 
     if esp.IS_STUB:
