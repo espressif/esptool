@@ -818,6 +818,9 @@ class ESP8266ROM(ESPLoader):
 
     FLASH_HEADER_OFFSET = 0
 
+    def get_chip_description(self):
+        return "ESP8266"
+
     def flash_spi_attach(self, hspi_arg):
         if self.IS_STUB:
             super(ESP8266ROM, self).flash_spi_attach(hspi_arg)
@@ -921,6 +924,24 @@ class ESP32ROM(ESPLoader):
     }
 
     FLASH_HEADER_OFFSET = 0x1000
+
+    def get_chip_description(self):
+        blk3 = self.read_efuse(3)
+        chip_version = (blk3 >> 12) & 0xF
+        pkg_version = (blk3 >> 9) & 0x07
+
+        silicon_rev = {
+            0: "0",
+            8: "1"
+        }.get(chip_version, "(unknown 0x%x)" % chip_version)
+
+        chip_name = {
+            0: "ESP32D0WDQ6",
+            1: "ESP32D0WDQ5",
+            2: "ESP32D2WDQ5",
+        }.get(pkg_version, "unknown ESP32")
+
+        return "%s (revision %s)" % (chip_name, silicon_rev)
 
     def read_efuse(self, n):
         """ Read the nth word of the ESP3x EFUSE region. """
@@ -2087,6 +2108,8 @@ def main():
             }[args.chip]
             esp = chip_class(args.port, initial_baud)
             esp.connect(args.before)
+
+        print("Chip is %s" % (esp.get_chip_description()))
 
         if not args.no_stub:
             esp = esp.run_stub()
