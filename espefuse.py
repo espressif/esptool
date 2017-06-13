@@ -191,10 +191,11 @@ class EfuseField(object):
 
 class EfuseMacField(EfuseField):
     def get_raw(self):
-        words = [self.esp.read_efuse(self.data_reg_offs + word) for word in range(2)]
+        # MAC values are high half of second efuse word, then first efuse word
+        words = [self.esp.read_efuse(self.data_reg_offs + word) for word in [1,0]]
         # endian-swap into a bitstring
         bitstring = struct.pack(">II", *words)
-        return bitstring[:6]  # currently trims 2 byte CRC
+        return bitstring[2:]  # trim 2 byte CRC from the beginning (currently doesn't verify)
 
     def get(self):
         return hexify(self.get_raw(), ":")
