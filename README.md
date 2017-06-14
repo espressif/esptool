@@ -88,13 +88,13 @@ esptool.py --chip esp8266 elf2image --version=2 -o my_app-ota.bin my_app.elf
 
 #### elf2image for ESP32
 
-For esp32, elf2image produces a single output file. By default this has the same name as the .elf file, with a .bin extension. ie:
+For esp32, elf2image produces a single output binary "image file". By default this has the same name as the .elf file, with a .bin extension. ie:
 
 ```
 esptool.py --chip esp32 elf2image my_esp32_app.elf
 ```
 
-In the above example, the output image would be called `my_esp32_app.bin`.
+In the above example, the output image file would be called `my_esp32_app.bin`.
 
 ### Writing binaries to flash
 
@@ -104,7 +104,7 @@ The binaries from elf2image or make_image can be sent to the chip via the serial
 esptool.py --port COM4 write_flash 0x1000 my_app-0x01000.bin
 ```
 
-For ESP8266 "Version 1" images, multiple flash addresses and file names can be given on the same command line:
+Multiple flash addresses and file names can be given on the same command line:
 
 ```
 esptool.py --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
@@ -112,9 +112,9 @@ esptool.py --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app
 
 The `--chip` argument is optional when writing to flash, esptool will detect the type of chip when it connects to the serial port.
 
-The --port argument specifies the serial port. This may take the form of something like COMx (Windows), /dev/ttyUSBx (Linux) or /dev/tty.usbserial (OS X) or similar names.
+The `--port` argument specifies the serial port. This may take the form of something like COMx (Windows), /dev/ttyUSBx (Linux) or /dev/tty.usbserial (OS X) or similar names.
 
-The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For "version 2" images, the bootloader and linker script you are using determines the flash offset.
+The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
 
 You may also need to specify arguments for [flash mode and flash size](#flash-modes), if you wish to override the defaults. For example:
 
@@ -122,9 +122,9 @@ You may also need to specify arguments for [flash mode and flash size](#flash-mo
 esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
 ```
 
-The [Flash Modes](#flash-modes) section below explains the meaning of these additional arguments.
+Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the `.bin` image file, and to detect the flash size. See the [Flash Modes](#flash-modes) section for more details.
 
-By default, uploads are compressed. The `-u/--no-compress` option disables this behaviour.
+By default, the serial transfer data is compressed for better performance. The `-u/--no-compress` option disables this behaviour.
 
 See the [Troubleshooting](#troubleshooting) section if the write_flash command is failing, or the flashed module fails to boot.
 
@@ -147,6 +147,8 @@ esptool.py --chip esp8266 make_image -f app.text.bin -a 0x40100000 -f app.data.b
 ```
 
 This command does not require a serial connection.
+
+Note: the make_image is currently only supported for ESP8266, not ESP32.
 
 ### Dumping Memory
 
@@ -266,8 +268,8 @@ Size of the SPI flash, given in megabytes. Valid values vary by chip type:
 
 Chip     | flash_size values
 ---------|---------------------------------------------------------------
-ESP32    | detect, 1MB, 2MB, 4MB, 8MB, 16MB
-ESP8266  | detect, 256KB, 512KB, 1MB, 2MB, 4MB, 2MB-c1, 4MB-c1, 4MB-c2, 8MB, 16MB
+ESP32    | `detect`, `1MB`, `2MB`, `4MB`, `8MB`, `16MB`
+ESP8266  | `detect`, `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `4MB-c2`, `8MB`, `16MB`
 
 For ESP8266, some [additional sizes & layouts for OTA "firmware slots" are available](#esp8266-and-flash-size).
 
@@ -279,7 +281,7 @@ The default `flash_size`  parameter can also be overriden using the environment 
 
 #### ESP8266 and Flash Size
 
-The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than the configured size.
+The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than this size.
 
 ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 4 megabyte / `4MB` (sometimes labelled 32 megabit) flash.
 
