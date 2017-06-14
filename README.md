@@ -20,8 +20,6 @@ The latest stable esptool.py release can be installed from [pypi](http://pypi.py
 $ pip install esptool
 ```
 
-(Note: [stable esptool release](https://github.com/espressif/esptool/releases/) is currently v1.x series, which does not support ESP32. See next section for manual installation.)
-
 With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`.
 
 After installing, you will have `esptool.py` installed into the default Python executables directory and you should be able to run it with the command `esptool.py`.
