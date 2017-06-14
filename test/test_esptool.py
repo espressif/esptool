@@ -313,6 +313,47 @@ class TestReadIdentityValues(EsptoolTestCase):
         self.assertNotEqual("0"*8, idstr)
         self.assertNotEqual("f"*8, idstr)
 
+class TestKeepImageSettings(EsptoolTestCase):
+    """ Tests for the -fm keep, -ff keep options for write_flash """
+    HEADER_ONLY = "images/image_header_only.bin"  # 8 byte file, contains image header
+    def setUp(self):
+        super(TestKeepImageSettings, self).setUp()
+        self.flash_offset = 0x1000 if chip == "esp32" else 0  # bootloader offset
+        with open(self.HEADER_ONLY, "rb") as f:
+            self.header = f.read(8)
+
+    def test_keep_does_not_change_settings(self):
+        # defaults should be keep, except for flash size which has to match header
+        flash_size = "1MB" if chip == "esp32" else "512KB"  # hex 0
+        self.run_esptool("write_flash -fs %s 0x%x %s" % (flash_size, self.flash_offset, self.HEADER_ONLY))
+        self.verify_readback(self.flash_offset, 8, self.HEADER_ONLY, False)
+        # can also explicitly set these options
+        self.run_esptool("write_flash -fm keep -ff keep -fs %s 0x%x %s" % (flash_size, self.flash_offset, self.HEADER_ONLY))
+        self.verify_readback(self.flash_offset, 8, self.HEADER_ONLY, False)
+        # verify_flash should also use 'keep'
+        self.run_esptool("verify_flash -fs %s 0x%x %s" % (flash_size, self.flash_offset, self.HEADER_ONLY))
+
+    def test_detect_size_changes_size(self):
+        self.run_esptool("write_flash 0x%x %s" % (self.flash_offset, self.HEADER_ONLY))
+        readback = self.readback(self.flash_offset, 8)
+        self.assertEqual(self.header[:3], readback[:3])  # first 3 bytes unchanged
+        self.assertNotEqual(self.header[3], readback[3]) # size_freq byte changed
+        self.assertEqual(self.header[4:], readback[4:]) # rest unchanged
+
+    def test_explicit_set_size_freq_mode(self):
+        self.run_esptool("write_flash -fs 2MB -fm qio -ff 80m 0x%x %s" % (self.flash_offset, self.HEADER_ONLY))
+        readback = self.readback(self.flash_offset, 8)
+        self.assertEqual(self.header[0], readback[0])
+        self.assertEqual(self.header[1], readback[1])
+        self.assertEqual(0, readback[2])  # qio mode
+        self.assertNotEqual(0, self.header[2])
+        self.assertEqual(0x1f if chip == "esp32" else 0x3f, readback[3])  # size_freq
+        self.assertNotEqual(self.header[3], readback[3])
+        self.assertEqual(self.header[4:], readback[4:])
+        # verify_flash should pass if we match params, fail otherwise
+        self.run_esptool("verify_flash -fs 2MB -fm qio -ff 80m 0x%x %s" % (self.flash_offset, self.HEADER_ONLY))
+        self.run_esptool_error("verify_flash 0x%x %s" % (self.flash_offset, self.HEADER_ONLY))
+
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Usage: %s <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0])
