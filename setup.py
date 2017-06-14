@@ -29,7 +29,7 @@ long_description = """
 ==========
 esptool.py
 ==========
-A command line utility to communicate with the ROM bootloader in Espressif ESP8266 WiFi microcontroller.
+A command line utility to communicate with the ROM bootloader in Espressif ESP8266 & ESP32 microcontrollers.
 
 Allows flashing firmware, reading back firmware, querying chip parameters, etc.
 
@@ -43,6 +43,8 @@ esptool can be installed via pip:
   $ pip install --upgrade esptool
 
 Since version 1.3, esptool supports both Python 2.7 and Python 3.4 or newer.
+
+Since version 2.0, esptool supports both ESP8266 & ESP32.
 
 Usage
 -----
@@ -77,7 +79,7 @@ setup(
     name='esptool',
     py_modules=['esptool', 'espsecure', 'espefuse'],
     version=find_version('esptool.py'),
-    description='A utility to communicate with the ROM bootloader in Espressif ESP8266.',
+    description='A serial utility to communicate & flash code to Espressif ESP8266 & ESP32 chips.',
     long_description=long_description,
     url='https://github.com/espressif/esptool',
     author='Fredrik Ahlberg (themadinventor) & Angus Gratton (projectgus)',
