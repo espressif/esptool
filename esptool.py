@@ -178,7 +178,13 @@ class ESPLoader(object):
         # CH341 driver on some Linux versions (this opens at 9600 then
         # sets), shouldn't matter for other platforms/drivers. See
         # https://github.com/espressif/esptool/issues/44#issuecomment-107094446
-        self._port.baudrate = baud
+        self._set_port_baudrate(baud)
+
+    def _set_port_baudrate(self, baud):
+        try:
+            self._port.baudrate = baud
+        except IOError:
+            raise FatalError("Failed to set baud rate %d. The driver may not support this rate." % baud)
 
     @staticmethod
     def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset'):
@@ -529,7 +535,7 @@ class ESPLoader(object):
         print("Changing baud rate to %d" % baud)
         self.command(self.ESP_CHANGE_BAUDRATE, struct.pack('<II', baud, 0))
         print("Changed.")
-        self._port.baudrate = baud
+        self._set_port_baudrate(baud)
         time.sleep(0.05)  # get rid of crap sent during baud rate change
         self.flush_input()
 
