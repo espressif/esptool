@@ -368,6 +368,10 @@ def main():
 
     args = parser.parse_args()
     print('espsecure.py v%s' % esptool.__version__)
+    if args.operation is None:
+        parser.print_help()
+        parser.exit(1)
+
     # each 'operation' is a module-level function of the same name
     operation_func = globals()[args.operation]
     operation_func(args)
