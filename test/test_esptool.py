@@ -342,12 +342,20 @@ class TestKeepImageSettings(EsptoolTestCase):
 
     def test_explicit_set_size_freq_mode(self):
         self.run_esptool("write_flash -fs 2MB -fm qio -ff 80m 0x%x %s" % (self.flash_offset, self.HEADER_ONLY))
+
+        def val(x):
+            try:
+                return ord(x)  # converts character to integer on Python 2
+            except TypeError:
+                return x       # throws TypeError on Python 3 where x is already an integer
+
+        header = list(self.header)
         readback = self.readback(self.flash_offset, 8)
         self.assertEqual(self.header[0], readback[0])
         self.assertEqual(self.header[1], readback[1])
-        self.assertEqual(0, readback[2])  # qio mode
-        self.assertNotEqual(0, self.header[2])
-        self.assertEqual(0x1f if chip == "esp32" else 0x3f, readback[3])  # size_freq
+        self.assertEqual(0, val(readback[2]))  # qio mode
+        self.assertNotEqual(0, val(self.header[2]))
+        self.assertEqual(0x1f if chip == "esp32" else 0x3f, val(readback[3]))  # size_freq
         self.assertNotEqual(self.header[3], readback[3])
         self.assertEqual(self.header[4:], readback[4:])
         # verify_flash should pass if we match params, fail otherwise
