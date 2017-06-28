@@ -1278,11 +1278,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     ROM_LOADER = ESP32ROM
 
-    # 16 byte extended header contains WP pin number (byte), then 6 half-byte drive stength
-    # config fields, then 12 reserved bytes. None of this is exposed in esptool.py right now,
-    # but we need to set WP to 0xEE (disabled) to avoid problems when remapping SPI flash
-    # pins via efuse (for example on ESP32-D2WD).
-    EXTENDED_HEADER = [0xEE] + ([0] * 15)
+    # ROM bootloader will read the wp_pin field if SPI flash
+    # pins are remapped via flash. IDF actually enables QIO only
+    # from software bootloader, so this can be ignored. But needs
+    # to be set to this value so ROM bootloader will skip it.
+    WP_PIN_DISABLED = 0xEE
+
     EXTENDED_HEADER_STRUCT_FMT = "B" * 16
 
     def __init__(self, load_file=None):
@@ -1290,14 +1291,18 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.flash_mode = 0
         self.flash_size_freq = 0
         self.version = 1
+        self.wp_pin = self.WP_PIN_DISABLED
+        # SPI pin drive levels
+        self.clk_drv = 0
+        self.q_drv = 0
+        self.d_drv = 0
+        self.cs_drv = 0
+        self.hd_drv = 0
+        self.wp_drv = 0
 
         if load_file is not None:
             segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
-            additional_header = list(struct.unpack(self.EXTENDED_HEADER_STRUCT_FMT, load_file.read(16)))
-
-            # check these bytes are unused
-            if additional_header != self.EXTENDED_HEADER:
-                print("WARNING: ESP32 image header contains unknown flags. Possibly this image is from a different version of esptool.py")
+            self.load_extended_header(load_file)
 
             for _ in range(segments):
                 self.load_segment(load_file)
@@ -1321,7 +1326,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
             # first 4 bytes of header are read by ROM bootloader for SPI
             # config, but currently unused
-            f.write(struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *self.EXTENDED_HEADER))
+            self.save_extended_header(f)
 
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
 
@@ -1397,6 +1402,34 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             except TypeError:  # Python 3
                 f.write(bytes([total_segments]))
 
+    def load_extended_header(self, load_file):
+        def split_byte(n):
+            return (n & 0x0F, (n >> 4) & 0x0F)
+
+        fields = list(struct.unpack(self.EXTENDED_HEADER_STRUCT_FMT, load_file.read(16)))
+
+        self.wp_pin = fields[0]
+
+        # SPI pin drive stengths are two per byte
+        self.clk_drv, self.q_drv = split_byte(fields[1])
+        self.d_drv, self.cs_drv = split_byte(fields[2])
+        self.hd_drv, self.wp_drv = split_byte(fields[3])
+
+        # remaining fields should be zero
+        if any(f for f in fields[4:] if f != 0):
+            print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
+
+    def save_extended_header(self, save_file):
+        def join_byte(ln,hn):
+            return (ln & 0x0F) + ((hn & 0x0F) << 4)
+
+        packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT,
+                             self.wp_pin,
+                             join_byte(self.clk_drv, self.q_drv),
+                             join_byte(self.d_drv, self.cs_drv),
+                             join_byte(self.hd_drv, self.wp_drv),
+                             *([0] * 12))
+        save_file.write(packed)
 
 class ELFFile(object):
     SEC_TYPE_PROGBITS = 0x01
