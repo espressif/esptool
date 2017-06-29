@@ -30,6 +30,7 @@ import base64
 import zlib
 import shlex
 import copy
+import io
 
 __version__ = "2.1-beta1"
 
@@ -1300,13 +1301,25 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.hd_drv = 0
         self.wp_drv = 0
 
+        self.append_digest = True
+
         if load_file is not None:
+            start = load_file.tell()
+
             segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
             self.load_extended_header(load_file)
 
             for _ in range(segments):
                 self.load_segment(load_file)
             self.checksum = self.read_checksum(load_file)
+
+            if self.append_digest:
+                end = load_file.tell()
+                self.stored_digest = load_file.read(16)
+                load_file.seek(start)
+                calc_digest = hashlib.sha256()
+                calc_digest.update(load_file.read(end - start))
+                self.calc_digest = calc_digest.digest()  # TODO: decide what to do here?
 
     def is_flash_addr(self, addr):
         return (ESP32ROM.IROM_MAP_START <= addr < ESP32ROM.IROM_MAP_END) \
@@ -1321,7 +1334,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     def save(self, filename):
         total_segments = 0
-        with open(filename, 'wb') as f:
+        with io.BytesIO() as f:  # write file to memory first
             self.write_common_header(f, self.segments)
 
             # first 4 bytes of header are read by ROM bootloader for SPI
@@ -1395,12 +1408,23 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             # done writing segments
             self.append_checksum(f, checksum)
             # kinda hacky: go back to the initial header and write the new segment count
-            # that includes padding or split segments. Luckily(?) this header is not checksummed
+            # that includes padding segments. This header is not checksummed
+            image_length = f.tell()
             f.seek(1)
             try:
                 f.write(chr(total_segments))
             except TypeError:  # Python 3
                 f.write(bytes([total_segments]))
+
+            if self.append_digest:
+                # calculate the SHA256 of the whole file and append it
+                f.seek(0)
+                digest = hashlib.sha256()
+                digest.update(f.read(image_length))
+                f.write(digest.digest())
+
+            with open(filename, 'wb') as real_file:
+                real_file.write(f.getvalue())
 
     def load_extended_header(self, load_file):
         def split_byte(n):
@@ -1415,21 +1439,31 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.d_drv, self.cs_drv = split_byte(fields[2])
         self.hd_drv, self.wp_drv = split_byte(fields[3])
 
-        # remaining fields should be zero
-        if any(f for f in fields[4:] if f != 0):
+        if fields[15] in [0, 1]:
+            self.append_digest = (fields[15] == 1)
+        else:
+            raise RuntimeError("Invalid value for append_digest field (0x%02x). Should be 0 or 1.", fields[15])
+
+        # remaining fields in the middle should all be zero
+        if any(f for f in fields[4:15] if f != 0):
             print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
 
     def save_extended_header(self, save_file):
         def join_byte(ln,hn):
             return (ln & 0x0F) + ((hn & 0x0F) << 4)
 
-        packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT,
-                             self.wp_pin,
-                             join_byte(self.clk_drv, self.q_drv),
-                             join_byte(self.d_drv, self.cs_drv),
-                             join_byte(self.hd_drv, self.wp_drv),
-                             *([0] * 12))
+        append_digest = 1 if self.append_digest else 0
+
+        fields = [self.wp_pin,
+                  join_byte(self.clk_drv, self.q_drv),
+                  join_byte(self.d_drv, self.cs_drv),
+                  join_byte(self.hd_drv, self.wp_drv)]
+        fields += [0] * 11
+        fields += [append_digest]
+
+        packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *fields)
         save_file.write(packed)
+
 
 class ELFFile(object):
     SEC_TYPE_PROGBITS = 0x01
