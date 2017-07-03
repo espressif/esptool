@@ -49,7 +49,7 @@ To see all options for a particular command, append `-h` to the command name. ie
 The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (on unixen like Linux and OSX) or `-p COM1`
 (on Windows).
 
-If using Cygwin on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows environment, this envrionment uses a mingw Python & pyserial which accept COM ports as-is.)
+If using Cygwin on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows environment, this environment uses a mingw Python & pyserial which accept COM ports as-is.)
 
 ### Baud rate
 
