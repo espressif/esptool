@@ -59,9 +59,24 @@ class BaseTestCase(unittest.TestCase):
             e = ELFFile(f)
             section = e.get_section_by_name(section_name)
             self.assertTrue(section, "%s should be in the ELF" % section_name)
-            matches = [ seg for seg in image.segments if segment_matches_section(seg, section) ]
-            self.assertEqual(1, len(matches),
-                             "ELF %s section '%s' has no equivalent segment in binary image (image segments: %s)"
+            sh_addr = section.header.sh_addr
+            data = section.data()
+            # section contents may be smeared across multiple image segments,
+            # so look through each segment and remove it from ELF section 'data'
+            # as we find it in the image segments. When we're done 'data' should
+            # all be accounted for
+            for seg in sorted(image.segments, key=lambda s:s.addr):
+                print("comparing seg 0x%x sec 0x%x len 0x%x" % (seg.addr, sh_addr, len(data)))
+                if seg.addr == sh_addr:
+                    overlap_len = min(len(seg.data), len(data))
+                    self.assertEqual(data[:overlap_len], seg.data[:overlap_len],
+                                     "ELF '%s' section has mis-matching binary image data" % section_name)
+                    sh_addr += overlap_len
+                    data = data[overlap_len:]
+
+            # no bytes in 'data' should be left unmatched
+            self.assertEqual(0, len(data),
+                             "ELF %s section '%s' has no encompassing segment(s) in binary image (image segments: %s)"
                              % (elf, section_name, image.segments))
 
     def assertImageInfo(self, binpath, chip="esp8266"):
