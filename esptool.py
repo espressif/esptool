@@ -29,6 +29,7 @@ import time
 import base64
 import zlib
 import shlex
+import copy
 
 __version__ = "2.0.1"
 
@@ -914,7 +915,7 @@ class ESP32ROM(ESPLoader):
     IROM_MAP_START = 0x400d0000
     IROM_MAP_END   = 0x40400000
     DROM_MAP_START = 0x3F400000
-    DROM_MAP_END   = 0x3F700000
+    DROM_MAP_END   = 0x3F800000
 
     # ESP32 uses a 4 byte status reply
     STATUS_BYTES_LENGTH = 4
@@ -1035,6 +1036,18 @@ class ImageSegment(object):
         """ Return a new ImageSegment with same data, but mapped at
         a new address. """
         return ImageSegment(new_addr, self.data, 0)
+
+    def split_image(self, split_len):
+        """ Return a new ImageSegment which splits "split_len" bytes
+        from the beginning of the data. Remaining bytes are kept in
+        this segment object (and the start address is adjusted to match.) """
+        result = copy.copy(self)
+        result.data = self.data[:split_len]
+        self.data = self.data[split_len:]
+        self.addr += split_len
+        self.file_offs = None
+        result.file_offs = None
+        return result
 
     def __repr__(self):
         r = "len 0x%05x load 0x%08x" % (len(self.data), self.addr)
@@ -1302,7 +1315,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         pass  # TODO: add warnings for ESP32 segment offset/size combinations that are wrong
 
     def save(self, filename):
-        padding_segments = 0
+        total_segments = 0
         with open(filename, 'wb') as f:
             self.write_common_header(f, self.segments)
 
@@ -1311,55 +1324,78 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             f.write(struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *self.EXTENDED_HEADER))
 
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
-            last_addr = None
-            for segment in sorted(self.segments, key=lambda s:s.addr):
-                # IROM/DROM segment flash mappings need to align on
-                # 64kB boundaries.
+
+            # split segments into flash-mapped vs ram-loaded, and take copies so we can mutate them
+            flash_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if self.is_flash_addr(s.addr)]
+            ram_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if not self.is_flash_addr(s.addr)]
+
+            IROM_ALIGN = 65536
+
+            # check for multiple ELF sections that are mapped in the same flash mapping region.
+            # this is usually a sign of a broken linker script, but if you have a legitimate
+            # use case then let us know (we can merge segments here, but as a rule you probably
+            # want to merge them in your linker script.)
+            if len(flash_segments) > 0:
+                last_addr = flash_segments[0].addr
+                for segment in flash_segments[1:]:
+                    if segment.addr // IROM_ALIGN == last_addr // IROM_ALIGN:
+                        raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. " +
+                                          "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
+                                         (segment.addr, last_addr))
+                    last_addr = segment.addr
+
+            def get_alignment_data_needed(segment):
+                # Actual alignment (in data bytes) required for a segment header: positioned so that
+                # after we write the next 8 byte header, file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
                 #
-                # TODO: intelligently order segments to reduce wastage
-                # by squeezing smaller DRAM/IRAM segments into the
-                # 64kB padding space.
-                IROM_ALIGN = 65536
+                # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
+                # IROM_ALIGN+0x18 to account for the binary file header
+                align_past = (segment.addr % IROM_ALIGN) - self.SEG_HEADER_LEN
+                pad_len = (IROM_ALIGN - (f.tell() % IROM_ALIGN)) + align_past
+                if pad_len == 0 or pad_len == IROM_ALIGN:
+                    return 0  # already aligned
 
-                # check for multiple ELF sections that live in the same flash mapping region.
-                # this is usually a sign of a broken linker script, but if you have a legitimate
-                # use case then let us know (we can merge segments here, but as a rule you probably
-                # want to merge them in your linker script.)
-                if last_addr is not None and self.is_flash_addr(last_addr) \
-                   and self.is_flash_addr(segment.addr) and segment.addr // IROM_ALIGN == last_addr // IROM_ALIGN:
-                    raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. " +
-                                     "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
-                                     (segment.addr, last_addr))
-                last_addr = segment.addr
+                # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
+                pad_len -= self.SEG_HEADER_LEN
+                if pad_len < 0:
+                    pad_len += IROM_ALIGN
+                return pad_len
 
-                if self.is_flash_addr(segment.addr):
-                    # Actual alignment required for the segment header: positioned so that
-                    # after we write the next 8 byte header, file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
-                    #
-                    # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
-                    # IROM_ALIGN+0x10 to account for longest possible header.
-                    align_past = (segment.addr % IROM_ALIGN) - self.SEG_HEADER_LEN
-                    assert (align_past + self.SEG_HEADER_LEN) == (segment.addr % IROM_ALIGN)
-
-                    # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
-                    pad_len = (IROM_ALIGN - (f.tell() % IROM_ALIGN)) + align_past - self.SEG_HEADER_LEN
-                    if pad_len < 0:
-                        pad_len += IROM_ALIGN
-                    if pad_len > 0:
-                        null = ImageSegment(0, b'\x00' * pad_len, f.tell())
-                        checksum = self.save_segment(f, null, checksum)
-                        padding_segments += 1
-                    # verify that after the 8 byte header is added, were are at the correct offset relative to the segment's vaddr
+            # try to fit each flash segment on a 64kB aligned boundary
+            # by padding with parts of the non-flash segments...
+            while len(flash_segments) > 0:
+                segment = flash_segments[0]
+                pad_len = get_alignment_data_needed(segment)
+                if pad_len > 0:  # need to pad
+                    if len(ram_segments) > 0 and pad_len > self.SEG_HEADER_LEN:
+                        pad_segment = ram_segments[0].split_image(pad_len)
+                        if len(ram_segments[0].data) == 0:
+                            ram_segments.pop(0)
+                    else:
+                        pad_segment = ImageSegment(0, b'\x00' * pad_len, f.tell())
+                    checksum = self.save_segment(f, pad_segment, checksum)
+                    total_segments += 1
+                else:
+                    # write the flash segment
                     assert (f.tell() + 8) % IROM_ALIGN == segment.addr % IROM_ALIGN
+                    checksum = self.save_segment(f, segment, checksum)
+                    flash_segments.pop(0)
+                    total_segments += 1
+
+            # flash segments all written, so write any remaining RAM segments
+            for segment in ram_segments:
                 checksum = self.save_segment(f, segment, checksum)
+                total_segments += 1
+
+            # done writing segments
             self.append_checksum(f, checksum)
             # kinda hacky: go back to the initial header and write the new segment count
-            # that includes padding segments. Luckily(?) this header is not checksummed
+            # that includes padding or split segments. Luckily(?) this header is not checksummed
             f.seek(1)
             try:
-                f.write(chr(len(self.segments) + padding_segments))
+                f.write(chr(total_segments))
             except TypeError:  # Python 3
-                f.write(bytes([len(self.segments) + padding_segments]))
+                f.write(bytes([total_segments]))
 
 
 class ELFFile(object):
