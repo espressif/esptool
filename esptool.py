@@ -31,7 +31,7 @@ import zlib
 import shlex
 import copy
 
-__version__ = "2.0.1"
+__version__ = "2.1-beta1"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
