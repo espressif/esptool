@@ -76,6 +76,7 @@ EFUSE_REG_WRITE = [0x3FF5A01C, 0x3FF5A098, 0x3FF5A0B8, 0x3FF5A0D8]
 
 EFUSE_BURN_TIMEOUT = 0.250  # seconds
 
+
 def confirm(action, args):
     print("%s%sThis is an irreversible operation." % (action, "" if action.endswith("\n") else ". "))
     if not args.do_not_confirm:
