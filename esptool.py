@@ -32,7 +32,7 @@ import shlex
 import copy
 import io
 
-__version__ = "2.1-beta1"
+__version__ = "2.1"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
