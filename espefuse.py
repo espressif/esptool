@@ -81,6 +81,7 @@ def confirm(action, args):
     print("%s%sThis is an irreversible operation." % (action, "" if action.endswith("\n") else ". "))
     if not args.do_not_confirm:
         print("Type 'BURN' (all capitals) to continue.")
+        sys.stdout.flush()  # required for Pythons which disable line buffering, ie mingw in mintty
         try:
             yes = raw_input()  # raw_input renamed to input in Python 3
         except NameError:
