@@ -345,7 +345,9 @@ See the [SPI Flash Modes](https://github.com/espressif/esptool/wiki/SPI-Flash-Mo
 
 The 3.3V power supply for the ESP8266 and ESP32 has to supply large amounts of current (up to 70mA continuous, 200-300mA peak, slightly higher for ESP32). You also need sufficient capacitance on the power circuit to meet large spikes of power demand.
 
-If you're using a premade development board or module then the built-in power regulator is usually good enough, provided the input power supply is adequate.
+If you're using a pre-made development board or module then the built-in power regulator is usually good enough, provided the input power supply is adequate.
+
+*This is not true for some very simple pin breakout modules - [similar to this](https://user-images.githubusercontent.com/205573/30140831-9da417a6-93ba-11e7-95c3-f422744967de.jpg). These breakouts do not integrate enough capacitance to work reliably without additional components.*. Surface mount OEM modules like ESP-WROOM02 and ESP-WROOM32 require an external bulk capacitor on the PCB to be reliable, consult the module datasheet.
 
 It is possible to have a power supply that supplies enough current for the serial bootloader stage with esptool.py, but not enough for normal firmware operation. You may see the 3.3V VCC voltage droop down if you measure it with a multimeter, but you can have problems even if this isn't happening.
 
