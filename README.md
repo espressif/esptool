@@ -254,6 +254,8 @@ Most boards use `qio` mode. Some ESP8266 modules, including the ESP-12E modules 
 
 In `qio` mode, two additional GPIOs (9 and 10) are used for SPI flash communications. If flash mode is set to `dio` then these pins are available for other purposes.
 
+For a full explanation of these modes, see the [SPI Flash Modes wiki page](https://github.com/espressif/esptool/wiki/SPI-Flash-Modes).
+
 ### Flash Frequency (--flash_freq, -ff)
 
 Clock frequency for SPI flash interactions. Valid values are `keep`, `40m`, `26m`, `20m`, `80m` (MHz). The default is `keep`, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable `ESPTOOL_FF`.
@@ -336,6 +338,8 @@ If esptool.py can flash your module with `write_flash` but your program doesn't 
 #### Wrong Flash Mode
 
 Some devices only support the `dio` flash mode. Writing to flash with `qio` mode will succeed but the chip can't read the flash back to run - so nothing happens on boot. Try passing the `-fm dio` option to write_flash.
+
+See the [SPI Flash Modes](https://github.com/espressif/esptool/wiki/SPI-Flash-Modes) wiki page for a full description of the flash modes and how to determine which ones are supported on your device.
 
 #### Insufficient Power
 
