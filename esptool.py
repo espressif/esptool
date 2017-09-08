@@ -951,6 +951,7 @@ class ESP32ROM(ESPLoader):
             0: "ESP32D0WDQ6",
             1: "ESP32D0WDQ5",
             2: "ESP32D2WDQ5",
+            5: "ESP32-PICO-D4",
         }.get(pkg_version, "unknown ESP32")
 
         return "%s (revision %s)" % (chip_name, silicon_rev)
