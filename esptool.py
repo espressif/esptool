@@ -830,8 +830,17 @@ class ESP8266ROM(ESPLoader):
 
     BOOTLOADER_FLASH_OFFSET = 0
 
+    def get_efuses(self):
+        # Return the 128 bits of ESP8266 efuse as a single Python integer
+        return (self.read_reg(0x3ff0005c) << 96 |
+                self.read_reg(0x3ff00058) << 64 |
+                self.read_reg(0x3ff00054) << 32 |
+                self.read_reg(0x3ff00050))
+
     def get_chip_description(self):
-        return "ESP8266"
+        efuses = self.get_efuses()
+        is_8285 = (efuses & ((1 << 4) | 1 << 80)) != 0  # One or the other efuse bit is set for ESP8285
+        return "ESP8285" if is_8285 else "ESP8266EX"
 
     def flash_spi_attach(self, hspi_arg):
         if self.IS_STUB:
