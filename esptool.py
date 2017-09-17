@@ -2243,7 +2243,13 @@ def main():
         sys.exit(1)
 
     operation_func = globals()[args.operation]
-    operation_args,_,_,_ = inspect.getargspec(operation_func)
+
+    if PYTHON2:
+        # This function is depreciated in Python3
+        operation_args = inspect.getargspec(operation_func).args
+    else:
+        operation_args = inspect.getfullargspec(operation_func).args
+
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
         if args.chip == 'auto':
