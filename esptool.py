@@ -2387,7 +2387,7 @@ class SpiConnectionAction(argparse.Action):
             value = (hd << 24) | (cs << 18) | (d << 12) | (q << 6) | clk
         else:
             raise argparse.ArgumentError(self, '%s is not a valid spi-connection value. ' +
-                                         'Values are SPI, HSPI, or a sequence of 5 pin numbers CLK,Q,D,HD,CS).' % values)
+                                         'Values are SPI, HSPI, or a sequence of 5 pin numbers CLK,Q,D,HD,CS).' % value)
         setattr(namespace, self.dest, value)
 
 
