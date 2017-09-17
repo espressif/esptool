@@ -11,7 +11,8 @@
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation; either version 2 of the License, or (at your option) any later version.
 #
-import sys, os.path, json
+import os.path
+import sys
 
 THIS_DIR=os.path.dirname(sys.argv[0])
 

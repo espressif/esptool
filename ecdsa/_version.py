@@ -17,7 +17,12 @@ tag_prefix = "python-ecdsa-"
 parentdir_prefix = "ecdsa-"
 versionfile_source = "ecdsa/_version.py"
 
-import os, sys, re, subprocess, errno
+import errno
+import os
+import re
+import subprocess
+import sys
+
 
 def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False):
     assert isinstance(commands, list)

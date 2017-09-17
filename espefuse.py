@@ -15,14 +15,15 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
-from __future__ import print_function, division
+from __future__ import division, print_function
 
-import esptool
 import argparse
-import sys
 import os
 import struct
+import sys
 import time
+
+import esptool
 
 # Table of efuse values - (category, block, word in block, mask, write disable bit, read disable bit, register name, type, description)
 # Match values in efuse_reg.h & Efuse technical reference chapter

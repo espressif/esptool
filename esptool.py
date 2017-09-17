@@ -16,21 +16,22 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function, division
+from __future__ import division, print_function
 
 import argparse
+import base64
+import copy
 import hashlib
 import inspect
+import io
 import os
-import serial
+import shlex
 import struct
 import sys
 import time
-import base64
 import zlib
-import shlex
-import copy
-import io
+
+import serial
 
 __version__ = "2.2-dev"
 

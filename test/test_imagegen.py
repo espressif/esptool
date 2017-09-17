@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 import os.path
-import glob
-import sys
 import subprocess
-import difflib
-import warnings
+import sys
 import unittest
 
 from elftools.elf.elffile import ELFFile

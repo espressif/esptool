@@ -1,8 +1,10 @@
 from __future__ import division
 
-import binascii
 import base64
-from .six import int2byte, b, integer_types, text_type
+import binascii
+
+from .six import b, int2byte, integer_types, text_type
+
 
 class UnexpectedDER(Exception):
     pass
