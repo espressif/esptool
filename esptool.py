@@ -1902,7 +1902,7 @@ def elf2image(args):
     e = ELFFile(args.input)
     if args.chip == 'auto':  # Default to ESP8266 for backwards compatibility
         print("Creating image for ESP8266...")
-        args.chip == 'esp8266'
+        args.chip = 'esp8266'
 
     if args.chip == 'esp32':
         image = ESP32FirmwareImage()
