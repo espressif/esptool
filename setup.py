@@ -108,6 +108,7 @@ setup(
         'pyserial>=2.5',
         'pyaes',
         'ecdsa',
+        'pyelftools',
     ],
     scripts=scripts,
     entry_points=entry_points,
