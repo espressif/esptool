@@ -11,9 +11,8 @@ Many thanks to Coda Hale for his implementation in Go language:
 
 import hmac
 from binascii import hexlify
-
-from .six import b
 from .util import number_to_string, number_to_string_crop
+from .six import b
 
 try:
     bin(0)

@@ -53,11 +53,11 @@ Revision history:
 Written in 2005 by Peter Pearson and placed in the public domain.
 """
 
-import random
-
+from .six import int2byte, b, print_
 from . import ellipticcurve
 from . import numbertheory
-from .six import b, int2byte, print_
+import random
+
 
 
 class Signature( object ):

@@ -34,9 +34,8 @@
 
 from __future__ import division
 
-from . import numbertheory
 from .six import print_
-
+from . import numbertheory
 
 class CurveFp( object ):
   """Elliptic Curve over the field of integers modulo a prime."""

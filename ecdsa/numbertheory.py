@@ -11,10 +11,10 @@
 
 from __future__ import division
 
-import math
-
-from .six import integer_types, print_
+from .six import print_, integer_types
 from .six.moves import reduce
+
+import math
 
 
 class Error( Exception ):

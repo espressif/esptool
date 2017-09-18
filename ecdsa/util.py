@@ -1,13 +1,12 @@
 from __future__ import division
 
-import binascii
-import math
 import os
+import math
+import binascii
 from hashlib import sha256
-
 from . import der
 from .curves import orderlen
-from .six import PY3, b, int2byte, next
+from .six import PY3, int2byte, b, next
 
 # RFC5480:
 #   The "unrestricted" algorithm identifier is:
