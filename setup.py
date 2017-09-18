@@ -104,6 +104,7 @@ setup(
     tests_require=[
         'flake8>=3.2.0',
         'flake8-future-import',
+        'flake8-import-order',
     ],
     install_requires=[
         'pyserial>=2.5',
