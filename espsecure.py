@@ -304,7 +304,7 @@ def main():
 
     subparsers = parser.add_subparsers(
         dest='operation',
-        help='Run espefuse.py {command} -h for additional help')
+        help='Run espsecure.py {command} -h for additional help')
 
     p = subparsers.add_parser('digest_secure_bootloader',
                               help='Take a bootloader binary image and a secure boot key, and output a combined digest+binary ' +
