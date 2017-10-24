@@ -143,7 +143,7 @@ def verify_signature(args):
     try:
         sk = _load_key(args)  # try to load as private key first
         vk = sk.get_verifying_key()
-    except:
+    except Exception:  # this is a catchall because ecdsa can throw private Exceptions
         args.keyfile.seek(0)
         vk = ecdsa.VerifyingKey.from_pem(args.keyfile.read())
     if vk.curve != ecdsa.NIST256p:

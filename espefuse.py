@@ -266,7 +266,7 @@ def summary(esp, efuses, args):
             raw = e.get_raw()
             try:
                 raw = "(0x%x)" % raw
-            except:
+            except TypeError:
                 raw = ""
             (readable, writeable) = (e.is_readable(), e.is_writeable())
             if readable and writeable:
