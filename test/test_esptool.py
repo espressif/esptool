@@ -8,15 +8,14 @@ Chip name & serial port are passed in as arguments to test. Same test suite
 runs on esp8266 & esp32 (some addresses will change, see below.)
 
 """
-import subprocess
-import unittest
-import sys
-import os.path
 import os
-import tempfile
-import warnings
-import time
+import os.path
 import re
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
 
 # point is this file is not 4 byte aligned in length
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"

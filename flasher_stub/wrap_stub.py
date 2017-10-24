@@ -18,10 +18,10 @@
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import base64
-import zlib
 import os
 import os.path
 import sys
+import zlib
 
 sys.path.append('..')
 import esptool

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os.path, json
+import sys
 
 # Compare the esptool stub loaders to freshly built ones
 # in the build directory
