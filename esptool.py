@@ -160,6 +160,9 @@ class ESPLoader(object):
     # The number of bytes in the UART response that signify command status
     STATUS_BYTES_LENGTH = 2
 
+    # Time delay between command write and read.
+    COMMAND_WRITE_READ_DELAY = 0.3
+
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD):
         """Base constructor for ESPLoader bootloader interaction
 
@@ -246,6 +249,9 @@ class ESPLoader(object):
 
         if not wait_response:
             return
+
+        # the chip needs reaction time
+        time.sleep(COMMAND_WRITE_READ_DELAY)
 
         # tries to get a response until that response has the
         # same operation as the request or a retries limit has
