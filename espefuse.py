@@ -201,14 +201,42 @@ class EfuseMacField(EfuseField):
         words = [self.esp.read_efuse(self.data_reg_offs + word) for word in [1,0]]
         # endian-swap into a bitstring
         bitstring = struct.pack(">II", *words)
-        return bitstring[2:]  # trim 2 byte CRC from the beginning (currently doesn't verify)
+        return bitstring[2:]  # trim 2 byte CRC from the beginning
 
     def get(self):
-        return hexify(self.get_raw(), ":")
+        stored_crc = self.get_stored_crc()
+        calc_crc = self.calc_crc()
+        if calc_crc == stored_crc:
+            valid_msg = "(CRC %02x OK)" % stored_crc
+        else:
+            valid_msg = "(CRC %02x invalid - calculated 0x%02x)" % (stored_crc, calc_crc)
+        return "%s %s" % (hexify(self.get_raw(), ":"), valid_msg)
 
     def burn(self, new_value):
-        # need to calculate the CRC before we can write the MAC
-        raise esptool.FatalError("Writing MAC address is not yet supported")
+        # Writing the BLK0 default MAC is not sensible, as it's written in the factory.
+        #
+        # TODO: support writing a new base MAC @ efuse BLK3
+        raise esptool.FatalError("Writing MAC address is not supported")
+
+    def get_stored_crc(self):
+        return (self.esp.read_efuse(self.data_reg_offs + 1) >> 16) & 0xFF
+
+    def calc_crc(self):
+        """
+        This algorithm is the equivalent of esp_crc8() in ESP32 ROM code
+
+        This is CRC-8 w/ inverted polynomial value 0x8C & initial value 0x00.
+        """
+        mac = self.get_raw()
+        result = 0x00
+        for b in struct.unpack("B" * 6, mac):
+            result ^= b
+            for _ in range(8):
+                lsb = result & 1
+                result >>= 1
+                if lsb != 0:
+                    result ^= 0x8c
+        return result
 
 
 class EfuseKeyblockField(EfuseField):
