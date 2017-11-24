@@ -50,15 +50,24 @@
 #define UART_FIFO(X) UART_FIFO_REG(X)
 #endif
 
-static uint32_t baud_rate_to_divider(uint32_t baud_rate) {
+static uint32_t get_new_uart_divider(uint32_t current_baud, uint32_t new_baud)
+{
   uint32_t master_freq;
-#ifdef ESP8266
-  master_freq = 52*1000*1000;
-#else
-  master_freq = ets_get_detected_xtal_freq()<<4;
+  /* ESP32 has ROM code to detect the crystal freq but ESP8266 does not have this...
+     So instead we use the previously auto-synced 115200 baud rate (which we know
+     is correct wrt the relative crystal accuracy of the ESP & the USB/serial adapter).
+     From this we can estimate crystal freq, and update for a new baud rate relative to that.
+  */
+  uint32_t uart_reg = REG_READ(UART_CLKDIV_REG(0));
+  uint32_t uart_div = uart_reg & UART_CLKDIV_M;
+#ifdef ESP32
+  // account for fractional part of divider (bottom 4 bits)
+  uint32_t fraction = (uart_reg >> UART_CLKDIV_FRAG_S) & UART_CLKDIV_FRAG_V;
+  uart_div = (uart_div << 4) + fraction;
 #endif
-  master_freq += (baud_rate / 2);
-  return master_freq / baud_rate;
+  master_freq = uart_div * current_baud;
+  return master_freq / new_baud;
+
 }
 
 /* Buffers for reading from UART. Data is read double-buffered, so
@@ -179,7 +188,7 @@ void cmd_loop() {
       error = verify_data_len(command, 8) || handle_flash_erase(data_words[0], data_words[1]);
       break;
     case ESP_SET_BAUD:
-      /* ESP_SET_BAUD sends two args, we ignore the second one */
+      /* ESP_SET_BAUD sends two args, new and old baud rates */
       error = verify_data_len(command, 8);
       /* actual baud setting happens after we send the reply */
       break;
@@ -287,7 +296,7 @@ void cmd_loop() {
       switch(command->op) {
       case ESP_SET_BAUD:
         ets_delay_us(10000);
-        uart_div_modify(0, baud_rate_to_divider(data_words[0]));
+        uart_div_modify(0, get_new_uart_divider(data_words[1], data_words[0]));
         ets_delay_us(1000);
         break;
       case ESP_READ_FLASH:
