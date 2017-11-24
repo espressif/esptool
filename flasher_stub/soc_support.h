@@ -37,4 +37,8 @@
 #include "soc/soc.h"
 #include "soc/uart_reg.h"
 #include "soc/gpio_reg.h"
+#include "soc/spi_reg.h"
+
+/* Harmonise register names between ESP8266 and ESP32 */
+
 #endif

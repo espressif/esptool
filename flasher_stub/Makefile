@@ -70,7 +70,7 @@ CFLAGS = -std=c99 -Wall -Werror -Os \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections
 
 CFLAGS_8266 = $(CFLAGS) -I$(SDK_PATH) -I$(SDK_PATH)/include -L$(SDK_PATH)/ld
-CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -L$(IDF_PATH)
+CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -I$(IDF_PATH)/components/soc/esp32/include -L$(IDF_PATH)
 
 $(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) stub_8266.ld
 	@echo "  CC(8266)   $^ -> $@"

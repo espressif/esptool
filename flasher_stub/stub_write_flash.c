@@ -99,7 +99,7 @@ static void spi_write_enable(void)
 }
 
 #ifdef ESP32
-static SpiFlashChip *flashchip = (SpiFlashChip *)0x3ffae270;
+static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3ffae270;
 
 /* Stub version of SPIUnlock() that replaces version in ROM.
 

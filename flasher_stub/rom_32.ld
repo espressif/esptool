@@ -1680,7 +1680,9 @@ PROVIDE ( UartSetBaudProc = 0x40008aac );
 PROVIDE ( UartSpiAttachProc = 0x40008a6c );
 PROVIDE ( UartSpiReadProc = 0x40008a80 );
 PROVIDE ( uart_tx_flush = 0x40009258 );
-PROVIDE ( uart_tx_one_char = 0x40009200 );
+/*PROVIDE ( uart_tx_one_char = 0x40009200 );*/
+/* Note: remapping this to uart_tx_one_char2, to keep consistency */
+PROVIDE ( uart_tx_one_char = 0x4000922c );
 PROVIDE ( uart_tx_one_char2 = 0x4000922c );
 PROVIDE ( uart_tx_switch = 0x40009028 );
 PROVIDE ( uart_tx_wait_idle = 0x40009278 );
