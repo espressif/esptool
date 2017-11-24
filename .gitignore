@@ -10,3 +10,4 @@ build
 dist
 local.mk
 
+.envrc
