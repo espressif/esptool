@@ -387,6 +387,10 @@ There are many serial terminal programs suitable for debugging & serial interact
 
 Note that not every serial program supports the unusual ESP8266 74880bps "boot log" baud rate. Support is especially sparse on Linux. `miniterm.py` supports this baud rate on all platforms. ESP32 uses the more common 115200bps.
 
+## Tracing esptool.py interactions
+
+Running `esptool.py --trace` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
+
 ## Internal Technical Documentation
 
 The [repository wiki](https://github.com/espressif/esptool/wiki) contains some technical documentation regarding the serial protocol and file format used by the ROM bootloader. This may be useful if you're developing esptool.py or hacking system internals:
