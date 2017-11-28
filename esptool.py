@@ -43,7 +43,7 @@ START_FLASH_TIMEOUT = 20              # timeout for starting flash (may perform 
 CHIP_ERASE_TIMEOUT = 120              # timeout for full chip erase
 MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2  # longest any command can run
 SYNC_TIMEOUT = 0.1                    # timeout for syncing with bootloader
-MD5_TIMEOUT_PER_MB = 5                # timeout (per megabyte) for calculating md5sum
+MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating md5sum
 ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
 
 
