@@ -117,7 +117,7 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0, 1024, "images/one_kb.bin")
 
     def test_highspeed_flash(self):
-        self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=920600)
+        self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=921600)
         self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
 
     def test_adjacent_flash(self):
