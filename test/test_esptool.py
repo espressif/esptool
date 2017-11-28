@@ -258,6 +258,11 @@ class TestErase(EsptoolTestCase):
         empty = self.readback(0x10000, 0x1000)
         self.assertTrue(empty == b'\xFF'*0x1000)
 
+    def test_large_region_erase(self):
+        # verifies that erasing a large region doesn't time out
+        self.run_esptool("erase_region 0x0 0x100000")
+
+
 class TestSectorBoundaries(EsptoolTestCase):
 
     def test_end_sector(self):
