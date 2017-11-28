@@ -171,7 +171,7 @@ class ESPLoader(object):
     # The number of bytes in the UART response that signify command status
     STATUS_BYTES_LENGTH = 2
 
-    def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD):
+    def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False):
         """Base constructor for ESPLoader bootloader interaction
 
         Don't call this constructor, either instantiate ESP8266ROM
@@ -187,12 +187,13 @@ class ESPLoader(object):
             self._port = port
         else:
             self._port = serial.serial_for_url(port)
-        self._slip_reader = slip_reader(self._port)
+        self._slip_reader = slip_reader(self._port, self.trace)
         # setting baud rate in a separate step is a workaround for
         # CH341 driver on some Linux versions (this opens at 9600 then
         # sets), shouldn't matter for other platforms/drivers. See
         # https://github.com/espressif/esptool/issues/44#issuecomment-107094446
         self._set_port_baudrate(baud)
+        self._trace_enabled = trace_enabled
 
     def _set_port_baudrate(self, baud):
         try:
@@ -201,7 +202,7 @@ class ESPLoader(object):
             raise FatalError("Failed to set baud rate %d. The driver may not support this rate." % baud)
 
     @staticmethod
-    def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset'):
+    def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False):
         """ Use serial access to detect the chip type.
 
         We use the UART's datecode register for this, it's mapped at
@@ -212,7 +213,7 @@ class ESPLoader(object):
         This routine automatically performs ESPLoader.connect() (passing
         connect_mode parameter) as part of querying the chip.
         """
-        detect_port = ESPLoader(port, baud)
+        detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
         detect_port.connect(connect_mode)
         print('Detecting chip type...', end='')
         sys.stdout.flush()
@@ -221,7 +222,7 @@ class ESPLoader(object):
         for cls in [ESP8266ROM, ESP32ROM]:
             if date_reg == cls.DATE_REG_VALUE:
                 # don't connect a second time
-                inst = cls(detect_port._port, baud)
+                inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                 print(' %s' % inst.CHIP_NAME)
                 return inst
         print('')
@@ -236,7 +237,20 @@ class ESPLoader(object):
         buf = b'\xc0' \
               + (packet.replace(b'\xdb',b'\xdb\xdd').replace(b'\xc0',b'\xdb\xdc')) \
               + b'\xc0'
+        self.trace("Write %d bytes: %r", len(buf), buf)
         self._port.write(buf)
+
+    def trace(self, message, *format_args):
+        if self._trace_enabled:
+            now = time.time()
+            try:
+
+                delta = now - self._last_trace
+            except AttributeError:
+                delta = 0.0
+            self._last_trace = now
+            prefix = "TRACE +%.3f " % delta
+            print(prefix + (message % format_args))
 
     """ Calculate checksum of a blob, as it is defined by the ROM """
     @staticmethod
@@ -252,6 +266,8 @@ class ESPLoader(object):
     """ Send a request and read the response """
     def command(self, op=None, data=b"", chk=0, wait_response=True, timeout=DEFAULT_TIMEOUT):
         if op is not None:
+            self.trace("command op=0x%02x data len=%s wait_response=%d timeout=%.3f data=%r",
+                       op, len(data), 1 if wait_response else 0, timeout, data)
             pkt = struct.pack(b'<BBHI', 0x00, op, len(data), chk) + data
             self.write(pkt)
 
@@ -308,7 +324,7 @@ class ESPLoader(object):
 
     def flush_input(self):
         self._port.flushInput()
-        self._slip_reader = slip_reader(self._port)
+        self._slip_reader = slip_reader(self._port, self.trace)
 
     def sync(self):
         self.command(self.ESP_SYNC, b'\x07\x07\x12\x20' + 32 * b'\x55',
@@ -925,6 +941,7 @@ class ESP8266StubLoader(ESP8266ROM):
 
     def __init__(self, rom_loader):
         self._port = rom_loader._port
+        self._trace_enabled = rom_loader._trace_enabled
         self.flush_input()  # resets _slip_reader
 
     def get_erase_size(self, offset, size):
@@ -1018,6 +1035,7 @@ class ESP32StubLoader(ESP32ROM):
 
     def __init__(self, rom_loader):
         self._port = rom_loader._port
+        self._trace_enabled = rom_loader._trace_enabled
         self.flush_input()  # resets _slip_reader
 
 
@@ -1577,7 +1595,7 @@ class ELFFile(object):
         self.sections = prog_sections
 
 
-def slip_reader(port):
+def slip_reader(port, trace_function):
     """Generator to read SLIP packets from a serial port.
     Yields one full SLIP packet at a time, raises exception on timeout or invalid data.
 
@@ -1590,9 +1608,11 @@ def slip_reader(port):
         waiting = port.inWaiting()
         read_bytes = port.read(1 if waiting == 0 else waiting)
         if read_bytes == b'':
-            raise FatalError("Timed out waiting for packet %s" % ("header" if partial_packet is None else "content"))
+            waiting_for = "header" if partial_packet is None else "content"
+            trace_function("Timed out waiting for packet %s", waiting_for)
+            raise FatalError("Timed out waiting for packet %s" % waiting_for)
+        trace_function("Read %d bytes: %r", len(read_bytes), read_bytes)
         for b in read_bytes:
-
             if type(b) is int:
                 b = bytes([b])  # python 2/3 compat
 
@@ -1600,6 +1620,8 @@ def slip_reader(port):
                 if b == b'\xc0':
                     partial_packet = b""
                 else:
+                    trace_function("Read invalid data: %r", read_bytes)
+                    trace_function("Remaining data in serial buffer: %r", port.read(port.inWaiting()))
                     raise FatalError('Invalid head of packet (%r)' % b)
             elif in_escape:  # part-way through escape sequence
                 in_escape = False
@@ -1608,10 +1630,13 @@ def slip_reader(port):
                 elif b == b'\xdd':
                     partial_packet += b'\xdb'
                 else:
+                    trace_function("Read invalid data: %r", read_bytes)
+                    trace_function("Remaining data in serial buffer: %r", port.read(port.inWaiting()))
                     raise FatalError('Invalid SLIP escape (%r%r)' % (b'\xdb', b))
             elif b == b'\xdb':  # start of escape sequence
                 in_escape = True
             elif b == b'\xc0':  # end of packet
+                trace_function("Full packet: %r", partial_packet)
                 yield partial_packet
                 partial_packet = None
             else:  # normal byte in packet
@@ -2092,6 +2117,11 @@ def main():
         help="Disable launching the flasher stub, only talk to ROM bootloader. Some features will not be available.",
         action='store_true')
 
+    parser.add_argument(
+        '--trace', '-t',
+        help="Enable trace-level output of esptool.py interactions.",
+        action='store_true')
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run esptool {command} -h for additional help')
@@ -2271,13 +2301,13 @@ def main():
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
         if args.chip == 'auto':
-            esp = ESPLoader.detect_chip(args.port, initial_baud, args.before)
+            esp = ESPLoader.detect_chip(args.port, initial_baud, args.before, args.trace)
         else:
             chip_class = {
                 'esp8266': ESP8266ROM,
                 'esp32': ESP32ROM,
             }[args.chip]
-            esp = chip_class(args.port, initial_baud)
+            esp = chip_class(args.port, initial_baud, args.trace)
             esp.connect(args.before)
 
         print("Chip is %s" % (esp.get_chip_description()))

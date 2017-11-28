@@ -27,10 +27,12 @@ try:
 except KeyError:
     ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool.py")
 
-global default_baudrate, chip, serialport
-default_baudrate = 115200 # can override on command line
-chip = None # set on command line
-serialport = None # set on command line
+# Command line options for test environment
+global default_baudrate, chip, serialport, trace_enabled
+default_baudrate = 115200
+chip = None
+serialport = None
+trace_enabled = False
 
 RETURN_CODE_FATAL_ERROR = 2
 
@@ -46,7 +48,8 @@ class EsptoolTestCase(unittest.TestCase):
         """
         if baud is None:
             baud = default_baudrate
-        cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "--port", serialport, "--baud", str(baud) ] + args.split(" ")
+        trace_args = [ "--trace" ] if trace_enabled else []
+        cmd = [sys.executable, ESPTOOL_PY ] + trace_args + [ "--chip", chip, "--port", serialport, "--baud", str(baud) ] + args.split(" ")
         print("Running %s..." % (" ".join(cmd)))
         try:
             output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT)
@@ -368,8 +371,11 @@ class TestKeepImageSettings(EsptoolTestCase):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("Usage: %s <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0])
+        print("Usage: %s [--trace] <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0])
         sys.exit(1)
+    if sys.argv[1] == "--trace":
+        trace_enabled = True
+        sys.argv.pop(1)
     serialport = sys.argv[1]
     chip = sys.argv[2]
     args_used = 2
