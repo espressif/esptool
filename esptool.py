@@ -33,7 +33,7 @@ import zlib
 
 import serial
 
-__version__ = "2.2"
+__version__ = "2.3-dev"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
