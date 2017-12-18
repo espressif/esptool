@@ -309,6 +309,10 @@ The ESP32 esp-idf flashes a partition table to the flash at offset 0x8000. All o
 
 See the [Advanced Options wiki page](https://github.com/espressif/esptool/wiki/Advanced-Options) for some of the more unusual esptool.py command line options.
 
+## Remote Serial Ports
+
+It is possible to connect to any networked remote serial port that supports [RFC2217](http://www.ietf.org/rfc/rfc2217.txt) (Telnet) protocol, or a plain TCP socket. See the [Remote Serial Ports wiki page](https://github.com/espressif/esptool/wiki/Remote-Serial-Ports) for details.
+
 ## Troubleshooting
 
 Flashing problems can be fiddly to troubleshoot. Try the suggestions here if you're having problems:
