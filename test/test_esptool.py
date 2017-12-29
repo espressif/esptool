@@ -208,6 +208,11 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0x10000, 1024, "images/one_kb.bin")
         self.assertIn("zerolength.bin is empty", output)
 
+    def test_single_byte(self):
+        output = self.run_esptool("write_flash 0x0 images/onebyte.bin")
+        self.verify_readback(0x0, 1, "images/onebyte.bin")
+
+
 class TestFlashSizes(EsptoolTestCase):
 
     def test_high_offset(self):
