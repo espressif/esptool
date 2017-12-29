@@ -24,14 +24,14 @@ mkdir -p ${SDKS_DIR}
 cd ${SDKS_DIR}
 
 if ! [ -d ${SDK_PATH} ]; then
-	wget -O esp8266_sdk.zip "${ESP8266_SDK_URL}"
-	unzip esp8266_sdk.zip
+	wget --no-verbose -O esp8266_sdk.zip "${ESP8266_SDK_URL}"
+	unzip -q esp8266_sdk.zip
 	rm esp8266_sdk.zip
 fi
 
 if ! [ -d ${IDF_PATH} ]; then
-	wget -O esp32_idf.zip "${ESP32_IDF_URL}"
-	unzip esp32_idf.zip
+	wget --no-verbose -O esp32_idf.zip "${ESP32_IDF_URL}"
+	unzip -q esp32_idf.zip
 	mv esp-idf-* "esp-idf"
 	rm esp32_idf.zip
 fi
