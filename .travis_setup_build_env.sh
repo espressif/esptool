@@ -9,14 +9,14 @@ mkdir -p ${TOOLCHAIN_DIR}
 cd ${TOOLCHAIN_DIR}
 
 if ! [ -d ${ESP8266_BINDIR} ]; then
-    wget -O xtensa-lx106-elf.tar.gz "${ESP8266_TOOLCHAIN_URL}"
-	tar zxvf xtensa-lx106-elf.tar.gz
+    wget --no-verbose -O xtensa-lx106-elf.tar.gz "${ESP8266_TOOLCHAIN_URL}"
+	tar zxf xtensa-lx106-elf.tar.gz
 	rm xtensa-lx106-elf.tar.gz
 fi
 
 if ! [ -d ${ESP32_BINDIR} ]; then
-	wget -O xtensa-esp32-elf.tar.gz "${ESP32_TOOLCHAIN_URL}"
-	tar zxvf xtensa-esp32-elf.tar.gz
+	wget --no-verbose -O xtensa-esp32-elf.tar.gz "${ESP32_TOOLCHAIN_URL}"
+	tar zxf xtensa-esp32-elf.tar.gz
 	rm xtensa-esp32-elf.tar.gz
 fi
 
