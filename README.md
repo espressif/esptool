@@ -51,6 +51,8 @@ The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (on un
 
 If using Cygwin on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows environment, this environment uses a mingw Python & pyserial which accept COM ports as-is.)
 
+In Linux, the current user may not have access to serial ports and a "Permission Denied" error will appear. On most Linux distributions, the solution is to add the user to the `dialout` group with a command like `sudo usermod -a -G dialout <USERNAME>`. Check your Linux distributions' documentation for more information.
+
 ### Baud rate
 
 The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baudrate of your choice). A default baud rate can also be specified using the `ESPTOOL_BAUD` environment variable. This can speed up `write_flash` and `read_flash` operations.
