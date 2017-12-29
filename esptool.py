@@ -1839,6 +1839,9 @@ def write_flash(esp, args):
         if args.no_stub:
             print('Erasing flash...')
         image = pad_to(argfile.read(), 4)
+        if len(image) == 0:
+            print('WARNING: File %s is empty' % argfile.name)
+            continue
         image = _update_image_flash_params(esp, address, args, image)
         calcmd5 = hashlib.md5(image).hexdigest()
         uncsize = len(image)
