@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -ex
 
 # Setup shell script to download & configure ESP8266 & ESP32 toolchains and SDKs
 # for building the flasher stub program
