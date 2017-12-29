@@ -26,11 +26,6 @@ env:
   ESP32_IDF_URL="https://github.com/espressif/esp-idf/archive/v2.1.zip"
   PATH="${PATH}:${ESP8266_BINDIR}:${ESP32_BINDIR}"
 
-cache:
-  directories:
-    - ${TOOLCHAIN_DIR}
-    - ${SDKS_DIR}
-
 python:
   - "2.7"
   - "3.4"
