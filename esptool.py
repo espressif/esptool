@@ -265,18 +265,21 @@ class ESPLoader(object):
 
     """ Send a request and read the response """
     def command(self, op=None, data=b"", chk=0, wait_response=True, timeout=DEFAULT_TIMEOUT):
-        if op is not None:
-            self.trace("command op=0x%02x data len=%s wait_response=%d timeout=%.3f data=%r",
-                       op, len(data), 1 if wait_response else 0, timeout, data)
-            pkt = struct.pack(b'<BBHI', 0x00, op, len(data), chk) + data
-            self.write(pkt)
-
-        if not wait_response:
-            return
-
         saved_timeout = self._port.timeout
-        self._port.timeout = min(timeout, MAX_TIMEOUT)
+        new_timeout = min(timeout, MAX_TIMEOUT)
+        if new_timeout != saved_timeout:
+            self._port.timeout = new_timeout
+
         try:
+            if op is not None:
+                self.trace("command op=0x%02x data len=%s wait_response=%d timeout=%.3f data=%r",
+                           op, len(data), 1 if wait_response else 0, timeout, data)
+                pkt = struct.pack(b'<BBHI', 0x00, op, len(data), chk) + data
+                self.write(pkt)
+
+            if not wait_response:
+                return
+
             # tries to get a response until that response has the
             # same operation as the request or a retries limit has
             # exceeded. This is needed for some esp8266s that
@@ -292,7 +295,8 @@ class ESPLoader(object):
                 if op is None or op_ret == op:
                     return val, data
         finally:
-            self._port.timeout = saved_timeout
+            if new_timeout != saved_timeout:
+                self._port.timeout = saved_timeout
 
         raise FatalError("Response doesn't match request")
 
