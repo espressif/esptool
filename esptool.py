@@ -99,6 +99,12 @@ else:
     def byte(bitstr, index):
         return bitstr[index]
 
+# Provide a 'basestring' class on Python 3
+try:
+    basestring
+except NameError:
+    basestring = str
+
 
 def esp8266_function_only(func):
     """ Attribute for a function only supported on ESP8266 """
@@ -183,7 +189,7 @@ class ESPLoader(object):
         with ones which throw NotImplementedInROMError().
 
         """
-        if isinstance(port, str):
+        if isinstance(port, basestring):
             self._port = serial.serial_for_url(port)
         else:
             self._port = port
