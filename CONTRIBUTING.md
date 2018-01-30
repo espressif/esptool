@@ -1,52 +1,51 @@
-## Contributing to esptool.py
+# Contributing to esptool.py
 
-### Reporting Issues
+## Reporting Issues
 
-Please report bugs in esptool.py if you find them. We're glad to get bug reports, they help us make the tool better.
+Please report bugs in esptool.py if you find them.
 
 However, before reporting a bug please check through the following:
 
-* [Troubleshooting Section](https://github.com/themadinventor/esptool/#troubleshooting) - common problems and known issues
+* [Troubleshooting Section](https://github.com/espressif/esptool/#troubleshooting) - common problems and known issues
 
-* [Existing Open Issues](https://github.com/themadinventor/esptool/issues) - someone might have already encountered this.
+* [Existing Open Issues](https://github.com/espressif/esptool/issues) - someone might have already encountered this.
 
-If you don't find anything, please [open a new issue](https://github.com/themadinventor/esptool/issues/new). Please include the following in your bug report:
+If you don't find anything, please [open a new issue](https://github.com/espressif/esptool/issues/new).
 
-* Your operating system and the ESP8266 hardware (board or module) you're using.
-
-* How the ESP8266 is powered/connected, if it's not a well known board or configuration.
-
-* The full command line to esptool.py and the output it produces.
-
-* Any other details that might be needed to reproduce the problem.
-
-### Sending Feature Requests
+## Sending Feature Requests
 
 Feel free to post feature requests. It's helpful if you can explain exactly why the feature would be useful.
 
-There are usually some outstanding feature requests in the [existing issues list](https://github.com/themadinventor/esptool/issues), feel free to add comments to them.
+There are usually some outstanding feature requests in the [existing issues list](https://github.com/espressif/esptool/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement), feel free to add comments to them.
 
-Please be patient with requests and bugs - esptool.py is developed by volunteers and the community, so changes may not happen until someone can volunteer their time.
-
-### Sending Pull Requests
+## Sending Pull Requests
 
 Pull Requests with changes and fixes are also welcome!
 
-Before submitting your pull request, please run the following two commands locally:
+### Code Style & Static Analysis
 
-```
-python setup.py build
-python setup.py flake8
-```
+esptool.py complies with Flake 8 and is valid Python 2 & Python 3 code (in the same source file.)
 
-... to ensure that the changes build and don't cause problems with the [PEP8 style guide](https://www.python.org/dev/peps/pep-0008/) or the [Pyflakes](https://pypi.python.org/pypi/pyflakes) static checker.
+When you submit a Pull Request, the Travis automated build system will run automated checks for this, using the [flake8 tool](http://flake8.readthedocs.io/en/latest/). If you want to check your code locally before submitting, you can install flake8 and run `python setup.py flake8` to test it.
 
-The Travis automated build system runs these checks automatically when you submit the PR and will tell you if they fail, but you might as well check beforehand.
+### Automated Integration Tests
 
-In your pull request, please also mention which OS(es) and configurations you have tested with.
+The test directory contains an integration suite with some integration tests for esptool.py:
 
-### Updating Pull Requests
+* `test_imagegen.py` tests the elf2image command and is run automatically by Travis for each Pull Request. You can run this command locally to check for regressions in the elf2image functionality.
 
-You may be asked to change things in your pull request before it is merged. When making tweaks to pull requests, please [squash your commits, as described here](http://eli.thegreenplace.net/2014/02/19/squashing-github-pull-requests-into-a-single-commit/).
+* `test_esptool.py` is a [Python unittest](https://docs.python.org/3/library/unittest.html) file that contains integration tests to be run against real ESP8266 or ESP32 hardware. These tests need real hardware so are not run automatically by Travis, they need to be run locally:
 
-Squashing commits helps create a clean git history where each commit is a single change. (Having multiple commits in a single Pull Request is fine, but they should all be separate changes - no commits with names like "fix the stuff", please!)
+`test_esptool.py` takes a command line with the following format:
+
+`./test_esptool.py <serial port> <name of chip> <baud rate> [optional test name(s)]`
+
+For example, to run all tests on an ESP32 board connected to /dev/ttyUSB0, at 230400bps:
+
+`./test_esptool.py /dev/ttyUSB0 esp32 230400`
+
+Or to run the TestFlashing suite only on an ESP8266 board connected to /dev/ttyUSB2` at 460800bps:
+
+`./test_esptool.py /dev/ttyUSB2 esp8266 460800 TestFlashing`
+
+(Note that some tests will fail at higher baud rates on some hardware.)
