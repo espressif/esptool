@@ -116,6 +116,8 @@ The `--port` argument specifies the serial port. This may take the form of somet
 
 The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
 
+Numeric values passed to write_flash (and other commands) can be specified either in hex (ie 0x1000), or in decimal (ie 4096).
+
 You may also need to specify arguments for [flash mode and flash size](#flash-modes), if you wish to override the defaults. For example:
 
 ```
@@ -137,6 +139,22 @@ See the [Troubleshooting](#troubleshooting) section if the write_flash command i
 ```
 
 NOTE: If verifying a default boot image (offset 0 for ESP8266 or offset 0x1000 for ESP32) then any `--flash_mode`, `--flash_size` and `--flash_freq` arguments which were passed to `write_flash` must also be passed to `verify_flash`. Otherwise, `verify_flash` will detect mismatches in the header of the image file.
+
+### Erasing Flash
+
+To erase the entire flash chip (all data replaced with 0xFF bytes):
+
+```
+esptool.py erase_flash
+```
+
+To erase a region of the flash, starting at address 0x20000 with length 0x4000 bytes (16KB):
+
+```
+esptool.py erase_region 0x20000 0x4000
+```
+
+The address and length must both be multiples of the SPI flash erase sector size. This is 0x1000 (4096) bytes for supported flash chips.
 
 ### Manually assembling a firmware image
 
