@@ -2356,7 +2356,7 @@ def main():
 
         # finish execution based on args.after
         if args.after == 'hard_reset':
-            print('Hard resetting...')
+            print('Hard resetting via RTS pin...')
             esp.hard_reset()
         elif args.after == 'soft_reset':
             print('Soft resetting...')
