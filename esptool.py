@@ -891,6 +891,12 @@ class ESP8266ROM(ESPLoader):
         is_8285 = (efuses & ((1 << 4) | 1 << 80)) != 0  # One or the other efuse bit is set for ESP8285
         return "ESP8285" if is_8285 else "ESP8266EX"
 
+    def get_chip_features(self):
+        features = "WiFi"
+        if self.get_chip_description() == "ESP8285":
+            features += ["Embedded Flash"]
+        return features
+
     def flash_spi_attach(self, hspi_arg):
         if self.IS_STUB:
             super(ESP8266ROM, self).flash_spi_attach(hspi_arg)
@@ -1015,6 +1021,29 @@ class ESP32ROM(ESPLoader):
         }.get(pkg_version, "unknown ESP32")
 
         return "%s (revision %s)" % (chip_name, silicon_rev)
+
+    def get_chip_features(self):
+        features = ["WiFi"]
+        word3 = self.read_efuse(3)
+
+        if word3 & (1 << 1) == 0:  # RD_CHIP_VER_DIS_BT
+            features += ["BT"]
+
+        if word3 & (1 << 0):  # RD_CHIP_VER_DIS_APP_CPU
+            features += ["Single Core"]
+        else:
+            features += ["Dual Core"]
+
+        pkg_version = (word3 >> 9) & 0x07
+        if pkg_version != 0:
+            features += ["Embedded Flash"]
+
+        word4 = self.read_efuse(4)
+        vref = (word4 >> 8) & 0x1F
+        if vref != 0:
+            features += ["VRef calibration in efuse"]
+
+        return features
 
     def read_efuse(self, n):
         """ Read the nth word of the ESP3x EFUSE region. """
@@ -2327,6 +2356,8 @@ def main():
             esp.connect(args.before)
 
         print("Chip is %s" % (esp.get_chip_description()))
+
+        print("Features: %s" % ", ".join(esp.get_chip_features()))
 
         if not args.no_stub:
             esp = esp.run_stub()
