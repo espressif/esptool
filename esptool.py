@@ -997,13 +997,14 @@ class ESP32ROM(ESPLoader):
     BOOTLOADER_FLASH_OFFSET = 0x1000
 
     def get_chip_description(self):
-        blk3 = self.read_efuse(3)
-        chip_version = (blk3 >> 12) & 0xF
-        pkg_version = (blk3 >> 9) & 0x07
+        word3 = self.read_efuse(3)
+        chip_version = (word3 >> 12) & 0xF
+        pkg_version = (word3 >> 9) & 0x07
 
         silicon_rev = {
-            0: "0",
-            8: "1"
+            0x0: "0",
+            0x8: "1",
+            0xc: "1",  # Silicon rev 1 w/ BLK3_PART_RESERVE bit set
         }.get(chip_version, "(unknown 0x%x)" % chip_version)
 
         chip_name = {
