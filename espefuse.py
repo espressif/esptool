@@ -92,6 +92,11 @@ EFUSE_REG_DEC_STATUS_MASK = 0xFFF
 EFUSE_BURN_TIMEOUT = 0.250  # seconds
 
 
+# Coding Scheme values
+CODING_SCHEME_NONE = 0
+CODING_SCHEME_34 = 1
+
+
 def confirm(action, args):
     print("%s%sThis is an irreversible operation." % (action, "" if action.endswith("\n") else ". "))
     if not args.do_not_confirm:
@@ -169,6 +174,10 @@ class EspEfuses(object):
         Meaningless for default coding scheme (0)
         """
         return self.read_reg(EFUSE_REG_DEC_STATUS) & EFUSE_REG_DEC_STATUS_MASK
+
+    def get_block_len(self):
+        """ Return the length of BLK1, BLK2, BLK3 in bytes """
+        return 24 if self.coding_scheme == CODING_SCHEME_34 else 32
 
 
 class EfuseField(object):
@@ -295,24 +304,70 @@ class EfuseMacField(EfuseField):
 
 class EfuseKeyblockField(EfuseField):
     def get_raw(self):
-        words = [self.parent.read_efuse(self.data_reg_offs + word) for word in range(8)]
-        # Reading EFUSE registers to a key string:
-        # endian swap each word, and also reverse
-        # the overall word order.
-        bitstring = struct.pack(">" + ("I" * 8), *words[::-1])
-        return bitstring
+        words = self.get_words()
+        return struct.pack("<" + ("I" * len(words)), *words)
+
+    def get_key(self):
+        # Keys are stored in reverse byte order
+        result = self.get_raw()
+        result = result[::-1]
+        return result
+
+    def get_words(self):
+        num_words = self.parent.get_block_len() // 4
+        return [self.parent.read_efuse(self.data_reg_offs + word) for word in range(num_words)]
 
     def get(self):
         return hexify(self.get_raw(), " ")
 
+    def apply_34_encoding(self, inbits):
+        """ Takes 24 byte sequence to be represented in 3/4 encoding,
+            returns 8 words suitable for writing "encoded" to an efuse block
+        """
+        def popcnt(b):
+            """ Return number of "1" bits set in 'b' """
+            return len([x for x in bin(b) if x == "1"])
+
+        outbits = b""
+        while len(inbits) > 0:  # process in chunks of 6 bytes
+            bits = inbits[0:6]
+            inbits = inbits[6:]
+            xor_res = 0
+            mul_res = 0
+            index = 1
+            for b in struct.unpack("B" * 6, bits):
+                xor_res ^= b
+                mul_res += index * popcnt(b)
+                index += 1
+            outbits += bits
+            outbits += struct.pack("BB", xor_res, mul_res)
+        return struct.unpack("<" + ("I" * 8), outbits)
+
+    def burn_key(self, new_value):
+            new_value = new_value[::-1]  # AES keys are stored in reverse order in efuse
+            return self.burn(new_value)
+
     def burn(self, new_value):
-        words = struct.unpack(">" + ("I" * 8), new_value)  # endian-swap
-        words = words[::-1]  # reverse from natural key order
-        write_reg_addr = efuse_write_reg_addr(self.block, self.word)
+        key_len = self.parent.get_block_len()
+        if len(new_value) != key_len:
+            raise RuntimeError("Invalid new value length for key block (%d), %d is required" % len(new_value), key_len)
+
+        if self.parent.coding_scheme == CODING_SCHEME_34:
+            words = self.apply_34_encoding(new_value)
+        else:
+            words = struct.unpack("<" + ("I" * 8), new_value)
+        return self.burn_words(words)
+
+    def burn_words(self, words, word_offset=0):
+        write_reg_addr = efuse_write_reg_addr(self.block, self.word + word_offset)
         for word in words:
             self.parent.write_reg(write_reg_addr, word)
             write_reg_addr += 4
+        warnings_before = self.parent.get_coding_scheme_warnings()
         self.parent.write_efuses()
+        warnings_after = self.parent.get_coding_scheme_warnings()
+        if warnings_after & ~warnings_before != 0:
+            print("WARNING: Burning efuse block added coding scheme warnings 0x%x -> 0x%x. Encoding bug?" % (warnings_before, warnings_after))
         return self.get()
 
 
@@ -493,23 +548,21 @@ def burn_key(esp, efuses, args):
     else:
         raise RuntimeError("args.block argument not in list!")
 
-    # check coding scheme
-    coding_scheme = _get_efuse(efuses, "CODING_SCHEME").get()
-    if coding_scheme != 0:
-        raise esptool.FatalError("Burning key efuses is not yet supported for 3/4 Coding Scheme")
+    num_bytes = efuses.get_block_len()
 
     # check keyfile
     keyfile = args.keyfile
     keyfile.seek(0,2)  # seek t oend
     size = keyfile.tell()
     keyfile.seek(0)
-    if size != 32:
-        raise esptool.FatalError("Incorrect key file size %d. Key file must be 32 bytes (256 bits) of raw binary key data." % size)
+    if size != num_bytes:
+        raise esptool.FatalError("Incorrect key file size %d. Key file must be %d bytes (%d bits) of raw binary key data." %
+                                 (size, num_bytes, num_bytes * 8))
 
     # check existing data
     efuse = [e for e in efuses if e.register_name == "BLK%d" % block_num][0]
     original = efuse.get_raw()
-    EMPTY_KEY = b'\x00' * 32
+    EMPTY_KEY = b'\x00' * num_bytes
     if original != EMPTY_KEY:
         if not args.force_write_always:
             raise esptool.FatalError("Key block already has value %s." % efuse.get())
@@ -527,8 +580,8 @@ def burn_key(esp, efuses, args):
         msg += "The key block will be read and write protected (no further changes or readback)"
     confirm(msg, args)
 
-    new_value = keyfile.read(32)
-    new = efuse.burn(new_value)
+    new_value = keyfile.read(num_bytes)
+    new = efuse.burn_key(new_value)
     print("Burned key data. New value: %s" % (new,))
     if not args.no_protect_key:
         print("Disabling read/write to key efuse block...")
@@ -600,7 +653,7 @@ def adc_info(esp, efuses, args):
         print("    ADC2 High reading (850mV): %d" % efuses["ADC2_TP_HIGH"].get())
 
 
-def hexify(bitstring, separator):
+def hexify(bitstring, separator=""):
     try:
         as_bytes = tuple(ord(b) for b in bitstring)
     except TypeError:  # python 3, items in bitstring already ints

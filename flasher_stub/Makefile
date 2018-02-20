@@ -72,11 +72,11 @@ CFLAGS = -std=c99 -Wall -Werror -Os \
 CFLAGS_8266 = $(CFLAGS) -I$(SDK_PATH) -I$(SDK_PATH)/include -L$(SDK_PATH)/ld
 CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -I$(IDF_PATH)/components/soc/esp32/include -L$(IDF_PATH)
 
-$(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) stub_8266.ld
+$(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) stub_8266.ld | Makefile
 	@echo "  CC(8266)   $^ -> $@"
 	$(Q) $(CROSS_8266)gcc $(CFLAGS_8266) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 
-$(STUB_ELF_32): $(SRCS) $(BUILD_DIR) stub_32.ld
+$(STUB_ELF_32): $(SRCS) $(BUILD_DIR) stub_32.ld | Makefile
 	@echo "  CC(32)   $^ -> $@"
 	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 
