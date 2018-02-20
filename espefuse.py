@@ -382,6 +382,9 @@ def dump(esp, _efuses, args):
 
 def summary(esp, efuses, args):
     """ Print a human-readable summary of efuse contents """
+    ROW_FORMAT = "%-22s %-50s%s= %s %s %s"
+    print(ROW_FORMAT.replace("-50", "-12") % ("EFUSE_NAME", "Description", "", "[Meaningful Value]", "[Readable/Writeable]", "(Hex Value)"))
+    print("-" * 88)
     for category in set(e.category for e in efuses):
         print("%s fuses:" % category.title())
         for e in (e for e in efuses if e.category == category):
@@ -400,7 +403,7 @@ def summary(esp, efuses, args):
             else:
                 perms = "-/-"
             value = str(e.get())
-            print("%-22s %-50s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw))
+            print(ROW_FORMAT % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw))
         print("")
     sdio_force = efuses["XPD_SDIO_FORCE"]
     sdio_tieh = efuses["XPD_SDIO_TIEH"]
