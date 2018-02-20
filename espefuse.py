@@ -69,10 +69,10 @@ BLK3_PART_EFUSES = [
     ('ADC2_TP_HIGH', "calibration", 3, 3, 0x1FF << 23, 9, 2, "adc_tp", "ADC2 850mV reading"),
 ]
 
-# Offsets and lengths of each of the 4 efuse blocks
+# Offsets and lengths of each of the 4 efuse blocks in register space
 #
 # These offsets/lens are for esptool.read_efuse(X) which takes
-# a word offset not a byte offset.
+# a word offset (into registers) not a byte offset.
 EFUSE_BLOCK_OFFS = [0, 14, 22, 30]
 EFUSE_BLOCK_LEN  = [7, 8, 8, 8]
 
@@ -85,6 +85,9 @@ EFUSE_CMD_WRITE = 0x2
 EFUSE_CMD_READ  = 0x1
 # address of first word of write registers for each efuse
 EFUSE_REG_WRITE = [0x3FF5A01C, 0x3FF5A098, 0x3FF5A0B8, 0x3FF5A0D8]
+# 3/4 Coding scheme warnings registers
+EFUSE_REG_DEC_STATUS = 0x3FF5A11C
+EFUSE_REG_DEC_STATUS_MASK = 0xFFF
 
 EFUSE_BURN_TIMEOUT = 0.250  # seconds
 
@@ -111,28 +114,66 @@ def efuse_write_reg_addr(block, word):
     return EFUSE_REG_WRITE[block] + (4 * word)
 
 
-def efuse_perform_write(esp):
-    """ Write the values in the efuse write registers to
-    the efuse hardware, then refresh the efuse read registers.
+class EspEfuses(object):
     """
-    esp.write_reg(EFUSE_REG_CONF, EFUSE_CONF_WRITE)
-    esp.write_reg(EFUSE_REG_CMD, EFUSE_CMD_WRITE)
+    Wrapper object to manage the efuse fields in a connected ESP bootloader
+    """
+    def __init__(self, esp):
+        self._esp = esp
+        self._efuses = [EfuseField.from_tuple(self, efuse) for efuse in EFUSES]
+        if self["BLK3_PART_RESERVE"].get():
+            # add these BLK3 efuses, if the BLK3_PART_RESERVE flag is set...
+            self._efuses += [EfuseField.from_tuple(self, efuse) for efuse in BLK3_PART_EFUSES]
 
-    def wait_idle():
-        deadline = time.time() + EFUSE_BURN_TIMEOUT
-        while time.time() < deadline:
-            if esp.read_reg(EFUSE_REG_CMD) == 0:
-                return
-        raise esptool.FatalError("Timed out waiting for Efuse controller command to complete")
-    wait_idle()
-    esp.write_reg(EFUSE_REG_CONF, EFUSE_CONF_READ)
-    esp.write_reg(EFUSE_REG_CMD, EFUSE_CMD_READ)
-    wait_idle()
+        self.coding_scheme = self["CODING_SCHEME"].get()
+
+    def __getitem__(self, efuse_name):
+        """ Return the efuse field with the given name """
+        for e in self._efuses:
+            if efuse_name == e.register_name:
+                return e
+        raise KeyError
+
+    def __iter__(self):
+        return self._efuses.__iter__()
+
+    def write_efuses(self):
+        """ Write the values in the efuse write registers to
+        the efuse hardware, then refresh the efuse read registers.
+        """
+        self._esp.write_reg(EFUSE_REG_CONF, EFUSE_CONF_WRITE)
+        self._esp.write_reg(EFUSE_REG_CMD, EFUSE_CMD_WRITE)
+
+        def wait_idle():
+            deadline = time.time() + EFUSE_BURN_TIMEOUT
+            while time.time() < deadline:
+                if self._esp.read_reg(EFUSE_REG_CMD) == 0:
+                    return
+            raise esptool.FatalError("Timed out waiting for Efuse controller command to complete")
+        wait_idle()
+        self._esp.write_reg(EFUSE_REG_CONF, EFUSE_CONF_READ)
+        self._esp.write_reg(EFUSE_REG_CMD, EFUSE_CMD_READ)
+        wait_idle()
+
+    def read_efuse(self, addr):
+        return self._esp.read_efuse(addr)
+
+    def read_reg(self, addr):
+        return self._esp.read_reg(addr)
+
+    def write_reg(self, addr, value):
+        return self._esp.write_reg(addr, value)
+
+    def get_coding_scheme_warnings(self):
+        """ Check if the coding scheme has detected any errors.
+        Meaningless for default coding scheme (0)
+        """
+        return self.read_reg(EFUSE_REG_DEC_STATUS) & EFUSE_REG_DEC_STATUS_MASK
 
 
 class EfuseField(object):
     @staticmethod
-    def from_tuple(esp, efuse_tuple):
+    def from_tuple(parent, efuse_tuple):
         category = efuse_tuple[7]
         return {
             "mac": EfuseMacField,
@@ -140,11 +181,11 @@ class EfuseField(object):
             "spipin": EfuseSpiPinField,
             "vref": EfuseVRefField,
             "adc_tp": EfuseAdcPointCalibration,
-        }.get(category, EfuseField)(esp, *efuse_tuple)
+        }.get(category, EfuseField)(parent, *efuse_tuple)
 
-    def __init__(self, esp, register_name, category, block, word, mask, write_disable_bit, read_disable_bit, efuse_type, description):
+    def __init__(self, parent, register_name, category, block, word, mask, write_disable_bit, read_disable_bit, efuse_type, description):
         self.category = category
-        self.esp = esp
+        self.parent = parent
         self.block = block
         self.word = word
         self.data_reg_offs = EFUSE_BLOCK_OFFS[self.block] + self.word
@@ -165,7 +206,7 @@ class EfuseField(object):
 
         Returns a simple integer or (for some subclasses) a bitstring.
         """
-        value = self.esp.read_efuse(self.data_reg_offs)
+        value = self.parent.read_efuse(self.data_reg_offs)
         return (value & self.mask) >> self.shift
 
     def get(self):
@@ -176,42 +217,42 @@ class EfuseField(object):
         """ Return true if the efuse is readable by software """
         if self.read_disable_bit is None:
             return True  # read cannot be disabled
-        value = (self.esp.read_efuse(0) >> 16) & 0xF  # RD_DIS values
+        value = (self.parent.read_efuse(0) >> 16) & 0xF  # RD_DIS values
         return (value & (1 << self.read_disable_bit)) == 0
 
     def disable_read(self):
         if self.read_disable_bit is None:
             raise esptool.FatalError("This efuse cannot be read-disabled")
         rddis_reg_addr = efuse_write_reg_addr(0, 0)
-        self.esp.write_reg(rddis_reg_addr, 1 << (16 + self.read_disable_bit))
-        efuse_perform_write(self.esp)
+        self.parent.write_reg(rddis_reg_addr, 1 << (16 + self.read_disable_bit))
+        self.parent.write_efuses()
         return self.get()
 
     def is_writeable(self):
         if self.write_disable_bit is None:
             return True  # write cannot be disabled
-        value = self.esp.read_efuse(0) & 0xFFFF   # WR_DIS values
+        value = self.parent.read_efuse(0) & 0xFFFF   # WR_DIS values
         return (value & (1 << self.write_disable_bit)) == 0
 
     def disable_write(self):
         wrdis_reg_addr = efuse_write_reg_addr(0, 0)
-        self.esp.write_reg(wrdis_reg_addr, 1 << self.write_disable_bit)
-        efuse_perform_write(self.esp)
+        self.parent.write_reg(wrdis_reg_addr, 1 << self.write_disable_bit)
+        self.parent.write_efuses()
         return self.get()
 
     def burn(self, new_value):
         raw_value = (new_value << self.shift) & self.mask
         # don't both reading old value as we can only set bits 0->1
         write_reg_addr = efuse_write_reg_addr(self.block, self.word)
-        self.esp.write_reg(write_reg_addr, raw_value)
-        efuse_perform_write(self.esp)
+        self.parent.write_reg(write_reg_addr, raw_value)
+        self.parent.write_efuses()
         return self.get()
 
 
 class EfuseMacField(EfuseField):
     def get_raw(self):
         # MAC values are high half of second efuse word, then first efuse word
-        words = [self.esp.read_efuse(self.data_reg_offs + word) for word in [1,0]]
+        words = [self.parent.read_efuse(self.data_reg_offs + word) for word in [1,0]]
         # endian-swap into a bitstring
         bitstring = struct.pack(">II", *words)
         return bitstring[2:]  # trim 2 byte CRC from the beginning
@@ -232,7 +273,7 @@ class EfuseMacField(EfuseField):
         raise esptool.FatalError("Writing MAC address is not supported")
 
     def get_stored_crc(self):
-        return (self.esp.read_efuse(self.data_reg_offs + 1) >> 16) & 0xFF
+        return (self.parent.read_efuse(self.data_reg_offs + 1) >> 16) & 0xFF
 
     def calc_crc(self):
         """
@@ -254,7 +295,7 @@ class EfuseMacField(EfuseField):
 
 class EfuseKeyblockField(EfuseField):
     def get_raw(self):
-        words = [self.esp.read_efuse(self.data_reg_offs + word) for word in range(8)]
+        words = [self.parent.read_efuse(self.data_reg_offs + word) for word in range(8)]
         # Reading EFUSE registers to a key string:
         # endian swap each word, and also reverse
         # the overall word order.
@@ -269,9 +310,9 @@ class EfuseKeyblockField(EfuseField):
         words = words[::-1]  # reverse from natural key order
         write_reg_addr = efuse_write_reg_addr(self.block, self.word)
         for word in words:
-            self.esp.write_reg(write_reg_addr, word)
+            self.parent.write_reg(write_reg_addr, word)
             write_reg_addr += 4
-        efuse_perform_write(self.esp)
+        self.parent.write_efuses()
         return self.get()
 
 
@@ -361,9 +402,9 @@ def summary(esp, efuses, args):
             value = str(e.get())
             print("%-22s %-50s%s= %s %s %s" % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw))
         print("")
-    sdio_force = _get_efuse(efuses, "XPD_SDIO_FORCE")
-    sdio_tieh = _get_efuse(efuses, "XPD_SDIO_TIEH")
-    sdio_reg = _get_efuse(efuses, "XPD_SDIO_REG")
+    sdio_force = efuses["XPD_SDIO_FORCE"]
+    sdio_tieh = efuses["XPD_SDIO_TIEH"]
+    sdio_reg = efuses["XPD_SDIO_REG"]
     if sdio_force.get() == 0:
         print("Flash voltage (VDD_SDIO) determined by GPIO12 on reset (High for 1.8V, Low/NC for 3.3V).")
     elif sdio_reg.get() == 0:
@@ -372,10 +413,13 @@ def summary(esp, efuses, args):
         print("Flash voltage (VDD_SDIO) set to 1.8V by efuse.")
     else:
         print("Flash voltage (VDD_SDIO) set to 3.3V by efuse.")
+    warnings = efuses.get_coding_scheme_warnings()
+    if warnings:
+        print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings)
 
 
 def burn_efuse(esp, efuses, args):
-    efuse = _get_efuse(efuses, args.efuse_name)
+    efuse = efuses[args.efuse_name]
     old_value = efuse.get()
     if efuse.efuse_type == "flag":
         if args.new_value not in [None, 1]:
@@ -410,7 +454,7 @@ def burn_efuse(esp, efuses, args):
 
 
 def read_protect_efuse(esp, efuses, args):
-    efuse = _get_efuse(efuses, args.efuse_name)
+    efuse = efuses[args.efuse_name]
     if not efuse.is_readable():
         print("Efuse %s is already read protected" % efuse.register_name)
     else:
@@ -422,9 +466,9 @@ def read_protect_efuse(esp, efuses, args):
 
 
 def write_protect_efuse(esp, efuses, args):
-    efuse = _get_efuse(efuses, args.efuse_name)
+    efuse = efuses[args.efuse_name]
     if not efuse.is_writeable():
-        print("Efuse %s is already write protected" % efuse.register_name)
+        print("]fuse %s is already write protected" % efuse.register_name)
     else:
         # make full list of which efuses will be disabled (ie share a write disable bit)
         all_disabling = [e for e in efuses if e.write_disable_bit == efuse.write_disable_bit]
@@ -494,9 +538,9 @@ def burn_key(esp, efuses, args):
 
 
 def set_flash_voltage(esp, efuses, args):
-    sdio_force = _get_efuse(efuses, "XPD_SDIO_FORCE")
-    sdio_tieh = _get_efuse(efuses, "XPD_SDIO_TIEH")
-    sdio_reg = _get_efuse(efuses, "XPD_SDIO_REG")
+    sdio_force = efuses["XPD_SDIO_FORCE"]
+    sdio_tieh = efuses["XPD_SDIO_TIEH"]
+    sdio_reg = efuses["XPD_SDIO_REG"]
 
     # check efuses aren't burned in a way which makes this impossible
     if args.voltage == 'OFF' and sdio_reg.get() != 0:
@@ -534,8 +578,8 @@ The following efuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG, XPD_SDIO_TIEH.
 
 
 def adc_info(esp, efuses, args):
-    adc_vref = _get_efuse(efuses, "ADC_VREF")
-    blk3_reserve = _get_efuse(efuses, "BLK3_PART_RESERVE")
+    adc_vref = efuses["ADC_VREF"]
+    blk3_reserve = efuses["BLK3_PART_RESERVE"]
 
     vref_raw = adc_vref.get_raw()
     if vref_raw == 0:
@@ -545,10 +589,10 @@ def adc_info(esp, efuses, args):
 
     if blk3_reserve.get():
         print("ADC readings stored in efuse BLK3:")
-        print("    ADC1 Low reading  (150mV): %d" % _get_efuse(efuses, "ADC1_TP_LOW").get())
-        print("    ADC1 High reading (850mV): %d" % _get_efuse(efuses, "ADC1_TP_HIGH").get())
-        print("    ADC2 Low reading  (150mV): %d" % _get_efuse(efuses, "ADC2_TP_LOW").get())
-        print("    ADC2 High reading (850mV): %d" % _get_efuse(efuses, "ADC2_TP_HIGH").get())
+        print("    ADC1 Low reading  (150mV): %d" % efuses["ADC1_TP_LOW"].get())
+        print("    ADC1 High reading (850mV): %d" % efuses["ADC1_TP_HIGH"].get())
+        print("    ADC2 Low reading  (150mV): %d" % efuses["ADC2_TP_LOW"].get())
+        print("    ADC2 High reading (850mV): %d" % efuses["ADC2_TP_HIGH"].get())
 
 
 def hexify(bitstring, separator):
@@ -642,15 +686,8 @@ def main():
     esp.connect(args.before)
 
     # dict mapping register name to its efuse object
-    efuses = [EfuseField.from_tuple(esp, efuse) for efuse in EFUSES]
-    if _get_efuse(efuses, "BLK3_PART_RESERVE").get():
-        # add these BLK3 efuses, if the BLK3_PART_RESERVE flag is set...
-        efuses += [EfuseField.from_tuple(esp, efuse) for efuse in BLK3_PART_EFUSES]
+    efuses = EspEfuses(esp)
     operation_func(esp, efuses, args)
-
-
-def _get_efuse(efuses, efuse_name):
-    return [e for e in efuses if efuse_name == e.register_name][0]
 
 
 def _main():
