@@ -33,7 +33,7 @@ import zlib
 
 import serial
 
-__version__ = "2.3"
+__version__ = "2.3.1"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
@@ -892,7 +892,7 @@ class ESP8266ROM(ESPLoader):
         return "ESP8285" if is_8285 else "ESP8266EX"
 
     def get_chip_features(self):
-        features = "WiFi"
+        features = [ "WiFi" ]
         if self.get_chip_description() == "ESP8285":
             features += ["Embedded Flash"]
         return features
