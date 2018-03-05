@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 import sys
 
 # Compare the esptool stub loaders to freshly built ones

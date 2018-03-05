@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 #
 # Provide some simple capabilities from number theory.
 #

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 #
 # Implementation of elliptic curves, for cryptographic applications.
 #

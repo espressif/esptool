@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # ESP32 secure boot utility
 # https://github.com/themadinventor/esptool
 #
