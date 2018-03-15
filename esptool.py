@@ -1117,7 +1117,7 @@ def LoadFirmwareImage(chip, filename):
         Returns a BaseFirmwareImage subclass, either ESPFirmwareImage (v1) or OTAFirmwareImage (v2).
     """
     with open(filename, 'rb') as f:
-        if chip == 'esp32':
+        if chip.lower() == 'esp32':
             return ESP32FirmwareImage(f)
         else:  # Otherwise, ESP8266 so look at magic to determine the image type
             magic = ord(f.read(1))
@@ -1798,18 +1798,19 @@ class NotSupportedError(FatalError):
 
 
 def load_ram(esp, args):
-    image = LoadFirmwareImage(esp, args.filename)
+    image = LoadFirmwareImage(esp.CHIP_NAME, args.filename)
 
     print('RAM boot...')
-    for (offset, size, data) in image.segments:
-        print('Downloading %d bytes at %08x...' % (size, offset), end=' ')
+    for seg in image.segments:
+        size = len(seg.data)
+        print('Downloading %d bytes at %08x...' % (size, seg.addr), end=' ')
         sys.stdout.flush()
-        esp.mem_begin(size, div_roundup(size, esp.ESP_RAM_BLOCK), esp.ESP_RAM_BLOCK, offset)
+        esp.mem_begin(size, div_roundup(size, esp.ESP_RAM_BLOCK), esp.ESP_RAM_BLOCK, seg.addr)
 
         seq = 0
-        while len(data) > 0:
-            esp.mem_block(data[0:esp.ESP_RAM_BLOCK], seq)
-            data = data[esp.ESP_RAM_BLOCK:]
+        while len(seg.data) > 0:
+            esp.mem_block(seg.data[0:esp.ESP_RAM_BLOCK], seq)
+            seg.data = seg.data[esp.ESP_RAM_BLOCK:]
             seq += 1
         print('done!')
 
@@ -2411,8 +2412,11 @@ def main():
 
         operation_func(esp, args)
 
-        # finish execution based on args.after
-        if args.after == 'hard_reset':
+        # Handle post-operation behaviour (reset or other)
+        if operation_func == load_ram:
+            # the ESP is now running the loaded image, so let it run
+            print('Exiting immediately.')
+        elif args.after == 'hard_reset':
             print('Hard resetting via RTS pin...')
             esp.hard_reset()
         elif args.after == 'soft_reset':

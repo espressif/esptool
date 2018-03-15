@@ -16,6 +16,7 @@ import sys
 import tempfile
 import time
 import unittest
+import serial
 
 # point is this file is not 4 byte aligned in length
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
@@ -380,6 +381,20 @@ class TestKeepImageSettings(EsptoolTestCase):
         # verify_flash should pass if we match params, fail otherwise
         self.run_esptool("verify_flash -fs 2MB -fm qio -ff 80m 0x%x %s" % (self.flash_offset, self.HEADER_ONLY))
         self.run_esptool_error("verify_flash 0x%x %s" % (self.flash_offset, self.HEADER_ONLY))
+
+
+class TestLoadRAM(EsptoolTestCase):
+    def test_load_ram(self):
+        """ Verify load_ram command
+
+        The "hello world" binary programs for each chip print
+        "Hello world!\n" to the serial port.
+        """
+        self.run_esptool("load_ram images/helloworld-%s.bin" % chip)
+        p = serial.serial_for_url(serialport, default_baudrate)
+        p.timeout = 0.2
+        self.assertIn(b"Hello world!", p.read(32))
+        p.close()
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
