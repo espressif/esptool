@@ -26,6 +26,7 @@ import inspect
 import io
 import os
 import shlex
+import socket
 import struct
 import sys
 import time
@@ -124,6 +125,9 @@ class ESPLoader(object):
     IS_STUB = False
 
     DEFAULT_PORT = "/dev/ttyUSB0"
+    USE_RTT = False
+    RTT_PORT = 19021
+    RTT_HOST = "127.0.0.1"
 
     # Commands supported by ESP8266 ROM bootloader
     ESP_FLASH_BEGIN = 0x02
@@ -177,7 +181,7 @@ class ESPLoader(object):
     # The number of bytes in the UART response that signify command status
     STATUS_BYTES_LENGTH = 2
 
-    def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False):
+    def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False, rtt=False):
         """Base constructor for ESPLoader bootloader interaction
 
         Don't call this constructor, either instantiate ESP8266ROM
@@ -189,16 +193,30 @@ class ESPLoader(object):
         with ones which throw NotImplementedInROMError().
 
         """
-        if isinstance(port, basestring):
-            self._port = serial.serial_for_url(port)
+        if (rtt is True):
+            self.USE_RTT = True
+            print("RTT mode selected")
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((ESPLoader.RTT_HOST, ESPLoader.RTT_PORT))
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
+            f = s.makefile('rwb')
+            if isinstance(port, basestring):
+                self._port = f #serial.serial_for_url(port)
+                self._sock = s
+            else:
+                self._port = port
+            self._slip_reader = slip_reader(self._port, self.trace, rtt=True)
         else:
-            self._port = port
-        self._slip_reader = slip_reader(self._port, self.trace)
-        # setting baud rate in a separate step is a workaround for
-        # CH341 driver on some Linux versions (this opens at 9600 then
-        # sets), shouldn't matter for other platforms/drivers. See
-        # https://github.com/espressif/esptool/issues/44#issuecomment-107094446
-        self._set_port_baudrate(baud)
+            if isinstance(port, basestring):
+                self._port = serial.serial_for_url(port)
+            else:
+                self._port = port
+            self._slip_reader = slip_reader(self._port, self.trace)
+            # setting baud rate in a separate step is a workaround for
+            # CH341 driver on some Linux versions (this opens at 9600 then
+            # sets), shouldn't matter for other platforms/drivers. See
+            # https://github.com/espressif/esptool/issues/44#issuecomment-107094446
+            self._set_port_baudrate(baud)
         self._trace_enabled = trace_enabled
 
     def _set_port_baudrate(self, baud):
@@ -208,7 +226,7 @@ class ESPLoader(object):
             raise FatalError("Failed to set baud rate %d. The driver may not support this rate." % baud)
 
     @staticmethod
-    def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False):
+    def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False, rtt=False):
         """ Use serial access to detect the chip type.
 
         We use the UART's datecode register for this, it's mapped at
@@ -245,6 +263,8 @@ class ESPLoader(object):
               + b'\xc0'
         self.trace("Write %d bytes: %r", len(buf), buf)
         self._port.write(buf)
+        if self.USE_RTT:
+            self._port.flush()
 
     def trace(self, message, *format_args):
         if self._trace_enabled:
@@ -271,10 +291,18 @@ class ESPLoader(object):
 
     """ Send a request and read the response """
     def command(self, op=None, data=b"", chk=0, wait_response=True, timeout=DEFAULT_TIMEOUT):
-        saved_timeout = self._port.timeout
+        if self.USE_RTT:
+            saved_timeout = self._sock.timeout
+        else:
+            saved_timeout = self._port.timeout
         new_timeout = min(timeout, MAX_TIMEOUT)
         if new_timeout != saved_timeout:
-            self._port.timeout = new_timeout
+            if self.USE_RTT is True:
+                #self._port.settimeout(new_timeout)
+                self._sock.settimeout(new_timeout*10.0)
+                #print("Setting timeout: " + str(new_timeout))
+            else:
+                self._port.timeout = new_timeout
 
         try:
             if op is not None:
@@ -302,7 +330,11 @@ class ESPLoader(object):
                     return val, data
         finally:
             if new_timeout != saved_timeout:
-                self._port.timeout = saved_timeout
+                if self.USE_RTT is True:
+                    #self._port.settimeout(saved_timeout)
+                    self._sock.settimeout(saved_timeout)
+                else:
+                    self._port.timeout = saved_timeout
 
         raise FatalError("Response doesn't match request")
 
@@ -333,8 +365,11 @@ class ESPLoader(object):
             return val
 
     def flush_input(self):
-        self._port.flushInput()
-        self._slip_reader = slip_reader(self._port, self.trace)
+        if self.USE_RTT:
+            self._port.flush()
+        else:
+            self._port.flushInput()
+        self._slip_reader = slip_reader(self._port, self.trace, rtt=self.USE_RTT)
 
     def sync(self):
         self.command(self.ESP_SYNC, b'\x07\x07\x12\x20' + 32 * b'\x55',
@@ -362,28 +397,32 @@ class ESPLoader(object):
         # DTR & RTS are active low signals,
         # ie True = pin @ 0V, False = pin @ VCC.
         if mode != 'no_reset':
-            self._port.setDTR(False)  # IO0=HIGH
-            self._port.setRTS(True)   # EN=LOW, chip in reset
+            if self.USE_RTT is False:
+                self._port.setDTR(False)  # IO0=HIGH
+                self._port.setRTS(True)   # EN=LOW, chip in reset
             time.sleep(0.1)
             if esp32r0_delay:
                 # Some chips are more likely to trigger the esp32r0
                 # watchdog reset silicon bug if they're held with EN=LOW
                 # for a longer period
                 time.sleep(1.2)
-            self._port.setDTR(True)   # IO0=LOW
-            self._port.setRTS(False)  # EN=HIGH, chip out of reset
+            if self.USE_RTT is False:
+                self._port.setDTR(True)   # IO0=LOW
+                self._port.setRTS(False)  # EN=HIGH, chip out of reset
             if esp32r0_delay:
                 # Sleep longer after reset.
                 # This workaround only works on revision 0 ESP32 chips,
                 # it exploits a silicon bug spurious watchdog reset.
                 time.sleep(0.4)  # allow watchdog reset to occur
             time.sleep(0.05)
-            self._port.setDTR(False)  # IO0=HIGH, done
+            if self.USE_RTT is False:
+                self._port.setDTR(False)  # IO0=HIGH, done
 
         for _ in range(5):
             try:
                 self.flush_input()
-                self._port.flushOutput()
+                if self.USE_RTT is False:
+                    self._port.flushOutput()
                 self.sync()
                 return None
             except FatalError as e:
@@ -1637,7 +1676,7 @@ class ELFFile(object):
         self.sections = prog_sections
 
 
-def slip_reader(port, trace_function):
+def slip_reader(port, trace_function, rtt=False):
     """Generator to read SLIP packets from a serial port.
     Yields one full SLIP packet at a time, raises exception on timeout or invalid data.
 
@@ -1647,8 +1686,13 @@ def slip_reader(port, trace_function):
     partial_packet = None
     in_escape = False
     while True:
-        waiting = port.inWaiting()
-        read_bytes = port.read(1 if waiting == 0 else waiting)
+        if rtt:
+            port.flush()
+            read_bytes = port.read(1)
+            port.flush()
+        else:
+            waiting = port.inWaiting()
+            read_bytes = port.read(1 if waiting == 0 else waiting)
         if read_bytes == b'':
             waiting_for = "header" if partial_packet is None else "content"
             trace_function("Timed out waiting for packet %s", waiting_for)
@@ -1663,8 +1707,9 @@ def slip_reader(port, trace_function):
                     partial_packet = b""
                 else:
                     trace_function("Read invalid data: %r", read_bytes)
-                    trace_function("Remaining data in serial buffer: %r", port.read(port.inWaiting()))
-                    raise FatalError('Invalid head of packet (%r)' % b)
+                    if rtt is False:
+                        trace_function("Remaining data in serial buffer: %r", port.read(port.inWaiting()))
+                    #raise FatalError('Invalid head of packet (%r)' % b)
             elif in_escape:  # part-way through escape sequence
                 in_escape = False
                 if b == b'\xdc':
@@ -1674,7 +1719,7 @@ def slip_reader(port, trace_function):
                 else:
                     trace_function("Read invalid data: %r", read_bytes)
                     trace_function("Remaining data in serial buffer: %r", port.read(port.inWaiting()))
-                    raise FatalError('Invalid SLIP escape (%r%r)' % (b'\xdb', b))
+                    #raise FatalError('Invalid SLIP escape (%r%r)' % (b'\xdb', b))
             elif b == b'\xdb':  # start of escape sequence
                 in_escape = True
             elif b == b'\xc0':  # end of packet
@@ -2140,6 +2185,11 @@ def main():
         default=os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT))
 
     parser.add_argument(
+        '--rtt',
+        help="Use Segger RTT instead of serial",
+        action='store_true')
+
+    parser.add_argument(
         '--baud', '-b',
         help='Serial port baud rate used when flashing/reading',
         type=arg_auto_int,
@@ -2352,7 +2402,7 @@ def main():
                 'esp8266': ESP8266ROM,
                 'esp32': ESP32ROM,
             }[args.chip]
-            esp = chip_class(args.port, initial_baud, args.trace)
+            esp = chip_class(args.port, initial_baud, args.trace, args.rtt)
             esp.connect(args.before)
 
         print("Chip is %s" % (esp.get_chip_description()))
