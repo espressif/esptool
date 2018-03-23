@@ -565,7 +565,7 @@ def main():
     parser.add_argument(
         '--before',
         help='What to do before connecting to the chip',
-        choices=['default_reset', 'no_reset', 'esp32r1'],
+        choices=['default_reset', 'no_reset', 'esp32r1', 'no_reset_no_sync'],
         default='default_reset')
 
     parser.add_argument('--do-not-confirm',
