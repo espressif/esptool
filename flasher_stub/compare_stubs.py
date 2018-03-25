@@ -30,6 +30,7 @@ if __name__ == "__main__":
     old_32_stub = esptool.ESP32ROM.STUB_CODE
     old_32s2_stub = esptool.ESP32S2ROM.STUB_CODE
     old_32s3_stub = esptool.ESP32S3BETA2ROM.STUB_CODE
+    old_32c3_stub = esptool.ESP32C3ROM.STUB_CODE
 
     # hackiness: importing this module edits the esptool module
     import esptool_test_stub
@@ -49,6 +50,10 @@ if __name__ == "__main__":
     if esptool.ESP32S3BETA2ROM.STUB_CODE != old_32s3_stub:
         print("ESP32S3 stub code in esptool.py is different to just-built stub.")
         verbose_diff(esptool.ESP32S3BETA2ROM.STUB_CODE, old_32s3_stub)
+        same = False
+    if esptool.ESP32C3ROM.STUB_CODE != old_32c3_stub:
+        print("ESP32C3 stub code in esptool.py is different to just-built stub.")
+        verbose_diff(esptool.ESP32C3ROM.STUB_CODE, old_32c3_stub)
         same = False
     if same:
         print("Stub code is the same")
