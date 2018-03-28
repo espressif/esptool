@@ -554,8 +554,18 @@ def hexify(bitstring, separator):
     return separator.join(("%02x" % b) for b in as_bytes)
 
 
+def arg_auto_int(x):
+    return int(x, 0)
+
+
 def main():
     parser = argparse.ArgumentParser(description='espefuse.py v%s - ESP32 efuse get/set tool' % esptool.__version__, prog='espefuse')
+
+    parser.add_argument(
+        '--baud', '-b',
+        help='Serial port baud rate used when flashing/reading',
+        type=arg_auto_int,
+        default=os.environ.get('ESPTOOL_BAUD', esptool.ESPLoader.ESP_ROM_BAUD))
 
     parser.add_argument(
         '--port', '-p',
@@ -623,7 +633,7 @@ def main():
     # each 'operation' is a module-level function of the same name
     operation_func = globals()[args.operation]
 
-    esp = esptool.ESP32ROM(args.port)
+    esp = esptool.ESP32ROM(args.port, baud=args.baud)
     esp.connect(args.before)
 
     # dict mapping register name to its efuse object
