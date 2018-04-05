@@ -289,7 +289,7 @@ Size of the SPI flash, given in megabytes. Valid values vary by chip type:
 Chip     | flash_size values
 ---------|---------------------------------------------------------------
 ESP32    | `detect`, `1MB`, `2MB`, `4MB`, `8MB`, `16MB`
-ESP8266  | `detect`, `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `4MB-c2`, `8MB`, `16MB`
+ESP8266  | `detect`, `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `8MB`, `16MB`
 
 For ESP8266, some [additional sizes & layouts for OTA "firmware slots" are available](#esp8266-and-flash-size).
 
