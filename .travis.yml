@@ -20,8 +20,8 @@ env:
   ESP32_BINDIR="${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
 
   SDKS_DIR="${HOME}/sdks"
-  SDK_PATH="${SDKS_DIR}/ESP8266_NONOS_SDK"
-  ESP8266_SDK_URL="http://bbs.espressif.com/download/file.php?id=1690"
+  SDK_PATH="${SDKS_DIR}/ESP8266_NONOS_SDK-2.2.0"
+  ESP8266_SDK_URL="https://github.com/espressif/ESP8266_NONOS_SDK/archive/v2.2.0.zip"
   IDF_PATH="${SDKS_DIR}/esp-idf"
   ESP32_IDF_URL="https://github.com/espressif/esp-idf/archive/v2.1.zip"
   PATH="${PATH}:${ESP8266_BINDIR}:${ESP32_BINDIR}"
