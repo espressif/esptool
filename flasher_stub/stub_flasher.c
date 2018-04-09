@@ -151,17 +151,25 @@ void cmd_loop() {
     esp_command_response_t resp = {
       .resp = 1,
       .op_ret = command->op,
-      .len_ret = 0, /* esptool.py ignores this value */
+      .len_ret = 2, /* esptool.py ignores this value, but other users of the stub may not */
       .value = 0,
     };
 
-    /* ESP_READ_REG is the only command that needs to write into the
-       'resp' structure before we send it back. */
-    if (command->op == ESP_READ_REG && command->data_len == 4) {
-      resp.value = REG_READ(data_words[0]);
+    /* Some commands need to set resp.len_ret or resp.value before it is sent back */
+    switch(command->op) {
+    case ESP_READ_REG:
+        if (command->data_len == 4) {
+            resp.value = REG_READ(data_words[0]);
+        }
+        break;
+    case ESP_FLASH_VERIFY_MD5:
+        resp.len_ret = 16 + 2; /* Will sent 16 bytes of data with MD5 value */
+        break;
+    default:
+        break;
     }
 
-    /* Send the command response. */
+    /* Send the command response */
     SLIP_send_frame_delimiter();
     SLIP_send_frame_data_buf(&resp, sizeof(esp_command_response_t));
 
@@ -172,8 +180,9 @@ void cmd_loop() {
       continue;
     }
 
-    /* ... some commands will insert in-frame response data
-       between here and when we send the end of the frame */
+    /* ... ESP_FLASH_VERIFY_MD5 will insert in-frame response data
+       between here and when we send the status bytes at the
+       end of the frame */
 
     esp_command_error error = ESP_CMD_NOT_IMPLEMENTED;
     int status = 0;
