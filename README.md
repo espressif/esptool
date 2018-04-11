@@ -46,10 +46,11 @@ To see all options for a particular command, append `-h` to the command name. ie
 
 ### Serial Port
 
-The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (on unixen like Linux and OSX) or `-p COM1`
-(on Windows).
+The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (Linux and macOS) or `-p COM1` (Windows).
 
-If using Cygwin on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows environment, this environment uses a mingw Python & pyserial which accept COM ports as-is.)
+Note: Windows and macOS may require drivers to be installed for a particular USB/serial adapter, before a serial port is available. Consult the documentation for your particular device. On macOS, you can also consult [System Information](https://support.apple.com/en-us/HT203001)'s list of USB devices to identify the manufacturer or device ID when the adapter is plugged in. On Windows, you can use [Windows Update or Device Manager](https://support.microsoft.com/en-us/help/15048/windows-7-update-driver-hardware-not-working-properly) to find a driver.
+
+If using Cygwin or WSL on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows MSYS2 environment, this environment uses a native Windows Python which accepts COM ports as-is.)
 
 In Linux, the current user may not have access to serial ports and a "Permission Denied" error will appear. On most Linux distributions, the solution is to add the user to the `dialout` group with a command like `sudo usermod -a -G dialout <USERNAME>`. Check your Linux distribution's documentation for more information.
 
@@ -112,7 +113,7 @@ esptool.py --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app
 
 The `--chip` argument is optional when writing to flash, esptool will detect the type of chip when it connects to the serial port.
 
-The `--port` argument specifies the serial port. This may take the form of something like COMx (Windows), /dev/ttyUSBx (Linux) or /dev/tty.usbserial (OS X) or similar names.
+The `--port` argument is documented under [Serial Port](#serial-port).
 
 The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
 
