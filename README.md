@@ -130,6 +130,8 @@ By default, the serial transfer data is compressed for better performance. The `
 
 See the [Troubleshooting](#troubleshooting) section if the write_flash command is failing, or the flashed module fails to boot.
 
+Note: If you are using Windows and the chip is not detected, install USB to UART driver (e.g. https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers)
+
 ### Verifying flash
 
 `write_flash` always verifies the MD5 hash of data which is written to flash, so manual verification is not usually needed. However, if you wish to verify the flash contents then you can do so via the `verify_flash` command:
