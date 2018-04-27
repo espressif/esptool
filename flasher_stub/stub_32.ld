@@ -15,9 +15,12 @@
  * Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+/* Note: stub is deliberately loaded close to the very top
+   of available RAM, to reduce change of colliding with anything
+   else... */
 MEMORY {
-  iram : org = 0x40090000, len = 0x10000
-  dram : org = 0x3FFC0000, len = 0x20000
+  iram : org = 0x4009F000, len = 0x1000
+  dram : org = 0x3ffec000, len = 0x14000
 }
 
 ENTRY(stub_main)
