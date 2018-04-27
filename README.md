@@ -214,7 +214,7 @@ esptool.py chip_id
 
 On ESP8266, this is the same as the output of the `system_get_chip_id()` SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero on most (all?) ESP8266s.
 
-On ESP32, this ID is derived from the base MAC address stored in on-chip efuse.
+On ESP32, there is no system_get_chip_id() function and this command is the same as `esptool.py read_mac`.
 
 ## Serial Connections
 

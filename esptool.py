@@ -921,7 +921,7 @@ class ESP8266ROM(ESPLoader):
             super(ESP8266ROM, self).flash_set_parameters(size)
 
     def chip_id(self):
-        """ Read Chip ID from OTP ROM - see http://esp8266-re.foogod.com/wiki/System_get_chip_id_%28IoT_RTOS_SDK_0.9.9%29 """
+        """ Read Chip ID from efuse - the equivalent of the SDK system_get_chip_id() function """
         id0 = self.read_reg(self.ESP_OTP_MAC0)
         id1 = self.read_reg(self.ESP_OTP_MAC1)
         return (id0 >> 24) | ((id1 & MAX_UINT24) << 8)
@@ -1060,9 +1060,7 @@ class ESP32ROM(ESPLoader):
         return self.read_reg(self.EFUSE_REG_BASE + (4 * n))
 
     def chip_id(self):
-        word16 = self.read_efuse(1)
-        word17 = self.read_efuse(2)
-        return ((word17 & MAX_UINT24) << 24) | (word16 >> 8) & MAX_UINT24
+        raise NotSupportedError(self, "chip_id")
 
     def read_mac(self):
         """ Read MAC from EFUSE region """
@@ -1780,6 +1778,11 @@ class NotImplementedInROMError(FatalError):
     def __init__(self, bootloader, func):
         FatalError.__init__(self, "%s ROM does not support function %s." % (bootloader.CHIP_NAME, func.__name__))
 
+
+class NotSupportedError(FatalError):
+    def __init__(self, esp, function_name):
+        FatalError.__init__(self, "Function %s is not supported for %s." % (function_name, esp.CHIP_NAME))
+
 # "Operation" commands, executable at command line. One function each
 #
 # Each function takes either two args (<ESPLoader instance>, <args>) or a single <args>
@@ -2028,8 +2031,12 @@ def read_mac(esp, args):
 
 
 def chip_id(esp, args):
-    chipid = esp.chip_id()
-    print('Chip ID: 0x%08x' % chipid)
+    try:
+        chipid = esp.chip_id()
+        print('Chip ID: 0x%08x' % chipid)
+    except NotSupportedError:
+        print('Warning: %s has no Chip ID. Reading MAC instead.' % esp.CHIP_NAME)
+        read_mac(esp, args)
 
 
 def erase_flash(esp, args):
