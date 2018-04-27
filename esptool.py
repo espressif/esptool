@@ -1030,21 +1030,35 @@ class ESP32ROM(ESPLoader):
         features = ["WiFi"]
         word3 = self.read_efuse(3)
 
-        if word3 & (1 << 1) == 0:  # RD_CHIP_VER_DIS_BT
+        # names of variables in this section are lowercase
+        #  versions of EFUSE names as documented in TRM and
+        # ESP-IDF efuse_reg.h
+
+        chip_ver_dis_bt = word3 & (1 << 1)
+        if chip_ver_dis_bt == 0:
             features += ["BT"]
 
-        if word3 & (1 << 0):  # RD_CHIP_VER_DIS_APP_CPU
+        chip_ver_dis_app_cpu = word3 & (1 << 0)
+        if chip_ver_dis_app_cpu:
             features += ["Single Core"]
         else:
             features += ["Dual Core"]
 
+        chip_cpu_freq_rated = word3 & (1 << 13)
+        if chip_cpu_freq_rated:
+            chip_cpu_freq_low = word3 & (1 << 12)
+            if chip_cpu_freq_low:
+                features += ["160MHz"]
+            else:
+                features += ["240MHz"]
+
         pkg_version = (word3 >> 9) & 0x07
-        if pkg_version != 0:
+        if pkg_version in [2, 4, 5]:
             features += ["Embedded Flash"]
 
         word4 = self.read_efuse(4)
-        vref = (word4 >> 8) & 0x1F
-        if vref != 0:
+        adc_vref = (word4 >> 8) & 0x1F
+        if adc_vref:
             features += ["VRef calibration in efuse"]
 
         return features
