@@ -324,12 +324,13 @@ class TestReadIdentityValues(EsptoolTestCase):
         self.assertNotEqual("ff:ff:ff:ff:ff:ff", mac)
 
     def test_read_chip_id(self):
-        output = self.run_esptool("chip_id")
-        idstr = re.search("Chip ID: 0x([0-9a-f]+)", output)
-        self.assertIsNotNone(idstr)
-        idstr = idstr.group(1)
-        self.assertNotEqual("0"*8, idstr)
-        self.assertNotEqual("f"*8, idstr)
+        if chip == "esp8266":
+            output = self.run_esptool("chip_id")
+            idstr = re.search("Chip ID: 0x([0-9a-f]+)", output)
+            self.assertIsNotNone(idstr)
+            idstr = idstr.group(1)
+            self.assertNotEqual("0"*8, idstr)
+            self.assertNotEqual("f"*8, idstr)
 
 class TestKeepImageSettings(EsptoolTestCase):
     """ Tests for the -fm keep, -ff keep options for write_flash """
