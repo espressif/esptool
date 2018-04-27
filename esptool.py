@@ -30,6 +30,7 @@ import struct
 import sys
 import time
 import zlib
+import string
 
 import serial
 
@@ -243,7 +244,7 @@ class ESPLoader(object):
         buf = b'\xc0' \
               + (packet.replace(b'\xdb',b'\xdb\xdd').replace(b'\xc0',b'\xdb\xdc')) \
               + b'\xc0'
-        self.trace("Write %d bytes: %r", len(buf), buf)
+        self.trace("Write %d bytes: %s", len(buf), HexFormatter(buf))
         self._port.write(buf)
 
     def trace(self, message, *format_args):
@@ -278,8 +279,8 @@ class ESPLoader(object):
 
         try:
             if op is not None:
-                self.trace("command op=0x%02x data len=%s wait_response=%d timeout=%.3f data=%r",
-                           op, len(data), 1 if wait_response else 0, timeout, data)
+                self.trace("command op=0x%02x data len=%s wait_response=%d timeout=%.3f data=%s",
+                           op, len(data), 1 if wait_response else 0, timeout, HexFormatter(data))
                 pkt = struct.pack(b'<BBHI', 0x00, op, len(data), chk) + data
                 self.write(pkt)
 
@@ -1669,7 +1670,7 @@ def slip_reader(port, trace_function):
             waiting_for = "header" if partial_packet is None else "content"
             trace_function("Timed out waiting for packet %s", waiting_for)
             raise FatalError("Timed out waiting for packet %s" % waiting_for)
-        trace_function("Read %d bytes: %r", len(read_bytes), read_bytes)
+        trace_function("Read %d bytes: %s", len(read_bytes), HexFormatter(read_bytes))
         for b in read_bytes:
             if type(b) is int:
                 b = bytes([b])  # python 2/3 compat
@@ -1678,9 +1679,9 @@ def slip_reader(port, trace_function):
                 if b == b'\xc0':
                     partial_packet = b""
                 else:
-                    trace_function("Read invalid data: %r", read_bytes)
-                    trace_function("Remaining data in serial buffer: %r", port.read(port.inWaiting()))
-                    raise FatalError('Invalid head of packet (%r)' % b)
+                    trace_function("Read invalid data: %s", HexFormatter(read_bytes))
+                    trace_function("Remaining data in serial buffer: %s", HexFormatter(port.read(port.inWaiting())))
+                    raise FatalError('Invalid head of packet (0x%s)' % hexify(b))
             elif in_escape:  # part-way through escape sequence
                 in_escape = False
                 if b == b'\xdc':
@@ -1688,13 +1689,13 @@ def slip_reader(port, trace_function):
                 elif b == b'\xdd':
                     partial_packet += b'\xdb'
                 else:
-                    trace_function("Read invalid data: %r", read_bytes)
-                    trace_function("Remaining data in serial buffer: %r", port.read(port.inWaiting()))
-                    raise FatalError('Invalid SLIP escape (%r%r)' % (b'\xdb', b))
+                    trace_function("Read invalid data: %s", HexFormatter(read_bytes))
+                    trace_function("Remaining data in serial buffer: %s", HexFormatter(port.read(port.inWaiting())))
+                    raise FatalError('Invalid SLIP escape (0xdb, 0x%s)' % (hexify(b)))
             elif b == b'\xdb':  # start of escape sequence
                 in_escape = True
             elif b == b'\xc0':  # end of packet
-                trace_function("Full packet: %r", partial_packet)
+                trace_function("Received full packet: %s", HexFormatter(partial_packet))
                 yield partial_packet
                 partial_packet = None
             else:  # normal byte in packet
@@ -1731,11 +1732,47 @@ def flash_size_bytes(size):
         raise FatalError("Unknown size %s" % size)
 
 
-def hexify(s):
+def hexify(s, uppercase=True):
+    format_str = '%02X' if uppercase else '%02x'
     if not PYTHON2:
-        return ''.join('%02X' % c for c in s)
+        return ''.join(format_str % c for c in s)
     else:
-        return ''.join('%02X' % ord(c) for c in s)
+        return ''.join(format_str % ord(c) for c in s)
+
+
+class HexFormatter(object):
+    """
+    Wrapper class which takes binary data in its constructor
+    and returns a hex string as it's __str__ method.
+
+    This is intended for "lazy formatting" of trace() output
+    in hex format. Avoids overhead (significant on slow computers)
+    of generating long hex strings even if tracing is disabled.
+
+    Note that this doesn't save any overhead if passed as an
+    argument to "%", only when passed to trace()
+
+    If auto_split is set (default), any long line (> 16 bytes) will be
+    printed as separately indented lines, with ASCII decoding at the end
+    of each line.
+    """
+    def __init__(self, binary_string, auto_split=True):
+        self._s = binary_string
+        self._auto_split = auto_split
+
+    def __str__(self):
+        if self._auto_split and len(self._s) > 16:
+            result = ""
+            s = self._s
+            while len(s) > 0:
+                line = s[:16]
+                ascii_line = "".join(c if (c == ' ' or (c in string.printable and c not in string.whitespace))
+                                     else '.' for c in line.decode('ascii', 'replace'))
+                s = s[16:]
+                result += "\n    %-16s %-16s | %s" % (hexify(line[:8], False), hexify(line[8:], False), ascii_line)
+            return result
+        else:
+            return hexify(self._s, False)
 
 
 def pad_to(data, alignment, pad_character=b'\xFF'):
