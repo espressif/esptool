@@ -1014,14 +1014,8 @@ class ESP32ROM(ESPLoader):
 
     def get_chip_description(self):
         word3 = self.read_efuse(3)
-        chip_version = (word3 >> 12) & 0xF
+        chip_ver_rev1 = (word3 >> 15) & 0x1
         pkg_version = (word3 >> 9) & 0x07
-
-        silicon_rev = {
-            0x0: "0",
-            0x8: "1",
-            0xc: "1",  # Silicon rev 1 w/ BLK3_PART_RESERVE bit set
-        }.get(chip_version, "(unknown 0x%x)" % chip_version)
 
         chip_name = {
             0: "ESP32D0WDQ6",
@@ -1030,7 +1024,7 @@ class ESP32ROM(ESPLoader):
             5: "ESP32-PICO-D4",
         }.get(pkg_version, "unknown ESP32")
 
-        return "%s (revision %s)" % (chip_name, silicon_rev)
+        return "%s (revision %d)" % (chip_name, chip_ver_rev1)
 
     def get_chip_features(self):
         features = ["WiFi"]
