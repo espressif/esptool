@@ -66,9 +66,95 @@ If you have connectivity problems then you can also set baud rates below 115200.
 
 ## Commands
 
-### Convert ELF to Binary
+### Write binary data to flash: write_flash
 
-The `elf2image` command converts an ELF file (from compiler/linker output) into the binary blobs to be flashed:
+Binary data can be written to the ESP's flash chip via the serial `write_flash` command:
+
+```
+esptool.py --port COM4 write_flash 0x1000 my_app-0x01000.bin
+```
+
+Multiple flash addresses and file names can be given on the same command line:
+
+```
+esptool.py --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
+```
+
+The `--chip` argument is optional when writing to flash, esptool will detect the type of chip when it connects to the serial port.
+
+The `--port` argument is documented under [Serial Port](#serial-port).
+
+The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by `elf2image` include the flash offsets as part of the file name. For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
+
+Numeric values passed to write_flash (and other commands) can be specified either in hex (ie 0x1000), or in decimal (ie 4096).
+
+See the [Troubleshooting](#troubleshooting) section if the write_flash command is failing, or the flashed module fails to boot.
+
+#### Setting flash mode and size
+
+You may also need to specify arguments for [flash mode and flash size](#flash-modes), if you wish to override the defaults. For example:
+
+```
+esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
+```
+
+Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the `.bin` image file, and to detect the flash size. See the [Flash Modes](#flash-modes) section for more details.
+
+#### Compression
+
+By default, the serial transfer data is compressed for better performance. The `-u/--no-compress` option disables this behaviour.
+
+### Read Flash Contents: read_flash
+
+The read_flash command allows reading back the contents of flash. The arguments to the command are an address, a size, and a filename to dump the output to. For example, to read a full 2MB of attached flash:
+
+```
+./esptool.py -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
+```
+
+(Note that if `write_flash` updated the boot image's [flash mode and flash size](#flash-modes) during flashing then these bytes may be different when read back.)
+
+### Erase Flash: erase_flash & erase region
+
+To erase the entire flash chip (all data replaced with 0xFF bytes):
+
+```
+esptool.py erase_flash
+```
+
+To erase a region of the flash, starting at address 0x20000 with length 0x4000 bytes (16KB):
+
+```
+esptool.py erase_region 0x20000 0x4000
+```
+
+The address and length must both be multiples of the SPI flash erase sector size. This is 0x1000 (4096) bytes for supported flash chips.
+
+### Read built-in MAC address: read_mac
+
+```
+esptool.py read_mac
+```
+
+### Read SPI flash id: flash_id
+
+```
+esptool.py flash_id
+```
+
+Example output:
+
+```
+Manufacturer: e0
+Device: 4016
+Detected flash size: 4MB
+```
+
+Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/HEAD/trunk/flashchips.h) for flash chip manufacturer name and part number.
+
+### Convert ELF to Binary: elf2image
+
+The `elf2image` command converts an ELF file (from compiler/linker output) into the binary executable images which can be flashed and then booted into:
 ```
 esptool.py --chip esp8266 elf2image my_app.elf
 ```
@@ -97,124 +183,37 @@ esptool.py --chip esp32 elf2image my_esp32_app.elf
 
 In the above example, the output image file would be called `my_esp32_app.bin`.
 
-### Writing binaries to flash
+### Output .bin image details: image_info
 
-The binaries from elf2image or make_image can be sent to the chip via the serial `write_flash` command:
-
-```
-esptool.py --port COM4 write_flash 0x1000 my_app-0x01000.bin
-```
-
-Multiple flash addresses and file names can be given on the same command line:
+The `image_info` command outputs some information (load addresses, sizes, etc) about a `.bin` file created by `elf2image`.
 
 ```
-esptool.py --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
+esptool.py --chip esp32 image_info my_esp32_app.bin
 ```
 
-The `--chip` argument is optional when writing to flash, esptool will detect the type of chip when it connects to the serial port.
+Note that `--chip esp32` is required when reading ESP32 images. Otherwise the default is `--chip esp8266` and the image will be interpreted as an invalid ESP8266 image.
 
-The `--port` argument is documented under [Serial Port](#serial-port).
+### Advanced Commands
 
-The next arguments to write_flash are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by elf2image include the flash offsets as part of the file name. For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
+The following commands are less commonly used, or only of interest to advanced users. They are documented on the wiki:
 
-Numeric values passed to write_flash (and other commands) can be specified either in hex (ie 0x1000), or in decimal (ie 4096).
+* [verify_flash](https://github.com/espressif/esptool/wiki/Advanced-Commands#verify_flash)
+* [dump_mem](https://github.com/espressif/esptool/wiki/Advanced-Commands#dump_mem)
+* [load_ram](https://github.com/espressif/esptool/wiki/Advanced-Commands#load_ram)
+* [read_mem & write_mem](https://github.com/espressif/esptool/wiki/Advanced-Commands#read_mem--write_mem)
+* [read_flash_status](https://github.com/espressif/esptool/wiki/Advanced-Commands#read_flash_status)
+* [write_flash_status](https://github.com/espressif/esptool/wiki/Advanced-Commands#write_flash_status)
+* [chip_id](https://github.com/espressif/esptool/wiki/Advanced-Commands#chip_id)
+* [make_image](https://github.com/espressif/esptool/wiki/Advanced-Commands#make_image)
+* [run](https://github.com/espressif/esptool/wiki/Advanced-Commands#run)
 
-You may also need to specify arguments for [flash mode and flash size](#flash-modes), if you wish to override the defaults. For example:
+## Additional ESP32 Tools
 
-```
-esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
-```
-
-Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the `.bin` image file, and to detect the flash size. See the [Flash Modes](#flash-modes) section for more details.
-
-By default, the serial transfer data is compressed for better performance. The `-u/--no-compress` option disables this behaviour.
-
-See the [Troubleshooting](#troubleshooting) section if the write_flash command is failing, or the flashed module fails to boot.
-
-### Verifying flash
-
-`write_flash` always verifies the MD5 hash of data which is written to flash, so manual verification is not usually needed. However, if you wish to verify the flash contents then you can do so via the `verify_flash` command:
-
-```
-./esptool.py verify_flash 0x40000 my_app.elf-0x40000.bin
-```
-
-NOTE: If verifying a default boot image (offset 0 for ESP8266 or offset 0x1000 for ESP32) then any `--flash_mode`, `--flash_size` and `--flash_freq` arguments which were passed to `write_flash` must also be passed to `verify_flash`. Otherwise, `verify_flash` will detect mismatches in the header of the image file.
-
-### Erasing Flash
-
-To erase the entire flash chip (all data replaced with 0xFF bytes):
-
-```
-esptool.py erase_flash
-```
-
-To erase a region of the flash, starting at address 0x20000 with length 0x4000 bytes (16KB):
-
-```
-esptool.py erase_region 0x20000 0x4000
-```
-
-The address and length must both be multiples of the SPI flash erase sector size. This is 0x1000 (4096) bytes for supported flash chips.
-
-### Manually assembling a firmware image
-
-You can also manually assemble a firmware image from binary segments (such as those extracted from objcopy), like this:
-
-```
-esptool.py --chip esp8266 make_image -f app.text.bin -a 0x40100000 -f app.data.bin -a 0x3ffe8000 -f app.rodata.bin -a 0x3ffe8c00 app.flash.bin
-```
-
-This command does not require a serial connection.
-
-Note: the make_image is currently only supported for ESP8266, not ESP32.
-
-### Dumping Memory
-
-The `dump_mem` command will dump a region from the chip's memory space. For example, to dump the ROM (64 KiB) from an ESP8266:
-
-```
-esptool.py dump_mem 0x40000000 65536 iram0.bin
-```
-
-### Read built-in MAC address
-
-```
-esptool.py read_mac
-```
-
-### ESP32-Only Commands
-
-The following commands for ESP32, bundled with esptool.py, are documented on the wiki:
+The following tools for ESP32, bundled with esptool.py, are documented on the wiki:
 
 * [espefuse.py - for reading/writing ESP32 efuse region](https://github.com/espressif/esptool/wiki/espefuse)
-* [espsecure.py - for working with ESP32 security features](https://github.com/espressif/esptool/wiki/espsecure)
-
-#### Read SPI flash id
-
-```
-esptool.py flash_id
-```
-
-Example output:
-
-```
-Manufacturer: e0
-Device: 4016
-Detected flash size: 4MB
-```
-
-Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/HEAD/trunk/flashchips.h) for flash chip manufacturer name and part number.
-
-#### Read internal chip id:
-
-```
-esptool.py chip_id
-```
-
-On ESP8266, this is the same as the output of the `system_get_chip_id()` SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero on most (all?) ESP8266s.
-
-On ESP32, there is no system_get_chip_id() function and this command is the same as `esptool.py read_mac`.
+* [espsecure.py - for working with ESP32 security features](https://git
+hub.com/espressif/esptool/wiki/espsecure)
 
 ## Serial Connections
 
