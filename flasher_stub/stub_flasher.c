@@ -335,6 +335,12 @@ void cmd_loop() {
       case ESP_MEM_END:
           if (data_words[1] != 0) {
               void (*entrypoint_fn)(void) = (void (*))data_words[1];
+              /* Make sure the command response has been flushed out
+                 of the UART before we run the new code */
+#ifdef ESP32
+              uart_tx_flush(0);
+#endif
+              ets_delay_us(1000);
               /* this is a little different from the ROM loader,
                  which exits the loader routine and _then_ calls this
                  function. But for our purposes so far, having a bit of

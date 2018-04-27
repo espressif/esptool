@@ -46,6 +46,7 @@ MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2  # longest any command can run
 SYNC_TIMEOUT = 0.1                    # timeout for syncing with bootloader
 MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating md5sum
 ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
+MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
@@ -453,8 +454,19 @@ class ESPLoader(object):
 
     """ Leave download mode and run the application """
     def mem_finish(self, entrypoint=0):
-        return self.check_command("leave RAM download mode", self.ESP_MEM_END,
-                                  struct.pack('<II', int(entrypoint == 0), entrypoint))
+        # Sending ESP_MEM_END usually sends a correct response back, however sometimes
+        # (with ROM loader) the executed code may reset the UART or change the baud rate
+        # before the transmit FIFO is empty. So in these cases we set a short timeout and
+        # ignore errors.
+        timeout = DEFAULT_TIMEOUT if self.IS_STUB else MEM_END_ROM_TIMEOUT
+        data = struct.pack('<II', int(entrypoint == 0), entrypoint)
+        try:
+            return self.check_command("leave RAM download mode", self.ESP_MEM_END,
+                                      data=data, timeout=timeout)
+        except FatalError:
+            if self.IS_STUB:
+                raise
+            pass
 
     """ Start downloading to Flash (performs an erase)
 
