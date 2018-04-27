@@ -34,7 +34,7 @@ import string
 
 import serial
 
-__version__ = "2.3.2-dev"
+__version__ = "2.4.0-dev"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
