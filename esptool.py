@@ -1738,20 +1738,6 @@ def hexify(s):
         return ''.join('%02X' % ord(c) for c in s)
 
 
-def unhexify(hs):
-    s = bytes()
-
-    for i in range(0, len(hs) - 1, 2):
-        hex_string = hs[i:i + 2]
-
-        if not PYTHON2:
-            s += bytes([int(hex_string, 16)])
-        else:
-            s += chr(int(hex_string, 16))
-
-    return s
-
-
 def pad_to(data, alignment, pad_character=b'\xFF'):
     """ Pad to the next alignment boundary """
     pad_mod = len(data) % alignment
