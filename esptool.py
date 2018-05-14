@@ -30,8 +30,6 @@ import struct
 import sys
 import time
 
-import glob
-
 import zlib
 import string
 
@@ -433,7 +431,7 @@ class ESPLoader(object):
         last_error = None
 
         try:
-            for _ in range(3):
+            for _ in range(7):
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
                     return
@@ -2218,13 +2216,10 @@ def version(args):
 
 
 def all_serial_ports():
-    """Returns all open serial ports as a list
-
-    Will check the environment your running on, and return a list of all available ports.
-
-    Returns:
-        A list of all available ports e.g. COM1, COM11, COM12....
     """
+    https://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
+    """
+    import glob
 
     if sys.platform.startswith('win'):
         ports = ['COM%s' % (i + 1) for i in range(256)]
@@ -2243,6 +2238,16 @@ def all_serial_ports():
             result.append(port)
         except (OSError, serial.SerialException):
             pass
+    return result
+
+
+def all_serial_ports_2():
+    import serial.tools.list_ports as list_ports
+
+    result = []
+    for port in list_ports.comports():
+        result.append(port.device)
+    result.sort()
     return result
 
 
@@ -2465,8 +2470,7 @@ def main():
 
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
-
-        ser_list = all_serial_ports() if args.port is None else [args.port]
+        ser_list = all_serial_ports_2() if args.port is None else [args.port]
         ser_attempts = 0
         for each_port in reversed(ser_list):
             ser_attempts += 1
