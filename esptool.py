@@ -2257,7 +2257,7 @@ def main():
     parser.add_argument(
         '--port', '-p',
         help='Serial port device',
-        default=os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT))
+        default=os.environ.get('ESPTOOL_PORT', None))
 
     parser.add_argument(
         '--baud', '-b',
@@ -2465,46 +2465,33 @@ def main():
 
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
-        if args.port == ESPLoader.DEFAULT_PORT:  # if port is not specified, try to auto find it
-            ser_list = all_serial_ports()  # Grab the list of available ports
-            print("Port not specified! \t Using port auto find...")
-            print(ser_list)
-            ser_attempts = 0
-            for each_port in reversed(ser_list):
+
+        ser_list = all_serial_ports() if args.port is None else [args.port]
+        ser_attempts = 0
+        for each_port in reversed(ser_list):
+            ser_attempts += 1
+            if args.port is None:
                 print("Trying %s" % each_port)
-                ser_attempts += 1
-                try:
-                    if args.chip == 'auto':
-                        esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
-                    else:
-                        chip_class = {
-                            'esp8266': ESP8266ROM,
-                            'esp32': ESP32ROM,
-                        }[args.chip]
-                        esp = chip_class(each_port, initial_baud, args.trace)
-                        esp.connect(args.before)
-                except FatalError as err:
-                    if ser_attempts >= len(ser_list):
-                        raise FatalError("%s\nAll %s available COM ports could not connect." % err, len(ser_list))
-                    else:
-                        continue
+            try:
+                if args.chip == 'auto':
+                    esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
+                else:
+                    chip_class = {
+                        'esp8266': ESP8266ROM,
+                        'esp32': ESP32ROM,
+                    }[args.chip]
+                    esp = chip_class(each_port, initial_baud, args.trace)
+                    esp.connect(args.before)
                 break
-        else:
-            if args.chip == 'auto':
-                esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
-            else:
-                chip_class = {
-                    'esp8266': ESP8266ROM,
-                    'esp32': ESP32ROM,
-                }[args.chip]
-                esp = chip_class(args.port, initial_baud, args.trace)
-                esp.connect(args.before)
+            except FatalError as err:
+                if ser_attempts >= len(ser_list) or args.port is not None:
+                    raise FatalError("%s\nAll %s available COM ports could not connect." % err, len(ser_list))
+                else:
+                    continue
 
         print("Chip is %s" % (esp.get_chip_description()))
 
         print("Features: %s" % ", ".join(esp.get_chip_features()))
-
-        read_mac(esp, args)
 
         if not args.no_stub:
             esp = esp.run_stub()
