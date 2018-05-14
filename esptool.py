@@ -32,6 +32,7 @@ import sys
 import time
 import zlib
 import string
+import serial.tools.list_ports as list_ports
 
 import serial
 
@@ -130,7 +131,7 @@ def esp8266_function_only(func):
 
 
 class ESPLoader(object):
-    """ Base class providing access to ESP ROM & softtware stub bootloaders.
+    """ Base class providing access to ESP ROM & software stub bootloaders.
     Subclasses provide ESP8266 & ESP32 specific functionality.
 
     Don't instantiate this base class directly, either instantiate a subclass or
@@ -436,7 +437,7 @@ class ESPLoader(object):
         last_error = None
 
         try:
-            for _ in range(10):
+            for _ in range(7):
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
                     return
@@ -2284,7 +2285,7 @@ def main():
     parser.add_argument(
         '--port', '-p',
         help='Serial port device',
-        default=os.environ.get('ESPTOOL_PORT', ESPLoader.DEFAULT_PORT))
+        default=os.environ.get('ESPTOOL_PORT', None))
 
     parser.add_argument(
         '--baud', '-b',
@@ -2502,15 +2503,28 @@ def main():
         else:
             initial_baud = args.baud
 
-        if args.chip == 'auto':
-            esp = ESPLoader.detect_chip(args.port, initial_baud, args.before, args.trace)
-        else:
-            chip_class = {
-                'esp8266': ESP8266ROM,
-                'esp32': ESP32ROM,
-            }[args.chip]
-            esp = chip_class(args.port, initial_baud, args.trace)
-            esp.connect(args.before)
+        ser_list = sorted(ports.device for ports in list_ports.comports())
+        for each_port in reversed(ser_list):
+            if args.port is None:
+                print("Trying %s ... " % each_port)
+            try:
+                if args.chip == 'auto':
+                    esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
+                else:
+                    chip_class = {
+                        'esp8266': ESP8266ROM,
+                        'esp32': ESP32ROM,
+                    }[args.chip]
+                    esp = chip_class(each_port, initial_baud, args.trace)
+                    esp.connect(args.before)
+                break
+            except FatalError as err:
+                if args.port is not None:
+                    raise
+                print("%s failed to connect: %s" % (each_port, err))
+                esp = None
+        if esp is None:
+            raise FatalError("All of the %d available serial ports could not connect to a Espressif device." % len(ser_list))
 
         print("Chip is %s" % (esp.get_chip_description()))
 
