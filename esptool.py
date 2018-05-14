@@ -29,6 +29,9 @@ import shlex
 import struct
 import sys
 import time
+
+import glob
+
 import zlib
 import string
 
@@ -129,7 +132,7 @@ def esp8266_function_only(func):
 
 
 class ESPLoader(object):
-    """ Base class providing access to ESP ROM & softtware stub bootloaders.
+    """ Base class providing access to ESP ROM & software stub bootloaders.
     Subclasses provide ESP8266 & ESP32 specific functionality.
 
     Don't instantiate this base class directly, either instantiate a subclass or
@@ -430,7 +433,8 @@ class ESPLoader(object):
         last_error = None
 
         try:
-            for _ in range(10):
+            #for _ in range(10):
+            for _ in range(3):
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
                     return
@@ -2214,6 +2218,35 @@ def version(args):
 #
 
 
+def all_serial_ports():
+    """Returns all open serial ports as a list
+
+    Will check the environment your running on, and return a list of all available ports.
+
+    Returns:
+        A list of all available ports e.g. COM1, COM11, COM12....
+    """
+
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # This excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+             pass
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
@@ -2433,19 +2466,46 @@ def main():
 
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
-        if args.chip == 'auto':
-            esp = ESPLoader.detect_chip(args.port, initial_baud, args.before, args.trace)
+        if args.port == ESPLoader.DEFAULT_PORT: # if port is not specified, try to auto find it
+            ser_list = all_serial_ports()  # Grab the list of available ports
+            print("Port not specified! \t Using port auto find...")
+            print(ser_list)
+            ser_attempts = 0
+            for each_port in reversed(ser_list):
+                print("Trying %s" % each_port)
+                ser_attempts += 1
+                try:
+                    if args.chip == 'auto':
+                        esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
+                    else:
+                        chip_class = {
+                            'esp8266': ESP8266ROM,
+                            'esp32': ESP32ROM,
+                        }[args.chip]
+                        esp = chip_class(each_port, initial_baud, args.trace)
+                        esp.connect(args.before)
+                except FatalError as err:
+                    if ser_attempts >= len(ser_list):
+                        raise FatalError("%s\nAll %s available COM ports could not connect." % err, len(ser_list))
+                    else:
+                        continue
+                break
         else:
-            chip_class = {
-                'esp8266': ESP8266ROM,
-                'esp32': ESP32ROM,
-            }[args.chip]
-            esp = chip_class(args.port, initial_baud, args.trace)
-            esp.connect(args.before)
+            if args.chip == 'auto':
+                esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
+            else:
+                chip_class = {
+                    'esp8266': ESP8266ROM,
+                    'esp32': ESP32ROM,
+                }[args.chip]
+                esp = chip_class(args.port, initial_baud, args.trace)
+                esp.connect(args.before)
 
         print("Chip is %s" % (esp.get_chip_description()))
 
         print("Features: %s" % ", ".join(esp.get_chip_features()))
+
+        read_mac(esp, args)
 
         if not args.no_stub:
             esp = esp.run_stub()
