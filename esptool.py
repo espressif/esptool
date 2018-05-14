@@ -433,7 +433,6 @@ class ESPLoader(object):
         last_error = None
 
         try:
-            #for _ in range(10):
             for _ in range(3):
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
@@ -2243,7 +2242,7 @@ def all_serial_ports():
             s.close()
             result.append(port)
         except (OSError, serial.SerialException):
-             pass
+            pass
     return result
 
 
@@ -2466,7 +2465,7 @@ def main():
 
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
-        if args.port == ESPLoader.DEFAULT_PORT: # if port is not specified, try to auto find it
+        if args.port == ESPLoader.DEFAULT_PORT:  # if port is not specified, try to auto find it
             ser_list = all_serial_ports()  # Grab the list of available ports
             print("Port not specified! \t Using port auto find...")
             print(ser_list)
