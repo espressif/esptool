@@ -1006,6 +1006,9 @@ class ESP8266ROM(ESPLoader):
         else:
             return (num_sectors - head_sectors) * sector_size
 
+    def override_vddsdio(self, new_voltage):
+        raise NotImplementedInROMError("Overriding VDDSDIO setting only applies to ESP32")
+
 
 class ESP8266StubLoader(ESP8266ROM):
     """ Access class for ESP8266 stub loader, runs on top of ROM.
@@ -1057,6 +1060,8 @@ class ESP32ROM(ESPLoader):
     }
 
     BOOTLOADER_FLASH_OFFSET = 0x1000
+
+    OVERRIDE_VDDSDIO_CHOICES = ["1.8V", "1.9V", "OFF"]
 
     def get_chip_description(self):
         word3 = self.read_efuse(3)
@@ -1128,6 +1133,28 @@ class ESP32ROM(ESPLoader):
 
     def get_erase_size(self, offset, size):
         return size
+
+    def override_vddsdio(self, new_voltage):
+        new_voltage = new_voltage.upper()
+        if new_voltage not in self.OVERRIDE_VDDSDIO_CHOICES:
+            raise FatalError("The only accepted VDDSDIO overrides are '1.8V', '1.9V' and 'OFF'")
+        RTC_CNTL_SDIO_CONF_REG = 0x3ff48074
+        RTC_CNTL_XPD_SDIO_REG = (1 << 31)
+        RTC_CNTL_DREFH_SDIO_M = (3 << 29)
+        RTC_CNTL_DREFM_SDIO_M = (3 << 27)
+        RTC_CNTL_DREFL_SDIO_M = (3 << 25)
+        # RTC_CNTL_SDIO_TIEH = (1 << 23)  # not used here, setting TIEH=1 would set 3.3V output, not safe for esptool.py to do
+        RTC_CNTL_SDIO_FORCE = (1 << 22)
+        RTC_CNTL_SDIO_PD_EN = (1 << 21)
+
+        reg_val = RTC_CNTL_SDIO_FORCE  # override efuse setting
+        reg_val |= RTC_CNTL_SDIO_PD_EN
+        if new_voltage != "OFF":
+            reg_val |= RTC_CNTL_XPD_SDIO_REG  # enable internal LDO
+        if new_voltage == "1.9V":
+            reg_val |= (RTC_CNTL_DREFH_SDIO_M | RTC_CNTL_DREFM_SDIO_M | RTC_CNTL_DREFL_SDIO_M)  # boost voltage
+        self.write_reg(RTC_CNTL_SDIO_CONF_REG, reg_val)
+        print("VDDSDIO regulator set to %s" % new_voltage)
 
 
 class ESP32StubLoader(ESP32ROM):
@@ -2287,6 +2314,12 @@ def main():
         help="Enable trace-level output of esptool.py interactions.",
         action='store_true')
 
+    parser.add_argument(
+        '--override-vddsdio',
+        help="Override ESP32 VDDSDIO internal voltage regulator (use with care)",
+        choices=ESP32ROM.OVERRIDE_VDDSDIO_CHOICES,
+        nargs='?')
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run esptool {command} -h for additional help')
@@ -2487,6 +2520,9 @@ def main():
 
         if not args.no_stub:
             esp = esp.run_stub()
+
+        if args.override_vddsdio:
+            esp.override_vddsdio(args.override_vddsdio)
 
         if args.baud > initial_baud:
             try:
