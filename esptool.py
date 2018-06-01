@@ -2492,6 +2492,8 @@ def main():
 
     else:
         operation_func(args)
+    
+    esp._port.close()
 
 
 def expand_file_arguments():
