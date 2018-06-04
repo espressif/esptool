@@ -2214,34 +2214,7 @@ def version(args):
 # End of operations functions
 #
 
-
 def all_serial_ports():
-    """
-    https://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
-    """
-    import glob
-
-    if sys.platform.startswith('win'):
-        ports = ['COM%s' % (i + 1) for i in range(256)]
-    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-        # This excludes your current terminal "/dev/tty"
-        ports = glob.glob('/dev/tty[A-Za-z]*')
-    elif sys.platform.startswith('darwin'):
-        ports = glob.glob('/dev/tty.*')
-    else:
-        raise EnvironmentError('Unsupported platform')
-    result = []
-    for port in ports:
-        try:
-            s = serial.Serial(port)
-            s.close()
-            result.append(port)
-        except (OSError, serial.SerialException):
-            pass
-    return result
-
-
-def all_serial_ports_2():
     import serial.tools.list_ports as list_ports
 
     result = []
@@ -2470,12 +2443,12 @@ def main():
 
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
-        ser_list = all_serial_ports_2() if args.port is None else [args.port]
+        ser_list = all_serial_ports() if args.port is None else [args.port]
         ser_attempts = 0
         for each_port in reversed(ser_list):
             ser_attempts += 1
             if args.port is None:
-                print("Trying %s" % each_port)
+                print("Trying %s ... " % each_port)
             try:
                 if args.chip == 'auto':
                     esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
@@ -2488,10 +2461,12 @@ def main():
                     esp.connect(args.before)
                 break
             except FatalError as err:
-                if ser_attempts >= len(ser_list) or args.port is not None:
-                    raise FatalError("%s\nAll %s available COM ports could not connect." % err, len(ser_list))
-                else:
-                    continue
+                if args.port is not None:
+                    raise
+                print("%s failed to connect: %s" % (each_port, err))
+                esp = None
+        if esp is None:
+            raise FatalError("All of the %d available serial ports could not connect to a Espressif device." % len(ser_list))
 
         print("Chip is %s" % (esp.get_chip_description()))
 
