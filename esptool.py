@@ -2447,6 +2447,8 @@ def main():
 
         print("Features: %s" % ", ".join(esp.get_chip_features()))
 
+        read_mac(esp, args)
+
         if not args.no_stub:
             esp = esp.run_stub()
 
