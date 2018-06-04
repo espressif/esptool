@@ -31,6 +31,7 @@ import sys
 import time
 import zlib
 import string
+import serial.tools.list_ports as list_ports
 
 import serial
 
@@ -2219,16 +2220,6 @@ def version(args):
 #
 
 
-def all_serial_ports():
-    import serial.tools.list_ports as list_ports
-
-    result = []
-    for port in list_ports.comports():
-        result.append(port.device)
-    result.sort()
-    return result
-
-
 def main():
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
@@ -2448,10 +2439,8 @@ def main():
 
     if operation_args[0] == 'esp':  # operation function takes an ESPLoader connection object
         initial_baud = min(ESPLoader.ESP_ROM_BAUD, args.baud)  # don't sync faster than the default baud rate
-        ser_list = all_serial_ports() if args.port is None else [args.port]
-        ser_attempts = 0
+        ser_list = sorted(ports.device for ports in list_ports.comports())
         for each_port in reversed(ser_list):
-            ser_attempts += 1
             if args.port is None:
                 print("Trying %s ... " % each_port)
             try:
