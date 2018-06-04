@@ -383,6 +383,11 @@ class ESPLoader(object):
         # Details: https://github.com/espressif/esptool/issues/136
         last_error = None
 
+        # If we're doing no_sync, we're likely communicating as a pass through
+        # with an intermediate device to the ESP32
+        if mode == "no_reset_no_sync":
+            return last_error
+
         # issue reset-to-bootloader:
         # RTS = either CH_PD/EN or nRESET (both active low = chip in reset
         # DTR = GPIO0 (active low = boot to flasher)
@@ -2246,7 +2251,7 @@ def main():
     parser.add_argument(
         '--before',
         help='What to do before connecting to the chip',
-        choices=['default_reset', 'no_reset'],
+        choices=['default_reset', 'no_reset', 'no_reset_no_sync'],
         default=os.environ.get('ESPTOOL_BEFORE', 'default_reset'))
 
     parser.add_argument(
@@ -2471,6 +2476,8 @@ def main():
         print("Chip is %s" % (esp.get_chip_description()))
 
         print("Features: %s" % ", ".join(esp.get_chip_features()))
+
+        read_mac(esp, args)
 
         if not args.no_stub:
             esp = esp.run_stub()
