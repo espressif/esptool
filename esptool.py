@@ -2501,6 +2501,8 @@ def main():
             if esp.IS_STUB:
                 esp.soft_reset(True)  # exit stub back to ROM loader
 
+        esp._port.close()
+
     else:
         operation_func(args)
 
