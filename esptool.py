@@ -2489,12 +2489,10 @@ def main():
             print('Staying in bootloader.')
             if esp.IS_STUB:
                 esp.soft_reset(True)  # exit stub back to ROM loader
-
+		esp._port.close()
     else:
         operation_func(args)
     
-    esp._port.close()
-
 
 def expand_file_arguments():
     """ Any argument starting with "@" gets replaced with all values read from a text file.
