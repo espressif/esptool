@@ -2218,6 +2218,7 @@ def version(args):
 # End of operations functions
 #
 
+
 def all_serial_ports():
     import serial.tools.list_ports as list_ports
 
