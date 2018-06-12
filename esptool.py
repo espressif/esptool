@@ -20,6 +20,7 @@ from __future__ import division, print_function
 
 import argparse
 import base64
+import binascii
 import copy
 import hashlib
 import inspect
@@ -1180,10 +1181,10 @@ class ImageSegment(object):
     (very similar to a section in an ELFImage also) """
     def __init__(self, addr, data, file_offs=None):
         self.addr = addr
-        # pad all ImageSegments to at least 4 bytes length
-        self.data = pad_to(data, 4, b'\x00')
+        self.data = data
         self.file_offs = file_offs
         self.include_in_checksum = True
+        self.pad_to_alignment(4)  # pad all ImageSegments to at least 4 bytes length
 
     def copy_with_new_addr(self, new_addr):
         """ Return a new ImageSegment with same data, but mapped at
@@ -1207,6 +1208,9 @@ class ImageSegment(object):
         if self.file_offs is not None:
             r += " file_offs 0x%08x" % (self.file_offs)
         return r
+
+    def pad_to_alignment(self, alignment):
+        self.data = pad_to(self.data, alignment, b'\x00')
 
 
 class ELFSection(ImageSegment):
@@ -1365,8 +1369,7 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             # the file is saved in the image with a zero load address
             # in the header, so we need to calculate a load address
             irom_segment = self.load_segment(load_file, True)
-            # for actual mapped addr, add ESP8266ROM.IROM_MAP_START + flashing_Addr + 8
-            irom_segment.addr = 0
+            irom_segment.addr = 0  # for actual mapped addr, add ESP8266ROM.IROM_MAP_START + flashing_addr + 8
             irom_segment.include_in_checksum = False
 
             first_flash_mode = self.flash_mode
@@ -1411,6 +1414,7 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             if irom_segment is not None:
                 # save irom0 segment, make sure it has load addr 0 in the file
                 irom_segment = irom_segment.copy_with_new_addr(0)
+                irom_segment.pad_to_alignment(16)  # irom_segment must end on a 16 byte boundary
                 self.save_segment(f, irom_segment)
 
             # second header, matches V1 header and contains loadable segments
@@ -1421,10 +1425,28 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
 
+        # calculate a crc32 of entire file and append
+        # (algorithm used by recent 8266 SDK bootloaders)
+        with open(filename, 'rb') as f:
+            crc = esp8266_crc32(f.read())
+        with open(filename, 'ab') as f:
+            f.write(struct.pack(b'<I', crc))
+
 
 # Backwards compatibility for previous API, remove in esptool.py V3
 ESPFirmwareImage = ESP8266ROMFirmwareImage
 OTAFirmwareImage = ESP8266V2FirmwareImage
+
+
+def esp8266_crc32(data):
+    """
+    CRC32 algorithm used by 8266 SDK bootloader (and gen_appbin.py).
+    """
+    crc = binascii.crc32(data, 0) & 0xFFFFFFFF
+    if crc & 0x80000000:
+        return crc ^ 0xFFFFFFFF
+    else:
+        return crc + 1
 
 
 class ESP32FirmwareImage(BaseFirmwareImage):

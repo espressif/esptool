@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+import os
 import os.path
 import subprocess
+import struct
 import sys
 import unittest
 
@@ -165,11 +167,21 @@ class ESP8266V2ImageTests(BaseTestCase):
                              "IROM segment 'load address' should be zero")
             with open(elfpath, "rb") as f:
                 e = ELFFile(f)
-                sh_size = (e.get_section_by_name(".irom0.text").header.sh_size + 3) & ~3
-                self.assertEqual(len(irom_segment.data), sh_size, "irom segment (0x%x) should be same size as .irom0.text section (0x%x)" % (len(irom_segment.data), sh_size))
+                sh_size = (e.get_section_by_name(".irom0.text").header.sh_size + 15) & ~15
+                self.assertEqual(len(irom_segment.data), sh_size, "irom segment (0x%x) should be same size (16 padded) as .irom0.text section (0x%x)" % (len(irom_segment.data), sh_size))
+
+            # check V2 CRC (for ESP8266 SDK bootloader)
+            with open(binpath, "rb") as f:
+                f.seek(-4, os.SEEK_END)
+                image_len = f.tell()
+                crc_stored = struct.unpack("<I", f.read(4))[0]
+                f.seek(0)
+                crc_calc = esptool.esp8266_crc32(f.read(image_len))
+                self.assertEqual(crc_stored, crc_calc)
 
             # test imageinfo doesn't fail
             self.assertImageInfo(binpath)
+
         finally:
             try_delete(binpath)
 
