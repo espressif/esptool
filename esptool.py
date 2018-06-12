@@ -1157,9 +1157,9 @@ class ESPBOOTLOADER(object):
 
 def LoadFirmwareImage(chip, filename):
     """ Load a firmware image. Can be for ESP8266 or ESP32. ESP8266 images will be examined to determine if they are
-        original ROM firmware images (ESPFirmwareImage) or "v2" OTA bootloader images.
+        original ROM firmware images (ESP8266ROMFirmwareImage) or "v2" OTA bootloader images.
 
-        Returns a BaseFirmwareImage subclass, either ESPFirmwareImage (v1) or OTAFirmwareImage (v2).
+        Returns a BaseFirmwareImage subclass, either ESP8266ROMFirmwareImage (v1) or ESP8266V2FirmwareImage (v2).
     """
     with open(filename, 'rb') as f:
         if chip.lower() == 'esp32':
@@ -1168,9 +1168,9 @@ def LoadFirmwareImage(chip, filename):
             magic = ord(f.read(1))
             f.seek(0)
             if magic == ESPLoader.ESP_IMAGE_MAGIC:
-                return ESPFirmwareImage(f)
+                return ESP8266ROMFirmwareImage(f)
             elif magic == ESPBOOTLOADER.IMAGE_V2_MAGIC:
-                return OTAFirmwareImage(f)
+                return ESP8266V2FirmwareImage(f)
             else:
                 raise FatalError("Invalid image magic number: %d" % magic)
 
@@ -1304,13 +1304,13 @@ class BaseFirmwareImage(object):
         return [s for s in self.segments if s != irom_segment]
 
 
-class ESPFirmwareImage(BaseFirmwareImage):
+class ESP8266ROMFirmwareImage(BaseFirmwareImage):
     """ 'Version 1' firmware image, segments loaded directly by the ROM bootloader. """
 
     ROM_LOADER = ESP8266ROM
 
     def __init__(self, load_file=None):
-        super(ESPFirmwareImage, self).__init__()
+        super(ESP8266ROMFirmwareImage, self).__init__()
         self.flash_mode = 0
         self.flash_size_freq = 0
         self.version = 1
@@ -1344,7 +1344,7 @@ class ESPFirmwareImage(BaseFirmwareImage):
             self.append_checksum(f, checksum)
 
 
-class OTAFirmwareImage(BaseFirmwareImage):
+class ESP8266V2FirmwareImage(BaseFirmwareImage):
     """ 'Version 2' firmware image, segments loaded by software bootloader stub
         (ie Espressif bootloader or rboot)
     """
@@ -1352,7 +1352,7 @@ class OTAFirmwareImage(BaseFirmwareImage):
     ROM_LOADER = ESP8266ROM
 
     def __init__(self, load_file=None):
-        super(OTAFirmwareImage, self).__init__()
+        super(ESP8266V2FirmwareImage, self).__init__()
         self.version = 2
         if load_file is not None:
             segments = self.load_common_header(load_file, ESPBOOTLOADER.IMAGE_V2_MAGIC)
@@ -1420,6 +1420,11 @@ class OTAFirmwareImage(BaseFirmwareImage):
             for segment in normal_segments:
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
+
+
+# Backwards compatibility for previous API, remove in esptool.py V3
+ESPFirmwareImage = ESP8266ROMFirmwareImage
+OTAFirmwareImage = ESP8266V2FirmwareImage
 
 
 class ESP32FirmwareImage(BaseFirmwareImage):
@@ -2063,7 +2068,7 @@ def image_info(args):
 
 
 def make_image(args):
-    image = ESPFirmwareImage()
+    image = ESP8266ROMFirmwareImage()
     if len(args.segfile) == 0:
         raise FatalError('No segments specified')
     if len(args.segfile) != len(args.segaddr):
@@ -2084,9 +2089,9 @@ def elf2image(args):
     if args.chip == 'esp32':
         image = ESP32FirmwareImage()
     elif args.version == '1':  # ESP8266
-        image = ESPFirmwareImage()
+        image = ESP8266ROMFirmwareImage()
     else:
-        image = OTAFirmwareImage()
+        image = ESP8266V2FirmwareImage()
     image.entrypoint = e.entrypoint
     image.segments = e.sections  # ELFSection is a subclass of ImageSegment
     image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
