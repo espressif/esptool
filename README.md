@@ -28,7 +28,7 @@ After installing, you will have `esptool.py` installed into the default Python e
 
 Manual installation allows you to run the latest development version from this repository.
 
-esptool.py depends on [pySerial](https://github.com/pyserial/pyserial#readme) version 2.5 or newer for serial communication with the target device.
+esptool.py depends on [pySerial](https://github.com/pyserial/pyserial#readme) version 3.0 or newer for serial communication with the target device.
 
 If you choose to install esptool.py system-wide by running `python setup.py install`, then this will be taken care of automatically.
 
