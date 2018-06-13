@@ -48,6 +48,9 @@ To see all options for a particular command, append `-h` to the command name. ie
 
 The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (Linux and macOS) or `-p COM1` (Windows).
 
+* A default serial port can be specified by setting the `ESPTOOL_PORT` environment variable.
+* If no `-p` option or `ESPTOOL_PORT` value is specified, `esptool.py` will enumerate all connected serial ports and try each one until it finds an Espressif device connected (new behaviour in v2.4.0).
+
 Note: Windows and macOS may require drivers to be installed for a particular USB/serial adapter, before a serial port is available. Consult the documentation for your particular device. On macOS, you can also consult [System Information](https://support.apple.com/en-us/HT203001)'s list of USB devices to identify the manufacturer or device ID when the adapter is plugged in. On Windows, you can use [Windows Update or Device Manager](https://support.microsoft.com/en-us/help/15048/windows-7-update-driver-hardware-not-working-properly) to find a driver.
 
 If using Cygwin or WSL on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows MSYS2 environment, this environment uses a native Windows Python which accepts COM ports as-is.)
