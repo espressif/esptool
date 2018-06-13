@@ -46,8 +46,7 @@ To see all options for a particular command, append `-h` to the command name. ie
 
 ### Serial Port
 
-The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (Linux and macOS) or `-p COM1` (Windows).
-
+* The serial port is selected using the `-p` option, like `-p /dev/ttyUSB0` (Linux and macOS) or `-p COM1` (Windows).
 * A default serial port can be specified by setting the `ESPTOOL_PORT` environment variable.
 * If no `-p` option or `ESPTOOL_PORT` value is specified, `esptool.py` will enumerate all connected serial ports and try each one until it finds an Espressif device connected (new behaviour in v2.4.0).
 
@@ -215,8 +214,7 @@ The following commands are less commonly used, or only of interest to advanced u
 The following tools for ESP32, bundled with esptool.py, are documented on the wiki:
 
 * [espefuse.py - for reading/writing ESP32 efuse region](https://github.com/espressif/esptool/wiki/espefuse)
-* [espsecure.py - for working with ESP32 security features](https://git
-hub.com/espressif/esptool/wiki/espsecure)
+* [espsecure.py - for working with ESP32 security features](https://github.com/espressif/esptool/wiki/espsecure)
 
 ## Serial Connections
 
@@ -232,7 +230,7 @@ Ground                | Ground
 
 Note that TX (transmit) on the ESP8266 is connected to RX (receive) on the serial port connection, and vice versa.
 
-Do not connect the chip to 5V TTL serial adapters, and especially not to high voltage RS-232 adapters! 3.3v serial only!
+Do not connect the chip to 5V TTL serial adapters, and especially not to "standard" RS-232 adapters! 3.3V serial only!
 
 ## Entering the Bootloader
 
@@ -406,7 +404,7 @@ In addition to these pins, GPIOs 6 & 11 are also used to access the SPI flash (i
 
 ### Early stage crash
 
-Use a [serial terminal program](#serial-terminal-programs) to view the boot log. (ESP8266 baud rate is 74880bps, ESP32 is 115200bps). See if the program is crashing during early startup or outputting an error message. See [Boot log](#boot-log) for an example.
+Use a [serial terminal program](#serial-terminal-programs) to view the boot log. (ESP8266 baud rate is 74880bps, ESP32 is 115200bps). See if the program is crashing during early startup or outputting an error message.
 
 ## Serial Terminal Programs
 
