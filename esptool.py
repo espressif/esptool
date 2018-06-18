@@ -2503,10 +2503,13 @@ def main():
         else:
             initial_baud = args.baud
 
-        ser_list = sorted(ports.device for ports in list_ports.comports())
+        if args.port is None:
+            ser_list = sorted(ports.device for ports in list_ports.comports())
+            print("Found %d serial ports" % len(ser_list))
+        else:
+            ser_list = [args.port]
         for each_port in reversed(ser_list):
-            if args.port is None:
-                print("Trying %s ... " % each_port)
+            print("Serial port %s" % each_port)
             try:
                 if args.chip == 'auto':
                     esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
