@@ -22,6 +22,7 @@ import hashlib
 import os
 import struct
 import sys
+import zlib
 
 import ecdsa
 import esptool
@@ -38,6 +39,11 @@ except ImportError:
     def ECB(key):
         return pyaes.AESModeOfOperationECB(key)
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.utils import int_to_bytes
 
 def get_chunks(source, chunk_len):
     """ Returns an iterator over 'chunk_len' chunks of 'source' """
@@ -155,6 +161,12 @@ def _load_ecdsa_signing_key(args):
 
 
 def sign_data(args):
+    if args.version == '1':
+        return sign_secure_boot_v1(args)
+    else:
+        return sign_secure_boot_v2(args)
+
+def sign_secure_boot_v1(args):
     """ Sign a data file with a ECDSA private key, append binary signature to file contents """
     sk = _load_ecdsa_signing_key(args)
 
@@ -209,6 +221,87 @@ def verify_signature(args):
     except ecdsa.keys.BadSignatureError:
         raise esptool.FatalError("Signature is not valid")
 
+def sign_secure_boot_v2(args):
+    """ Sign a firmware app image with an RSA private key using RSA-PSS, write output file with a
+    Secure Boot V2 header appended.
+    """
+    contents = args.datafile.read()
+
+    SECTOR_SIZE = 4096
+    if len(contents) % SECTOR_SIZE != 4096:
+        pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
+        print("Padding data contents by %d bytes so signature sector aligns at sector boundary" % pad_by)
+        contents += b'\xff' * pad_by
+
+    private_key = serialization.load_pem_private_key(
+        args.keyfile.read(),
+        password=None,
+        backend=default_backend()
+    )
+    if private_key.key_size != 3072:
+        raise esptool.FatalError("Key file %s has length %d bits. Secure Boot V2 only supports RSA-3072." % (args.keyfile.name,
+                                                                                                             private_key.key_size))
+    # Calculate digest of data file
+    digest = hashlib.sha256()
+    digest.update(contents)
+    digest = digest.digest()
+
+    # Sign
+    signature = private_key.sign(
+        digest,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=32,
+        ),
+        utils.Prehashed(hashes.SHA256())
+    )
+
+    # Prepare public key data and helper values for modexp computation
+    numbers = private_key.public_key().public_numbers()
+    n = numbers.n  #
+    e = numbers.e  # two public key components
+
+    # Note: this cheats and calls a private 'rsa' method to get the modular
+    # inverse calculation.
+    m = - rsa._modinv(n, 1<<32)
+
+    rr = 1 << (private_key.key_size * 2)
+    rinv = rr % n
+
+    # Encode in signature block format
+    #
+    # Note: the [::-1] is to byte swap all of the bignum
+    # values (signatures, coefficients) to little endian
+    # for use with the RSA peripheral, rather than big endian
+    # which is conventionally used for RSA.
+    signature_block = struct.pack("<BBBx32s384sI384sI384s",
+                                   0xe7,  # magic byte
+                                   0x02,  # version
+                                   0x00,  # KEY_DIGEST efuse index (currently ignored)
+                                   digest,
+                                   int_to_bytes(n)[::-1],
+                                   e,
+                                   int_to_bytes(rinv)[::-1],
+                                   m & 0xFFFFFFFF,
+                                   signature[::-1])
+
+    signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xffffffff)
+    signature_block += b'\x00' * 16   # padding
+
+    assert len(signature_block) == 1216
+
+    # TODO: cheating and only putting one signature block in the
+    # sector for now
+    signature_sector = signature_block + \
+        (b'\xff' * (SECTOR_SIZE - len(signature_block)))
+    assert len(signature_sector) == SECTOR_SIZE
+
+    # Write to output file, or append to existing file
+    if args.output is None:
+        args.datafile.close()
+        args.output = args.datafile.name
+    with open(args.output, "wb") as f:
+        f.write(contents + signature_sector)
 
 def extract_public_key(args):
     """ Load an ECDSA private key and extract the embedded public key as raw binary data. """
@@ -389,6 +482,8 @@ def encrypt_flash_data(args):
     return _flash_encryption_operation(args.output, args.plaintext_file, args.address, args.keyfile, args.flash_crypt_conf, False)
 
 
+
+
 def main():
     parser = argparse.ArgumentParser(description='espsecure.py v%s - ESP32 Secure Boot & Flash Encryption tool' % esptool.__version__, prog='espsecure')
 
@@ -411,11 +506,11 @@ def main():
     p.add_argument('keyfile', help="Filename for private key file (embedded public key)")
 
     p = subparsers.add_parser('sign_data',
-                              help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512.')
-    p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format, ECDSA NIST256p curve. " +
-                   "generate_signing_key command can be used to generate a suitable signing key.", type=argparse.FileType('rb'), required=True)
-    p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to append signature to existing file.")
-    p.add_argument('datafile', help="Data file to sign.", type=argparse.FileType('rb'))
+                              help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512 (V1) or RSA-PSS w/ SHA-256 (V2).')
+    p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices = [ "1", "2"], required=True)
+    p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True)
+    p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to sign the input file.")
+    p.add_argument('datafile', help="File to sign. For version 1, this can be any file. For version 2, this must be a valid app image.", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('verify_signature',
                               help='Verify a data file previously signed by "sign_data", using the public key.')

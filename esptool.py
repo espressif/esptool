@@ -1860,7 +1860,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     def __init__(self, load_file=None):
         super(ESP32FirmwareImage, self).__init__()
-        self.secure_pad = False
+        self.secure_pad = None
         self.flash_mode = 0
         self.flash_size_freq = 0
         self.version = 1
@@ -1986,8 +1986,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 align_past = (f.tell() + self.SEG_HEADER_LEN) % self.IROM_ALIGN
                 # 16 byte aligned checksum (force the alignment to simplify calculations)
                 checksum_space = 16
-                # after checksum: SHA-256 digest + (to be added by signing process) version, signature + 12 trailing bytes due to alignment
-                space_after_checksum = 32 + 4 + 64 + 12
+                if self.secure_pad == '1':
+                    # after checksum: SHA-256 digest + (to be added by signing process) version, signature + 12 trailing bytes due to alignment
+                    space_after_checksum = 32 + 4 + 64 + 12
+                else:  # Secure Boot V2
+                    # after checksum: SHA-256 digest + signature sector
+                    space_after_checksum = 32 + 4096
                 pad_len = (self.IROM_ALIGN - align_past - checksum_space - space_after_checksum) % self.IROM_ALIGN
                 pad_segment = ImageSegment(0, b'\x00' * pad_len, f.tell())
 
@@ -2944,8 +2948,12 @@ def main(custom_commandline=None):
     parser_elf2image.add_argument('input', help='Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
     parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1','2'], default='1')
+<<<<<<< HEAD
     parser_elf2image.add_argument('--min-rev', '-r', help='Minimum chip revision', choices=['0','1','2','3'], default='0')
     parser_elf2image.add_argument('--secure-pad', action='store_true', help='Pad image so once signed it will end on a 64KB boundary. For ESP32 images only.')
+=======
+    parser_elf2image.add_argument('--secure-pad', nargs='?', choices = [None, '1', '2'], const = '1', help='Pad image so once signed it will end on a 64KB boundary. For ESP32 images only. Argument is the secure boot version (defaults to 1 if not supplied)')
+>>>>>>> WIP Secure Boot V2 signing support
     parser_elf2image.add_argument('--elf-sha256-offset', help='If set, insert SHA256 hash (32 bytes) of the input ELF file at specified offset in the binary.',
                                   type=arg_auto_int, default=None)
 
