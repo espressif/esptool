@@ -64,6 +64,7 @@ SYNC_TIMEOUT = 0.1                    # timeout for syncing with bootloader
 MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating md5sum
 ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
 MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
+DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
@@ -219,6 +220,8 @@ class ESPLoader(object):
         # https://github.com/espressif/esptool/issues/44#issuecomment-107094446
         self._set_port_baudrate(baud)
         self._trace_enabled = trace_enabled
+        # set write timeout, to prevent esptool blocked at write forever.
+        self._port.write_timeout = DEFAULT_SERIAL_WRITE_TIMEOUT
 
     def _set_port_baudrate(self, baud):
         try:
