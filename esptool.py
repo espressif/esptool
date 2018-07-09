@@ -1215,7 +1215,8 @@ class ImageSegment(object):
         self.data = data
         self.file_offs = file_offs
         self.include_in_checksum = True
-        self.pad_to_alignment(4)  # pad all ImageSegments to at least 4 bytes length
+        if self.addr != 0:
+            self.pad_to_alignment(4)  # pad all "real" ImageSegments 4 byte aligned length
 
     def copy_with_new_addr(self, new_addr):
         """ Return a new ImageSegment with same data, but mapped at
@@ -1499,6 +1500,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     def __init__(self, load_file=None):
         super(ESP32FirmwareImage, self).__init__()
+        self.secure_pad = False
         self.flash_mode = 0
         self.flash_size_freq = 0
         self.version = 1
@@ -1615,11 +1617,31 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 checksum = self.save_segment(f, segment, checksum)
                 total_segments += 1
 
+            if self.secure_pad:
+                # pad the image so that after signing it will end on a a 64KB boundary.
+                # This ensures all mapped flash content will be verified.
+                if not self.append_digest:
+                    raise FatalError("secure_pad only applies if a SHA-256 digest is also appended to the image")
+                align_past = (f.tell() + self.SEG_HEADER_LEN) % IROM_ALIGN
+                # 16 byte aligned checksum (force the alignment to simplify calculations)
+                checksum_space = 16
+                # after checksum: SHA-256 digest + (to be added by signing process) version, signature + 12 trailing bytes due to alignment
+                space_after_checksum = 32 + 4 + 64 + 12
+                pad_len = (IROM_ALIGN - align_past - checksum_space - space_after_checksum) % IROM_ALIGN
+                pad_segment = ImageSegment(0, b'\x00' * pad_len, f.tell())
+
+                checksum = self.save_segment(f, pad_segment, checksum)
+                total_segments += 1
+
             # done writing segments
             self.append_checksum(f, checksum)
+            image_length = f.tell()
+
+            if self.secure_pad:
+                assert ((image_length + space_after_checksum) % IROM_ALIGN) == 0
+
             # kinda hacky: go back to the initial header and write the new segment count
             # that includes padding segments. This header is not checksummed
-            image_length = f.tell()
             f.seek(1)
             try:
                 f.write(chr(total_segments))
@@ -2141,6 +2163,7 @@ def elf2image(args):
 
     if args.chip == 'esp32':
         image = ESP32FirmwareImage()
+        image.secure_pad = args.secure_pad
     elif args.version == '1':  # ESP8266
         image = ESP8266ROMFirmwareImage()
     else:
@@ -2410,6 +2433,7 @@ def main():
     parser_elf2image.add_argument('input', help='Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
     parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1','2'], default='1')
+    parser_elf2image.add_argument('--secure-pad', action='store_true', help='Pad image so once signed it will end on a 64KB boundary. For ESP32 images only.')
 
     add_spi_flash_subparsers(parser_elf2image, is_elf2image=True)
 
