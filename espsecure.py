@@ -57,9 +57,20 @@ def digest_secure_bootloader(args):
     else:
         iv = os.urandom(128)
     plaintext_image = args.image.read()
+    args.image.seek(0)
 
     # secure boot engine reads in 128 byte blocks (ie SHA512 block
-    # size) , so pad plaintext image with 0xFF (ie unwritten flash)
+    # size), but also doesn't look for any appended SHA-256 digest
+    fw_image = esptool.ESP32FirmwareImage(args.image)
+    if fw_image.append_digest:
+        if len(plaintext_image) % 128 <= 32:
+            # ROM bootloader will read to the end of the 128 byte block, but not
+            # to the end of the SHA-256 digest at the end
+            new_len = len(plaintext_image) - (len(plaintext_image) % 128)
+            plaintext_image = plaintext_image[:new_len]
+
+    # if image isn't 128 byte multiple then pad with 0xFF (ie unwritten flash)
+    # as this is what the secure boot engine will see
     if len(plaintext_image) % 128 != 0:
         plaintext_image += "\xFF" * (128 - (len(plaintext_image) % 128))
 
