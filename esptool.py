@@ -2511,6 +2511,7 @@ def main():
             print("Found %d serial ports" % len(ser_list))
         else:
             ser_list = [args.port]
+        esp = None
         for each_port in reversed(ser_list):
             print("Serial port %s" % each_port)
             try:
