@@ -243,17 +243,19 @@ class ESPLoader(object):
         """
         detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
         detect_port.connect(connect_mode)
-        print('Detecting chip type...', end='')
-        sys.stdout.flush()
-        date_reg = detect_port.read_reg(ESPLoader.UART_DATA_REG_ADDR)
+        try:
+            print('Detecting chip type...', end='')
+            sys.stdout.flush()
+            date_reg = detect_port.read_reg(ESPLoader.UART_DATA_REG_ADDR)
 
-        for cls in [ESP8266ROM, ESP32ROM]:
-            if date_reg == cls.DATE_REG_VALUE:
-                # don't connect a second time
-                inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
-                print(' %s' % inst.CHIP_NAME)
-                return inst
-        print('')
+            for cls in [ESP8266ROM, ESP32ROM]:
+                if date_reg == cls.DATE_REG_VALUE:
+                    # don't connect a second time
+                    inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
+                    print(' %s' % inst.CHIP_NAME, end='')
+                    return inst
+        finally:
+            print('')  # end line
         raise FatalError("Unexpected UART datecode value 0x%08x. Failed to autodetect chip type." % date_reg)
 
     """ Read a SLIP packet from the serial port """
