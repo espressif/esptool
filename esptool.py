@@ -2551,7 +2551,7 @@ def main():
                     esp = chip_class(each_port, initial_baud, args.trace)
                     esp.connect(args.before)
                 break
-            except FatalError as err:
+            except (FatalError, OSError) as err:
                 if args.port is not None:
                     raise
                 print("%s failed to connect: %s" % (each_port, err))
