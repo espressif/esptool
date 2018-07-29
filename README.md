@@ -152,7 +152,7 @@ Device: 4016
 Detected flash size: 4MB
 ```
 
-Refer to [flashrom source code](http://code.coreboot.org/p/flashrom/source/tree/HEAD/trunk/flashchips.h) for flash chip manufacturer name and part number.
+Refer to [flashrom source code](https://review.coreboot.org/cgit/flashrom.git/tree/flashchips.h) for flash chip manufacturer name and part number.
 
 ### Convert ELF to Binary: elf2image
 
