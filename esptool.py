@@ -2056,15 +2056,15 @@ def write_mem(esp, args):
 
 
 def dump_mem(esp, args):
-    f = open(args.filename, 'wb')
-    for i in range(args.size // 4):
-        d = esp.read_reg(args.address + (i * 4))
-        f.write(struct.pack(b'<I', d))
-        if f.tell() % 1024 == 0:
-            print('\r%d bytes read... (%d %%)' % (f.tell(),
-                                                  f.tell() * 100 // args.size),
-                  end=' ')
-        sys.stdout.flush()
+    with open(args.filename, 'wb') as f:
+        for i in range(args.size // 4):
+            d = esp.read_reg(args.address + (i * 4))
+            f.write(struct.pack(b'<I', d))
+            if f.tell() % 1024 == 0:
+                print('\r%d bytes read... (%d %%)' % (f.tell(),
+                                                      f.tell() * 100 // args.size),
+                      end=' ')
+            sys.stdout.flush()
     print('Done!')
 
 
@@ -2230,8 +2230,9 @@ def make_image(args):
     if len(args.segfile) != len(args.segaddr):
         raise FatalError('Number of specified files does not match number of specified addresses')
     for (seg, addr) in zip(args.segfile, args.segaddr):
-        data = open(seg, 'rb').read()
-        image.segments.append(ImageSegment(addr, data))
+        with open(seg, 'rb') as f:
+            data = f.read()
+            image.segments.append(ImageSegment(addr, data))
     image.entrypoint = args.entrypoint
     image.save(args.output)
 
@@ -2325,7 +2326,8 @@ def read_flash(esp, args):
     t = time.time() - t
     print('\rRead %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)...'
           % (len(data), args.address, t, len(data) / t * 8 / 1000))
-    open(args.filename, 'wb').write(data)
+    with open(args.filename, 'wb') as f:
+        f.write(data)
 
 
 def verify_flash(esp, args):
@@ -2680,7 +2682,14 @@ def main():
             detect_flash_size(esp, args)
             esp.flash_set_parameters(flash_size_bytes(args.flash_size))
 
-        operation_func(esp, args)
+        try:
+            operation_func(esp, args)
+        finally:
+            try:  # Clean up AddrFilenamePairAction files
+                for address, argfile in args.addr_filename:
+                    argfile.close()
+            except AttributeError:
+                pass
 
         # Handle post-operation behaviour (reset or other)
         if operation_func == load_ram:
