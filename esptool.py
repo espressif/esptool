@@ -2389,7 +2389,7 @@ def version(args):
 #
 
 
-def main():
+def main(args):
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
     parser.add_argument('--chip', '-c',
@@ -2596,7 +2596,7 @@ def main():
 
     expand_file_arguments()
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     print('esptool.py v%s' % __version__)
 
@@ -2935,13 +2935,13 @@ y7+X9Uf4H2taVUVuc2WMH+mulx+/DJ1FUUJnWy9r/q9tUcF5h0fijfIqL0udffsvV73qkg==\
 """)))
 
 
-def _main():
+def _main(args):
     try:
-        main()
+        main(args)
     except FatalError as e:
         print('\nA fatal error occurred: %s' % e)
         sys.exit(2)
 
 
 if __name__ == '__main__':
-    _main()
+    _main(sys.argv[1:])
