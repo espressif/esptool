@@ -1977,15 +1977,15 @@ def write_mem(esp, args):
 
 
 def dump_mem(esp, args):
-    f = open(args.filename, 'wb')
-    for i in range(args.size // 4):
-        d = esp.read_reg(args.address + (i * 4))
-        f.write(struct.pack(b'<I', d))
-        if f.tell() % 1024 == 0:
-            print('\r%d bytes read... (%d %%)' % (f.tell(),
-                                                  f.tell() * 100 // args.size),
-                  end=' ')
-        sys.stdout.flush()
+    with open(args.filename, 'wb') as f:
+        for i in range(args.size // 4):
+            d = esp.read_reg(args.address + (i * 4))
+            f.write(struct.pack(b'<I', d))
+            if f.tell() % 1024 == 0:
+                print('\r%d bytes read... (%d %%)' % (f.tell(),
+                                                      f.tell() * 100 // args.size),
+                      end=' ')
+            sys.stdout.flush()
     print('Done!')
 
 
@@ -2105,6 +2105,9 @@ def write_flash(esp, args):
 
     print('\nLeaving...')
 
+    for address, argfile in args.addr_filename:
+        argfile.close()
+
     if esp.IS_STUB:
         # skip sending flash_finish to ROM loader here,
         # as it causes the loader to exit and run user code
@@ -2151,8 +2154,9 @@ def make_image(args):
     if len(args.segfile) != len(args.segaddr):
         raise FatalError('Number of specified files does not match number of specified addresses')
     for (seg, addr) in zip(args.segfile, args.segaddr):
-        data = open(seg, 'rb').read()
-        image.segments.append(ImageSegment(addr, data))
+        with open(seg, 'rb') as f:
+            data = f.read()
+            image.segments.append(ImageSegment(addr, data))
     image.entrypoint = args.entrypoint
     image.save(args.output)
 
@@ -2240,7 +2244,8 @@ def read_flash(esp, args):
     t = time.time() - t
     print('\rRead %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)...'
           % (len(data), args.address, t, len(data) / t * 8 / 1000))
-    open(args.filename, 'wb').write(data)
+    with open(args.filename, 'wb') as f:
+        f.write(data)
 
 
 def verify_flash(esp, args):
@@ -2279,6 +2284,9 @@ def verify_flash(esp, args):
             print('   %08x %02x %02x' % (address + d, flash_byte, image_byte))
     if differences:
         raise FatalError("Verify failed.")
+
+    for address, argfile in args.addr_filename:
+        argfile.close()
 
 
 def read_flash_status(esp, args):
