@@ -2125,6 +2125,9 @@ def write_flash(esp, args):
                              % (argfile.name, argfile.tell(), address, flash_end))
         argfile.seek(0)
 
+    if args.erase_all:
+        erase_flash(esp, args)
+
     for address, argfile in args.addr_filename:
         if args.no_stub:
             print('Erasing flash...')
@@ -2492,15 +2495,18 @@ def main(custom_commandline=None):
                             default=os.environ.get('ESPTOOL_FS', 'detect' if auto_detect else '1MB'))
         add_spi_connection_arg(parent)
 
-    parser_write_flash = subparsers.add_parser(
-        'write_flash',
-        help='Write a binary blob to flash')
+    parser_write_flash = subparsers.add_parser('write_flash', help='Write a binary blob to flash')
     parser_write_flash.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
                                     action=AddrFilenamePairAction)
+    parser_write_flash.add_argument('--erase-all', '-e',
+                                    help='Erase all regions of flash (not just write areas) before programming',
+                                    action="store_true")
+
     add_spi_flash_subparsers(parser_write_flash, is_elf2image=False)
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
     parser_write_flash.add_argument('--verify', help='Verify just-written data on flash ' +
                                     '(mostly superfluous, data is read back during flashing)', action='store_true')
+
     compress_args = parser_write_flash.add_mutually_exclusive_group(required=False)
     compress_args.add_argument('--compress', '-z', help='Compress data in transfer (default unless --no-stub is specified)',action="store_true", default=None)
     compress_args.add_argument('--no-compress', '-u', help='Disable data compression during transfer (default if --no-stub is specified)',action="store_true")
