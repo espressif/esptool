@@ -683,6 +683,8 @@ class ESPLoader(object):
         while len(data) < length:
             p = self.read()
             data += p
+            if len(data) < length and len(p) < self.FLASH_SECTOR_SIZE:
+                raise FatalError('Corrupt data, expected 0x%x bytes but received 0x%x bytes' % (self.FLASH_SECTOR_SIZE, len(p)))
             self.write(struct.pack('<I', len(data)))
             if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
                 progress_fn(len(data), length)
