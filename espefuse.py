@@ -444,6 +444,11 @@ def burn_key(esp, efuses, args):
     else:
         raise RuntimeError("args.block argument not in list!")
 
+    # check coding scheme
+    coding_scheme = _get_efuse(efuses, "CODING_SCHEME").get()
+    if coding_scheme != 0:
+        raise esptool.FatalError("Burning key efuses is not yet supported for 3/4 Coding Scheme")
+
     # check keyfile
     keyfile = args.keyfile
     keyfile.seek(0,2)  # seek t oend
