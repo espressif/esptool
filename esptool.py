@@ -51,7 +51,7 @@ except TypeError:
     pass  # __doc__ returns None for pyserial
 
 
-__version__ = "2.5.1-dev"
+__version__ = "2.5.1"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
