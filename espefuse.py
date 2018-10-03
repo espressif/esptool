@@ -403,6 +403,8 @@ def summary(esp, efuses, args):
             else:
                 perms = "-/-"
             value = str(e.get())
+            if not readable:
+                value = value.replace("0", "?")
             print(ROW_FORMAT % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw))
         print("")
     sdio_force = efuses["XPD_SDIO_FORCE"]
