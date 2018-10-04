@@ -14,8 +14,10 @@
 #
 import unittest
 import serial
+import struct
 import sys
 import StringIO
+import time
 
 from collections import namedtuple
 
@@ -41,7 +43,9 @@ class EfuseTestCase(unittest.TestCase):
         # reset and zero efuses
         serialport.dtr = False
         serialport.rts = True
+        time.sleep(0.05)
         serialport.rts = False
+        time.sleep(0.05)
         serialport.dtr = True
 
         # connect & verify efuses are really zero
@@ -63,6 +67,7 @@ class EfuseTestCase(unittest.TestCase):
         # EspEfuses constructor needs to re-load CODING_SCHEME
         self.efuses = espefuse.EspEfuses(self.esp)
 
+class TestBurnKey(EfuseTestCase):
     def test_burn_key_no_coding_scheme(self):
         key_256bit = b"".join(chr(x+1) for x in range(32))
         self._test_burn_key_common(key_256bit, b"\x00"*32)
@@ -112,6 +117,69 @@ class EfuseTestCase(unittest.TestCase):
         key_val = self.efuses["BLK1"].get_key()
         self.assertEqual(empty_key, key_val)
 
+        self.assertEqual(0, self.efuses.get_coding_scheme_warnings())
+
+
+class TestBurnBlockData(EfuseTestCase):
+
+    def test_burn_block_data_normal(self):
+        word_a = 0x1234
+        word_b = 0x789A
+        data = struct.pack("<II", word_a, word_b)
+
+        args = EspEfuseArgs()
+        args.do_not_confirm = True
+        args.block = 'BLK1'
+        args.datafile = StringIO.StringIO(data)
+        args.offset = 4
+        burn_params = (self.esp, self.efuses, args)
+        espefuse.burn_block_data(*burn_params)
+
+        words = self.efuses["BLK1"].get_words()
+        self.assertEqual([0, word_a, word_b, 0, 0, 0, 0, 0], words)
+
+        args.offset = 24
+        args.force_write_always = True
+        args.datafile = StringIO.StringIO(data)
+        espefuse.burn_block_data(*burn_params)
+
+        words = self.efuses["BLK1"].get_words()
+        self.assertEqual([0, word_a, word_b, 0, 0, 0, word_a, word_b], words)
+
+        self.assertEqual(0, self.efuses.get_coding_scheme_warnings())
+
+    def test_burn_block_data_34_coding(self):
+        self._set_34_coding_scheme()
+        data = b"1234EA"
+
+        args = EspEfuseArgs()
+        args.do_not_confirm = True
+        args.force_write_always = True
+        args.block = 'BLK3'
+        args.datafile = StringIO.StringIO(data)
+        args.offset = 6
+        burn_params = (self.esp, self.efuses, args)
+        espefuse.burn_block_data(*burn_params)
+
+        words = self.efuses["BLK3"].get_words()
+        self.assertEqual([0,
+                          struct.unpack("<H", "12")[0] << 16,
+                          struct.unpack("<I", "34EA")[0],
+                          0,
+                          0,
+                          0], words)
+
+        args.offset = 12
+        args.datafile = StringIO.StringIO(data)
+        espefuse.burn_block_data(*burn_params)
+        words = self.efuses["BLK3"].get_words()
+        self.assertEqual([0,
+                          struct.unpack("<H", "12")[0] << 16,
+                          struct.unpack("<I", "34EA")[0],
+                          struct.unpack("<I", "1234")[0],
+                          struct.unpack("<H", "EA")[0],
+                          0], words)
+        self.assertEqual(0, self.efuses.get_coding_scheme_warnings())
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

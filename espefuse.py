@@ -341,7 +341,7 @@ class EfuseKeyblockField(EfuseField):
                 index += 1
             outbits += bits
             outbits += struct.pack("BB", xor_res, mul_res)
-        return struct.unpack("<" + ("I" * 8), outbits)
+        return struct.unpack("<" + "I" * (len(outbits) // 4), outbits)
 
     def burn_key(self, new_value):
             new_value = new_value[::-1]  # AES keys are stored in reverse order in efuse
@@ -595,6 +595,45 @@ def burn_key(esp, efuses, args):
         print("Key is left unprotected as per --no-protect-key argument.")
 
 
+def burn_block_data(esp, efuses, args):
+    num_bytes = efuses.get_block_len()
+    offset = args.offset
+    data = args.datafile.read()
+
+    if offset >= num_bytes:
+        raise RuntimeError("Invalid offset: Key block only holds %d bytes." % num_bytes)
+    if len(data) > num_bytes - offset:
+        raise RuntimeError("Data will not fit: Key block size %d bytes, data file is %d bytes" % (num_bytes, len(data)))
+    if efuses.coding_scheme == CODING_SCHEME_34:
+        if offset % 6 != 0:
+            raise RuntimeError("Device has 3/4 Coding Scheme. Can only write at offsets which are a multiple of 6.")
+        if len(data) % 6 != 0:
+            raise RuntimeError("Device has 3/4 Coding Scheme. Can only write data lengths which are a multiple of 6 (data is %d bytes)" % len(data))
+
+    efuse = [e for e in efuses if e.register_name == args.block.upper()][0]
+
+    if not args.force_write_always and \
+       efuse.get_raw() != b'\x00' * num_bytes:
+        raise esptool.FatalError("Efuse block already has values written.")
+
+    if efuses.coding_scheme == CODING_SCHEME_NONE:
+        pad = offset % 4
+        if pad != 0:  # left-pad to a word boundary
+            data = (b'\x00' * pad) + data
+            offset -= pad
+        pad = len(data) % 4
+        if pad != 0:  # right-pad to a word boundary
+            data += (b'\x00' * (4 - pad))
+        words = struct.unpack("<" + "I" * (len(data) // 4), data)
+        word_offset = offset // 4
+    else:  # CODING_SCHEME_34
+        words = efuse.apply_34_encoding(data)
+        word_offset = (offset // 6) * 2
+
+    confirm("Burning efuse %s (%s) with %d bytes of data at offset %d in the block" % (efuse.register_name, efuse.description, len(data), offset), args)
+    efuse.burn_words(words, word_offset)
+
+
 def set_flash_voltage(esp, efuses, args):
     sdio_force = efuses["XPD_SDIO_FORCE"]
     sdio_tieh = efuses["XPD_SDIO_TIEH"]
@@ -688,6 +727,10 @@ def main():
     parser.add_argument('--do-not-confirm',
                         help='Do not pause for confirmation before permanently writing efuses. Use with caution.', action='store_true')
 
+    def add_force_write_always(p):
+        p.add_argument('--force-write-always', help="Write the efuse even if it looks like it's already been written, or is write protected. " +
+                       "Note that this option can't disable write protection, or clear any bit which has already been set.", action='store_true')
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run espefuse.py {command} -h for additional help')
@@ -716,11 +759,19 @@ def main():
                               help='Burn a 256-bit AES key to EFUSE BLK1,BLK2 or BLK3 (flash_encryption, secure_boot).')
     p.add_argument('--no-protect-key', help='Disable default read- and write-protecting of the key. ' +
                    'If this option is not set, once the key is flashed it cannot be read back or changed.', action='store_true')
-    p.add_argument('--force-write-always', help="Write the key even if it looks like it's already been written, or is write protected. " +
-                   "Note that this option can't disable write protection, or clear any bit which has already been set.", action='store_true')
+    add_force_write_always(p)
     p.add_argument('block', help='Key block to burn. "flash_encryption" is an alias for BLK1, ' +
                    '"secure_boot" is an alias for BLK2.', choices=["secure_boot", "flash_encryption","BLK1","BLK2","BLK3"])
     p.add_argument('keyfile', help='File containing 256 bits of binary key data', type=argparse.FileType('rb'))
+
+    p = subparsers.add_parser('burn_block_data',
+                              help="Burn non-key data to EFUSE BLK1, BLK2 or BLK3. " +
+                              " Don't use this command to burn key data for Flash Encryption or Secure Boot, " +
+                              "as the byte order of keys is swapped (use burn_key).")
+    p.add_argument('--offset', '-o', help='Byte offset in the efuse block', type=int, default=0)
+    add_force_write_always(p)
+    p.add_argument('block', help='Efuse block to burn.', choices=["BLK1","BLK2","BLK3"])
+    p.add_argument('datafile', help='File containing data to burn into the efuse block', type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('set_flash_voltage',
                               help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF. ' +
