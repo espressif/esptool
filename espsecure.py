@@ -47,6 +47,25 @@ def swap_word_order(source):
     return struct.pack(words, *reversed(struct.unpack(words, source)))
 
 
+def _load_hardware_key(keyfile):
+    """ Load a 256-bit key, similar to stored in efuse, from a file
+
+    192-bit keys will be extended to 256-bit using the same algorithm used
+    by hardware if 3/4 Coding Scheme is set.
+    """
+    key = keyfile.read()
+    if len(key) not in [24, 32]:
+        raise esptool.FatalError("Key file contains wrong length (%d bytes), 24 or 32 expected." % len(key))
+    if len(key) == 24:
+        key = key + key[8:16]
+        print("Using 192-bit key (extended)")
+    else:
+        print("Using 256-bit key")
+
+    assert len(key) == 32
+    return key
+
+
 def digest_secure_bootloader(args):
     """ Calculate the digest of a bootloader image, in the same way the hardware
     secure boot engine would do so. Can be used with a pre-loaded key to update a
@@ -81,9 +100,7 @@ def digest_secure_bootloader(args):
     # produce the digest. Each block in/out of ECB is reordered
     # (due to hardware quirks not for security.)
 
-    key = args.keyfile.read()
-    if len(key) != 32:
-        raise esptool.FatalError("Key file contains wrong length (%d bytes), 32 expected." % len(key))
+    key = _load_hardware_key(args.keyfile)
     aes = pyaes.AESModeOfOperationECB(key)
     digest = hashlib.sha512()
 
@@ -119,7 +136,7 @@ def generate_signing_key(args):
     print("ECDSA NIST256p private key in PEM format written to %s" % args.keyfile)
 
 
-def _load_key(args):
+def _load_signing_key(args):
     sk = ecdsa.SigningKey.from_pem(args.keyfile.read())
     if sk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Signing key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
@@ -128,7 +145,7 @@ def _load_key(args):
 
 def sign_data(args):
     """ Sign a data file with a ECDSA private key, append binary signature to file contents """
-    sk = _load_key(args)
+    sk = _load_signing_key(args)
 
     # calculate signature of binary data
     binary_content = args.datafile.read()
@@ -153,7 +170,7 @@ def sign_data(args):
 def verify_signature(args):
     """ Verify a previously signed binary image, using the ECDSA public key """
     try:
-        sk = _load_key(args)  # try to load as private key first
+        sk = _load_hardware_key(args)  # try to load as private key first
         vk = sk.get_verifying_key()
     except Exception:  # this is a catchall because ecdsa can throw private Exceptions
         args.keyfile.seek(0)
@@ -178,19 +195,25 @@ def verify_signature(args):
 
 def extract_public_key(args):
     """ Load an ECDSA private key and extract the embedded public key as raw binary data. """
-    sk = _load_key(args)
+    sk = _load_signing_key(args)
     vk = sk.get_verifying_key()
     args.public_keyfile.write(vk.to_string())
     print("%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name))
 
 
 def digest_private_key(args):
-    sk = _load_key(args)
+    sk = _load_signing_key(args)
     repr(sk.to_string())
     digest = hashlib.sha256()
     digest.update(sk.to_string())
-    args.digest_file.write(digest.digest())
-    print("SHA-256 digest of private key %s written to %s" % (args.keyfile.name, args.digest_file.name))
+    result = digest.digest()
+    if args.keylen == '192':
+        result = result[0:24]
+    args.digest_file.write(result)
+    print("SHA-256 digest of private key %s%s written to %s" % (args.keyfile.name,
+                                                                "" if args.keylen == '256'
+                                                                else " (truncated to 192 bits)",
+                                                                args.digest_file.name))
 
 
 # flash encryption key tweaking pattern: the nth bit of the key is
@@ -260,9 +283,7 @@ def generate_flash_encryption_key(args):
 
 
 def _flash_encryption_operation(output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt):
-    key = keyfile.read()
-    if len(key) != 32:
-        raise esptool.FatalError("Key file contains wrong length (%d bytes), 32 expected." % len(key))
+    key = _load_hardware_key(keyfile)
 
     if flash_address % 16 != 0:
         raise esptool.FatalError("Starting flash address 0x%x must be a multiple of 16" % flash_address)
@@ -355,6 +376,8 @@ def main():
                               'This can be used as a reproducible secure bootloader or flash encryption key.')
     p.add_argument('--keyfile', '-k', help="Private key file to generate a digest from.", type=argparse.FileType('rb'),
                    required=True)
+    p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits).",
+                   choices=['192','256'], default='256')
     p.add_argument('digest_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
 
     p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use 32 byte flash encryption key with random data.')
