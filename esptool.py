@@ -1120,6 +1120,18 @@ class ESP32ROM(ESPLoader):
         if adc_vref:
             features += ["VRef calibration in efuse"]
 
+        blk3_part_res = word3 >> 14 & 0x1
+        if blk3_part_res:
+            features += ["BLK3 partially reserved"]
+
+        word6 = self.read_efuse(6)
+        coding_scheme = word6 & 0x3
+        features += ["Coding Scheme %s" % {
+            0: "None",
+            1: "3/4",
+            2: "Repeat (UNSUPPORTED)",
+            3: "Invalid"}[coding_scheme]]
+
         return features
 
     def read_efuse(self, n):
