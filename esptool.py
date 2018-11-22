@@ -1283,9 +1283,13 @@ class BaseFirmwareImage(object):
     def load_common_header(self, load_file, expected_magic):
             (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
 
-            if magic != expected_magic or segments > 16:
-                raise FatalError('Invalid firmware image magic=%d segments=%d' % (magic, segments))
+            if magic != expected_magic:
+                raise FatalError('Invalid firmware image magic=0x%x' % (magic))
             return segments
+
+    def verify(self):
+        if len(self.segments) > 16:
+            raise FatalError('Invalid segment count %d (max 16). Usually this indicates a linker script problem.' % len(self.segments))
 
     def load_segment(self, f, is_irom_segment=False):
         """ Load the next segment from the image file """
@@ -1374,6 +1378,8 @@ class ESP8266ROMFirmwareImage(BaseFirmwareImage):
                 self.load_segment(load_file)
             self.checksum = self.read_checksum(load_file)
 
+            self.verify()
+
     def default_output_name(self, input_file):
         """ Derive a default output name from the ELF name. """
         return input_file + '-'
@@ -1441,6 +1447,8 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             for _ in range(segments):
                 self.load_segment(load_file)
             self.checksum = self.read_checksum(load_file)
+
+            self.verify()
 
     def default_output_name(self, input_file):
         """ Derive a default output name from the ELF name. """
@@ -1548,6 +1556,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 calc_digest = hashlib.sha256()
                 calc_digest.update(load_file.read(end - start))
                 self.calc_digest = calc_digest.digest()  # TODO: decide what to do here?
+
+            self.verify()
 
     def is_flash_addr(self, addr):
         return (ESP32ROM.IROM_MAP_START <= addr < ESP32ROM.IROM_MAP_END) \
@@ -2189,6 +2199,8 @@ def elf2image(args):
     image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
     image.flash_size_freq = image.ROM_LOADER.FLASH_SIZES[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
+
+    image.verify()
 
     if args.output is None:
         args.output = image.default_output_name(args.input)

@@ -225,6 +225,15 @@ class ESP32ImageTests(BaseTestCase):
                          ".flash.text" ]:
             self.assertImageContainsSection(image, ELF, section)
 
+    def test_too_many_sections(self):
+        ELF="esp32-too-many-sections.elf"
+        BIN="esp32-too-many-sections.bin"
+        with self.assertRaises(subprocess.CalledProcessError) as e:
+            self._test_elf2image(ELF, BIN)
+        output = e.exception.output
+        self.assertIn(b"max 16", output)
+        self.assertIn(b"linker script", output)
+
 class ESP8266FlashHeaderTests(BaseTestCase):
     def test_2mb(self):
         ELF="esp8266-nonossdkv20-at-v2.elf"
