@@ -209,20 +209,20 @@ class ESP32ImageTests(BaseTestCase):
         ELF="esp32-bootloader.elf"
         BIN="esp32-bootloader.bin"
         image = self._test_elf2image(ELF, BIN)
-        self.assertEqual(4, len(image.segments))
+        self.assertEqual(3, len(image.segments))
         for section in [ ".iram1.text", ".iram_pool_1.text",
-                         ".dram0.data", ".dram0.rodata"]:
+                         ".dram0.rodata"]:
             self.assertImageContainsSection(image, ELF, section)
 
     def test_app_template(self):
         ELF="esp32-app-template.elf"
         BIN="esp32-app-template.bin"
         image = self._test_elf2image(ELF, BIN)
-        self.assertEqual(8, len(image.segments))
+        self.assertEqual(7, len(image.segments))
         # the other two segments are padding segments
         for section in [ ".iram0.text", ".iram0.vectors",
                          ".dram0.data", ".flash.rodata",
-                         ".flash.text", ".rtc.text"]:
+                         ".flash.text" ]:
             self.assertImageContainsSection(image, ELF, section)
 
 class ESP8266FlashHeaderTests(BaseTestCase):

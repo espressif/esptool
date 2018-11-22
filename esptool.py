@@ -1790,7 +1790,7 @@ class ELFFile(object):
             return f.read(size)
 
         prog_sections = [ELFSection(lookup_string(n_offs), lma, read_data(offs, size)) for (n_offs, _type, lma, size, offs) in prog_sections
-                         if lma != 0]
+                         if lma != 0 and size > 0]
         self.sections = prog_sections
 
 
