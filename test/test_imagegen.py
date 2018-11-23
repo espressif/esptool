@@ -140,18 +140,20 @@ class ESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
     """ Ref https://github.com/espressif/esptool/issues/197 -
     this ELF image has the section header not at the end of the file """
     ELF="esp8266-nonossdkv12-example.elf"
-    BIN=ELF+"-0x00000.bin"
+    BIN_LOAD=ELF+"-0x00000.bin"
+    BIN_IROM=ELF+"-0x40000.bin"
 
     def test_elf_section_header_not_at_end(self):
         self.run_elf2image("esp8266", self.ELF)
-        image = esptool.LoadFirmwareImage("esp8266", self.BIN)
+        image = esptool.LoadFirmwareImage("esp8266", self.BIN_LOAD)
         self.assertEqual(3, len(image.segments))
         self.assertImageContainsSection(image, self.ELF, ".data")
         self.assertImageContainsSection(image, self.ELF, ".text")
         self.assertImageContainsSection(image, self.ELF, ".rodata")
 
     def tearDown(self):
-        try_delete(self.BIN)
+        try_delete(self.BIN_LOAD)
+        try_delete(self.BIN_IROM)
 
 class ESP8266V2ImageTests(BaseTestCase):
 
