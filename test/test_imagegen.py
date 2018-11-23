@@ -5,6 +5,7 @@ import subprocess
 import struct
 import sys
 import unittest
+import hashlib
 
 from elftools.elf.elffile import ELFFile
 
@@ -262,6 +263,26 @@ class ESP32FlashHeaderTests(BaseTestCase):
                 self.assertEqualHex(0x40, header[3])
         finally:
             try_delete(BIN)
+
+class ELFSHA256Tests(BaseTestCase):
+    ELF = "esp32-app-template.elf"
+    BIN = "esp32-app-template.bin"
+
+    def test_binary_patched(self):
+        self.run_elf2image("esp32", self.ELF, extra_args=["--elf-sha256-offset", "32"])
+        image = esptool.LoadFirmwareImage("esp32", self.BIN)
+        rodata_segment = image.segments[0]
+        observed_sha256 = rodata_segment.data[0:32]
+
+        sha256 = hashlib.sha256()
+        with open(self.ELF, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(0, 0)
+            sha256.update(f.read(size))
+        expected_sha256 = sha256.digest()
+
+        self.assertSequenceEqual(expected_sha256, observed_sha256)
 
 
 if __name__ == '__main__':

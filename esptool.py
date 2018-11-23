@@ -1274,11 +1274,14 @@ class ELFSection(ImageSegment):
 
 class BaseFirmwareImage(object):
     SEG_HEADER_LEN = 8
+    SHA256_DIGEST_LEN = 32
 
     """ Base class with common firmware image functions """
     def __init__(self):
         self.segments = []
         self.entrypoint = 0
+        self.elf_sha256 = None
+        self.elf_sha256_offset = 0
 
     def load_common_header(self, load_file, expected_magic):
             (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
@@ -1308,12 +1311,33 @@ class BaseFirmwareImage(object):
             if offset > 0x40200000 or offset < 0x3ffe0000 or size > 65536:
                 print('WARNING: Suspicious segment 0x%x, length %d' % (offset, size))
 
+    def maybe_patch_segment_data(self, f, segment_data):
+        """If SHA256 digest of the ELF file needs to be inserted into this segment, do so. Returns segment data."""
+        segment_len = len(segment_data)
+        file_pos = f.tell()
+        if self.elf_sha256_offset >= file_pos and self.elf_sha256_offset < file_pos + segment_len:
+            # SHA256 digest needs to be patched into this segment,
+            # calculate offset of the digest inside the segment.
+            patch_offset = self.elf_sha256_offset - file_pos
+            # Sanity checks
+            if patch_offset < self.SEG_HEADER_LEN or patch_offset + self.SHA256_DIGEST_LEN > segment_len:
+                raise FatalError('Can not place SHA256 digest on segment boundary' +
+                                 '(elf_sha256_offset=%d, file_pos=%d, segment_size=%d)' %
+                                 (self.elf_sha256_offset, file_pos, segment_len))
+            assert(len(self.elf_sha256) == self.SHA256_DIGEST_LEN)
+            # offset relative to the data part
+            patch_offset -= self.SEG_HEADER_LEN
+            segment_data = segment_data[0:patch_offset] + self.elf_sha256 + \
+                segment_data[patch_offset + self.SHA256_DIGEST_LEN:]
+        return segment_data
+
     def save_segment(self, f, segment, checksum=None):
         """ Save the next segment to the image file, return next checksum value if provided """
-        f.write(struct.pack('<II', segment.addr, len(segment.data)))
-        f.write(segment.data)
+        segment_data = self.maybe_patch_segment_data(f, segment.data)
+        f.write(struct.pack('<II', segment.addr, len(segment_data)))
+        f.write(segment_data)
         if checksum is not None:
-            return ESPLoader.checksum(segment.data, checksum)
+            return ESPLoader.checksum(segment_data, checksum)
 
     def read_checksum(self, f):
         """ Return ESPLoader checksum from end of just-read image """
@@ -1803,6 +1827,13 @@ class ELFFile(object):
                          if lma != 0 and size > 0]
         self.sections = prog_sections
 
+    def sha256(self):
+        # return SHA256 hash of the input ELF file
+        sha256 = hashlib.sha256()
+        with open(self.name, 'rb') as f:
+            sha256.update(f.read())
+        return sha256.digest()
+
 
 def slip_reader(port, trace_function):
     """Generator to read SLIP packets from a serial port.
@@ -2200,6 +2231,10 @@ def elf2image(args):
     image.flash_size_freq = image.ROM_LOADER.FLASH_SIZES[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
 
+    if args.elf_sha256_offset:
+        image.elf_sha256 = e.sha256()
+        image.elf_sha256_offset = args.elf_sha256_offset
+
     image.verify()
 
     if args.output is None:
@@ -2462,6 +2497,8 @@ def main():
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
     parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1','2'], default='1')
     parser_elf2image.add_argument('--secure-pad', action='store_true', help='Pad image so once signed it will end on a 64KB boundary. For ESP32 images only.')
+    parser_elf2image.add_argument('--elf-sha256-offset', help='If set, insert SHA256 hash (32 bytes) of the input ELF file at specified offset in the binary.',
+                                  type=arg_auto_int, default=None)
 
     add_spi_flash_subparsers(parser_elf2image, is_elf2image=True)
 
