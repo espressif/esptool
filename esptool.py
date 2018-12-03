@@ -221,7 +221,12 @@ class ESPLoader(object):
         self._set_port_baudrate(baud)
         self._trace_enabled = trace_enabled
         # set write timeout, to prevent esptool blocked at write forever.
-        self._port.write_timeout = DEFAULT_SERIAL_WRITE_TIMEOUT
+        try:
+            self._port.write_timeout = DEFAULT_SERIAL_WRITE_TIMEOUT
+        except NotImplementedError:
+            # no write timeout for RFC2217 ports
+            # need to set the property back to None or it will continue to fail
+            self._port.write_timeout = None
 
     def _set_port_baudrate(self, baud):
         try:
