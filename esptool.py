@@ -2057,7 +2057,14 @@ def detect_flash_size(esp, args):
 
 
 def _update_image_flash_params(esp, address, args, image):
-    """ Modify the flash mode & size bytes if this looks like an executable bootloader image  """
+    """
+    Modify the flash mode & size bytes if this looks like an executable bootloader image.
+
+    Avoid changing any bytes in case the image is encrypted as the key is unknown to this tool.
+    """
+    if args.raw_mode:
+        return image  # Do not touch the image. It might be encrypted.
+
     if len(image) < 8:
         return image  # not long enough to be a bootloader image
 
@@ -2466,6 +2473,8 @@ def main():
     parser_write_flash.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
                                     action=AddrFilenamePairAction)
     add_spi_flash_subparsers(parser_write_flash, is_elf2image=False)
+    parser_write_flash.add_argument('--raw-mode', '-r', help='Do not overwrite flash properties in image header. Must be set if image is encrypted.',
+                                    action="store_true")
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
     parser_write_flash.add_argument('--verify', help='Verify just-written data on flash ' +
                                     '(mostly superfluous, data is read back during flashing)', action='store_true')
@@ -2547,6 +2556,8 @@ def main():
                                      action=AddrFilenamePairAction)
     parser_verify_flash.add_argument('--diff', '-d', help='Show differences',
                                      choices=['no', 'yes'], default='no')
+    parser_verify_flash.add_argument('--raw-mode', '-r', help='Do not overwrite flash properties in image header. Must be set if image is encrypted.',
+                                     action="store_true")
     add_spi_flash_subparsers(parser_verify_flash, is_elf2image=False)
 
     parser_erase_flash = subparsers.add_parser(
