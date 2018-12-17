@@ -1546,6 +1546,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     EXTENDED_HEADER_STRUCT_FMT = "B" * 16
 
+    IROM_ALIGN = 65536
+
     def __init__(self, load_file=None):
         super(ESP32FirmwareImage, self).__init__()
         self.secure_pad = False
@@ -1609,8 +1611,6 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             flash_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if self.is_flash_addr(s.addr)]
             ram_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if not self.is_flash_addr(s.addr)]
 
-            IROM_ALIGN = 65536
-
             # check for multiple ELF sections that are mapped in the same flash mapping region.
             # this is usually a sign of a broken linker script, but if you have a legitimate
             # use case then let us know (we can merge segments here, but as a rule you probably
@@ -1618,7 +1618,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             if len(flash_segments) > 0:
                 last_addr = flash_segments[0].addr
                 for segment in flash_segments[1:]:
-                    if segment.addr // IROM_ALIGN == last_addr // IROM_ALIGN:
+                    if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
                         raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. " +
                                           "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
                                          (segment.addr, last_addr))
@@ -1630,15 +1630,15 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 #
                 # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
                 # IROM_ALIGN+0x18 to account for the binary file header
-                align_past = (segment.addr % IROM_ALIGN) - self.SEG_HEADER_LEN
-                pad_len = (IROM_ALIGN - (f.tell() % IROM_ALIGN)) + align_past
-                if pad_len == 0 or pad_len == IROM_ALIGN:
+                align_past = (segment.addr % self.IROM_ALIGN) - self.SEG_HEADER_LEN
+                pad_len = (self.IROM_ALIGN - (f.tell() % self.IROM_ALIGN)) + align_past
+                if pad_len == 0 or pad_len == self.IROM_ALIGN:
                     return 0  # already aligned
 
                 # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
                 pad_len -= self.SEG_HEADER_LEN
                 if pad_len < 0:
-                    pad_len += IROM_ALIGN
+                    pad_len += self.IROM_ALIGN
                 return pad_len
 
             # try to fit each flash segment on a 64kB aligned boundary
@@ -1657,8 +1657,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     total_segments += 1
                 else:
                     # write the flash segment
-                    assert (f.tell() + 8) % IROM_ALIGN == segment.addr % IROM_ALIGN
-                    checksum = self.save_segment(f, segment, checksum)
+                    assert (f.tell() + 8) % self.IROM_ALIGN == segment.addr % self.IROM_ALIGN
+                    checksum = self.save_flash_segment(f, segment, checksum)
                     flash_segments.pop(0)
                     total_segments += 1
 
@@ -1672,12 +1672,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 # This ensures all mapped flash content will be verified.
                 if not self.append_digest:
                     raise FatalError("secure_pad only applies if a SHA-256 digest is also appended to the image")
-                align_past = (f.tell() + self.SEG_HEADER_LEN) % IROM_ALIGN
+                align_past = (f.tell() + self.SEG_HEADER_LEN) % self.IROM_ALIGN
                 # 16 byte aligned checksum (force the alignment to simplify calculations)
                 checksum_space = 16
                 # after checksum: SHA-256 digest + (to be added by signing process) version, signature + 12 trailing bytes due to alignment
                 space_after_checksum = 32 + 4 + 64 + 12
-                pad_len = (IROM_ALIGN - align_past - checksum_space - space_after_checksum) % IROM_ALIGN
+                pad_len = (self.IROM_ALIGN - align_past - checksum_space - space_after_checksum) % self.IROM_ALIGN
                 pad_segment = ImageSegment(0, b'\x00' * pad_len, f.tell())
 
                 checksum = self.save_segment(f, pad_segment, checksum)
@@ -1688,7 +1688,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             image_length = f.tell()
 
             if self.secure_pad:
-                assert ((image_length + space_after_checksum) % IROM_ALIGN) == 0
+                assert ((image_length + space_after_checksum) % self.IROM_ALIGN) == 0
 
             # kinda hacky: go back to the initial header and write the new segment count
             # that includes padding segments. This header is not checksummed
@@ -1707,6 +1707,16 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
             with open(filename, 'wb') as real_file:
                 real_file.write(f.getvalue())
+
+    def save_flash_segment(self, f, segment, checksum=None):
+        """ Save the next segment to the image file, return next checksum value if provided """
+        segment_end_pos = f.tell() + len(segment.data) + self.SEG_HEADER_LEN
+        segment_len_remainder = segment_end_pos % self.IROM_ALIGN
+        if segment_len_remainder < 0x24:
+            # Work around a bug in ESP-IDF 2nd stage bootloader, that it didn't map the
+            # last MMU page, if an IROM/DROM segment was < 0x24 bytes over the page boundary.
+            segment.data += b'\x00' * (0x24 - segment_len_remainder)
+        return self.save_segment(f, segment, checksum)
 
     def load_extended_header(self, load_file):
         def split_byte(n):
