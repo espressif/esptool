@@ -303,7 +303,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
                 raise esptool.FatalError("Data length is not a multiple of 16 bytes")
             pad = 16 - len(block)
             block = block + os.urandom(pad)
-            print("WARNING: Padding with %d bytes of random data (encrypted data must be multiple of 16 bytes long)" % pad)
+            print("Note: Padding with %d bytes of random data (encrypted data must be multiple of 16 bytes long)" % pad)
 
         if (block_offs % 32 == 0) or aes is None:
             # each bit of the flash encryption key is XORed with tweak bits derived from the offset of 32 byte block of flash
