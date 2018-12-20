@@ -32,9 +32,12 @@ import sys
 import time
 import zlib
 import string
-import serial.tools.list_ports as list_ports
 
-import serial
+try:
+    import serial
+except ImportError:
+    print("Pyserial is not installed for %s. Check the README for installation instructions." % (sys.executable))
+    raise
 
 # check 'serial' is 'pyserial' and not 'serial' https://github.com/espressif/esptool/issues/269
 try:
@@ -50,6 +53,12 @@ See https://github.com/espressif/esptool/issues/269#issuecomment-385298196 for d
 except TypeError:
     pass  # __doc__ returns None for pyserial
 
+try:
+    import serial.tools.list_ports as list_ports
+except ImportError:
+    print("The installed version (%s) of pyserial appears to be too old for esptool.py (Python interpreter %s). "
+          "Check the README for installation instructions." % (sys.VERSION, sys.executable))
+    raise
 
 __version__ = "2.6-beta1"
 
