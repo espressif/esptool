@@ -272,7 +272,12 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
 
     Return tweaked key
     """
-    key = [ord(k) for k in key]
+    if esptool.PYTHON2:
+        key = [ord(k) for k in key]
+    else:
+        key = list(key)
+    assert len(key) == 32
+
     offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
 
     for bit in tweak_range:
@@ -281,7 +286,10 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
             # to how it is looked up in the tweak pattern table
             key[bit // 8] ^= 1 << (7 - (bit % 8))
 
-    return b"".join(chr(k) for k in key)
+    if esptool.PYTHON2:
+        return b"".join(chr(k) for k in key)
+    else:
+        return bytes(key)
 
 
 def generate_flash_encryption_key(args):

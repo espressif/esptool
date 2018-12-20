@@ -10,6 +10,7 @@ import os.path
 import io
 import sys
 import tempfile
+import zlib
 from collections import namedtuple
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -80,6 +81,7 @@ class ESP32SecureBootloaderTests(EspSecureTestCase):
                     self.assertEqual(ef.read(), of.read())
         finally:
             os.unlink(output_file.name)
+
 
 class ECDSASigningTests(EspSecureTestCase):
 
@@ -168,6 +170,55 @@ class ECDSASigningTests(EspSecureTestCase):
         finally:
             os.unlink(pub_keyfile.name)
             os.unlink(pub_keyfile2.name)
+
+
+class ESP32FlashEncryptionTests(EspSecureTestCase):
+
+    def test_encrypt_decrypt(self):
+        EncryptArgs = namedtuple('encrypt_flash_data_args',
+                                 [ 'keyfile',
+                                   'output',
+                                   'address',
+                                   'flash_crypt_conf',
+                                   'plaintext_file'
+                                 ])
+
+        DecryptArgs = namedtuple('decrypt_flash_data_args',
+                                 [ 'keyfile',
+                                   'output',
+                                   'address',
+                                   'flash_crypt_conf',
+                                   'encrypted_file'
+                                 ])
+
+        original_plaintext = self._open('bootloader.bin')
+        keyfile = self._open('256bit_key.bin')
+        ciphertext = io.BytesIO()
+
+        args = EncryptArgs(keyfile,
+                           ciphertext,
+                           0x1000,
+                           0xFF,
+                           original_plaintext)
+        espsecure.encrypt_flash_data(args)
+
+        self.assertNotEqual(original_plaintext, ciphertext.getvalue())
+        # use compressed size as entropy estimate for effectiveness
+        compressed_cipher = zlib.compress(ciphertext.getvalue())
+        self.assertGreaterEqual(len(compressed_cipher), len(ciphertext.getvalue()))
+
+        ciphertext.seek(0)
+        keyfile.seek(0)
+        plaintext = io.BytesIO()
+        args = DecryptArgs(keyfile,
+                           plaintext,
+                           0x1000,
+                           0xFF,
+                           ciphertext)
+        espsecure.decrypt_flash_data(args)
+
+        original_plaintext.seek(0)
+        self.assertEqual(original_plaintext.read(), plaintext.getvalue())
 
 
 if __name__ == '__main__':
