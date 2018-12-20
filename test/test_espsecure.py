@@ -43,10 +43,20 @@ class EspSecureTestCase(unittest.TestCase):
             print(e.output)
             raise e
 
-def _open(image_file):
-    return open(os.path.join('secure_images', image_file), 'rb')
+    def setUp(self):
+        self.cleanup_files = []  # keep a list of files _open()ed by each test case
 
-class ESP32SecureBootloaderTests(unittest.TestCase):
+    def tearDown(self):
+        for f in self.cleanup_files:
+            f.close()
+
+    def _open(self, image_file):
+        f = open(os.path.join('secure_images', image_file), 'rb')
+        self.cleanup_files.append(f)
+        return f
+
+
+class ESP32SecureBootloaderTests(EspSecureTestCase):
 
     def test_digest_bootloader(self):
         DBArgs = namedtuple('digest_bootloader_args', [
@@ -59,19 +69,23 @@ class ESP32SecureBootloaderTests(unittest.TestCase):
             output_file = tempfile.NamedTemporaryFile(delete=False)
             output_file.close()
 
-            args = DBArgs(_open('256bit_key.bin'),
+            args = DBArgs(self._open('256bit_key.bin'),
                           output_file.name,
-                          _open('256bit_iv.bin'),
-                          _open('bootloader.bin'))
+                          self._open('256bit_iv.bin'),
+                          self._open('bootloader.bin'))
             espsecure.digest_secure_bootloader(args)
 
             with open(output_file.name, 'rb') as of:
-                with _open('bootloader_digested.bin') as ef:
+                with self._open('bootloader_digested.bin') as ef:
                     self.assertEqual(ef.read(), of.read())
         finally:
             os.unlink(output_file.name)
 
-class ECDSASigningTests(unittest.TestCase):
+class ECDSASigningTests(EspSecureTestCase):
+
+    VerifyArgs = namedtuple('verify_signature_args', [
+        'keyfile',
+        'datafile' ])
 
     def test_sign_data(self):
         SignArgs = namedtuple('sign_data_args', [
@@ -85,26 +99,75 @@ class ECDSASigningTests(unittest.TestCase):
 
             # Note: signing bootloader is not actually needed
             # for ESP32, it's just a handy file to sign
-            args = SignArgs(_open('ecdsa_secure_boot_signing_key.pem'),
+            args = SignArgs(self._open('ecdsa_secure_boot_signing_key.pem'),
                             output_file.name,
-                            _open('bootloader.bin'))
+                            self._open('bootloader.bin'))
             espsecure.sign_data(args)
 
             with open(output_file.name, 'rb') as of:
-                with _open('bootloader_signed.bin') as ef:
+                with self._open('bootloader_signed.bin') as ef:
                     self.assertEqual(ef.read(), of.read())
 
         finally:
             os.unlink(output_file.name)
 
-    def test_verify_signature(self):
-        VerifyArgs = namedtuple('verify_signature_args', [
-            'keyfile',
-            'datafile' ])
-
-        args = VerifyArgs(_open('ecdsa_secure_boot_signing_key.pem'),
-                          _open('bootloader_signed.bin'))
+    def test_verify_signature_signing_key(self):
+        # correct key
+        args = self.VerifyArgs(self._open('ecdsa_secure_boot_signing_key.pem'),
+                          self._open('bootloader_signed.bin'))
         espsecure.verify_signature(args)
+
+        # wrong key
+        args = self.VerifyArgs(self._open('ecdsa_secure_boot_signing_key2.pem'),
+                               self._open('bootloader_signed.bin'))
+        with self.assertRaises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        self.assertIn("Signature is not valid", str(cm.exception))
+
+    def test_verify_signature_public_key(self):
+        # correct key
+        args = self.VerifyArgs(self._open('ecdsa_secure_boot_signing_pubkey.pem'),
+                               self._open('bootloader_signed.bin'))
+        espsecure.verify_signature(args)
+
+        # wrong key
+        args = self.VerifyArgs(self._open('ecdsa_secure_boot_signing_pubkey2.pem'),
+                               self._open('bootloader_signed.bin'))
+        with self.assertRaises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        self.assertIn("Signature is not valid", str(cm.exception))
+
+    def test_extract_binary_public_key(self):
+        ExtractKeyArgs = namedtuple('extract_public_key_args',
+                                    [ 'keyfile', 'public_keyfile' ])
+
+        pub_keyfile = tempfile.NamedTemporaryFile(delete=False)
+        pub_keyfile2 = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            args = ExtractKeyArgs(self._open('ecdsa_secure_boot_signing_key.pem'),
+                                  pub_keyfile)
+            espsecure.extract_public_key(args)
+
+            args = ExtractKeyArgs(self._open('ecdsa_secure_boot_signing_key2.pem'),
+                                  pub_keyfile2)
+            espsecure.extract_public_key(args)
+
+            pub_keyfile.seek(0)
+            pub_keyfile2.seek(0)
+
+            # use correct extracted public key to verify
+            args = self.VerifyArgs(pub_keyfile, self._open('bootloader_signed.bin'))
+            espsecure.verify_signature(args)
+
+            # use wrong extracted public key to try and verify
+            args = self.VerifyArgs(pub_keyfile2, self._open('bootloader_signed.bin'))
+            with self.assertRaises(esptool.FatalError) as cm:
+                espsecure.verify_signature(args)
+            self.assertIn("Signature is not valid", str(cm.exception))
+
+        finally:
+            os.unlink(pub_keyfile.name)
+            os.unlink(pub_keyfile2.name)
 
 
 if __name__ == '__main__':

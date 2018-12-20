@@ -170,11 +170,16 @@ def sign_data(args):
 def verify_signature(args):
     """ Verify a previously signed binary image, using the ECDSA public key """
     key_data = args.keyfile.read()
-    try:
-        vk = ecdsa.VerifyingKey.from_pem(key_data)
-    except ecdsa.der.UnexpectedDER:
+    if b"-BEGIN EC PRIVATE KEY" in key_data:
         sk = ecdsa.SigningKey.from_pem(key_data)
         vk = sk.get_verifying_key()
+    elif b"-BEGIN PUBLIC KEY" in key_data:
+        vk = ecdsa.VerifyingKey.from_pem(key_data)
+    elif len(key_data) == 64:
+        vk = ecdsa.VerifyingKey.from_string(key_data,
+                                            curve=ecdsa.NIST256p)
+    else:
+        raise esptool.FatalError("Verification key does not appear to be an EC key in PEM format or binary EC public key data. Unsupported")
 
     if vk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Public key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
@@ -363,19 +368,20 @@ def main():
 
     p = subparsers.add_parser('verify_signature',
                               help='Verify a data file previously signed by "sign_data", using the public key.')
-    p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be the private key file (public key is embedded).",
+    p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be private or public key in PEM format, " +
+                   "or a binary public key produced by extract_public_key command.",
                    type=argparse.FileType('rb'), required=True)
     p.add_argument('datafile', help="Signed data file to verify signature.", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('extract_public_key',
                               help='Extract the public verification key for signatures, save it as a raw binary file.')
-    p.add_argument('--keyfile', '-k', help="Private key file to extract the public verification key from.", type=argparse.FileType('rb'),
+    p.add_argument('--keyfile', '-k', help="Private key file (PEM format) to extract the public verification key from.", type=argparse.FileType('rb'),
                    required=True)
-    p.add_argument('public_keyfile', help="File to save new public key) into", type=argparse.FileType('wb'))
+    p.add_argument('public_keyfile', help="File to save new public key into", type=argparse.FileType('wb'))
 
     p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. ' +
                               'This can be used as a reproducible secure bootloader or flash encryption key.')
-    p.add_argument('--keyfile', '-k', help="Private key file to generate a digest from.", type=argparse.FileType('rb'),
+    p.add_argument('--keyfile', '-k', help="Private key file (PEM format) to generate a digest from.", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits).",
                    choices=['192','256'], default='256')
