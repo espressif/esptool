@@ -46,7 +46,7 @@ class EspSecureTestCase(unittest.TestCase):
 def _open(image_file):
     return open(os.path.join('secure_images', image_file), 'rb')
 
-class SecureBootloaderTests(unittest.TestCase):
+class ESP32SecureBootloaderTests(unittest.TestCase):
 
     def test_digest_bootloader(self):
         DBArgs = namedtuple('digest_bootloader_args', [
@@ -70,6 +70,41 @@ class SecureBootloaderTests(unittest.TestCase):
                     self.assertEqual(ef.read(), of.read())
         finally:
             os.unlink(output_file.name)
+
+class ECDSASigningTests(unittest.TestCase):
+
+    def test_sign_data(self):
+        SignArgs = namedtuple('sign_data_args', [
+            'keyfile',
+            'output',
+            'datafile' ])
+
+        try:
+            output_file = tempfile.NamedTemporaryFile(delete=False)
+            output_file.close()
+
+            # Note: signing bootloader is not actually needed
+            # for ESP32, it's just a handy file to sign
+            args = SignArgs(_open('ecdsa_secure_boot_signing_key.pem'),
+                            output_file.name,
+                            _open('bootloader.bin'))
+            espsecure.sign_data(args)
+
+            with open(output_file.name, 'rb') as of:
+                with _open('bootloader_signed.bin') as ef:
+                    self.assertEqual(ef.read(), of.read())
+
+        finally:
+            os.unlink(output_file.name)
+
+    def test_verify_signature(self):
+        VerifyArgs = namedtuple('verify_signature_args', [
+            'keyfile',
+            'datafile' ])
+
+        args = VerifyArgs(_open('ecdsa_secure_boot_signing_key.pem'),
+                          _open('bootloader_signed.bin'))
+        espsecure.verify_signature(args)
 
 
 if __name__ == '__main__':

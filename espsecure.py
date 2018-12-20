@@ -136,7 +136,7 @@ def generate_signing_key(args):
     print("ECDSA NIST256p private key in PEM format written to %s" % args.keyfile)
 
 
-def _load_signing_key(args):
+def _load_ecdsa_signing_key(args):
     sk = ecdsa.SigningKey.from_pem(args.keyfile.read())
     if sk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Signing key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
@@ -145,7 +145,7 @@ def _load_signing_key(args):
 
 def sign_data(args):
     """ Sign a data file with a ECDSA private key, append binary signature to file contents """
-    sk = _load_signing_key(args)
+    sk = _load_ecdsa_signing_key(args)
 
     # calculate signature of binary data
     binary_content = args.datafile.read()
@@ -169,12 +169,13 @@ def sign_data(args):
 
 def verify_signature(args):
     """ Verify a previously signed binary image, using the ECDSA public key """
+    key_data = args.keyfile.read()
     try:
-        sk = _load_hardware_key(args)  # try to load as private key first
+        vk = ecdsa.VerifyingKey.from_pem(key_data)
+    except ecdsa.der.UnexpectedDER:
+        sk = ecdsa.SigningKey.from_pem(key_data)
         vk = sk.get_verifying_key()
-    except Exception:  # this is a catchall because ecdsa can throw private Exceptions
-        args.keyfile.seek(0)
-        vk = ecdsa.VerifyingKey.from_pem(args.keyfile.read())
+
     if vk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Public key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
 
@@ -195,14 +196,14 @@ def verify_signature(args):
 
 def extract_public_key(args):
     """ Load an ECDSA private key and extract the embedded public key as raw binary data. """
-    sk = _load_signing_key(args)
+    sk = _load_ecdsa_signing_key(args)
     vk = sk.get_verifying_key()
     args.public_keyfile.write(vk.to_string())
     print("%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name))
 
 
 def digest_private_key(args):
-    sk = _load_signing_key(args)
+    sk = _load_ecdsa_signing_key(args)
     repr(sk.to_string())
     digest = hashlib.sha256()
     digest.update(sk.to_string())
