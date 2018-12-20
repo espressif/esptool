@@ -91,7 +91,7 @@ def digest_secure_bootloader(args):
     # if image isn't 128 byte multiple then pad with 0xFF (ie unwritten flash)
     # as this is what the secure boot engine will see
     if len(plaintext_image) % 128 != 0:
-        plaintext_image += "\xFF" * (128 - (len(plaintext_image) % 128))
+        plaintext_image += b"\xFF" * (128 - (len(plaintext_image) % 128))
 
     plaintext = iv + plaintext_image
 
