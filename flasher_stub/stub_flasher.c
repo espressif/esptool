@@ -407,6 +407,8 @@ void stub_main()
      Can be overriden later by esptool.py. */
 #ifdef ESP8266
         SelectSpiFunction();
+
+        spi_flash_attach();
 #else
         uint32_t spiconfig = ets_efuse_get_spiconfig();
         uint32_t strapping = REG_READ(GPIO_STRAP_REG);

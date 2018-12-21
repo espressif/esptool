@@ -400,6 +400,28 @@ class TestLoadRAM(EsptoolTestCase):
         self.assertIn(b"Hello world!", p.read(32))
         p.close()
 
+
+class TestDeepSleepFlash(EsptoolTestCase):
+
+    @unittest.skipUnless(chip == 'esp8266', 'ESP8266 only')
+    def test_deep_sleep_flash(self):
+        """ Regression test for https://github.com/espressif/esptool/issues/351
+
+        ESP8266 deep sleep can disable SPI flash chip, stub loader (or ROM loader) needs to re-enable it.
+
+        NOTE: If this test fails, the ESP8266 may need a hard power cycle (probably with GPIO0 held LOW)
+        to recover.
+        """
+        # not even necessary to wake successfully from sleep, going into deep sleep is enough
+        # (so GPIO16, etc, config is not important for this test)
+        self.run_esptool("write_flash 0x0 images/esp8266_deepsleep.bin", baud=230400)
+
+        time.sleep(0.25)  # give ESP8266 time to enter deep sleep
+
+        self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=230400)
+        self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
+
+
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Usage: %s [--trace] <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0])
