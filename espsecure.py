@@ -91,7 +91,7 @@ def digest_secure_bootloader(args):
     # if image isn't 128 byte multiple then pad with 0xFF (ie unwritten flash)
     # as this is what the secure boot engine will see
     if len(plaintext_image) % 128 != 0:
-        plaintext_image += "\xFF" * (128 - (len(plaintext_image) % 128))
+        plaintext_image += b"\xFF" * (128 - (len(plaintext_image) % 128))
 
     plaintext = iv + plaintext_image
 
@@ -136,7 +136,7 @@ def generate_signing_key(args):
     print("ECDSA NIST256p private key in PEM format written to %s" % args.keyfile)
 
 
-def _load_signing_key(args):
+def _load_ecdsa_signing_key(args):
     sk = ecdsa.SigningKey.from_pem(args.keyfile.read())
     if sk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Signing key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
@@ -145,7 +145,7 @@ def _load_signing_key(args):
 
 def sign_data(args):
     """ Sign a data file with a ECDSA private key, append binary signature to file contents """
-    sk = _load_signing_key(args)
+    sk = _load_ecdsa_signing_key(args)
 
     # calculate signature of binary data
     binary_content = args.datafile.read()
@@ -169,12 +169,18 @@ def sign_data(args):
 
 def verify_signature(args):
     """ Verify a previously signed binary image, using the ECDSA public key """
-    try:
-        sk = _load_hardware_key(args)  # try to load as private key first
+    key_data = args.keyfile.read()
+    if b"-BEGIN EC PRIVATE KEY" in key_data:
+        sk = ecdsa.SigningKey.from_pem(key_data)
         vk = sk.get_verifying_key()
-    except Exception:  # this is a catchall because ecdsa can throw private Exceptions
-        args.keyfile.seek(0)
-        vk = ecdsa.VerifyingKey.from_pem(args.keyfile.read())
+    elif b"-BEGIN PUBLIC KEY" in key_data:
+        vk = ecdsa.VerifyingKey.from_pem(key_data)
+    elif len(key_data) == 64:
+        vk = ecdsa.VerifyingKey.from_string(key_data,
+                                            curve=ecdsa.NIST256p)
+    else:
+        raise esptool.FatalError("Verification key does not appear to be an EC key in PEM format or binary EC public key data. Unsupported")
+
     if vk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Public key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
 
@@ -195,14 +201,14 @@ def verify_signature(args):
 
 def extract_public_key(args):
     """ Load an ECDSA private key and extract the embedded public key as raw binary data. """
-    sk = _load_signing_key(args)
+    sk = _load_ecdsa_signing_key(args)
     vk = sk.get_verifying_key()
     args.public_keyfile.write(vk.to_string())
     print("%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name))
 
 
 def digest_private_key(args):
-    sk = _load_signing_key(args)
+    sk = _load_ecdsa_signing_key(args)
     repr(sk.to_string())
     digest = hashlib.sha256()
     digest.update(sk.to_string())
@@ -266,7 +272,12 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
 
     Return tweaked key
     """
-    key = [ord(k) for k in key]
+    if esptool.PYTHON2:
+        key = [ord(k) for k in key]
+    else:
+        key = list(key)
+    assert len(key) == 32
+
     offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
 
     for bit in tweak_range:
@@ -275,7 +286,10 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
             # to how it is looked up in the tweak pattern table
             key[bit // 8] ^= 1 << (7 - (bit % 8))
 
-    return b"".join(chr(k) for k in key)
+    if esptool.PYTHON2:
+        return b"".join(chr(k) for k in key)
+    else:
+        return bytes(key)
 
 
 def generate_flash_encryption_key(args):
@@ -362,19 +376,20 @@ def main():
 
     p = subparsers.add_parser('verify_signature',
                               help='Verify a data file previously signed by "sign_data", using the public key.')
-    p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be the private key file (public key is embedded).",
+    p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be private or public key in PEM format, " +
+                   "or a binary public key produced by extract_public_key command.",
                    type=argparse.FileType('rb'), required=True)
     p.add_argument('datafile', help="Signed data file to verify signature.", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('extract_public_key',
                               help='Extract the public verification key for signatures, save it as a raw binary file.')
-    p.add_argument('--keyfile', '-k', help="Private key file to extract the public verification key from.", type=argparse.FileType('rb'),
+    p.add_argument('--keyfile', '-k', help="Private key file (PEM format) to extract the public verification key from.", type=argparse.FileType('rb'),
                    required=True)
-    p.add_argument('public_keyfile', help="File to save new public key) into", type=argparse.FileType('wb'))
+    p.add_argument('public_keyfile', help="File to save new public key into", type=argparse.FileType('wb'))
 
     p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. ' +
                               'This can be used as a reproducible secure bootloader or flash encryption key.')
-    p.add_argument('--keyfile', '-k', help="Private key file to generate a digest from.", type=argparse.FileType('rb'),
+    p.add_argument('--keyfile', '-k', help="Private key file (PEM format) to generate a digest from.", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits).",
                    choices=['192','256'], default='256')
