@@ -2389,7 +2389,13 @@ def version(args):
 #
 
 
-def main(args):
+def main(custom_commandline=None):
+    """
+    Main function for esptool
+
+    custom_commandline - Optional override for default arguments parsing (that uses sys.argv), can be a list of custom arguments
+    as strings.
+    """
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
     parser.add_argument('--chip', '-c',
@@ -2596,7 +2602,7 @@ def main(args):
 
     expand_file_arguments()
 
-    args = parser.parse_args(args)
+    args = parser.parse_args(custom_commandline)
 
     print('esptool.py v%s' % __version__)
 
@@ -2935,13 +2941,13 @@ y7+X9Uf4H2taVUVuc2WMH+mulx+/DJ1FUUJnWy9r/q9tUcF5h0fijfIqL0udffsvV73qkg==\
 """)))
 
 
-def _main(args):
+def _main():
     try:
-        main(args)
+        main()
     except FatalError as e:
         print('\nA fatal error occurred: %s' % e)
         sys.exit(2)
 
 
 if __name__ == '__main__':
-    _main(sys.argv[1:])
+    _main()
