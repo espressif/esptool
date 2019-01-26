@@ -2392,7 +2392,7 @@ def version(args):
 #
 
 
-def main(custom_commandline=None):
+def main(custom_commandline):
     """
     Main function for esptool
 
@@ -2606,9 +2606,9 @@ def main(custom_commandline=None):
     for operation in subparsers.choices.keys():
         assert operation in globals(), "%s should be a module function" % operation
 
-    expand_file_arguments()
+    custom_commandline = expand_file_arguments(custom_commandline)
 
-    args = parser.parse_args(custom_commandline)
+    args = parser.parse_args()
 
     print('esptool.py v%s' % __version__)
 
@@ -2725,14 +2725,14 @@ def main(custom_commandline=None):
         operation_func(args)
 
 
-def expand_file_arguments():
+def expand_file_arguments(argv):
     """ Any argument starting with "@" gets replaced with all values read from a text file.
     Text file arguments can be split by newline or by space.
     Values are added "as-is", as if they were specified in this order on the command line.
     """
     new_args = []
     expanded = False
-    for arg in sys.argv:
+    for arg in argv:
         if arg.startswith("@"):
             expanded = True
             with open(arg[1:],"r") as f:
@@ -2742,7 +2742,8 @@ def expand_file_arguments():
             new_args.append(arg)
     if expanded:
         print("esptool.py %s" % (" ".join(new_args[1:])))
-        sys.argv = new_args
+        return new_args
+    return argv
 
 
 class FlashSizeAction(argparse.Action):
@@ -2949,7 +2950,7 @@ y7+X9Uf4H2taVUVuc2WMH+mulx+/DJ1FUUJnWy9r/q9tUcF5h0fijfIqL0udffsvV73qkg==\
 
 def _main():
     try:
-        main()
+        main(sys.argv[1:])
     except FatalError as e:
         print('\nA fatal error occurred: %s' % e)
         sys.exit(2)
