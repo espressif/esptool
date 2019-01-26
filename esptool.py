@@ -2608,7 +2608,7 @@ def main(custom_commandline):
 
     custom_commandline = expand_file_arguments(custom_commandline)
 
-    args = parser.parse_args()
+    args = parser.parse_args(custom_commandline)
 
     print('esptool.py v%s' % __version__)
 
