@@ -2731,7 +2731,6 @@ def find_port(ser_list, chip='auto', initial_baud=ESPLoader.ESP_ROM_BAUD, before
                 esp = chip_class(each_port, initial_baud, trace)
                 esp.connect(before)
             break
-            #
         except (FatalError, OSError) as err:
             if raise_on_error:
                 raise
