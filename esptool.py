@@ -2392,13 +2392,15 @@ def version(args):
 #
 
 
-def main(custom_commandline):
+def main(custom_commandline, esp=None):
     """
     Main function for esptool
 
     custom_commandline - Optional override for default arguments parsing (that uses sys.argv), can be a list of custom arguments
     as strings.
     """
+    provided_esp = esp is not None  # Track whether we passed in an esp object
+
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
     parser.add_argument('--chip', '-c',
@@ -2634,36 +2636,19 @@ def main(custom_commandline):
             initial_baud = args.baud
 
         if args.port is None:
-            ser_list = sorted(ports.device for ports in list_ports.comports())
+            ser_list = get_port_list()
             print("Found %d serial ports" % len(ser_list))
         else:
             ser_list = [args.port]
-        esp = None
-        for each_port in reversed(ser_list):
-            print("Serial port %s" % each_port)
-            try:
-                if args.chip == 'auto':
-                    esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
-                else:
-                    chip_class = {
-                        'esp8266': ESP8266ROM,
-                        'esp32': ESP32ROM,
-                    }[args.chip]
-                    esp = chip_class(each_port, initial_baud, args.trace)
-                    esp.connect(args.before)
-                break
-            except (FatalError, OSError) as err:
-                if args.port is not None:
-                    raise
-                print("%s failed to connect: %s" % (each_port, err))
-                esp = None
+
+        if esp is None:
+            esp = find_port(ser_list, args.chip, initial_baud, args.before, args.trace, args.port is not None)
         if esp is None:
             raise FatalError("All of the %d available serial ports could not connect to a Espressif device." % len(ser_list))
 
         print("Chip is %s" % (esp.get_chip_description()))
 
         print("Features: %s" % ", ".join(esp.get_chip_features()))
-
         read_mac(esp, args)
 
         if not args.no_stub:
@@ -2719,10 +2704,44 @@ def main(custom_commandline):
             if esp.IS_STUB:
                 esp.soft_reset(True)  # exit stub back to ROM loader
 
-        esp._port.close()
+        if not provided_esp:
+            esp._port.close()
 
     else:
         operation_func(args)
+
+
+def get_port_list():
+    return sorted(ports.device for ports in list_ports.comports())
+
+
+def find_port(ser_list, chip='auto', initial_baud=ESPLoader.ESP_ROM_BAUD, before='default_reset', trace=False, raise_on_error=False):
+    """ Figure out which port to use; provide a list of candidate serial ports in ser_list
+    """
+    for each_port in reversed(ser_list):
+        print("Serial port %s" % each_port)
+        try:
+            if chip == 'auto':
+                print("==================================")
+                print(each_port, initial_baud, before, trace)
+                print("==================================")
+                #     def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False):
+                esp = ESPLoader.detect_chip(each_port, initial_baud, before, trace)
+            else:
+                chip_class = {
+                    'esp8266': ESP8266ROM,
+                    'esp32': ESP32ROM,
+                }[chip]
+                esp = chip_class(each_port, initial_baud, trace)
+                esp.connect(before)
+            break
+            #
+        except (FatalError, OSError) as err:
+            if raise_on_error:
+                raise
+            print("%s failed to connect: %s" % (each_port, err))
+            esp = None
+    return esp
 
 
 def expand_file_arguments(argv):
