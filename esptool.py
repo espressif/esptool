@@ -2722,10 +2722,6 @@ def find_port(ser_list, chip='auto', initial_baud=ESPLoader.ESP_ROM_BAUD, before
         print("Serial port %s" % each_port)
         try:
             if chip == 'auto':
-                print("==================================")
-                print(each_port, initial_baud, before, trace)
-                print("==================================")
-                #     def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False):
                 esp = ESPLoader.detect_chip(each_port, initial_baud, before, trace)
             else:
                 chip_class = {
