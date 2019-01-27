@@ -2658,7 +2658,7 @@ def main(custom_commandline=None):
                 print("%s failed to connect: %s" % (each_port, err))
                 esp = None
         if esp is None:
-            raise FatalError("All of the %d available serial ports could not connect to a Espressif device." % len(ser_list))
+            raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
 
         print("Chip is %s" % (esp.get_chip_description()))
 
