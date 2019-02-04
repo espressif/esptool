@@ -1298,11 +1298,11 @@ class BaseFirmwareImage(object):
         self.elf_sha256_offset = 0
 
     def load_common_header(self, load_file, expected_magic):
-            (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
+        (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
 
-            if magic != expected_magic:
-                raise FatalError('Invalid firmware image magic=0x%x' % (magic))
-            return segments
+        if magic != expected_magic:
+            raise FatalError('Invalid firmware image magic=0x%x' % (magic))
+        return segments
 
     def verify(self):
         if len(self.segments) > 16:
@@ -1386,12 +1386,12 @@ class BaseFirmwareImage(object):
         return ESP8266ROM.IROM_MAP_START <= addr < ESP8266ROM.IROM_MAP_END
 
     def get_irom_segment(self):
-            irom_segments = [s for s in self.segments if self.is_irom_addr(s.addr)]
-            if len(irom_segments) > 0:
-                if len(irom_segments) != 1:
-                    raise FatalError('Found %d segments that could be irom0. Bad ELF file?' % len(irom_segments))
-                return irom_segments[0]
-            return None
+        irom_segments = [s for s in self.segments if self.is_irom_addr(s.addr)]
+        if len(irom_segments) > 0:
+            if len(irom_segments) != 1:
+                raise FatalError('Found %d segments that could be irom0. Bad ELF file?' % len(irom_segments))
+            return irom_segments[0]
+        return None
 
     def get_non_irom_segments(self):
         irom_segment = self.get_irom_segment()

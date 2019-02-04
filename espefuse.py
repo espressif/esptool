@@ -377,8 +377,8 @@ class EfuseKeyblockField(EfuseField):
         return struct.unpack("<" + "I" * (len(outbits) // 4), outbits)
 
     def burn_key(self, new_value):
-            new_value = new_value[::-1]  # AES keys are stored in reverse order in efuse
-            return self.burn(new_value)
+        new_value = new_value[::-1]  # AES keys are stored in reverse order in efuse
+        return self.burn(new_value)
 
     def burn(self, new_value):
         key_len = self.parent.get_block_len()
