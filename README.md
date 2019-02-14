@@ -425,8 +425,9 @@ arguments to `esptool.main()`. This workaround makes integration very straightfo
 same arguments as you would on the CLI.
 
 ```python
-command = '--baud 460800 read_flash 0 0x200000 flash_contents.bin'
-esptool.main(command.split(' '))
+command = ['--baud', '460800', 'read_flash', '0', '0x200000', 'flash_contents.bin']
+print('Using command %s' % ' '.join(command))
+esptool.main(command)
 ```
 
 ## Internal Technical Documentation
