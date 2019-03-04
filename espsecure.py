@@ -28,13 +28,15 @@ import esptool
 
 try:
     from Crypto.Cipher import AES
+
     def ECB(key):
         return AES.new(key, AES.MODE_ECB)
-except:
+
+except Exception:
     import pyaes
+
     def ECB(key):
         return pyaes.AESModeOfOperationECB(key)
-
 
 
 def get_chunks(source, chunk_len):
@@ -260,6 +262,7 @@ for i in range(0, 256):
     address_bit = _FLASH_ENCRYPTION_TWEAK_PATTERN[i]
     _FLASH_ENCRYPTION_TWEAK_PATTERN_REVERSE[address_bit] ^= 1 << (255 - i)
 
+
 def _flash_encryption_tweak_range(flash_crypt_config=0xF):
     """ Return a list of the bit indexes that the "key tweak" applies to,
     as determined by the FLASH_CRYPT_CONFIG 4 bit efuse value.
@@ -277,19 +280,20 @@ def _flash_encryption_tweak_range(flash_crypt_config=0xF):
 
 
 def _flash_encryption_tweak_range_bits(flash_crypt_config=0xF):
-    """ Return a bits that the "key tweak" applies to,
+    """ Return bits (in reverse order) that the "key tweak" applies to,
     as determined by the FLASH_CRYPT_CONFIG 4 bit efuse value.
     """
     tweak_range = 0
     if (flash_crypt_config & 1) != 0:
-        tweak_range |= 0xFFFFFFFFFFFFFFF8000000000000000000000000000000000000000000000000
+        tweak_range |= 0xFFFFFFFFFFFFFFFFE00000000000000000000000000000000000000000000000
     if (flash_crypt_config & 2) != 0:
-        tweak_range |= 0x0000000000000007FFFFFFFFFFFFFFF000000000000000000000000000000000
+        tweak_range |= 0x00000000000000001FFFFFFFFFFFFFFFF0000000000000000000000000000000
     if (flash_crypt_config & 4) != 0:
-        tweak_range |= 0x0000000000000000000000000000000FFFFFFFFFFFFFFFF80000000000000000
+        tweak_range |= 0x000000000000000000000000000000000FFFFFFFFFFFFFFFE000000000000000
     if (flash_crypt_config & 8) != 0:
-        tweak_range |= 0x000000000000000000000000000000000000000000000007FFFFFFFFFFFFFFFF
+        tweak_range |= 0x0000000000000000000000000000000000000000000000001FFFFFFFFFFFFFFF
     return tweak_range
+
 
 def _flash_encryption_tweak_key(key, offset, tweak_range):
     """Apply XOR "tweak" values to the key, derived from flash offset
