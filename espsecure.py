@@ -25,7 +25,16 @@ import sys
 
 import ecdsa
 import esptool
-import pyaes
+
+try:
+    from Crypto.Cipher import AES
+    def ECB(key):
+        return AES.new(key, AES.MODE_ECB)
+except:
+    import pyaes
+    def ECB(key):
+        return pyaes.AESModeOfOperationECB(key)
+
 
 
 def get_chunks(source, chunk_len):
@@ -101,7 +110,7 @@ def digest_secure_bootloader(args):
     # (due to hardware quirks not for security.)
 
     key = _load_hardware_key(args.keyfile)
-    aes = pyaes.AESModeOfOperationECB(key)
+    aes = ECB(key)
     digest = hashlib.sha512()
 
     for block in get_chunks(plaintext, 16):
@@ -322,7 +331,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         if (block_offs % 32 == 0) or aes is None:
             # each bit of the flash encryption key is XORed with tweak bits derived from the offset of 32 byte block of flash
             block_key = _flash_encryption_tweak_key(key, block_offs, tweak_range)
-            aes = pyaes.AESModeOfOperationECB(block_key)
+            aes = ECB(block_key)
 
         block = block[::-1]  # reverse input block byte order
 
