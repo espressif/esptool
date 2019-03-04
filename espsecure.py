@@ -254,6 +254,11 @@ _FLASH_ENCRYPTION_TWEAK_PATTERN = [
 ]
 assert len(_FLASH_ENCRYPTION_TWEAK_PATTERN) == 256
 
+_FLASH_ENCRYPTION_TWEAK_PATTERN_REVERSE = [0] * 24
+
+for i in range(0, 256):
+    address_bit = _FLASH_ENCRYPTION_TWEAK_PATTERN[i]
+    _FLASH_ENCRYPTION_TWEAK_PATTERN_REVERSE[address_bit] ^= 1 << (255 - i)
 
 def _flash_encryption_tweak_range(flash_crypt_config=0xF):
     """ Return a list of the bit indexes that the "key tweak" applies to,
@@ -271,6 +276,21 @@ def _flash_encryption_tweak_range(flash_crypt_config=0xF):
     return tweak_range
 
 
+def _flash_encryption_tweak_range_bits(flash_crypt_config=0xF):
+    """ Return a bits that the "key tweak" applies to,
+    as determined by the FLASH_CRYPT_CONFIG 4 bit efuse value.
+    """
+    tweak_range = 0
+    if (flash_crypt_config & 1) != 0:
+        tweak_range |= 0xFFFFFFFFFFFFFFF8000000000000000000000000000000000000000000000000
+    if (flash_crypt_config & 2) != 0:
+        tweak_range |= 0x0000000000000007FFFFFFFFFFFFFFF000000000000000000000000000000000
+    if (flash_crypt_config & 4) != 0:
+        tweak_range |= 0x0000000000000000000000000000000FFFFFFFFFFFFFFFF80000000000000000
+    if (flash_crypt_config & 8) != 0:
+        tweak_range |= 0x000000000000000000000000000000000000000000000007FFFFFFFFFFFFFFFF
+    return tweak_range
+
 def _flash_encryption_tweak_key(key, offset, tweak_range):
     """Apply XOR "tweak" values to the key, derived from flash offset
     'offset'. This matches the ESP32 hardware flash encryption.
@@ -283,22 +303,27 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
     """
     if esptool.PYTHON2:
         key = [ord(k) for k in key]
+        assert len(key) == 32
+
+        offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
+
+        for bit in tweak_range:
+            if offset_bits[_FLASH_ENCRYPTION_TWEAK_PATTERN[bit]]:
+                # note that each byte has a backwards bit order, compared
+                # to how it is looked up in the tweak pattern table
+                key[bit // 8] ^= 1 << (7 - (bit % 8))
+
+        key = b"".join(chr(k) for k in key)
+        return key
+
     else:
-        key = list(key)
-    assert len(key) == 32
+        key = int.from_bytes(key, byteorder='big', signed=False)
+        for offset_bit in range(24):
+            if offset & (1 << offset_bit) != 0:
+                key ^= _FLASH_ENCRYPTION_TWEAK_PATTERN_REVERSE[offset_bit] & tweak_range
 
-    offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
-
-    for bit in tweak_range:
-        if offset_bits[_FLASH_ENCRYPTION_TWEAK_PATTERN[bit]]:
-            # note that each byte has a backwards bit order, compared
-            # to how it is looked up in the tweak pattern table
-            key[bit // 8] ^= 1 << (7 - (bit % 8))
-
-    if esptool.PYTHON2:
-        return b"".join(chr(k) for k in key)
-    else:
-        return bytes(key)
+        key = int.to_bytes(key, length=32, byteorder='big', signed=False)
+        return key
 
 
 def generate_flash_encryption_key(args):
@@ -313,7 +338,11 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
 
     if flash_crypt_conf == 0:
         print("WARNING: Setting FLASH_CRYPT_CONF to zero is not recommended")
-    tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
+
+    if esptool.PYTHON2:
+        tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
+    else:
+        tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
 
     aes = None
     while True:
