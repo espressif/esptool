@@ -25,7 +25,18 @@ import sys
 
 import ecdsa
 import esptool
-import pyaes
+
+try:  # use pycrypto API if available
+    from Crypto.Cipher import AES
+
+    def ECB(key):
+        return AES.new(key, AES.MODE_ECB)
+
+except ImportError:
+    import pyaes
+
+    def ECB(key):
+        return pyaes.AESModeOfOperationECB(key)
 
 
 def get_chunks(source, chunk_len):
@@ -101,7 +112,7 @@ def digest_secure_bootloader(args):
     # (due to hardware quirks not for security.)
 
     key = _load_hardware_key(args.keyfile)
-    aes = pyaes.AESModeOfOperationECB(key)
+    aes = ECB(key)
     digest = hashlib.sha512()
 
     for block in get_chunks(plaintext, 16):
@@ -262,6 +273,30 @@ def _flash_encryption_tweak_range(flash_crypt_config=0xF):
     return tweak_range
 
 
+def _flash_encryption_tweak_range_bits(flash_crypt_config=0xF):
+    """ Return bits (in reverse order) that the "key tweak" applies to,
+    as determined by the FLASH_CRYPT_CONFIG 4 bit efuse value.
+    """
+    tweak_range = 0
+    if (flash_crypt_config & 1) != 0:
+        tweak_range |= 0xFFFFFFFFFFFFFFFFE00000000000000000000000000000000000000000000000
+    if (flash_crypt_config & 2) != 0:
+        tweak_range |= 0x00000000000000001FFFFFFFFFFFFFFFF0000000000000000000000000000000
+    if (flash_crypt_config & 4) != 0:
+        tweak_range |= 0x000000000000000000000000000000000FFFFFFFFFFFFFFFE000000000000000
+    if (flash_crypt_config & 8) != 0:
+        tweak_range |= 0x0000000000000000000000000000000000000000000000001FFFFFFFFFFFFFFF
+    return tweak_range
+
+
+# Forward bit order masks
+mul1        = 0x0000200004000080000004000080001000000200004000080000040000800010
+mul2        = 0x0000000000000000200000000000000010000000000000002000000000000001
+
+mul1_mask   = 0xffffffffffffff801ffffffffffffff00ffffffffffffff81ffffffffffffff0
+mul2_mask   = 0x000000000000007fe00000000000000ff000000000000007e00000000000000f
+
+
 def _flash_encryption_tweak_key(key, offset, tweak_range):
     """Apply XOR "tweak" values to the key, derived from flash offset
     'offset'. This matches the ESP32 hardware flash encryption.
@@ -274,22 +309,23 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
     """
     if esptool.PYTHON2:
         key = [ord(k) for k in key]
+        assert len(key) == 32
+
+        offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
+
+        for bit in tweak_range:
+            if offset_bits[_FLASH_ENCRYPTION_TWEAK_PATTERN[bit]]:
+                # note that each byte has a backwards bit order, compared
+                # to how it is looked up in the tweak pattern table
+                key[bit // 8] ^= 1 << (7 - (bit % 8))
+
+        key = b"".join(chr(k) for k in key)
+        return key
+
     else:
-        key = list(key)
-    assert len(key) == 32
-
-    offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
-
-    for bit in tweak_range:
-        if offset_bits[_FLASH_ENCRYPTION_TWEAK_PATTERN[bit]]:
-            # note that each byte has a backwards bit order, compared
-            # to how it is looked up in the tweak pattern table
-            key[bit // 8] ^= 1 << (7 - (bit % 8))
-
-    if esptool.PYTHON2:
-        return b"".join(chr(k) for k in key)
-    else:
-        return bytes(key)
+        addr = offset >> 5
+        key ^= ((mul1 * addr) | ((mul2 * addr) & mul2_mask)) & tweak_range
+        return int.to_bytes(key, length=32, byteorder='big', signed=False)
 
 
 def generate_flash_encryption_key(args):
@@ -305,11 +341,16 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
 
     if flash_crypt_conf == 0:
         print("WARNING: Setting FLASH_CRYPT_CONF to zero is not recommended")
-    tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
+
+    if esptool.PYTHON2:
+        tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
+    else:
+        tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
+        key = int.from_bytes(key, byteorder='big', signed=False)
 
     aes = None
+    block_offs = flash_address
     while True:
-        block_offs = flash_address + input_file.tell()
         block = input_file.read(16)
         if len(block) == 0:
             break
@@ -323,7 +364,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         if (block_offs % 32 == 0) or aes is None:
             # each bit of the flash encryption key is XORed with tweak bits derived from the offset of 32 byte block of flash
             block_key = _flash_encryption_tweak_key(key, block_offs, tweak_range)
-            aes = pyaes.AESModeOfOperationECB(block_key)
+            aes = ECB(block_key)
 
         block = block[::-1]  # reverse input block byte order
 
@@ -337,6 +378,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
 
         block = block[::-1]  # reverse output block byte order
         output_file.write(block)
+        block_offs += len(block)
 
 
 def decrypt_flash_data(args):
