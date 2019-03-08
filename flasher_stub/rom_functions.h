@@ -101,6 +101,7 @@ typedef struct {
 uint32_t ets_get_detected_xtal_freq(void);
 void uart_tx_flush(int uart);
 uint32_t ets_efuse_get_spiconfig(void);
+SpiFlashOpResult esp_rom_spiflash_write_encrypted(uint32_t addr, const uint8_t *src, uint32_t size);
 
 /* These functions are in ets_sys.h on ESP8266 */
 typedef void (*int_handler_t)(void *arg);
