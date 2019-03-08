@@ -436,7 +436,6 @@ class ESPLoader(object):
             time.sleep(0.05)
             self._setDTR(False)  # IO0=HIGH, done
 
-
         for _ in range(5):
             try:
                 self.flush_input()
