@@ -35,6 +35,7 @@ EFUSES = [
     ('XPD_SDIO_FORCE',       "config",   0, 4, 1 << 16,    5,  None, "flag", "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset"),
     ('XPD_SDIO_REG',         "config",   0, 4, 1 << 14,    5,  None, "flag", "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset"),
     ('XPD_SDIO_TIEH',        "config",   0, 4, 1 << 15,    5,  None, "flag", "If XPD_SDIO_FORCE & XPD_SDIO_REG, 1=3.3V 0=1.8V"),
+    ('CLK8M_FREQ',           "config",   0, 4, 0xFF,    None,  None, "int",  "8MHz clock freq override"),
     ('SPI_PAD_CONFIG_CLK',   "config",   0, 5, 0x1F << 0,  6,  None, "spipin", "Override SD_CLK pad (GPIO6/SPICLK)"),
     ('SPI_PAD_CONFIG_Q',     "config",   0, 5, 0x1F << 5,  6,  None, "spipin", "Override SD_DATA_0 pad (GPIO7/SPIQ)"),
     ('SPI_PAD_CONFIG_D',     "config",   0, 5, 0x1F << 10, 6,  None, "spipin", "Override SD_DATA_1 pad (GPIO8/SPID)"),
