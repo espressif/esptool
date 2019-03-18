@@ -221,8 +221,8 @@ class ESP32ImageTests(BaseTestCase):
         ELF="esp32-app-template.elf"
         BIN="esp32-app-template.bin"
         image = self._test_elf2image(ELF, BIN)
-        self.assertEqual(7, len(image.segments))
-        # the other two segments are padding segments
+        self.assertEqual(6, len(image.segments))
+        # the other segment is a padding segment
         for section in [ ".iram0.text", ".iram0.vectors",
                          ".dram0.data", ".flash.rodata",
                          ".flash.text" ]:
@@ -236,6 +236,7 @@ class ESP32ImageTests(BaseTestCase):
         output = e.exception.output
         self.assertIn(b"max 16", output)
         self.assertIn(b"linker script", output)
+
 
 class ESP8266FlashHeaderTests(BaseTestCase):
     def test_2mb(self):
@@ -268,23 +269,27 @@ class ESP32FlashHeaderTests(BaseTestCase):
 
 class ELFSHA256Tests(BaseTestCase):
     ELF = "esp32-app-template.elf"
+    SHA_OFFS = 0xb0  # absolute offset of the SHA in the .bin file
     BIN = "esp32-app-template.bin"
 
     def test_binary_patched(self):
-        self.run_elf2image("esp32", self.ELF, extra_args=["--elf-sha256-offset", "32"])
+        self.run_elf2image("esp32", self.ELF, extra_args=["--elf-sha256-offset", "0x%x" % self.SHA_OFFS])
         image = esptool.LoadFirmwareImage("esp32", self.BIN)
         rodata_segment = image.segments[0]
-        observed_sha256 = rodata_segment.data[0:32]
+        observed_sha256 = rodata_segment.data[self.SHA_OFFS-0x20:self.SHA_OFFS-0x20+32] # subtract 0x20 byte header here
 
         sha256 = hashlib.sha256()
         with open(self.ELF, "rb") as f:
-            f.seek(0, os.SEEK_END)
-            size = f.tell()
-            f.seek(0, 0)
-            sha256.update(f.read(size))
-        expected_sha256 = sha256.digest()
+            expected_sha256 = hashlib.sha256(f.read()).digest()
 
         self.assertSequenceEqual(expected_sha256, observed_sha256)
+
+    def test_no_overwrite_data(self):
+        with self.assertRaises(subprocess.CalledProcessError) as e:
+            self.run_elf2image("esp32", "esp32-bootloader.elf", extra_args=["--elf-sha256-offset", "0xb0"])
+        output = e.exception.output
+        self.assertIn(b"SHA256", output)
+        self.assertIn(b"zero", output)
 
 
 if __name__ == '__main__':

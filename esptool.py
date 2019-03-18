@@ -1388,16 +1388,19 @@ class BaseFirmwareImage(object):
     def maybe_patch_segment_data(self, f, segment_data):
         """If SHA256 digest of the ELF file needs to be inserted into this segment, do so. Returns segment data."""
         segment_len = len(segment_data)
-        file_pos = f.tell()
+        file_pos = f.tell()  # file_pos is position in the .bin file
         if self.elf_sha256_offset >= file_pos and self.elf_sha256_offset < file_pos + segment_len:
-            # SHA256 digest needs to be patched into this segment,
-            # calculate offset of the digest inside the segment.
+            # SHA256 digest needs to be patched into this binary segment,
+            # calculate offset of the digest inside the binary segment.
             patch_offset = self.elf_sha256_offset - file_pos
             # Sanity checks
             if patch_offset < self.SEG_HEADER_LEN or patch_offset + self.SHA256_DIGEST_LEN > segment_len:
-                raise FatalError('Can not place SHA256 digest on segment boundary' +
+                raise FatalError('Cannot place SHA256 digest on segment boundary' +
                                  '(elf_sha256_offset=%d, file_pos=%d, segment_size=%d)' %
                                  (self.elf_sha256_offset, file_pos, segment_len))
+            if segment_data[patch_offset:patch_offset + self.SHA256_DIGEST_LEN] != b'\x00' * self.SHA256_DIGEST_LEN:
+                raise FatalError('Contents of segment at SHA256 digest offset 0x%x are not all zero. Refusing to overwrite.' %
+                                 self.elf_sha256_offset)
             assert(len(self.elf_sha256) == self.SHA256_DIGEST_LEN)
             # offset relative to the data part
             patch_offset -= self.SEG_HEADER_LEN
