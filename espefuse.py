@@ -30,7 +30,7 @@ import esptool
 EFUSES = [
     ('WR_DIS',               "efuse",    0, 0, 0x0000FFFF, 1,  None, "int", "Efuse write disable mask"),
     ('RD_DIS',               "efuse",    0, 0, 0x000F0000, 0,  None, "int", "Efuse read disablemask"),
-    ('FLASH_CRYPT_CNT',      "security", 0, 0, 0x0FF00000, 2,  None, "bitcount", "Flash encryption mode counter"),
+    ('FLASH_CRYPT_CNT',      "security", 0, 0, 0x07F00000, 2,  None, "bitcount", "Flash encryption mode counter"),
     ('MAC',                  "identity", 0, 1, 0xFFFFFFFF, 3,  None, "mac", "Factory MAC Address"),
     ('XPD_SDIO_FORCE',       "config",   0, 4, 1 << 16,    5,  None, "flag", "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset"),
     ('XPD_SDIO_REG',         "config",   0, 4, 1 << 14,    5,  None, "flag", "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset"),
