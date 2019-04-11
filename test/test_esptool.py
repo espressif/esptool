@@ -18,8 +18,8 @@ import time
 import unittest
 import serial
 
-import esptool, espefuse
 sys.path.append('..')
+import esptool, espefuse
 
 # point is this file is not 4 byte aligned in length
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
@@ -135,6 +135,7 @@ class EsptoolTestCase(unittest.TestCase):
                 self.fail("First difference at offset 0x%x Expected %r got %r" % (offs, ct_b, rb_b))
 
 
+@unittest.skipUnless(chip == 'esp32', 'ESP32 only')
 class TestFlashEncryption(EsptoolTestCase):
 
     def valid_key_present(self):
