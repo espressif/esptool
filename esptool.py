@@ -2203,14 +2203,15 @@ def write_flash(esp, args):
             raise FatalError("Incorrect efuse setting: aborting flash write")
 
     # verify file sizes fit in flash
-    flash_end = flash_size_bytes(args.flash_size)
-    for address, argfile in args.addr_filename:
-        argfile.seek(0,2)  # seek to end
-        if address + argfile.tell() > flash_end:
-            raise FatalError(("File %s (length %d) at offset %d will not fit in %d bytes of flash. " +
-                             "Use --flash-size argument, or change flashing address.")
-                             % (argfile.name, argfile.tell(), address, flash_end))
-        argfile.seek(0)
+    if args.flash_size != 'keep':  # TODO: check this even with 'keep'
+        flash_end = flash_size_bytes(args.flash_size)
+        for address, argfile in args.addr_filename:
+            argfile.seek(0,2)  # seek to end
+            if address + argfile.tell() > flash_end:
+                raise FatalError(("File %s (length %d) at offset %d will not fit in %d bytes of flash. " +
+                                  "Use --flash-size argument, or change flashing address.")
+                                 % (argfile.name, argfile.tell(), address, flash_end))
+            argfile.seek(0)
 
     if args.erase_all:
         erase_flash(esp, args)
@@ -2580,6 +2581,11 @@ def main(custom_commandline=None):
         extra_keep_args = [] if is_elf2image else ['keep']
         auto_detect = not is_elf2image
 
+        if auto_detect:
+            extra_fs_message = ", detect, or keep"
+        else:
+            extra_fs_message = ""
+
         parent.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
                             choices=extra_keep_args + ['40m', '26m', '20m', '80m'],
                             default=os.environ.get('ESPTOOL_FF', '40m' if is_elf2image else 'keep'))
@@ -2587,7 +2593,7 @@ def main(custom_commandline=None):
                             choices=extra_keep_args + ['qio', 'qout', 'dio', 'dout'],
                             default=os.environ.get('ESPTOOL_FM', 'qio' if is_elf2image else 'keep'))
         parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M)'
-                            ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1)',
+                            ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1)' + extra_fs_message,
                             action=FlashSizeAction, auto_detect=auto_detect,
                             default=os.environ.get('ESPTOOL_FS', 'detect' if auto_detect else '1MB'))
         add_spi_connection_arg(parent)
@@ -2796,7 +2802,8 @@ def main(custom_commandline=None):
         if hasattr(args, "flash_size"):
             print("Configuring flash size...")
             detect_flash_size(esp, args)
-            esp.flash_set_parameters(flash_size_bytes(args.flash_size))
+            if args.flash_size != 'keep':  # TODO: should set this even with 'keep'
+                esp.flash_set_parameters(flash_size_bytes(args.flash_size))
 
         try:
             operation_func(esp, args)
@@ -2879,6 +2886,7 @@ class FlashSizeAction(argparse.Action):
         known_sizes.update(ESP32ROM.FLASH_SIZES)
         if self._auto_detect:
             known_sizes['detect'] = 'detect'
+            known_sizes['keep'] = 'keep'
         if value not in known_sizes:
             raise argparse.ArgumentError(self, '%s is not a known flash size. Known sizes: %s' % (value, ", ".join(known_sizes.keys())))
         setattr(namespace, self.dest, value)

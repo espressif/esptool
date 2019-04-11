@@ -41,7 +41,7 @@ trace_enabled = False
 try:
     chip = sys.argv[2]
 except IndexError:
-    chip = None
+    chip = None  # fails in main()
 
 RETURN_CODE_FATAL_ERROR = 2
 
@@ -343,6 +343,28 @@ class TestFlashSizes(EsptoolTestCase):
         output = self.run_esptool_error("write_flash -u -fs 1MB 0x280000 images/one_kb.bin")
         self.assertIn("File images/one_kb.bin", output)
         self.assertIn("will not fit", output)
+
+    def test_flash_size_keep(self):
+        if chip == "esp8266":
+            # this image is configured for 512KB flash by default.
+            # assume this is not the flash size in use
+            image = "images/esp8266_sdk/boot_v1.4(b1).bin"
+            offset = 0x0
+        elif chip == "esp32":
+            # this image is configured for 2MB flash by default,
+            # assume this is not the flash size in use
+            image = "images/bootloader.bin"
+            offset = 0x1000
+        else:
+            self.fail("unsupported chip for test: %s" % chip)
+
+        with open(image, "rb") as f:
+            f.seek(0, 2)
+            image_len = f.tell()
+        self.run_esptool("write_flash -fs keep %d %s" % (offset, image))
+        # header should be the same as in the .bin file
+        self.verify_readback(offset, image_len, image)
+
 
 
 class TestFlashDetection(EsptoolTestCase):
