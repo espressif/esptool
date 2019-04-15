@@ -200,7 +200,10 @@ class ESPLoader(object):
     # Flash sector size, minimum unit of erase.
     FLASH_SECTOR_SIZE = 0x1000
 
+    # This register happens to exist on both ESP8266 & ESP32
     UART_DATA_REG_ADDR = 0x60000078
+
+    UART_CLKDIV_MASK = 0xFFFFF
 
     # Memory addresses
     IROM_MAP_START = 0x40200000
@@ -911,6 +914,22 @@ class ESPLoader(object):
 
         self.run_spiflash_command(SPIFLASH_WRDI)
 
+    def get_crystal_freq(self):
+        # Figure out the crystal frequency from the UART clock divider
+        # Returns a normalized value in integer MHz (40 or 26 are the only supported values)
+        #
+        # The logic here is:
+        # - We know that our baud rate and the ESP UART baud rate are roughly the same, or we couldn't communicate
+        # - We can read the UART clock divider register to know how the ESP derives this from the APB bus frequency
+        # - Multiplying these two together gives us the bus frequency which is either the crystal frequency (ESP32)
+        #   or double the crystal frequency (ESP8266). See the self.XTAL_CLK_DIVIDER parameter for this factor.
+        uart_div = self.read_reg(self.UART_CLKDIV_REG) & self.UART_CLKDIV_MASK
+        est_xtal = (self._port.baudrate * uart_div) / 1e6 / self.XTAL_CLK_DIVIDER
+        norm_xtal = 40 if est_xtal > 33 else 26
+        if abs(norm_xtal - est_xtal) > 1:
+            print("WARNING: Detected crystal freq %.2fMHz is quite different to normalized freq %dMHz. Unsupported crystal in use?" % (est_xtal, norm_xtal))
+        return norm_xtal
+
     def hard_reset(self):
         self._setRTS(True)  # EN->LOW
         time.sleep(0.1)
@@ -954,6 +973,10 @@ class ESP8266ROM(ESPLoader):
     SPI_REG_BASE    = 0x60000200
     SPI_W0_OFFS     = 0x40
     SPI_HAS_MOSI_DLEN_REG = False
+
+    UART_CLKDIV_REG = 0x60000014
+
+    XTAL_CLK_DIVIDER = 2
 
     FLASH_SIZES = {
         '512KB':0x00,
@@ -1084,6 +1107,10 @@ class ESP32ROM(ESPLoader):
 
     SPI_W0_OFFS = 0x80
     SPI_HAS_MOSI_DLEN_REG = True
+
+    UART_CLKDIV_REG = 0x3ff40014
+
+    XTAL_CLK_DIVIDER = 1
 
     FLASH_SIZES = {
         '1MB':0x00,
@@ -2773,6 +2800,8 @@ def main(custom_commandline=None):
         print("Chip is %s" % (esp.get_chip_description()))
 
         print("Features: %s" % ", ".join(esp.get_chip_features()))
+
+        print("Crystal is %dMHz" % esp.get_crystal_freq())
 
         read_mac(esp, args)
 
