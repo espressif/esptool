@@ -135,6 +135,15 @@ except NameError:
     basestring = str
 
 
+def _mask_to_shift(mask):
+    """ Return the index of the least significant bit in the mask """
+    shift = 0
+    while mask & 0x1 == 0:
+        shift += 1
+        mask >>= 1
+    return shift
+
+
 def esp8266_function_only(func):
     """ Attribute for a function only supported on ESP8266 """
     return check_supported_function(func, lambda o: o.CHIP_NAME == "ESP8266")
@@ -473,8 +482,8 @@ class ESPLoader(object):
             print('')  # end 'Connecting...' line
         raise FatalError('Failed to connect to %s: %s' % (self.CHIP_NAME, last_error))
 
-    """ Read memory address in target """
     def read_reg(self, addr):
+        """ Read memory address in target """
         # we don't call check_command here because read_reg() function is called
         # when detecting chip type, and the way we check for success (STATUS_BYTES_LENGTH) is different
         # for different chip types (!)
@@ -483,10 +492,27 @@ class ESPLoader(object):
             raise FatalError.WithResult("Failed to read register address %08x" % addr, data)
         return val
 
-    """ Write to memory address in target """
     def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0):
+        """ Write to memory address in target
+
+        Note: mask option is not supported by stub loaders, use update_reg() function.
+        """
         return self.check_command("write target memory", self.ESP_WRITE_REG,
                                   struct.pack('<IIII', addr, value, mask, delay_us))
+
+    def update_reg(self, addr, mask, new_val):
+        """ Update register at 'addr', replace the bits masked out by 'mask'
+        with new_val. new_val is shifted left to match the LSB of 'mask'
+
+        Returns just-written value of register.
+        """
+        shift = _mask_to_shift(mask)
+        val = self.read_reg(addr)
+        val &= ~mask
+        val |= (new_val << shift) & mask
+        self.write_reg(addr, val)
+
+        return val
 
     """ Start downloading an application image to RAM """
     def mem_begin(self, size, blocks, blocksize, offset):

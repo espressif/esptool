@@ -96,6 +96,22 @@ EFUSE_REG_WRITE = [0x3FF5A01C, 0x3FF5A098, 0x3FF5A0B8, 0x3FF5A0D8]
 EFUSE_REG_DEC_STATUS = 0x3FF5A11C
 EFUSE_REG_DEC_STATUS_MASK = 0xFFF
 
+# Efuse clock control
+EFUSE_DAC_CONF_REG = 0x3FF5A118
+EFUSE_CLK_REG = 0x3FF5A0F8
+
+EFUSE_DAC_CLK_DIV_MASK = 0xFF
+EFUSE_CLK_SEL0_MASK = 0x00FF
+EFUSE_CLK_SEL1_MASK = 0xFF00
+
+EFUSE_CLK_SETTINGS = {
+    # APB freq: clk_sel0, clk_sel1, dac_clk_div
+    # Taken from TRM chapter "eFuse Controller": Timing Configuration
+    26: (250, 255, 52),
+    40: (160, 255, 80),
+    80: (80, 128, 100),  # this is here for completeness only as esptool never sets an 80MHz APB clock
+}
+
 EFUSE_BURN_TIMEOUT = 0.250  # seconds
 
 
@@ -153,8 +169,17 @@ class EspEfuses(object):
         """ Write the values in the efuse write registers to
         the efuse hardware, then refresh the efuse read registers.
         """
-        self._esp.write_reg(EFUSE_REG_CONF, EFUSE_CONF_WRITE)
-        self._esp.write_reg(EFUSE_REG_CMD, EFUSE_CMD_WRITE)
+
+        # Configure clock
+        apb_freq = self._esp.get_crystal_freq()
+        clk_sel0, clk_sel1, dac_clk_div = EFUSE_CLK_SETTINGS[apb_freq]
+
+        self.update_reg(EFUSE_DAC_CONF_REG, EFUSE_DAC_CLK_DIV_MASK, dac_clk_div)
+        self.update_reg(EFUSE_CLK_REG, EFUSE_CLK_SEL0_MASK, clk_sel0)
+        self.update_reg(EFUSE_CLK_REG, EFUSE_CLK_SEL1_MASK, clk_sel1)
+
+        self.write_reg(EFUSE_REG_CONF, EFUSE_CONF_WRITE)
+        self.write_reg(EFUSE_REG_CMD, EFUSE_CMD_WRITE)
 
         def wait_idle():
             deadline = time.time() + EFUSE_BURN_TIMEOUT
@@ -163,8 +188,8 @@ class EspEfuses(object):
                     return
             raise esptool.FatalError("Timed out waiting for Efuse controller command to complete")
         wait_idle()
-        self._esp.write_reg(EFUSE_REG_CONF, EFUSE_CONF_READ)
-        self._esp.write_reg(EFUSE_REG_CMD, EFUSE_CMD_READ)
+        self.write_reg(EFUSE_REG_CONF, EFUSE_CONF_READ)
+        self.write_reg(EFUSE_REG_CMD, EFUSE_CMD_READ)
         wait_idle()
 
     def read_efuse(self, addr):
@@ -175,6 +200,9 @@ class EspEfuses(object):
 
     def write_reg(self, addr, value):
         return self._esp.write_reg(addr, value)
+
+    def update_reg(self, addr, mask, new_val):
+        return self._esp.update_reg(addr, mask, new_val)
 
     def get_coding_scheme_warnings(self):
         """ Check if the coding scheme has detected any errors.
@@ -207,11 +235,7 @@ class EfuseField(object):
         self.word = word
         self.data_reg_offs = EFUSE_BLOCK_OFFS[self.block] + self.word
         self.mask = mask
-        self.shift = 0
-        # self.shift is the number of the least significant bit in the mask
-        while mask & 0x1 == 0:
-            self.shift += 1
-            mask >>= 1
+        self.shift = esptool._mask_to_shift(mask)
         self.write_disable_bit = write_disable_bit
         self.read_disable_bit = read_disable_bit
         self.register_name = register_name
