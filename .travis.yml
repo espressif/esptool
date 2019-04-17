@@ -13,7 +13,7 @@ env:
   # we're just using it for some header files.)
 
   # Toolchains
-  ESP8266_TOOLCHAIN_URL="http://arduino.esp8266.com/linux64-xtensa-lx106-elf.tar.gz"
+  ESP8266_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-lx106-elf-linux64-1.22.0-92-g8facf4c-5.2.0.tar.gz"
   ESP32_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz"
   TOOLCHAIN_DIR="${HOME}/toolchain"
   ESP8266_BINDIR="${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"

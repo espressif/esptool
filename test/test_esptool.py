@@ -514,7 +514,9 @@ class TestLoadRAM(EsptoolTestCase):
         self.run_esptool("load_ram images/helloworld-%s.bin" % chip)
         p = serial.serial_for_url(serialport, default_baudrate)
         p.timeout = 0.2
-        self.assertIn(b"Hello world!", p.read(32))
+        output = p.read(100)
+        print("Output: %r" % output)
+        self.assertIn(b"Hello world!", output)
         p.close()
 
 

@@ -20,7 +20,7 @@
    else... */
 MEMORY {
   iram : org = 0x4010E000, len = 0x2000
-  dram : org = 0x3FFE8000, len = 0x14000
+  dram : org = 0x3FFE8100, len = 0x13f00
 }
 
 ENTRY(stub_main_8266)
