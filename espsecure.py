@@ -213,11 +213,11 @@ def digest_private_key(args):
     digest = hashlib.sha256()
     digest.update(sk.to_string())
     result = digest.digest()
-    if args.keylen == '192':
+    if args.keylen == 192:
         result = result[0:24]
     args.digest_file.write(result)
     print("SHA-256 digest of private key %s%s written to %s" % (args.keyfile.name,
-                                                                "" if args.keylen == '256'
+                                                                "" if args.keylen == 256
                                                                 else " (truncated to 192 bits)",
                                                                 args.digest_file.name))
 
@@ -293,7 +293,8 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
 
 
 def generate_flash_encryption_key(args):
-    args.key_file.write(os.urandom(32))
+    print("Writing %d random bits to key file %s" % (args.keylen, args.key_file.name))
+    args.key_file.write(os.urandom(args.keylen // 8))
 
 
 def _flash_encryption_operation(output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt):
@@ -391,12 +392,14 @@ def main():
                               'This can be used as a reproducible secure bootloader or flash encryption key.')
     p.add_argument('--keyfile', '-k', help="Private key file (PEM format) to generate a digest from.", type=argparse.FileType('rb'),
                    required=True)
-    p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits).",
-                   choices=['192','256'], default='256')
+    p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme requires 192 bit key.",
+                   choices=[192, 256], default=256, type=int)
     p.add_argument('digest_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
 
     p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use 32 byte flash encryption key with random data.')
-    p.add_argument('key_file', help="File to write 32 byte digest into", type=argparse.FileType('wb'))
+    p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme requires 192 bit key.",
+                   choices=[192, 256], default=256, type=int)
+    p.add_argument('key_file', help="File to write 24 or 32 byte digest into", type=argparse.FileType('wb'))
 
     p = subparsers.add_parser('decrypt_flash_data', help='Decrypt some data read from encrypted flash (using known key)')
     p.add_argument('encrypted_file', help="File with encrypted flash contents", type=argparse.FileType('rb'))
