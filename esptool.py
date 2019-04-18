@@ -2548,7 +2548,8 @@ def main(custom_commandline=None):
     Main function for esptool
 
     custom_commandline - Optional override for default arguments parsing (that uses sys.argv), can be a list of custom arguments
-    as strings.
+    as strings. Arguments and their values need to be added as individual items to the list e.g. "-b 115200" thus
+    becomes ['-b', '115200'].
     """
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 

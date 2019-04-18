@@ -416,6 +416,20 @@ Note that not every serial program supports the unusual ESP8266 74880bps "boot l
 
 Running `esptool.py --trace` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
 
+## Using esptool.py from Python
+
+esptool.py can easily be integrated into Python applications or called from other Python scripts.
+
+While it currently does have a poor Python API, something which [#208](https://github.com/espressif/esptool/issues/208) will address, it allows for passing CLI 
+arguments to `esptool.main()`. This workaround makes integration very straightforward as you can pass exactly the 
+same arguments as you would on the CLI.
+
+```python
+command = ['--baud', '460800', 'read_flash', '0', '0x200000', 'flash_contents.bin']
+print('Using command %s' % ' '.join(command))
+esptool.main(command)
+```
+
 ## Internal Technical Documentation
 
 The [repository wiki](https://github.com/espressif/esptool/wiki) contains some technical documentation regarding the serial protocol and file format used by the ROM bootloader. This may be useful if you're developing esptool.py or hacking system internals:
