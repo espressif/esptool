@@ -322,7 +322,6 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
         return key
 
     else:
-        key = int.from_bytes(key, byteorder='big', signed=False)
         addr = offset >> 5
         key ^= ((mul1 * addr) | ((mul2 * addr) & mul2_mask)) & tweak_range
         return int.to_bytes(key, length=32, byteorder='big', signed=False)
@@ -345,6 +344,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
     else:
         tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
+        key = int.from_bytes(key, byteorder='big', signed=False)
 
     aes = None
     while True:
