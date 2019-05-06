@@ -347,8 +347,8 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         key = int.from_bytes(key, byteorder='big', signed=False)
 
     aes = None
+    block_offs = flash_address
     while True:
-        block_offs = flash_address + input_file.tell()
         block = input_file.read(16)
         if len(block) == 0:
             break
@@ -376,6 +376,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
 
         block = block[::-1]  # reverse output block byte order
         output_file.write(block)
+        block_offs += len(block)
 
 
 def decrypt_flash_data(args):
