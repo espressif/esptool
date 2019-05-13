@@ -190,6 +190,95 @@ def sign_secure_boot_v1(args):
     print("Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile.name))
 
 
+def sign_secure_boot_v2(args):
+    """ Sign a firmware app image with an RSA private key using RSA-PSS, write output file with a
+    Secure Boot V2 header appended.
+    """
+    contents = args.datafile.read()
+
+    SECTOR_SIZE = 4096
+    if len(contents) % SECTOR_SIZE != 0:
+        pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
+        print("Padding data contents by %d bytes so signature sector aligns at sector boundary" % pad_by)
+        contents += b'\xff' * pad_by
+
+    # Calculate digest of data file
+    digest = hashlib.sha256()
+    digest.update(contents)
+    digest = digest.digest()
+
+    signature_sector = b""
+
+    if len(args.keyfile) > 1:
+        print("WARNING: Only one signing key is supported for ESP32")  # TODO: sort this out
+
+    for keyfile in args.keyfile:
+        private_key = serialization.load_pem_private_key(
+            keyfile.read(),
+            password=None,
+            backend=default_backend()
+        )
+        if private_key.key_size != 3072:
+            raise esptool.FatalError("Key file %s has length %d bits. Secure Boot V2 only supports RSA-3072." % (keyfile.name,
+                                                                                                                 private_key.key_size))
+        # Sign
+        signature = private_key.sign(
+            digest,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=32,
+            ),
+            utils.Prehashed(hashes.SHA256())
+        )
+
+        # Prepare public key data and helper values for modexp computation
+        numbers = private_key.public_key().public_numbers()
+        n = numbers.n  #
+        e = numbers.e  # two public key components
+
+        # Note: this cheats and calls a private 'rsa' method to get the modular
+        # inverse calculation.
+        m = - rsa._modinv(n, 1<<32)
+
+        rr = 1 << (private_key.key_size * 2)
+        rinv = rr % n
+
+        # Encode in signature block format
+        #
+        # Note: the [::-1] is to byte swap all of the bignum
+        # values (signatures, coefficients) to little endian
+        # for use with the RSA peripheral, rather than big endian
+        # which is conventionally used for RSA.
+        signature_block = struct.pack("<BBxx32s384sI384sI384s",
+                                      0xe7,  # magic byte
+                                      0x02,  # version
+                                      digest,
+                                      int_to_bytes(n)[::-1],
+                                      e,
+                                      int_to_bytes(rinv)[::-1],
+                                      m & 0xFFFFFFFF,
+                                      signature[::-1])
+
+        signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xffffffff)
+        signature_block += b'\x00' * 16   # padding
+
+        assert len(signature_block) == 1216
+        signature_sector += signature_block
+
+    assert len(signature_sector) > 0
+
+    # Pad signature_sector to sector
+    signature_sector = signature_sector + \
+        (b'\xff' * (SECTOR_SIZE - len(signature_sector)))
+    assert len(signature_sector) == SECTOR_SIZE
+
+    # Write to output file, or append to existing file
+    if args.output is None:
+        args.datafile.close()
+        args.output = args.datafile.name
+    with open(args.output, "wb") as f:
+        f.write(contents + signature_sector)
+
 def verify_signature(args):
     """ Verify a previously signed binary image, using the ECDSA public key """
     key_data = args.keyfile.read()
@@ -221,87 +310,7 @@ def verify_signature(args):
     except ecdsa.keys.BadSignatureError:
         raise esptool.FatalError("Signature is not valid")
 
-def sign_secure_boot_v2(args):
-    """ Sign a firmware app image with an RSA private key using RSA-PSS, write output file with a
-    Secure Boot V2 header appended.
-    """
-    contents = args.datafile.read()
 
-    SECTOR_SIZE = 4096
-    if len(contents) % SECTOR_SIZE != 4096:
-        pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
-        print("Padding data contents by %d bytes so signature sector aligns at sector boundary" % pad_by)
-        contents += b'\xff' * pad_by
-
-    private_key = serialization.load_pem_private_key(
-        args.keyfile.read(),
-        password=None,
-        backend=default_backend()
-    )
-    if private_key.key_size != 3072:
-        raise esptool.FatalError("Key file %s has length %d bits. Secure Boot V2 only supports RSA-3072." % (args.keyfile.name,
-                                                                                                             private_key.key_size))
-    # Calculate digest of data file
-    digest = hashlib.sha256()
-    digest.update(contents)
-    digest = digest.digest()
-
-    # Sign
-    signature = private_key.sign(
-        digest,
-        padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()),
-            salt_length=32,
-        ),
-        utils.Prehashed(hashes.SHA256())
-    )
-
-    # Prepare public key data and helper values for modexp computation
-    numbers = private_key.public_key().public_numbers()
-    n = numbers.n  #
-    e = numbers.e  # two public key components
-
-    # Note: this cheats and calls a private 'rsa' method to get the modular
-    # inverse calculation.
-    m = - rsa._modinv(n, 1<<32)
-
-    rr = 1 << (private_key.key_size * 2)
-    rinv = rr % n
-
-    # Encode in signature block format
-    #
-    # Note: the [::-1] is to byte swap all of the bignum
-    # values (signatures, coefficients) to little endian
-    # for use with the RSA peripheral, rather than big endian
-    # which is conventionally used for RSA.
-    signature_block = struct.pack("<BBBx32s384sI384sI384s",
-                                   0xe7,  # magic byte
-                                   0x02,  # version
-                                   0x00,  # KEY_DIGEST efuse index (currently ignored)
-                                   digest,
-                                   int_to_bytes(n)[::-1],
-                                   e,
-                                   int_to_bytes(rinv)[::-1],
-                                   m & 0xFFFFFFFF,
-                                   signature[::-1])
-
-    signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xffffffff)
-    signature_block += b'\x00' * 16   # padding
-
-    assert len(signature_block) == 1216
-
-    # TODO: cheating and only putting one signature block in the
-    # sector for now
-    signature_sector = signature_block + \
-        (b'\xff' * (SECTOR_SIZE - len(signature_block)))
-    assert len(signature_sector) == SECTOR_SIZE
-
-    # Write to output file, or append to existing file
-    if args.output is None:
-        args.datafile.close()
-        args.output = args.datafile.name
-    with open(args.output, "wb") as f:
-        f.write(contents + signature_sector)
 
 def extract_public_key(args):
     """ Load an ECDSA private key and extract the embedded public key as raw binary data. """
