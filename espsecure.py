@@ -256,12 +256,6 @@ _FLASH_ENCRYPTION_TWEAK_PATTERN = [
 ]
 assert len(_FLASH_ENCRYPTION_TWEAK_PATTERN) == 256
 
-_FLASH_ENCRYPTION_TWEAK_PATTERN_REVERSE = [0] * 24
-
-for i in range(0, 256):
-    address_bit = _FLASH_ENCRYPTION_TWEAK_PATTERN[i]
-    _FLASH_ENCRYPTION_TWEAK_PATTERN_REVERSE[address_bit] ^= 1 << (255 - i)
-
 
 def _flash_encryption_tweak_range(flash_crypt_config=0xF):
     """ Return a list of the bit indexes that the "key tweak" applies to,
@@ -295,6 +289,13 @@ def _flash_encryption_tweak_range_bits(flash_crypt_config=0xF):
     return tweak_range
 
 
+# Forward bit order masks
+mul1        = 0x0000200004000080000004000080001000000200004000080000040000800010
+mul2        = 0x0000000000000000200000000000000010000000000000002000000000000001
+
+mul1_mask   = 0xffffffffffffff801ffffffffffffff00ffffffffffffff81ffffffffffffff0
+mul2_mask   = 0x000000000000007fe00000000000000ff000000000000007e00000000000000f
+
 def _flash_encryption_tweak_key(key, offset, tweak_range):
     """Apply XOR "tweak" values to the key, derived from flash offset
     'offset'. This matches the ESP32 hardware flash encryption.
@@ -321,13 +322,9 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
         return key
 
     else:
-        key = int.from_bytes(key, byteorder='big', signed=False)
-        for offset_bit in range(24):
-            if offset & (1 << offset_bit) != 0:
-                key ^= _FLASH_ENCRYPTION_TWEAK_PATTERN_REVERSE[offset_bit] & tweak_range
-
-        key = int.to_bytes(key, length=32, byteorder='big', signed=False)
-        return key
+        addr = offset >> 5
+        key ^= ((mul1 * addr) | ((mul2 * addr) & mul2_mask)) & tweak_range
+        return int.to_bytes(key, length=32, byteorder='big', signed=False)
 
 
 def generate_flash_encryption_key(args):
@@ -347,10 +344,11 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
     else:
         tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
+        key = int.from_bytes(key, byteorder='big', signed=False)
 
     aes = None
+    block_offs = flash_address
     while True:
-        block_offs = flash_address + input_file.tell()
         block = input_file.read(16)
         if len(block) == 0:
             break
@@ -378,6 +376,7 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
 
         block = block[::-1]  # reverse output block byte order
         output_file.write(block)
+        block_offs += len(block)
 
 
 def decrypt_flash_data(args):
