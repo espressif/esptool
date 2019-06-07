@@ -19,3 +19,9 @@ if ! [ -d ${ESP32_BINDIR} ]; then
 	tar zxf xtensa-esp32-elf.tar.gz
 	rm xtensa-esp32-elf.tar.gz
 fi
+
+if ! [ -d ${ESP32S2_BINDIR} ]; then
+	wget --no-verbose -O xtensa-esp32s2-elf.tar.gz "${ESP32S2_TOOLCHAIN_URL}"
+	tar zxf xtensa-esp32s2-elf.tar.gz
+	rm xtensa-esp32s2-elf.tar.gz
+fi

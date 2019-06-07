@@ -30,9 +30,11 @@
 # or set them in a local.mk
 -include local.mk
 
-# Prefix for ESP8266 & ESP32 cross compilers (can include a directory path)
+# Prefix for each cross compiler (can include a directory path)
+# These can be overriden via environment variables or on the make command line
 CROSS_8266 ?= xtensa-lx106-elf-
 CROSS_32 ?= xtensa-esp32-elf-
+CROSS_32S2 ?= xtensa-esp32s2-elf-
 
 # Python command to invoke wrap_stub.py
 WRAP_STUB ?= ./wrap_stub.py
@@ -50,6 +52,7 @@ BUILD_DIR = build
 
 STUB_ELF_8266 = $(BUILD_DIR)/$(STUB)_8266.elf
 STUB_ELF_32 = $(BUILD_DIR)/$(STUB)_32.elf
+STUB_ELF_32S2 = $(BUILD_DIR)/$(STUB)_32s2.elf
 STUB_PY = $(BUILD_DIR)/$(STUB)_snippet.py
 
 .PHONY: all clean
@@ -61,20 +64,21 @@ $(BUILD_DIR):
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
-         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude
-
-CFLAGS_8266 = $(CFLAGS) -Iinclude/esp8266 -Lld
-CFLAGS_32   = $(CFLAGS) -Iinclude/esp32 -Lld
+         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
 
 $(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) ld/stub_8266.ld | Makefile
 	@echo "  CC(8266)   $^ -> $@"
-	$(Q) $(CROSS_8266)gcc $(CFLAGS_8266) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_8266)gcc $(CFLAGS) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 
 $(STUB_ELF_32): $(SRCS) $(BUILD_DIR) ld/stub_32.ld | Makefile
 	@echo "  CC(32)   $^ -> $@"
-	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_32)gcc $(CFLAGS) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 
-$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) wrap_stub.py
+$(STUB_ELF_32S2): $(SRCS) $(BUILD_DIR) ld/stub_32s2.ld
+	@echo "  CC(32S2)   $^ -> $@"
+	$(Q) $(CROSS_32S2)gcc $(CFLAGS) -DESP32S2 -Tstub_32s2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+
+$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
 	$(Q) $(WRAP_STUB) $(filter %.elf,$^) $@
 

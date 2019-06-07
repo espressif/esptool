@@ -63,8 +63,8 @@ ESP%sROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b\"\"\"
 def write_python_snippet(stubs):
     with open(sys.argv[-1], 'w') as f:
         f.write("# Binary stub code (see flasher_stub dir for source & details)\n")
-        for key in "8266", "32":
-            stub_data = stubs["stub_flasher_%s" % key]
+        for key in "8266", "32", "32S2":
+            stub_data = stubs["stub_flasher_%s" % key.lower()]
             encoded = base64.b64encode(zlib.compress(repr(stub_data).encode("utf-8"), 9)).decode("utf-8")
             in_lines = ""
             # split encoded data into 160 character lines

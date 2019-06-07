@@ -52,27 +52,40 @@
 #define GPIO_BASE_REG      0x3ff44000
 #endif
 
+#ifdef ESP32S2
+#define UART_BASE_REG      0x60000000 /* UART0 */
+#define SPI_BASE_REG       0x3f402000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG      0x3f403000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG      0x3f404000
+#endif
+
 
 /**********************************************************
  * UART peripheral
  *
- * The features we use are the same on both ESP8266 and ESP32
+ * The features we use are basically the same on all chips
  *
  * Only UART0 is used
  */
 #define UART_CLKDIV_REG(X) (UART_BASE_REG + 0x14)
 #define UART_CLKDIV_M      (0x000FFFFF)
 
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP32S2)
 #define UART_CLKDIV_FRAG_S 20
 #define UART_CLKDIV_FRAG_V 0xF
 #endif
 
 #define UART_FIFO(X)       (UART_BASE_REG + 0x00)
-#define UART_INT_ST(X)     (UART_BASE_REG + 0x08) // TODO RENAME
+#define UART_INT_ST(X)     (UART_BASE_REG + 0x08)
 #define UART_INT_ENA(X)    (UART_BASE_REG + 0x0C)
 #define UART_INT_CLR(X)    (UART_BASE_REG + 0x10)
 #define UART_STATUS(X)     (UART_BASE_REG + 0x1C)
+
+#ifdef ESP32S2
+#define UART_RXFIFO_CNT_M 0x3FF
+#else
+#define UART_RXFIFO_CNT_M 0xFF
+#endif
 
 #define UART_RXFIFO_FULL_INT_ENA            (1<<0)
 #define UART_RXFIFO_TOUT_INT_ENA            (1<<8)
@@ -83,10 +96,11 @@
 /**********************************************************
  * SPI peripheral
  *
- * The features we use are mostly the same on both ESP8266 and ESP32,
+ * The features we use are mostly the same on all chips
  * except for W0 base address & option for 2-byte status command
  *
- * Only one SPI peripheral is used (0 on ESP8266, 1 on ESP32)
+ * Only one SPI peripheral is used (0 on ESP8266, 1 on ESP32).
+ * On ESP32S2 this is called SPI_MEM_xxx index 1
  */
 #define SPI_CMD_REG       (SPI_BASE_REG + 0x00)
 #define SPI_FLASH_RDSR    (1<<27)
@@ -97,11 +111,15 @@
 #define SPI_ADDR_REG      (SPI_BASE_REG + 0x04)
 
 #define SPI_CTRL_REG      (SPI_BASE_REG + 0x08)
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP32S2)
 #define SPI_WRSR_2B       (1<<22)
 #endif
 
+#if !defined(ESP32S2)
 #define SPI_RD_STATUS_REG (SPI_BASE_REG + 0x10)
+#else // ESP32S2
+#define SPI_RD_STATUS_REG (SPI_BASE_REG + 0x2C)
+#endif
 
 #ifdef ESP8266
 #define SPI_W0_REG        (SPI_BASE_REG + 0x40)
@@ -109,22 +127,32 @@
 #ifdef ESP32
 #define SPI_W0_REG        (SPI_BASE_REG + 0x80)
 #endif
+#ifdef ESP32S2
+#define SPI_W0_REG        (SPI_BASE_REG + 0xA8)
+#endif
 
+#if !defined(ESP32S2)
 #define SPI_EXT2_REG      (SPI_BASE_REG + 0xF8)
-#define SPI_ST 0x7
+#else
+#define SPI_EXT2_REG      (SPI_BASE_REG + 0x54) /* renamed SPI_MEM_FSM_REG */
+#endif
+
+#define SPI_ST 0x7 /* done state value */
 
 #ifdef ESP32
-/* On ESP32 the SPI peripherals are layered
+/* On ESP32 & newer the SPI peripherals are layered
  * flash, this lets us check the state of the internal
  * state machine under the SPI flash controller
  */
 #define SPI0_EXT2_REG     (SPI0_BASE_REG + 0xF8)
 #endif
-
+#ifdef ESP32S2
+#define SPI0_EXT2_REG     (SPI0_BASE_REG + 0x54)
+#endif
 
 /**********************************************************
  * GPIO peripheral
  *
- * We only need to read the strapping register on ESP32
+ * We only need to read the strapping register on ESP32 & ESP32S2
  */
 #define GPIO_STRAP_REG    (GPIO_BASE_REG + 0x38)

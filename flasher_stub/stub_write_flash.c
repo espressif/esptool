@@ -50,8 +50,7 @@ static struct {
 
 /* SPI status bits */
 static const uint32_t STATUS_WIP_BIT = (1 << 0);
-static const uint32_t STATUS_CMP_BIT = (1 << 14); /* Complement Protect */
-static const uint32_t STATUS_QIE_BIT = (1 << 9); /* Quad Enable */
+static const uint32_t STATUS_QIE_BIT = (1 << 9);  /* Quad Enable */
 
 bool is_in_flash_mode(void)
 {
@@ -71,7 +70,7 @@ inline static void spi_wait_ready(void)
   /* Wait for SPI state machine ready */
   while((READ_REG(SPI_EXT2_REG) & SPI_ST))
     { }
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP32S2)
   while(READ_REG(SPI0_EXT2_REG) & SPI_ST)
   { }
 #endif
@@ -104,7 +103,7 @@ static void spi_write_enable(void)
     { }
 }
 
-#ifdef ESP32
+#if defined(ESP32) || defined(ESP32S2)
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3ffae270;
 
 /* Stub version of SPIUnlock() that replaces version in ROM.
@@ -119,9 +118,15 @@ SpiFlashOpResult SPIUnlock(void)
   uint32_t status;
 
   spi_wait_ready(); /* ROM SPI_read_status_high() doesn't wait for this */
+#ifdef ESP32S2
+  if (SPI_read_status_high(flashchip, &status) != SPI_FLASH_RESULT_OK) {
+    return SPI_FLASH_RESULT_ERR;
+  }
+#else
   if (SPI_read_status_high(&status) != SPI_FLASH_RESULT_OK) {
     return SPI_FLASH_RESULT_ERR;
   }
+#endif
 
   /* Clear all bits except QIE, if it is set.
      (This is different from ROM SPIUnlock, which keeps all bits as-is.)
