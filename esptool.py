@@ -723,8 +723,13 @@ class ESPLoader(object):
         timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)
         self.check_command("erase region", self.ESP_ERASE_REGION, struct.pack('<II', offset, size), timeout=timeout)
 
-    @stub_function_only
+    def read_flash_slow(self, offset, length, progress_fn):
+        raise NotImplementedInROMError(self, self.read_flash_slow)
+
     def read_flash(self, offset, length, progress_fn=None):
+        if not self.IS_STUB:
+            return self.read_flash_slow(offset, length, progress_fn)  # ROM-only routine
+
         # issue a standard bootloader command to trigger the read
         self.check_command("read flash", self.ESP_READ_FLASH,
                            struct.pack('<IIII',
@@ -1339,6 +1344,22 @@ class ESP32ROM(ESPLoader):
             reg_val |= (RTC_CNTL_DREFH_SDIO_M | RTC_CNTL_DREFM_SDIO_M | RTC_CNTL_DREFL_SDIO_M)  # boost voltage
         self.write_reg(RTC_CNTL_SDIO_CONF_REG, reg_val)
         print("VDDSDIO regulator set to %s" % new_voltage)
+
+    def read_flash_slow(self, offset, length, progress_fn):
+        BLOCK_LEN = 64  # ROM read limit per command (this limit is why it's so slow)
+
+        data = b''
+        while len(data) < length:
+            block_len = min(BLOCK_LEN, length - len(data))
+            r = self.check_command("read flash block", self.ESP_READ_FLASH_SLOW,
+                                   struct.pack('<II', offset + len(data), block_len))
+            if len(r) < block_len:
+                raise FatalError("Expected %d byte block, got %d bytes. Serial errors?" % (block_len, len(r)))
+            data += r[:block_len]  # command always returns 64 byte buffer, regardless of how many bytes were actually read from flash
+            if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
+                progress_fn(len(data), length)
+
+        return data
 
 
 class ESP32StubLoader(ESP32ROM):
