@@ -25,6 +25,8 @@ import time
 
 import esptool
 
+import json
+
 # Table of efuse values - (category, block, word in block, mask, write disable bit, read disable bit, type, description)
 # Match values in efuse_reg.h & Efuse technical reference chapter
 EFUSES = [
@@ -536,6 +538,31 @@ def summary(esp, efuses, args):
         print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings)
 
 
+def values(esp, efuses, args):
+    """ Reads selected efuse value, formating in JSON """
+    print("Reading Efuse Values")
+    efuse_values = {}
+    for efuse_name in args.efuse_name:
+        efuse = efuses[efuse_name]
+        efuse_value = {}
+        efuse_value['value']=efuse.get()
+        try:
+            efuse_value['value_hex']= ":".join("{:02x}".format(ord(c)) for c in efuse.get_raw())
+        except TypeError:
+            pass
+        efuse_value['writable']=efuse.is_writeable()
+        efuse_value['readable']=efuse.is_readable()
+        efuse_values[efuse.register_name]=efuse_value
+    json_data = json.dumps(efuse_values)
+    if args.json :
+        print("Done")
+        f = open(args.json, "w")
+        f.write(json_data)
+        f.close()
+    else:
+        print(json_data)
+
+
 def burn_efuse(esp, efuses, args):
     efuse = efuses[args.efuse_name]
     old_value = efuse.get()
@@ -838,6 +865,12 @@ def main():
     subparsers.add_parser('dump', help='Dump raw hex values of all efuses')
     subparsers.add_parser('summary',
                           help='Print human-readable summary of efuse values')
+
+    p = subparsers.add_parser('values',
+                          help='Print human-readable summary of efuse values')
+    p.add_argument('efuse_name', nargs='*', help='Name of efuse register get',
+                   choices=[efuse[0] for efuse in EFUSES])
+    p.add_argument('-j', dest='json', help='File to save json output')
 
     p = subparsers.add_parser('burn_efuse',
                               help='Burn the efuse with the specified name')
