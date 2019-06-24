@@ -45,6 +45,7 @@ script:
   - python test/test_imagegen.py
   - python test/test_espsecure.py
   - pip install flake8 flake8-future-import  # matches tests_require in setup.py, a bit hacky
+  - flake8 .
   - python setup.py flake8
   - python setup.py install
   - ( cd / && esptool.py --help )  # check the installed versions can run
