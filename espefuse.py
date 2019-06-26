@@ -498,10 +498,17 @@ def dump(esp, _efuses, args):
 def summary(esp, efuses, args):
     """ Print a human-readable summary of efuse contents """
     ROW_FORMAT = "%-22s %-50s%s= %s %s %s"
-    print(ROW_FORMAT.replace("-50", "-12") % ("EFUSE_NAME", "Description", "", "[Meaningful Value]", "[Readable/Writeable]", "(Hex Value)"))
-    print("-" * 88)
+    json_efuse = {}
+    export_file=sys.stdout
+    if args.file:
+        print("Saving efuse values to " + args.file)
+        export_file = open(args.file, 'w')
+    if args.format == 'summary':
+        print(ROW_FORMAT.replace("-50", "-12") % ("EFUSE_NAME", "Description", "", "[Meaningful Value]", "[Readable/Writeable]", "(Hex Value)"),file = export_file)
+        print("-" * 88,file=export_file)
     for category in set(e.category for e in efuses):
-        print("%s fuses:" % category.title())
+        if args.format == 'summary':
+            print("%s fuses:" % category.title(),file=export_file)
         for e in (e for e in efuses if e.category == category):
             raw = e.get_raw()
             try:
@@ -517,51 +524,44 @@ def summary(esp, efuses, args):
                 perms = "-/W"
             else:
                 perms = "-/-"
-            value = str(e.get())
+            base_value = e.get()
+            value = str(base_value)
             if not readable:
                 value = value.replace("0", "?")
-            print(ROW_FORMAT % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw))
-        print("")
-    sdio_force = efuses["XPD_SDIO_FORCE"]
-    sdio_tieh = efuses["XPD_SDIO_TIEH"]
-    sdio_reg = efuses["XPD_SDIO_REG"]
-    if sdio_force.get() == 0:
-        print("Flash voltage (VDD_SDIO) determined by GPIO12 on reset (High for 1.8V, Low/NC for 3.3V).")
-    elif sdio_reg.get() == 0:
-        print("Flash voltage (VDD_SDIO) internal regulator disabled by efuse.")
-    elif sdio_tieh.get() == 0:
-        print("Flash voltage (VDD_SDIO) set to 1.8V by efuse.")
-    else:
-        print("Flash voltage (VDD_SDIO) set to 3.3V by efuse.")
-    warnings = efuses.get_coding_scheme_warnings()
-    if warnings:
-        print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings)
-
-
-def values(esp, efuses, args):
-    """ Reads selected efuse value, formating in JSON """
-    print("Reading Efuse Values")
-    efuse_values = {}
-    for efuse_name in args.efuse_name:
-        efuse = efuses[efuse_name]
-        efuse_value = {}
-        efuse_value['value']=efuse.get()
-        try:
-            efuse_value['value_hex']= ":".join("{:02x}".format(ord(c)) for c in efuse.get_raw())
-        except TypeError:
-            pass
-        efuse_value['writable']=efuse.is_writeable()
-        efuse_value['readable']=efuse.is_readable()
-        efuse_values[efuse.register_name]=efuse_value
-    json_data = json.dumps(efuse_values)
-    if args.json :
-        print("Done")
-        f = open(args.json, "w")
-        f.write(json_data)
-        f.close()
-    else:
-        print(json_data)
-
+            if args.format == 'summary':
+                print(ROW_FORMAT % (e.register_name, e.description, "\n  " if len(value) > 20 else "", value, perms, raw),file=export_file)
+            if args.format == 'json':
+                json_efuse[e.register_name]= {
+                    'value': base_value if readable else value,
+                    'readable':readable,
+                    'writeable':writeable }
+        if args.format == 'summary':
+            print("",file=export_file)
+    if args.format == 'summary':
+        sdio_force = efuses["XPD_SDIO_FORCE"]
+        sdio_tieh = efuses["XPD_SDIO_TIEH"]
+        sdio_reg = efuses["XPD_SDIO_REG"]
+        if sdio_force.get() == 0:
+            print("Flash voltage (VDD_SDIO) determined by GPIO12 on reset (High for 1.8V, Low/NC for 3.3V).",file=export_file)
+        elif sdio_reg.get() == 0:
+            print("Flash voltage (VDD_SDIO) internal regulator disabled by efuse.",file=export_file)
+        elif sdio_tieh.get() == 0:
+            print("Flash voltage (VDD_SDIO) set to 1.8V by efuse.",file=export_file)
+        else:
+            print("Flash voltage (VDD_SDIO) set to 3.3V by efuse.",file=export_file)
+        warnings = efuses.get_coding_scheme_warnings()
+        if warnings:
+            print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings,file=export_file)
+        if args.file:
+            export_file.close()
+            print("Done")
+    if args.format == 'json':
+        if args.file:
+            export_file.write(json.dumps(json_efuse))
+            export_file.close()
+            print("Done")
+        else:
+            print(json.dumps(json_efuse,sort_keys=True,indent=4))
 
 def burn_efuse(esp, efuses, args):
     efuse = efuses[args.efuse_name]
@@ -863,14 +863,10 @@ def main():
         help='Run espefuse.py {command} -h for additional help')
 
     subparsers.add_parser('dump', help='Dump raw hex values of all efuses')
-    subparsers.add_parser('summary',
+    p = subparsers.add_parser('summary',
                           help='Print human-readable summary of efuse values')
-
-    p = subparsers.add_parser('values',
-                          help='Print human-readable summary of efuse values')
-    p.add_argument('efuse_name', nargs='*', help='Name of efuse register get',
-                   choices=[efuse[0] for efuse in EFUSES])
-    p.add_argument('-j', dest='json', help='File to save json output')
+    p.add_argument('--format', help='Name of efuse register get',choices=['summary','json'],default='summary')
+    p.add_argument('--file', help='File to save the json formated summary')
 
     p = subparsers.add_parser('burn_efuse',
                               help='Burn the efuse with the specified name')
