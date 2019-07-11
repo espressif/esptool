@@ -1556,6 +1556,9 @@ class ESP8266ROMFirmwareImage(BaseFirmwareImage):
             self.append_checksum(f, checksum)
 
 
+ESP8266ROM.BOOTLOADER_IMAGE = ESP8266ROMFirmwareImage
+
+
 class ESP8266V2FirmwareImage(BaseFirmwareImage):
     """ 'Version 2' firmware image, segments loaded by software bootloader stub
         (ie Espressif bootloader or rboot)
@@ -1887,6 +1890,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         save_file.write(packed)
 
 
+ESP32ROM.BOOTLOADER_IMAGE = ESP32FirmwareImage
+
+
 class ELFFile(object):
     SEC_TYPE_PROGBITS = 0x01
     SEC_TYPE_STRTAB = 0x03
@@ -2203,8 +2209,26 @@ def _update_image_flash_params(esp, address, args, image):
 
     # unpack the (potential) image header
     magic, _, flash_mode, flash_size_freq = struct.unpack("BBBB", image[:4])
-    if address != esp.BOOTLOADER_FLASH_OFFSET or magic != esp.ESP_IMAGE_MAGIC:
-        return image  # not flashing a bootloader, so don't modify this
+    if address != esp.BOOTLOADER_FLASH_OFFSET:
+        return image  # not flashing bootloader offset, so don't modify this
+
+    if (args.flash_mode, args.flash_freq, args.flash_size) == ('keep',) * 3:
+        return image  # all settings are 'keep', not modifying anything
+
+    # easy check if this is an image: does it start with a magic byte?
+    if magic != esp.ESP_IMAGE_MAGIC:
+        print("Warning: Image file at 0x%x doesn't look like an image file, so not changing any flash settings." % address)
+        return image
+
+    # make sure this really is an image, and not just data that
+    # starts with esp.ESP_IMAGE_MAGIC (mostly a problem for encrypted
+    # images that happen to start with a magic byte
+    try:
+        test_image = esp.BOOTLOADER_IMAGE(io.BytesIO(image))
+        test_image.verify()
+    except Exception:
+        print("Warning: Image file at 0x%x is not a valid %s image, so not changing any flash settings." % (address,esp.CHIP_NAME))
+        return image
 
     if args.flash_mode != 'keep':
         flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]

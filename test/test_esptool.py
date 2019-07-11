@@ -540,6 +540,26 @@ class TestDeepSleepFlash(EsptoolTestCase):
         self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=230400)
         self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
 
+class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
+    BL_OFFSET = 0x0 if chip == "esp8266" else 0x1000
+
+    def test_flash_header_rewrite(self):
+        if chip == "esp8266":
+            bl_image = "images/esp8266_sdk/boot_v1.4(b1).bin"
+        elif chip == "esp32":
+            bl_image = "images/bootloader.bin"
+
+        output = self.run_esptool("write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, bl_image))
+        self.assertIn("Flash params set to", output)
+
+    def test_flash_header_no_magic_no_rewrite(self):
+        # first image doesn't start with magic byte, second image does
+        # but neither are valid bootloader binary images for either chip
+        for image in [ "images/one_kb.bin", "images/one_kb_all_ef.bin" ]:
+            output = self.run_esptool("write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, image))
+            self.assertIn("not changing any flash settings", output)
+            self.verify_readback(self.BL_OFFSET, 1024, image)
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
