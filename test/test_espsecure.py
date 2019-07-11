@@ -174,7 +174,30 @@ class ECDSASigningTests(EspSecureTestCase):
 
 class ESP32FlashEncryptionTests(EspSecureTestCase):
 
-    def test_encrypt_decrypt(self):
+    def test_encrypt_decrypt_bootloader(self):
+        self._test_encrypt_decrypt('bootloader.bin',
+                                   'bootloader-encrypted.bin',
+                                   '256bit_key.bin',
+                                   0x1000,
+                                   0xf)
+
+    def test_encrypt_decrypt_app(self):
+        self._test_encrypt_decrypt('hello-world-signed.bin',
+                                   'hello-world-signed-encrypted.bin',
+                                   'ef-flashencryption-key.bin',
+                                   0x20000,
+                                   0xf)
+
+    def test_encrypt_decrypt_non_default_conf(self):
+        """ Try some non-default (non-recommended) flash_crypt_conf settings """
+        for conf in [ 0x0, 0x3, 0x9, 0xc ]:
+            self._test_encrypt_decrypt('bootloader.bin',
+                                       'bootloader-encrypted-conf%x.bin' % conf,
+                                       '256bit_key.bin',
+                                       0x1000,
+                                       conf)
+
+    def _test_encrypt_decrypt(self, input_plaintext, expected_ciphertext, key_path, offset, flash_crypt_conf=0xf):
         EncryptArgs = namedtuple('encrypt_flash_data_args',
                                  [ 'keyfile',
                                    'output',
@@ -191,29 +214,29 @@ class ESP32FlashEncryptionTests(EspSecureTestCase):
                                    'encrypted_file'
                                  ])
 
-        original_plaintext = self._open('bootloader.bin')
-        keyfile = self._open('256bit_key.bin')
+        original_plaintext = self._open(input_plaintext)
+        keyfile = self._open(key_path)
         ciphertext = io.BytesIO()
 
         args = EncryptArgs(keyfile,
                            ciphertext,
-                           0x1000,
-                           0xFF,
+                           offset,
+                           flash_crypt_conf,
                            original_plaintext)
         espsecure.encrypt_flash_data(args)
 
-        self.assertNotEqual(original_plaintext, ciphertext.getvalue())
-        # use compressed size as entropy estimate for effectiveness
-        compressed_cipher = zlib.compress(ciphertext.getvalue())
-        self.assertGreaterEqual(len(compressed_cipher), len(ciphertext.getvalue()))
+        original_plaintext.seek(0)
+        self.assertNotEqual(original_plaintext.read(), ciphertext.getvalue())
+        with self._open(expected_ciphertext) as f:
+            self.assertEqual(f.read(), ciphertext.getvalue())
 
         ciphertext.seek(0)
         keyfile.seek(0)
         plaintext = io.BytesIO()
         args = DecryptArgs(keyfile,
                            plaintext,
-                           0x1000,
-                           0xFF,
+                           offset,
+                           flash_crypt_conf,
                            ciphertext)
         espsecure.decrypt_flash_data(args)
 
