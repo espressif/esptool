@@ -2382,7 +2382,7 @@ def image_info(args):
     print('Image version: %d' % image.version)
     print('Entry point: %08x' % image.entrypoint if image.entrypoint != 0 else 'Entry point not set')
     print('%d segments' % len(image.segments))
-    print
+    print()
     idx = 0
     for seg in image.segments:
         idx += 1
