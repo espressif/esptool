@@ -153,8 +153,8 @@ def generate_signing_key(args):
     print("ECDSA NIST256p private key in PEM format written to %s" % args.keyfile)
 
 
-def _load_ecdsa_signing_key(args):
-    sk = ecdsa.SigningKey.from_pem(args.keyfile.read())
+def _load_ecdsa_signing_key(keyfile):
+    sk = ecdsa.SigningKey.from_pem(keyfile.read())
     if sk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Signing key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
     return sk
@@ -168,7 +168,9 @@ def sign_data(args):
 
 def sign_secure_boot_v1(args):
     """ Sign a data file with a ECDSA private key, append binary signature to file contents """
-    sk = _load_ecdsa_signing_key(args)
+    if len(args.keyfile) > 1:
+        raise esptool.FatalError("Secure Boot V1 only supports one signing key")
+    sk = _load_ecdsa_signing_key(args.keyfile[0])
 
     # calculate signature of binary data
     binary_content = args.datafile.read()
@@ -187,7 +189,7 @@ def sign_secure_boot_v1(args):
     outfile.write(struct.pack("I", 0))  # Version indicator, allow for different curves/formats later
     outfile.write(signature)
     outfile.close()
-    print("Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile.name))
+    print("Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile[0].name))
 
 
 def sign_secure_boot_v2(args):
@@ -210,7 +212,7 @@ def sign_secure_boot_v2(args):
     signature_sector = b""
 
     if len(args.keyfile) > 1:
-        print("WARNING: Only one signing key is supported for ESP32")  # TODO: sort this out
+        print("WARNING: Only one signing key is supported for ESP32")  # TODO: need to update for ESP32-S2
 
     for keyfile in args.keyfile:
         private_key = serialization.load_pem_private_key(
@@ -314,14 +316,14 @@ def verify_signature(args):
 
 def extract_public_key(args):
     """ Load an ECDSA private key and extract the embedded public key as raw binary data. """
-    sk = _load_ecdsa_signing_key(args)
+    sk = _load_ecdsa_signing_key(args.keyfile)
     vk = sk.get_verifying_key()
     args.public_keyfile.write(vk.to_string())
     print("%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name))
 
 
 def digest_private_key(args):
-    sk = _load_ecdsa_signing_key(args)
+    sk = _load_ecdsa_signing_key(args.keyfile)
     repr(sk.to_string())
     digest = hashlib.sha256()
     digest.update(sk.to_string())
@@ -517,7 +519,7 @@ def main():
     p = subparsers.add_parser('sign_data',
                               help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512 (V1) or RSA-PSS w/ SHA-256 (V2).')
     p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices = [ "1", "2"], required=True)
-    p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True)
+    p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True, nargs='+')
     p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to sign the input file.")
     p.add_argument('datafile', help="File to sign. For version 1, this can be any file. For version 2, this must be a valid app image.", type=argparse.FileType('rb'))
 

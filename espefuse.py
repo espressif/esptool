@@ -1019,6 +1019,7 @@ def main():
                    type=argparse.FileType('r'))
     p.add_argument('--no-protect-key', help='Disable default write-protecting of the key digest. ' +
                    'If this option is not set, once the key is flashed it cannot be changed.', action='store_true')
+    add_force_write_always(p)
 
     p = subparsers.add_parser('set_flash_voltage',
                               help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF. ' +
