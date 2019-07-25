@@ -45,6 +45,7 @@ EFUSES = [
     ('SPI_PAD_CONFIG_CS0',   "config",   0, 5, 0x1F << 15, 6,  None, "spipin", "Override SD_CMD pad (GPIO11/SPICS0)"),
     ('FLASH_CRYPT_CONFIG',   "security", 0, 5, 0x0F << 28, 10, 3, "int", "Flash encryption config (key tweak bits)"),
     ('CHIP_VER_REV1',        "identity", 0, 3, 1 << 15,    3,  None, "flag", "Silicon Revision 1"),
+    ('CHIP_VER_REV2',        "identity", 0, 5, 1 << 20,    6,  None, "flag", "Silicon Revision 2"),
     ('BLK3_PART_RESERVE',    "calibration", 0, 3, 1 << 14, 10, 3, "flag", "BLOCK3 partially served for ADC calibration data"),
     ('CHIP_VERSION',         "identity", 0, 3, 0x03 << 12, 3,  None, "int", "Reserved for future chip versions"),
     ('CHIP_PACKAGE',         "identity", 0, 3, 0x07 << 9,  3,  None, "int", "Chip package identifier"),

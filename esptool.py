@@ -1131,6 +1131,8 @@ class ESP32ROM(ESPLoader):
     SPI_REG_BASE   = 0x60002000
     EFUSE_REG_BASE = 0x6001a000
 
+    DR_REG_SYSCON_BASE = 0x3ff66000
+
     SPI_W0_OFFS = 0x80
     SPI_HAS_MOSI_DLEN_REG = True
 
@@ -1200,7 +1202,11 @@ class ESP32ROM(ESPLoader):
 
     def get_chip_description(self):
         word3 = self.read_efuse(3)
-        chip_ver_rev1 = (word3 >> 15) & 0x1
+        word5 = self.read_efuse(5)
+        apb_ctl_date = self.read_reg(self.DR_REG_SYSCON_BASE + 0x7C)
+        rev_bit0 = (word3 >> 15) & 0x1
+        rev_bit1 = (word5 >> 20) & 0x1
+        rev_bit2 = (apb_ctl_date >> 31) & 0x1
         pkg_version = (word3 >> 9) & 0x07
 
         chip_name = {
@@ -1210,7 +1216,16 @@ class ESP32ROM(ESPLoader):
             5: "ESP32-PICO-D4",
         }.get(pkg_version, "unknown ESP32")
 
-        return "%s (revision %d)" % (chip_name, chip_ver_rev1)
+        chip_revision = 0
+        if rev_bit0:
+            if rev_bit1:
+                if rev_bit2:
+                    chip_revision = 3
+                else:
+                    chip_revision = 2
+            else:
+                chip_revision = 1
+        return "%s (revision %d)" % (chip_name, chip_revision)
 
     def get_chip_features(self):
         features = ["WiFi"]
