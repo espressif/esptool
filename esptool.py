@@ -1018,6 +1018,11 @@ class ESP8266ROM(ESPLoader):
 
     BOOTLOADER_FLASH_OFFSET = 0
 
+    MEMORY_MAP = [[0x3FF00000, 0x3FF00010, "DPORT"],
+                  [0x3FFE8000, 0x40000000, "DRAM"],
+                  [0x40100000, 0x40108000, "IRAM"],
+                  [0x40201010, 0x402E1010, "IROM"]]
+
     def get_efuses(self):
         # Return the 128 bits of ESP8266 efuse as a single Python integer
         return (self.read_reg(0x3ff0005c) << 96 |
@@ -1151,6 +1156,22 @@ class ESP32ROM(ESPLoader):
     BOOTLOADER_FLASH_OFFSET = 0x1000
 
     OVERRIDE_VDDSDIO_CHOICES = ["1.8V", "1.9V", "OFF"]
+
+    MEMORY_MAP = [[0x3F400000, 0x3F800000, "DROM"],
+                  [0x3F800000, 0x3FC00000, "EXTRAM_DATA"],
+                  [0x3FF80000, 0x3FF82000, "RTC_DRAM"],
+                  [0x3FF90000, 0x40000000, "BYTE_ACCESSIBLE"],
+                  [0x3FFAE000, 0x40000000, "DRAM"],
+                  [0x3FFAE000, 0x40000000, "DMA"],
+                  [0x3FFE0000, 0x3FFFFFFC, "DIRAM_DRAM"],
+                  [0x40000000, 0x40070000, "IROM"],
+                  [0x40070000, 0x40078000, "CACHE_PRO"],
+                  [0x40078000, 0x40080000, "CACHE_APP"],
+                  [0x40080000, 0x400A0000, "IRAM"],
+                  [0x400A0000, 0x400BFFFC, "DIRAM_IRAM"],
+                  [0x400C0000, 0x400C2000, "RTC_IRAM"],
+                  [0x400D0000, 0x40400000, "IROM"],
+                  [0x50000000, 0x50002000, "RTC_DATA"]]
 
     """ Try to read the BLOCK1 (encryption key) and check if it is valid """
 
@@ -2401,7 +2422,8 @@ def image_info(args):
     idx = 0
     for seg in image.segments:
         idx += 1
-        print('Segment %d: %r' % (idx, seg))
+        seg_name = ", ".join([seg_range[2] for seg_range in image.ROM_LOADER.MEMORY_MAP if seg_range[0] <= seg.addr < seg_range[1]])
+        print('Segment %d: %r [%s]' % (idx, seg, seg_name))
     calc_checksum = image.calculate_checksum()
     print('Checksum: %02x (%s)' % (image.checksum,
                                    'valid' if image.checksum == calc_checksum else 'invalid - calculated %02x' % calc_checksum))
