@@ -1731,6 +1731,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.cs_drv = 0
         self.hd_drv = 0
         self.wp_drv = 0
+        self.min_rev = 0
 
         self.append_digest = True
 
@@ -1906,7 +1907,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             raise RuntimeError("Invalid value for append_digest field (0x%02x). Should be 0 or 1.", fields[15])
 
         # remaining fields in the middle should all be zero
-        if any(f for f in fields[4:15] if f != 0):
+        if any(f for f in fields[5:15] if f != 0):
             print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
 
     def save_extended_header(self, save_file):
@@ -1918,8 +1919,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         fields = [self.wp_pin,
                   join_byte(self.clk_drv, self.q_drv),
                   join_byte(self.d_drv, self.cs_drv),
-                  join_byte(self.hd_drv, self.wp_drv)]
-        fields += [0] * 11
+                  join_byte(self.hd_drv, self.wp_drv),
+                  self.min_rev]
+        fields += [0] * 10
         fields += [append_digest]
 
         packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *fields)
@@ -2461,6 +2463,7 @@ def elf2image(args):
     if args.chip == 'esp32':
         image = ESP32FirmwareImage()
         image.secure_pad = args.secure_pad
+        image.min_rev = int(args.min_rev)
     elif args.version == '1':  # ESP8266
         image = ESP8266ROMFirmwareImage()
     else:
@@ -2759,6 +2762,7 @@ def main(custom_commandline=None):
     parser_elf2image.add_argument('input', help='Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
     parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1','2'], default='1')
+    parser_elf2image.add_argument('--min-rev', '-r', help='Minimum chip revision', choices=['0','1','2','3'], default='0')
     parser_elf2image.add_argument('--secure-pad', action='store_true', help='Pad image so once signed it will end on a 64KB boundary. For ESP32 images only.')
     parser_elf2image.add_argument('--elf-sha256-offset', help='If set, insert SHA256 hash (32 bytes) of the input ELF file at specified offset in the binary.',
                                   type=arg_auto_int, default=None)
