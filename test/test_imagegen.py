@@ -264,7 +264,7 @@ class ESP32FlashHeaderTests(BaseTestCase):
                 self.assertEqualHex(0xe9, header[0])
                 self.assertEqualHex(0x02, header[2])
                 self.assertEqualHex(0x40, header[3])
-                self.assertEqualHex(0x01, header[12])
+                self.assertEqualHex(0x01, header[14]) # chip revision
         finally:
             try_delete(BIN)
 

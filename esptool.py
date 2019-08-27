@@ -1121,6 +1121,7 @@ class ESP32ROM(ESPLoader):
 
     """
     CHIP_NAME = "ESP32"
+    IMAGE_CHIP_ID = 0
     IS_STUB = False
 
     DATE_REG_VALUE = 0x15122500
@@ -1713,7 +1714,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     # to be set to this value so ROM bootloader will skip it.
     WP_PIN_DISABLED = 0xEE
 
-    EXTENDED_HEADER_STRUCT_FMT = "B" * 16
+    EXTENDED_HEADER_STRUCT_FMT = "<BBBBHB" + ("B" * 8) + "B"
 
     IROM_ALIGN = 65536
 
@@ -1901,14 +1902,20 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.d_drv, self.cs_drv = split_byte(fields[2])
         self.hd_drv, self.wp_drv = split_byte(fields[3])
 
-        if fields[15] in [0, 1]:
-            self.append_digest = (fields[15] == 1)
-        else:
-            raise RuntimeError("Invalid value for append_digest field (0x%02x). Should be 0 or 1.", fields[15])
+        chip_id = fields[4]
+        if chip_id != self.ROM_LOADER.IMAGE_CHIP_ID:
+            print("Unexpected chip id in image. Expected %d but value was %d. Is this image for a different chip model?" % (self.ROM_LOADER.IMAGE_CHIP_ID, chip_id))
 
-        # remaining fields in the middle should all be zero
-        if any(f for f in fields[5:15] if f != 0):
+        # reserved fields in the middle should all be zero
+        if any(f for f in fields[6:-1] if f != 0):
             print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
+
+        append_digest = fields[-1]  # last byte is append_digest
+        if append_digest in [0, 1]:
+            self.append_digest = (append_digest == 1)
+        else:
+            raise RuntimeError("Invalid value for append_digest field (0x%02x). Should be 0 or 1.", append_digest)
+
 
     def save_extended_header(self, save_file):
         def join_byte(ln,hn):
@@ -1920,8 +1927,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                   join_byte(self.clk_drv, self.q_drv),
                   join_byte(self.d_drv, self.cs_drv),
                   join_byte(self.hd_drv, self.wp_drv),
+                  self.ROM_LOADER.IMAGE_CHIP_ID,
                   self.min_rev]
-        fields += [0] * 10
+        fields += [0] * 8  # padding
         fields += [append_digest]
 
         packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *fields)
