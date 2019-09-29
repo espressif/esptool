@@ -24,6 +24,7 @@ import binascii
 import copy
 import hashlib
 import inspect
+import itertools
 import io
 import os
 import shlex
@@ -259,7 +260,8 @@ class ESPLoader(object):
             raise FatalError("Failed to set baud rate %d. The driver may not support this rate." % baud)
 
     @staticmethod
-    def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False):
+    def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False,
+                    connect_attempts=7):
         """ Use serial access to detect the chip type.
 
         We use the UART's datecode register for this, it's mapped at
@@ -271,7 +273,7 @@ class ESPLoader(object):
         connect_mode parameter) as part of querying the chip.
         """
         detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
-        detect_port.connect(connect_mode)
+        detect_port.connect(connect_mode, connect_attempts)
         try:
             print('Detecting chip type...', end='')
             sys.stdout.flush()
@@ -464,14 +466,16 @@ class ESPLoader(object):
                 last_error = e
         return last_error
 
-    def connect(self, mode='default_reset'):
+    def connect(self, mode='default_reset', attempts=7):
         """ Try connecting repeatedly until successful, or giving up """
         print('Connecting...', end='')
         sys.stdout.flush()
         last_error = None
 
         try:
-            for _ in range(7):
+            for attempt in itertools.count():
+                if attempts > 0 and attempt >= attempts:
+                    break
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
                     return
@@ -2671,6 +2675,13 @@ def main(custom_commandline=None):
         choices=ESP32ROM.OVERRIDE_VDDSDIO_CHOICES,
         nargs='?')
 
+    parser.add_argument(
+        '--connect-attempts',
+        help=('Number of attempts to connect, negative or 0 for infinate. '
+              'Default: 7.'),
+        type=int,
+        default=os.environ.get('ESPTOOL_CONNECT_ATTEMPTS', 7))
+
     subparsers = parser.add_subparsers(
         dest='operation',
         help='Run esptool {command} -h for additional help')
@@ -2882,14 +2893,15 @@ def main(custom_commandline=None):
             print("Serial port %s" % each_port)
             try:
                 if args.chip == 'auto':
-                    esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
+                    esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace,
+                                                args.connect_attempts)
                 else:
                     chip_class = {
                         'esp8266': ESP8266ROM,
                         'esp32': ESP32ROM,
                     }[args.chip]
                     esp = chip_class(each_port, initial_baud, args.trace)
-                    esp.connect(args.before)
+                    esp.connect(args.before, args.connect_attempts)
                 break
             except (FatalError, OSError) as err:
                 if args.port is not None:
