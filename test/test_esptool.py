@@ -39,6 +39,9 @@ serialport = None
 trace_enabled = False
 
 try:
+    if sys.argv[1] == "--trace":
+        trace_enabled = True
+        sys.argv.pop(1)
     chip = sys.argv[2]
 except IndexError:
     chip = None  # fails in main()
@@ -567,9 +570,6 @@ if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Usage: %s [--trace] <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0])
         sys.exit(1)
-    if sys.argv[1] == "--trace":
-        trace_enabled = True
-        sys.argv.pop(1)
     serialport = sys.argv[1]
     # chip is already set to sys.argv[2], so @skipUnless can evaluate against it
     args_used = 2
