@@ -34,12 +34,6 @@
 CROSS_8266 ?= xtensa-lx106-elf-
 CROSS_32 ?= xtensa-esp32-elf-
 
-# Path to the ESP8266 SDK root dir
-SDK_PATH ?= ../../esp_iot_sdk_v2.0.0
-
-# Path to the esp-idf root dir
-IDF_PATH ?= ../../esp-idf
-
 # Python command to invoke wrap_stub.py
 WRAP_STUB ?= ./wrap_stub.py
 
@@ -67,16 +61,16 @@ $(BUILD_DIR):
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
-         -Wl,-static -g -ffunction-sections -Wl,--gc-sections
+         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude
 
-CFLAGS_8266 = $(CFLAGS) -I$(SDK_PATH) -I$(SDK_PATH)/include -L$(SDK_PATH)/ld
-CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -I$(IDF_PATH)/components/soc/esp32/include -I$(IDF_PATH)/components/esp_common/include/ -L$(IDF_PATH)
+CFLAGS_8266 = $(CFLAGS) -Iinclude/esp8266 -Lld
+CFLAGS_32   = $(CFLAGS) -Iinclude/esp32 -Lld
 
-$(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) stub_8266.ld | Makefile
+$(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) ld/stub_8266.ld | Makefile
 	@echo "  CC(8266)   $^ -> $@"
 	$(Q) $(CROSS_8266)gcc $(CFLAGS_8266) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 
-$(STUB_ELF_32): $(SRCS) $(BUILD_DIR) stub_32.ld | Makefile
+$(STUB_ELF_32): $(SRCS) $(BUILD_DIR) ld/stub_32.ld | Makefile
 	@echo "  CC(32)   $^ -> $@"
 	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
 

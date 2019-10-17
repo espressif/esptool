@@ -30,7 +30,7 @@
  *
  * See individual command description below.
  */
-
+#include <stdlib.h>
 #include "stub_flasher.h"
 #include "rom_functions.h"
 #include "slip.h"
@@ -40,16 +40,6 @@
 
 #define UART_RX_INTS (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA)
 
-
-#ifdef ESP32
-/* ESP32 register naming is a bit more consistent */
-#define UART_INT_CLR(X) UART_INT_CLR_REG(X)
-#define UART_INT_ST(X) UART_INT_ST_REG(X)
-#define UART_INT_ENA(X) UART_INT_ENA_REG(X)
-#define UART_STATUS(X) UART_STATUS_REG(X)
-#define UART_FIFO(X) UART_FIFO_REG(X)
-#endif
-
 static uint32_t get_new_uart_divider(uint32_t current_baud, uint32_t new_baud)
 {
   uint32_t master_freq;
@@ -58,7 +48,7 @@ static uint32_t get_new_uart_divider(uint32_t current_baud, uint32_t new_baud)
      is correct wrt the relative crystal accuracy of the ESP & the USB/serial adapter).
      From this we can estimate crystal freq, and update for a new baud rate relative to that.
   */
-  uint32_t uart_reg = REG_READ(UART_CLKDIV_REG(0));
+  uint32_t uart_reg = READ_REG(UART_CLKDIV_REG(0));
   uint32_t uart_div = uart_reg & UART_CLKDIV_M;
 #ifdef ESP32
   // account for fractional part of divider (bottom 4 bits)
@@ -119,18 +109,18 @@ static void uart_isr_receive(char byte)
 }
 
 void uart_isr(void *arg) {
-  uint32_t int_st = READ_PERI_REG(UART_INT_ST(0));
+  uint32_t int_st = READ_REG(UART_INT_ST(0));
   while (1) {
-    uint32_t fifo_len = READ_PERI_REG(UART_STATUS(0)) & 0xff;
+    uint32_t fifo_len = READ_REG(UART_STATUS(0)) & 0xff;
     if (fifo_len == 0) {
       break;
     }
     while (fifo_len-- > 0) {
-      uint8_t byte = READ_PERI_REG(UART_FIFO(0)) & 0xff;
+      uint8_t byte = READ_REG(UART_FIFO(0)) & 0xff;
       uart_isr_receive(byte);
     }
   }
-  WRITE_PERI_REG(UART_INT_CLR(0), int_st);
+  WRITE_REG(UART_INT_CLR(0), int_st);
 }
 
 static esp_command_error verify_data_len(esp_command_req_t *command, uint8_t len)
@@ -159,7 +149,7 @@ void cmd_loop() {
     switch(command->op) {
     case ESP_READ_REG:
         if (command->data_len == 4) {
-            resp.value = REG_READ(data_words[0]);
+            resp.value = READ_REG(data_words[0]);
         }
         break;
     case ESP_FLASH_VERIFY_MD5:
@@ -275,7 +265,7 @@ void cmd_loop() {
       /* params are addr, value, mask (ignored), delay_us (ignored) */
       error = verify_data_len(command, 16);
       if (error == ESP_OK) {
-        REG_WRITE(data_words[0], data_words[1]);
+        WRITE_REG(data_words[0], data_words[1]);
       }
       break;
     case ESP_READ_REG:
@@ -409,7 +399,7 @@ void stub_main()
   /* All UART reads come via uart_isr */
   ub.reading_buf = ub.buf_a;
   ets_isr_attach(ETS_UART0_INUM, uart_isr, NULL);
-  SET_PERI_REG_MASK(UART_INT_ENA(0), UART_RX_INTS);
+  REG_SET_MASK(UART_INT_ENA(0), UART_RX_INTS);
   ets_isr_unmask(1 << ETS_UART0_INUM);
 
   /* Configure default SPI flash functionality.
@@ -420,7 +410,7 @@ void stub_main()
         spi_flash_attach();
 #else
         uint32_t spiconfig = ets_efuse_get_spiconfig();
-        uint32_t strapping = REG_READ(GPIO_STRAP_REG);
+        uint32_t strapping = READ_REG(GPIO_STRAP_REG);
         /* If GPIO1 (U0TXD) is pulled low and no other boot mode is
            set in efuse, assume HSPI flash mode (same as normal boot)
         */

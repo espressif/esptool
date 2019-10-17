@@ -18,11 +18,7 @@
 #ifndef STUB_FLASHER_H_
 #define STUB_FLASHER_H_
 
-#ifdef ESP8266
-#include <c_types.h>
-#else
 #include <stdint.h>
-#endif
 
 /* Maximum write block size, used for various buffers. */
 #define MAX_WRITE_BLOCK 0x4000
