@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cesanta Software Limited
+ * Copyright (c) 2016 Cesanta Software Limited & (c) 2016-2019 Espressif Systems (Shanghai) PTE LTD
  * All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify it under

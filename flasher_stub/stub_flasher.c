@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2016 Cesanta Software Limited & Espressif Systems (Shanghai) PTE LTD
+ * Copyright (c) 2016-2019 Espressif Systems (Shanghai) PTE LTD & Cesanta Software Limited
  * All rights reserved
+ *
+ * This file is part of the esptool.py binary flasher stub.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
@@ -16,19 +18,13 @@
  */
 
 /*
- * Spiffy flasher. Implements strong checksums (MD5) and can use higher
- * baud rates. Actual max baud rate will differ from device to device,
- * but 921K seems to be common.
+ * Main flasher stub logic
  *
- * SLIP protocol is used for communication.
- * First packet is a single byte - command number.
- * After that, a packet with a variable number of 32-bit (LE) arguments,
- * depending on command.
+ * This stub uses the same SLIP framing and basic command/response structure
+ * as the in-ROM flasher program, but with some enhanced
+ * functions and also standardizes the flasher features between different chips.
  *
- * Then command produces variable number of packets of output, but first
- * packet of length 1 is the response code: 0 for success, non-zero - error.
- *
- * See individual command description below.
+ * Actual command handlers are implemented in stub_commands.c
  */
 #include <stdlib.h>
 #include "stub_flasher.h"

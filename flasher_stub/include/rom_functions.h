@@ -1,6 +1,6 @@
 /* Declarations for functions in ESP8266 ROM code
  *
- * Copyright (c) 2016-2017 Cesanta Software Limited & Espressif Systems (Shanghai) PTE LTD
+ * Copyright (c) 2016-2019 Espressif Systems (Shanghai) PTE LTD & Cesanta Software Limited
  * All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -15,6 +15,11 @@
  * this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
  * Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
+
+/* ROM function prototypes for functions in ROM which are
+   called by the flasher stubs.
+*/
 #pragma once
 
 #include <stdint.h>
@@ -51,31 +56,15 @@ void SPIFlashModeConfig(uint32_t a, uint32_t b);
 void SPIReadModeCnfig(uint32_t a);
 uint32_t SPIParamCfg(uint32_t deviceId, uint32_t chip_size, uint32_t block_size, uint32_t sector_size, uint32_t page_size, uint32_t status_mask);
 
-void Cache_Read_Disable();
-
 void memset(void *addr, uint8_t c, uint32_t len);
 
 void ets_delay_us(uint32_t delay_micros);
 
 void ets_isr_mask(uint32_t ints);
 void ets_isr_unmask(uint32_t ints);
-void ets_intr_lock();
-void ets_intr_unlock();
 void ets_set_user_start(void (*user_start_fn)());
 
-uint32_t rtc_get_reset_reason();
 void software_reset();
-void rom_phy_reset_req();
-
-void uart_rx_intr_handler(void *arg);
-
-void _ResetVector();
-
-/* Crypto functions are from wpa_supplicant. */
-int md5_vector(uint32_t num_msgs, const uint8_t *msgs[],
-               const uint32_t *msg_lens, uint8_t *digest);
-int sha1_vector(uint32_t num_msgs, const uint8_t *msgs[],
-                const uint32_t *msg_lens, uint8_t *digest);
 
 struct MD5Context {
   uint32_t buf[4];
