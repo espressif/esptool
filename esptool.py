@@ -60,7 +60,7 @@ except ImportError:
           "Check the README for installation instructions." % (sys.VERSION, sys.executable))
     raise
 
-__version__ = "2.8-dev"
+__version__ = "2.8"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
