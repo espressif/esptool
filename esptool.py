@@ -522,13 +522,14 @@ class ESPLoader(object):
             raise FatalError.WithResult("Failed to read register address %08x" % addr, data)
         return val
 
-    def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0):
-        """ Write to memory address in target
+    """ Write to memory address in target """
+    def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0, delay_after_us=0):
+        command = struct.pack('<IIII', addr, value, mask, delay_us)
+        if delay_after_us > 0:
+            # add a dummy write to a date register as an excuse to have a delay
+            command += struct.pack('<IIII', self.UART_DATE_REG_ADDR, 0, 0, delay_after_us)
 
-        Note: mask option is not supported by stub loaders, use update_reg() function.
-        """
-        return self.check_command("write target memory", self.ESP_WRITE_REG,
-                                  struct.pack('<IIII', addr, value, mask, delay_us))
+        return self.check_command("write target memory", self.ESP_WRITE_REG, command)
 
     def update_reg(self, addr, mask, new_val):
         """ Update register at 'addr', replace the bits masked out by 'mask'
