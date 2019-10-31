@@ -14,8 +14,8 @@ env:
 
   # Toolchains
   ESP8266_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-lx106-elf-linux64-1.22.0-92-g8facf4c-5.2.0.tar.gz"
-  ESP32_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32-elf-gcc8_2_0-esp32-2019r1-linux-amd64.tar.gz"
-  ESP32S2_TOOLCHAIN_URL="https://dl.espressif.com/dl/toolchains/preview/xtensa-esp32s2-elf-gcc8_2_0-esp32s2-dev-4-g3a626e-linux-amd64.tar.gz"
+  ESP32_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32-elf-gcc8_2_0-esp-2019r2-linux-amd64.tar.gz"
+  ESP32S2_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32s2-elf-gcc8_2_0-esp-2019r2-linux-amd64.tar.gz"
   TOOLCHAIN_DIR="${HOME}/toolchain"
   ESP8266_BINDIR="${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"
   ESP32_BINDIR="${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
