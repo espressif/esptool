@@ -101,7 +101,7 @@ setup(
         'Operating System :: MacOS :: MacOS X',
         'Topic :: Software Development :: Embedded Systems',
         'Environment :: Console',
-        'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
+        'License :: OSI Approved :: GNU General Public License v2 or later (GPL-2.0-or-later)',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4',  # Note: when dropping 3.4 support we can also remove the check in setup_requires
         'Programming Language :: Python :: 3.5',
