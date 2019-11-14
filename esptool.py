@@ -75,6 +75,10 @@ ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a reg
 MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 
+if sys.stdout.isatty():
+    CR = '\r'
+else:
+    CR = '\n'
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
     """ Scales timeouts which are size-specific """
@@ -2365,8 +2369,8 @@ def dump_mem(esp, args):
             d = esp.read_reg(args.address + (i * 4))
             f.write(struct.pack(b'<I', d))
             if f.tell() % 1024 == 0:
-                print('\r%d bytes read... (%d %%)' % (f.tell(),
-                                                      f.tell() * 100 // args.size),
+                print(CR +'%d bytes read... (%d %%)' % (f.tell(),
+                                                        f.tell() * 100 // args.size),
                       end=' ')
             sys.stdout.flush()
     print('Done!')
@@ -2503,7 +2507,7 @@ def write_flash(esp, args):
         written = 0
         t = time.time()
         while len(image) > 0:
-            print('\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks), end='')
+            print(CR + 'Writing at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks), end='')
             sys.stdout.flush()
             block = image[0:esp.FLASH_WRITE_SIZE]
             if args.compress:
@@ -2523,11 +2527,11 @@ def write_flash(esp, args):
         if args.compress:
             if t > 0.0:
                 speed_msg = " (effective %.1f kbit/s)" % (uncsize / t * 8 / 1000)
-            print('\rWrote %d bytes (%d compressed) at 0x%08x in %.1f seconds%s...' % (uncsize, written, address, t, speed_msg))
+            print(CR + 'Wrote %d bytes (%d compressed) at 0x%08x in %.1f seconds%s...' % (uncsize, written, address, t, speed_msg))
         else:
             if t > 0.0:
                 speed_msg = " (%.1f kbit/s)" % (written / t * 8 / 1000)
-            print('\rWrote %d bytes at 0x%08x in %.1f seconds%s...' % (written, address, t, speed_msg))
+            print(CR + 'Wrote %d bytes at 0x%08x in %.1f seconds%s...' % (written, address, t, speed_msg))
 
         if not args.encrypt:
             try:
@@ -2690,7 +2694,7 @@ def read_flash(esp, args):
     t = time.time()
     data = esp.read_flash(args.address, args.size, flash_progress)
     t = time.time() - t
-    print('\rRead %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)...'
+    print(CR + 'Read %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)...'
           % (len(data), args.address, t, len(data) / t * 8 / 1000))
     with open(args.filename, 'wb') as f:
         f.write(data)
