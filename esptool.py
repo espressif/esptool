@@ -80,6 +80,7 @@ if sys.stdout.isatty():
 else:
     CR = '\n'
 
+
 def timeout_per_mb(seconds_per_mb, size_bytes):
     """ Scales timeouts which are size-specific """
     result = seconds_per_mb * (size_bytes / 1e6)
@@ -2369,8 +2370,8 @@ def dump_mem(esp, args):
             d = esp.read_reg(args.address + (i * 4))
             f.write(struct.pack(b'<I', d))
             if f.tell() % 1024 == 0:
-                print(CR +'%d bytes read... (%d %%)' % (f.tell(),
-                                                        f.tell() * 100 // args.size),
+                print(CR + '%d bytes read... (%d %%)' % (f.tell(),
+                                                         f.tell() * 100 // args.size),
                       end=' ')
             sys.stdout.flush()
     print('Done!')
