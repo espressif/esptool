@@ -174,6 +174,9 @@ def sign_data(args):
         outfile.write(binary_content)
     outfile.write(struct.pack("I", 0))  # Version indicator, allow for different curves/formats later
     outfile.write(signature)
+    alignment = outfile.tell() % 16
+    if alignment != 0:
+        outfile.write(b'\xFF' * (16 - alignment))   # align Secure Boot(Version 1) signed binary to 16 bytes.
     outfile.close()
     print("Signed %d bytes of data from %s with key %s" % (len(binary_content), args.datafile.name, args.keyfile.name))
 
