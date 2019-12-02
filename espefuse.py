@@ -19,19 +19,14 @@ from __future__ import division, print_function
 
 import argparse
 import esptool
+import espsecure
 import io
 import json
 import os
-import hashlib
 import struct
 import sys
 import time
 
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.utils import int_to_bytes
 
 # Table of efuse values - (category, block, word in block, mask, write disable bit, read disable bit, type, description)
 # Match values in efuse_reg.h & Efuse technical reference chapter
@@ -39,7 +34,7 @@ EFUSES = [
     ('WR_DIS',               "efuse",    0, 0, 0x0000FFFF, 1,  None, "int", "Efuse write disable mask"),
     ('RD_DIS',               "efuse",    0, 0, 0x000F0000, 0,  None, "int", "Efuse read disablemask"),
     ('FLASH_CRYPT_CNT',      "security", 0, 0, 0x07F00000, 2,  None, "bitcount", "Flash encryption mode counter"),
-    ('UART_DOWNLOAD_DIS',    "security", 0, 0, 1 << 27,    2,  None, "flag", "Disable UART download mode (ESP32 rev2 only)"),
+    ('UART_DOWNLOAD_DIS',    "security", 0, 0, 1 << 27,    2,  None, "flag", "Disable UART download mode (ESP32 rev3 only)"),
     ('MAC',                  "identity", 0, 1, 0xFFFFFFFF, 3,  None, "mac", "Factory MAC Address"),
     ('XPD_SDIO_FORCE',       "config",   0, 4, 1 << 16,    5,  None, "flag", "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset"),
     ('XPD_SDIO_REG',         "config",   0, 4, 1 << 14,    5,  None, "flag", "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset"),
@@ -595,6 +590,29 @@ def write_protect_efuse(esp, efuses, args):
         efuse.disable_write()
 
 
+def _confirm_burn_key(num_bytes, block_num, efuse, args):
+    # check existing data
+    original = efuse.get_raw()
+    EMPTY_KEY = b'\x00' * num_bytes
+    if original != EMPTY_KEY:
+        if not args.force_write_always:
+            raise esptool.FatalError("The eFuse block already has value %s." % efuse.get())
+        else:
+            print("WARNING: The eFuse block appears to have a value already. \
+                Trying anyhow, due to --force-write-always (result will be bitwise OR of new and old values.)")
+    if not efuse.is_writeable():
+        if not args.force_write_always:
+            raise esptool.FatalError("The eFuse block has already been write protected.")
+        else:
+            print("WARNING: The eFuse block appears to be write protected. Trying anyhow, due to --force-write-always")
+    msg = "Write in efuse block %d. " % block_num
+    if args.no_protect_key:
+        msg += "The eFuse block will left readable and writeable (due to --no-protect-key)"
+    else:
+        msg += "The eFuse block will be read and write protected (no further changes or readback)"
+    confirm(msg, args)
+
+
 def burn_key(esp, efuses, args):
     # check block choice
     if args.block in ["flash_encryption", "BLK1"]:
@@ -610,33 +628,15 @@ def burn_key(esp, efuses, args):
 
     # check keyfile
     keyfile = args.keyfile
-    keyfile.seek(0,2)  # seek t oend
+    keyfile.seek(0,2)  # seek to end
     size = keyfile.tell()
     keyfile.seek(0)
     if size != num_bytes:
         raise esptool.FatalError("Incorrect key file size %d. Key file must be %d bytes (%d bits) of raw binary key data." %
                                  (size, num_bytes, num_bytes * 8))
 
-    # check existing data
     efuse = [e for e in efuses if e.register_name == "BLK%d" % block_num][0]
-    original = efuse.get_raw()
-    EMPTY_KEY = b'\x00' * num_bytes
-    if original != EMPTY_KEY:
-        if not args.force_write_always:
-            raise esptool.FatalError("Key block already has value %s." % efuse.get())
-        else:
-            print("WARNING: Key appears to have a value already. Trying anyhow, due to --force-write-always (result will be bitwise OR of new and old values.)")
-    if not efuse.is_writeable():
-        if not args.force_write_always:
-            raise esptool.FatalError("The efuse block has already been write protected.")
-        else:
-            print("WARNING: Key appears to be write protected. Trying anyhow, due to --force-write-always")
-    msg = "Write key in efuse block %d. " % block_num
-    if args.no_protect_key:
-        msg += "The key block will left readable and writeable (due to --no-protect-key)"
-    else:
-        msg += "The key block will be read and write protected (no further changes or readback)"
-    confirm(msg, args)
+    _confirm_burn_key(num_bytes, block_num, efuse, args)
 
     new_value = keyfile.read(num_bytes)
     new = efuse.burn_key(new_value)
@@ -691,35 +691,25 @@ def burn_block_data(esp, efuses, args):
     confirm("Burning efuse %s (%s) with %d bytes of data at offset %d in the block" % (efuse.register_name, efuse.description, len(data), offset), args)
     efuse.burn_words(words, word_offset)
 
+
 def burn_key_digest(esp, efuses, args):
     if efuses.coding_scheme == CODING_SCHEME_34:
         raise RuntimeError("burn_key_digest only works with 'None' coding scheme")
 
-    # TODO: check for correct ESP32 revision here
-    digest = _digest_rsa_public_key(args.file)
+    chip_revision = esp.get_chip_description()
+    if "revision 3" not in chip_revision:
+        raise esptool.FatalError("Incorrect chip revision for Secure boot v2. Detected: %s. Expected: (revision 3)" % chip_revision)
 
-    # TODO: refactor some of the common code for key burning
+    digest = espsecure._digest_rsa_public_key(args.keyfile)
+    num_bytes = efuses.get_block_len()
+    if len(digest) != num_bytes:
+        raise esptool.FatalError("Incorrect digest size %d. Digest must be %d bytes (%d bits) of raw binary key data." %
+                                 (len(digest), num_bytes, num_bytes * 8))
 
-    # check existing data
-    efuse = [e for e in efuses if e.register_name == "BLK2"][0]
-    original = efuse.get_raw()
-    EMPTY_KEY = b'\x00' * 32
-    if original != EMPTY_KEY:
-        if not args.force_write_always:
-            raise esptool.FatalError("Efuse BLK2 already has value %s." % efuse.get())
-        else:
-            print("WARNING: Efuse BLK2 appears to have a value already. Trying anyhow, due to --force-write-always (result will be bitwise OR of new and old values.)")
-    if not efuse.is_writeable():
-        if not args.force_write_always:
-            raise esptool.FatalError("Efuse BLK2 has already been write protected.")
-        else:
-            print("WARNING: Efuse BLK2 appears to be write protected. Trying anyhow, due to --force-write-always")
-    msg = "Write digest of RSA public key (for Secure Boot V2)in efuse BLK2."
-    if args.no_protect_key:
-        msg += "The efuse block will left writeable (due to --no-protect-key)"
-    else:
-        msg += "The key block will be write protected (no further changes).."
-    confirm(msg, args)
+    block_num = 2
+
+    efuse = [e for e in efuses if e.register_name == "BLK%d" % block_num][0]
+    _confirm_burn_key(num_bytes, block_num, efuse, args)
 
     # reverse the digest bytes as burn_key reverses them a second time... (so we get 'normal' order)
     new = efuse.burn_key(digest[::-1])
@@ -727,6 +717,7 @@ def burn_key_digest(esp, efuses, args):
     if not args.no_protect_key:
         print("Disabling write to efuse BLK2...")
         efuse.disable_write()
+
 
 def set_flash_voltage(esp, efuses, args):
     sdio_force = efuses["XPD_SDIO_FORCE"]
@@ -869,48 +860,6 @@ def burn_custom_mac(esp, efuses, args):
         burn_block_data(esp, efuses, args)
 
 
-def _digest_rsa_public_key(keyfile):
-    keydata = keyfile.read()
-    try:
-        private_key = serialization.load_pem_private_key(
-            keydata,
-            password=None,
-            backend=default_backend()
-        )
-        public_key = private_key.public_key()
-    except ValueError:
-        public_key = serialization.load_pem_public_key(
-            keydata, backend=default_backend())
-    if public_key.key_size != 3072:
-        raise esptool.FatalError("Key file %s has length %d bits. Secure Boot V2 only supports RSA-3072." % (keyfile.name,
-                                                                                                             public_key.key_size))
-    
-    numbers = public_key.public_numbers()
-    n = numbers.n  #
-    e = numbers.e  # two public key components
-
-    # Note: this cheats and calls a private 'rsa' method to get the modular
-    # inverse calculation.
-    m = - rsa._modinv(n, 1<<32)
-
-    rr = 1 << (public_key.key_size * 2)
-    rinv = rr % n
-
-    # Encode in the same way it is represented in the signature block
-    #
-    # Note: the [::-1] is to byte swap all of the bignum
-    # values (signatures, coefficients) to little endian
-    # for use with the RSA peripheral, rather than big endian
-    # which is conventionally used for RSA.
-    binary_format = struct.pack("<384sI384sI",
-                                int_to_bytes(n)[::-1],
-                                e,
-                                int_to_bytes(rinv)[::-1],
-                                m & 0xFFFFFFFF)
-
-    return hashlib.sha256(binary_format).digest()
-
-
 def get_custom_mac(esp, efuses, args):
     c = CustomMacAddressField(efuses)
     version = c.get_version()
@@ -1014,8 +963,8 @@ def main():
     p.add_argument('datafile', help='File containing data to burn into the efuse block', type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('burn_key_digest',
-                              help='Parse a RSA public key digest for use with Secure Boot V2')
-    p.add_argument('file', help='Key file to digest (PEM format)',
+                              help='Parse a RSA public key and burn the digest to eFuse for use with Secure Boot V2')
+    p.add_argument('keyfile', help='Key file to digest (PEM format)',
                    type=argparse.FileType('r'))
     p.add_argument('--no-protect-key', help='Disable default write-protecting of the key digest. ' +
                    'If this option is not set, once the key is flashed it cannot be changed.', action='store_true')
