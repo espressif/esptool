@@ -110,6 +110,7 @@ setup(
         'pyserial>=3.0',
         'pyaes',
         'ecdsa',
+        'cryptography>=2.1.4',
     ],
     scripts=scripts,
     entry_points=entry_points,
