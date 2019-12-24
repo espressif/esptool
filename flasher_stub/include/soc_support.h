@@ -103,10 +103,10 @@
  * On ESP32S2 this is called SPI_MEM_xxx index 1
  */
 #define SPI_CMD_REG       (SPI_BASE_REG + 0x00)
+#define SPI_FLASH_WREN    (1<<30)
 #define SPI_FLASH_RDSR    (1<<27)
 #define SPI_FLASH_SE      (1<<24)
 #define SPI_FLASH_BE      (1<<23)
-#define SPI_FLASH_WREN    (1<<30)
 
 #define SPI_ADDR_REG      (SPI_BASE_REG + 0x04)
 
@@ -128,7 +128,7 @@
 #define SPI_W0_REG        (SPI_BASE_REG + 0x80)
 #endif
 #ifdef ESP32S2
-#define SPI_W0_REG        (SPI_BASE_REG + 0xA8)
+#define SPI_W0_REG        (SPI_BASE_REG + 0x58)
 #endif
 
 #if !defined(ESP32S2)

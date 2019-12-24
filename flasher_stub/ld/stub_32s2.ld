@@ -29,9 +29,9 @@ SECTIONS {
   } > iram
 
   .bss : ALIGN(4) {
-     _bss_start = ABSOLUTE(.);
+    _bss_start = ABSOLUTE(.);
     *(.bss)
-	_bss_end = ABSOLUTE(.);
+    _bss_end = ABSOLUTE(.);
   } > dram
 
   .data : ALIGN(4) {
@@ -40,4 +40,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "rom_32s2beta.ld"
+INCLUDE "rom_32s2.ld"
