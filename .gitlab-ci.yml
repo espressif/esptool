@@ -1,0 +1,57 @@
+# Gitlab CI config
+#
+# Note: When updating, please also update .travis.yml
+stages:
+  - test
+
+.test_template: &test_template
+  stage: test
+  image: $CI_DOCKER_REGISTRY/esp32-ci-env$BOT_DOCKER_IMAGE_TAG
+  tags:
+    - host_test
+  dependencies: []
+
+host_tests:
+  <<: *test_template
+  script:
+    - ./test/ci/multirun_with_pyenv.sh python setup.py build
+    - ./test/ci/multirun_with_pyenv.sh python test/test_imagegen.py
+    - ./test/ci/multirun_with_pyenv.sh python test/test_espsecure.py
+
+check_python_style:
+  <<: *test_template
+  script:
+    - ./test/ci/multirun_with_pyenv.sh python setup.py flake8
+
+# Check all the scripts can run when installed under all Python versions
+check_installation_can_run:
+  <<: *test_template
+  script:
+    - ./test/ci/multirun_with_pyenv.sh python setup.py install
+    - cd /
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh esptool.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espefuse.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espsecure.py --help
+
+# Check the stub can build and that a stub built in CI has the same contents
+# as the one embedded in esptool
+check_stub_build:
+  <<: *test_template
+  artifacts:
+    when: on_failure
+    paths:
+      - flasher_stub/build/
+    expire_in: 1 week
+  variables:
+    # using this directory as the CI image probably already has an ESP32 & ESP32S2 toolchain downloaded into here
+    TOOLCHAIN_DIR: "/root/.espressif/dist"
+
+    ESP8266_BINDIR: "${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"
+    ESP32_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
+    ESP32S2_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32s2-elf/bin"
+
+    TOOLCHAIN_PATHS: "${ESP8266_BINDIR}:${ESP32_BINDIR}:${ESP32S2_BINDIR}"
+  script:
+    - ./test/ci/setup_ci_build_env.sh
+    - make -C flasher_stub V=1 PATH="${TOOLCHAIN_PATHS}:${PATH}"
+    - cd flasher_stub && python ./compare_stubs.py
