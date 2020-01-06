@@ -65,18 +65,19 @@ $(BUILD_DIR):
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
+LDLIBS = -lgcc
 
 $(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) ld/stub_8266.ld | Makefile
 	@echo "  CC(8266)   $^ -> $@"
-	$(Q) $(CROSS_8266)gcc $(CFLAGS) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_8266)gcc $(CFLAGS) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 $(STUB_ELF_32): $(SRCS) $(BUILD_DIR) ld/stub_32.ld | Makefile
 	@echo "  CC(32)   $^ -> $@"
-	$(Q) $(CROSS_32)gcc $(CFLAGS) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_32)gcc $(CFLAGS) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 $(STUB_ELF_32S2): $(SRCS) $(BUILD_DIR) ld/stub_32s2.ld
 	@echo "  CC(32S2)   $^ -> $@"
-	$(Q) $(CROSS_32S2)gcc $(CFLAGS) -DESP32S2 -Tstub_32s2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_32S2)gcc $(CFLAGS) -DESP32S2 -Tstub_32s2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 $(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
