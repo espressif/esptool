@@ -50,7 +50,9 @@ static struct {
 
 /* SPI status bits */
 static const uint32_t STATUS_WIP_BIT = (1 << 0);
+#if defined(ESP32) || defined(ESP32S2)
 static const uint32_t STATUS_QIE_BIT = (1 << 9);  /* Quad Enable */
+#endif
 
 bool is_in_flash_mode(void)
 {
