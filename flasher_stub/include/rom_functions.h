@@ -56,8 +56,6 @@ void SPIFlashModeConfig(uint32_t a, uint32_t b);
 void SPIReadModeCnfig(uint32_t a);
 uint32_t SPIParamCfg(uint32_t deviceId, uint32_t chip_size, uint32_t block_size, uint32_t sector_size, uint32_t page_size, uint32_t status_mask);
 
-void memset(void *addr, uint8_t c, uint32_t len);
-
 void ets_delay_us(uint32_t delay_micros);
 
 void ets_isr_mask(uint32_t ints);
