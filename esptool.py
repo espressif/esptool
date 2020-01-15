@@ -75,6 +75,7 @@ MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating m
 ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
 MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
+DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
@@ -283,7 +284,7 @@ class ESPLoader(object):
 
     @staticmethod
     def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False,
-                    connect_attempts=7):
+                    connect_attempts=DEFAULT_CONNECT_ATTEMPTS):
         """ Use serial access to detect the chip type.
 
         We use the UART's datecode register for this, it's mapped at
@@ -493,7 +494,7 @@ class ESPLoader(object):
                 last_error = e
         return last_error
 
-    def connect(self, mode='default_reset', attempts=7):
+    def connect(self, mode='default_reset', attempts=DEFAULT_CONNECT_ATTEMPTS):
         """ Try connecting repeatedly until successful, or giving up """
         print('Connecting...', end='')
         sys.stdout.flush()
@@ -2839,9 +2840,9 @@ def main(custom_commandline=None):
     parser.add_argument(
         '--connect-attempts',
         help=('Number of attempts to connect, negative or 0 for infinate. '
-              'Default: 7.'),
+              'Default: %d.' % DEFAULT_CONNECT_ATTEMPTS),
         type=int,
-        default=os.environ.get('ESPTOOL_CONNECT_ATTEMPTS', 7))
+        default=os.environ.get('ESPTOOL_CONNECT_ATTEMPTS', DEFAULT_CONNECT_ATTEMPTS))
 
     subparsers = parser.add_subparsers(
         dest='operation',
