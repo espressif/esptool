@@ -136,6 +136,21 @@ except NameError:
     basestring = str
 
 
+def print_overwrite(message, last_line=False):
+    """ Print a message, overwriting the currently printed line.
+
+    If last_line is False, don't append a newline at the end (expecting another subsequent call will overwrite this one.)
+
+    After a sequence of calls with last_line=False, call once with last_line=True.
+
+    If output is not a TTY (for example redirected a pipe), no overwriting happens and this function is the same as print().
+    """
+    if sys.stdout.isatty():
+        print("\r%s" % message, end='\n' if last_line else '')
+    else:
+        print(message)
+
+
 def _mask_to_shift(mask):
     """ Return the index of the least significant bit in the mask """
     shift = 0
@@ -2369,10 +2384,10 @@ def dump_mem(esp, args):
             d = esp.read_reg(args.address + (i * 4))
             f.write(struct.pack(b'<I', d))
             if f.tell() % 1024 == 0:
-                print('\r%d bytes read... (%d %%)' % (f.tell(),
-                                                      f.tell() * 100 // args.size),
-                      end=' ')
+                print_overwrite('%d bytes read... (%d %%)' % (f.tell(),
+                                                              f.tell() * 100 // args.size))
             sys.stdout.flush()
+    print_overwrite("Read %d bytes" % f.tell(), last_line=True)
     print('Done!')
 
 
@@ -2507,7 +2522,7 @@ def write_flash(esp, args):
         written = 0
         t = time.time()
         while len(image) > 0:
-            print('\rWriting at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks), end='')
+            print_overwrite('Writing at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks))
             sys.stdout.flush()
             block = image[0:esp.FLASH_WRITE_SIZE]
             if args.compress:
@@ -2527,11 +2542,11 @@ def write_flash(esp, args):
         if args.compress:
             if t > 0.0:
                 speed_msg = " (effective %.1f kbit/s)" % (uncsize / t * 8 / 1000)
-            print('\rWrote %d bytes (%d compressed) at 0x%08x in %.1f seconds%s...' % (uncsize, written, address, t, speed_msg))
+            print_overwrite('Wrote %d bytes (%d compressed) at 0x%08x in %.1f seconds%s...' % (uncsize, written, address, t, speed_msg), last_line=True)
         else:
             if t > 0.0:
                 speed_msg = " (%.1f kbit/s)" % (written / t * 8 / 1000)
-            print('\rWrote %d bytes at 0x%08x in %.1f seconds%s...' % (written, address, t, speed_msg))
+            print_overwrite('Wrote %d bytes at 0x%08x in %.1f seconds%s...' % (written, address, t, speed_msg), last_line=True)
 
         if not args.encrypt:
             try:
@@ -2694,8 +2709,8 @@ def read_flash(esp, args):
     t = time.time()
     data = esp.read_flash(args.address, args.size, flash_progress)
     t = time.time() - t
-    print('\rRead %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)...'
-          % (len(data), args.address, t, len(data) / t * 8 / 1000))
+    print_overwrite('Read %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)...'
+                    % (len(data), args.address, t, len(data) / t * 8 / 1000), last_line=True)
     with open(args.filename, 'wb') as f:
         f.write(data)
 
