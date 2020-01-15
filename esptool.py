@@ -501,9 +501,7 @@ class ESPLoader(object):
         last_error = None
 
         try:
-            for attempt in itertools.count():
-                if attempts > 0 and attempt >= attempts:
-                    break
+            for _ in range(attempts) if attempts > 0 else itertools.count():
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
                     return
@@ -2839,7 +2837,7 @@ def main(custom_commandline=None):
 
     parser.add_argument(
         '--connect-attempts',
-        help=('Number of attempts to connect, negative or 0 for infinate. '
+        help=('Number of attempts to connect, negative or 0 for infinite. '
               'Default: %d.' % DEFAULT_CONNECT_ATTEMPTS),
         type=int,
         default=os.environ.get('ESPTOOL_CONNECT_ATTEMPTS', DEFAULT_CONNECT_ATTEMPTS))
