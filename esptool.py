@@ -234,7 +234,7 @@ class ESPLoader(object):
     FLASH_SECTOR_SIZE = 0x1000
 
     UART_DATE_REG_ADDR = 0x60000078  # used to differentiate ESP8266 vs ESP32*
-    UART_DATE_REG2_ADDR = 0x3f400074  # used to differentiate ESP32S2beta vs other models
+    UART_DATE_REG2_ADDR = 0x3f400074  # used to differentiate ESP32S2 vs other models
 
     UART_CLKDIV_MASK = 0xFFFFF
 
@@ -1519,8 +1519,6 @@ def LoadFirmwareImage(chip, filename):
     with open(filename, 'rb') as f:
         if chip == 'esp32':
             return ESP32FirmwareImage(f)
-        elif chip == 'esp32s2beta':
-            return ESP32S2FirmwareImage(f)
         elif chip == "esp32s2":
             return ESP32S2FirmwareImage(f)
         else:  # Otherwise, ESP8266 so look at magic to determine the image type
@@ -2637,7 +2635,7 @@ def elf2image(args):
         image = ESP32FirmwareImage()
         image.secure_pad = args.secure_pad
         image.min_rev = int(args.min_rev)
-    elif args.chip == 'esp32s2beta':
+    elif args.chip == 'esp32s2':
         image = ESP32S2FirmwareImage()
         image.secure_pad = args.secure_pad
         image.min_rev = 0
@@ -2804,7 +2802,7 @@ def main(custom_commandline=None):
 
     parser.add_argument('--chip', '-c',
                         help='Target chip type',
-                        choices=['auto', 'esp8266', 'esp32', 'esp32s2beta'],
+                        choices=['auto', 'esp8266', 'esp32', 'esp32s2'],
                         default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
     parser.add_argument(
@@ -3072,7 +3070,7 @@ def main(custom_commandline=None):
                     chip_class = {
                         'esp8266': ESP8266ROM,
                         'esp32': ESP32ROM,
-                        'esp32s2beta': ESP32S2ROM,
+                        'esp32s2': ESP32S2ROM,
                     }[args.chip]
                     esp = chip_class(each_port, initial_baud, args.trace)
                     esp.connect(args.before, args.connect_attempts)

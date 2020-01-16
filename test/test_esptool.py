@@ -353,12 +353,12 @@ class TestFlashSizes(EsptoolTestCase):
             # assume this is not the flash size in use
             image = "images/esp8266_sdk/boot_v1.4(b1).bin"
             offset = 0x0
-        elif chip in ["esp32", "esp32s2beta"]:
+        elif chip in ["esp32", "esp32s2"]:
             # this image is configured for 2MB flash by default,
             # assume this is not the flash size in use
             image = {
                 "esp32": "images/bootloader_esp32.bin",
-                "esp32s2beta": "images/bootloader_esp32s2beta.bin",
+                "esp32s2": "images/bootloader_esp32s2.bin",
             }[chip]
             offset = 0x1000
         else:
@@ -465,7 +465,7 @@ class TestKeepImageSettings(EsptoolTestCase):
     BL_IMAGE = {
         "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
         "esp32": "images/bootloader_esp32.bin",
-        "esp32s2beta": "images/bootloader_esp32s2beta.bin",
+        "esp32s2": "images/bootloader_esp32s2.bin",
         }[chip]
 
     def setUp(self):
@@ -518,7 +518,7 @@ class TestKeepImageSettings(EsptoolTestCase):
 
 
 class TestLoadRAM(EsptoolTestCase):
-    @unittest.skipIf(chip == "esp32s2beta", "TODO: write a IRAM test binary for esp32s2")
+    @unittest.skipIf(chip == "esp32s2", "TODO: write a IRAM test binary for esp32s2")
     def test_load_ram(self):
         """ Verify load_ram command
 
@@ -560,7 +560,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
     def test_flash_header_rewrite(self):
         bl_image = { "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
                      "esp32": "images/bootloader_esp32.bin",
-                     "esp32s2beta": "images/bootloader_esp32s2beta.bin" }[chip]
+                     "esp32s2": "images/bootloader_esp32s2.bin" }[chip]
 
         output = self.run_esptool("write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, bl_image))
         self.assertIn("Flash params set to", output)
