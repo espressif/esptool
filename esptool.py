@@ -296,7 +296,7 @@ class ESPLoader(object):
         connect_mode parameter) as part of querying the chip.
         """
         detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
-        detect_port.connect(connect_mode, connect_attempts)
+        detect_port.connect(connect_mode, connect_attempts, detecting=True)
         try:
             print('Detecting chip type...', end='')
             sys.stdout.flush()
@@ -494,7 +494,7 @@ class ESPLoader(object):
                 last_error = e
         return last_error
 
-    def connect(self, mode='default_reset', attempts=DEFAULT_CONNECT_ATTEMPTS):
+    def connect(self, mode='default_reset', attempts=DEFAULT_CONNECT_ATTEMPTS, detecting=False):
         """ Try connecting repeatedly until successful, or giving up """
         print('Connecting...', end='')
         sys.stdout.flush()
@@ -504,13 +504,31 @@ class ESPLoader(object):
             for _ in range(attempts) if attempts > 0 else itertools.count():
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
                 if last_error is None:
-                    return
+                    break
                 last_error = self._connect_attempt(mode=mode, esp32r0_delay=True)
                 if last_error is None:
-                    return
+                    break
         finally:
             print('')  # end 'Connecting...' line
-        raise FatalError('Failed to connect to %s: %s' % (self.CHIP_NAME, last_error))
+
+        if last_error is not None:
+            raise FatalError('Failed to connect to %s: %s' % (self.CHIP_NAME, last_error))
+
+        if not detecting:
+            # check the date code registers match what we expect to see
+            date_reg = self.read_reg(self.UART_DATE_REG_ADDR)
+            date_reg2 = self.read_reg(self.UART_DATE_REG2_ADDR)
+            if date_reg != self.DATE_REG_VALUE or (self.DATE_REG2_VALUE is not None and date_reg2 != self.DATE_REG2_VALUE):
+                actually = None
+                for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM]:
+                    if date_reg == cls.DATE_REG_VALUE and (cls.DATE_REG2_VALUE is None or date_reg2 == cls.DATE_REG2_VALUE):
+                        actually = cls
+                        break
+                if actually is None:
+                    print(("WARNING: This chip doesn't appear to be a %s (date codes 0x%08x:0x%08x). " +
+                          "Probably it is unsupported by this version of esptool.") % (self.CHIP_NAME, date_reg, date_reg2))
+                else:
+                    raise FatalError("This chip is %s not %s. Wrong --chip argument?" % (actually.CHIP_NAME, self.CHIP_NAME))
 
     def read_reg(self, addr):
         """ Read memory address in target """
