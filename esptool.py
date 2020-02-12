@@ -435,6 +435,31 @@ class ESPLoader(object):
         # request is sent with the updated RTS state and the same DTR state
         self._port.setDTR(self._port.dtr)
 
+    def bootloader_reset(self, esp32r0_delay=False):
+        """ Issue a reset-to-bootloader, with esp32r0 workaround options """
+        # RTS = either CH_PD/EN or nRESET (both active low = chip in reset)
+        # DTR = GPIO0 (active low = boot to flasher)
+        #
+        # DTR & RTS are active low signals,
+        # ie True = pin @ 0V, False = pin @ VCC.
+        self._setDTR(False)  # IO0=HIGH
+        self._setRTS(True)   # EN=LOW, chip in reset
+        time.sleep(0.1)
+        if esp32r0_delay:
+            # Some chips are more likely to trigger the esp32r0
+            # watchdog reset silicon bug if they're held with EN=LOW
+            # for a longer period
+            time.sleep(1.2)
+        self._setDTR(True)   # IO0=LOW
+        self._setRTS(False)  # EN=HIGH, chip out of reset
+        if esp32r0_delay:
+            # Sleep longer after reset.
+            # This workaround only works on revision 0 ESP32 chips,
+            # it exploits a silicon bug spurious watchdog reset.
+            time.sleep(0.4)  # allow watchdog reset to occur
+        time.sleep(0.05)
+        self._setDTR(False)  # IO0=HIGH, done
+
     def _connect_attempt(self, mode='default_reset', esp32r0_delay=False):
         """ A single connection attempt, with esp32r0 workaround options """
         # esp32r0_delay is a workaround for bugs with the most common auto reset
@@ -453,30 +478,8 @@ class ESPLoader(object):
         if mode == "no_reset_no_sync":
             return last_error
 
-        # issue reset-to-bootloader:
-        # RTS = either CH_PD/EN or nRESET (both active low = chip in reset
-        # DTR = GPIO0 (active low = boot to flasher)
-        #
-        # DTR & RTS are active low signals,
-        # ie True = pin @ 0V, False = pin @ VCC.
-        if mode != 'no_reset':
-            self._setDTR(False)  # IO0=HIGH
-            self._setRTS(True)   # EN=LOW, chip in reset
-            time.sleep(0.1)
-            if esp32r0_delay:
-                # Some chips are more likely to trigger the esp32r0
-                # watchdog reset silicon bug if they're held with EN=LOW
-                # for a longer period
-                time.sleep(1.2)
-            self._setDTR(True)   # IO0=LOW
-            self._setRTS(False)  # EN=HIGH, chip out of reset
-            if esp32r0_delay:
-                # Sleep longer after reset.
-                # This workaround only works on revision 0 ESP32 chips,
-                # it exploits a silicon bug spurious watchdog reset.
-                time.sleep(0.4)  # allow watchdog reset to occur
-            time.sleep(0.05)
-            self._setDTR(False)  # IO0=HIGH, done
+        elif mode != 'no_reset':
+            self.bootloader_reset(esp32r0_delay)
 
         for _ in range(5):
             try:
@@ -1005,6 +1008,7 @@ class ESPLoader(object):
         return norm_xtal
 
     def hard_reset(self):
+        print('Hard resetting via RTS pin...')
         self._setRTS(True)  # EN->LOW
         time.sleep(0.1)
         self._setRTS(False)
@@ -3134,7 +3138,6 @@ def main(custom_commandline=None):
             # the ESP is now running the loaded image, so let it run
             print('Exiting immediately.')
         elif args.after == 'hard_reset':
-            print('Hard resetting via RTS pin...')
             esp.hard_reset()
         elif args.after == 'soft_reset':
             print('Soft resetting...')
