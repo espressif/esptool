@@ -525,6 +525,49 @@ class ESPLoader(object):
                 return p.pid
         print("\nFailed to get PID of a device on {}, using standard reset sequence.".format(active_port))
 
+    def bootloader_reset(self, esp32r0_delay=False, usb_jtag_serial=False):
+        """ Issue a reset-to-bootloader, with esp32r0 workaround options
+        and USB-JTAG-Serial custom reset sequence option
+        """
+        # RTS = either CH_PD/EN or nRESET (both active low = chip in reset)
+        # DTR = GPIO0 (active low = boot to flasher)
+        #
+        # DTR & RTS are active low signals,
+        # ie True = pin @ 0V, False = pin @ VCC.
+        if usb_jtag_serial:
+            # Custom reset sequence, which is required when the device
+            # is connecting via its USB-JTAG-Serial peripheral
+            self._setRTS(False)
+            self._setDTR(False)  # Idle
+            time.sleep(0.1)
+            self._setDTR(True)  # Set IO0
+            self._setRTS(False)
+            time.sleep(0.1)
+            self._setRTS(True)  # Reset. Note dtr/rts calls inverted so we go through (1,1) instead of (0,0)
+            self._setDTR(False)
+            self._setRTS(True)  # Extra RTS set for RTS as Windows only propagates DTR on RTS setting
+            time.sleep(0.1)
+            self._setDTR(False)
+            self._setRTS(False)
+        else:
+            self._setDTR(False)  # IO0=HIGH
+            self._setRTS(True)   # EN=LOW, chip in reset
+            time.sleep(0.1)
+            if esp32r0_delay:
+                # Some chips are more likely to trigger the esp32r0
+                # watchdog reset silicon bug if they're held with EN=LOW
+                # for a longer period
+                time.sleep(1.2)
+            self._setDTR(True)   # IO0=LOW
+            self._setRTS(False)  # EN=HIGH, chip out of reset
+            if esp32r0_delay:
+                # Sleep longer after reset.
+                # This workaround only works on revision 0 ESP32 chips,
+                # it exploits a silicon bug spurious watchdog reset.
+                time.sleep(0.4)  # allow watchdog reset to occur
+            time.sleep(0.05)
+            self._setDTR(False)  # IO0=HIGH, done
+
     def _connect_attempt(self, mode='default_reset', esp32r0_delay=False, usb_jtag_serial=False):
         """ A single connection attempt, with esp32r0 workaround options """
         # esp32r0_delay is a workaround for bugs with the most common auto reset
@@ -543,44 +586,8 @@ class ESPLoader(object):
         if mode == "no_reset_no_sync":
             return last_error
 
-        # issue reset-to-bootloader:
-        # RTS = either CH_PD/EN or nRESET (both active low = chip in reset
-        # DTR = GPIO0 (active low = boot to flasher)
-        #
-        # DTR & RTS are active low signals,
-        # ie True = pin @ 0V, False = pin @ VCC.
         if mode != 'no_reset':
-            if usb_jtag_serial:
-                self._setRTS(False)
-                self._setDTR(False)  # Idle
-                time.sleep(0.1)
-                self._setDTR(True)  # Set IO0
-                self._setRTS(False)
-                time.sleep(0.1)
-                self._setRTS(True)  # Reset. Note dtr/rts calls inverted so we go through (1,1) instead of (0,0)
-                self._setDTR(False)
-                self._setRTS(True)  # Extra RTS set for RTS as Windows only propagates DTR on RTS setting
-                time.sleep(0.1)
-                self._setDTR(False)
-                self._setRTS(False)
-            else:
-                self._setDTR(False)  # IO0=HIGH
-                self._setRTS(True)   # EN=LOW, chip in reset
-                time.sleep(0.1)
-                if esp32r0_delay:
-                    # Some chips are more likely to trigger the esp32r0
-                    # watchdog reset silicon bug if they're held with EN=LOW
-                    # for a longer period
-                    time.sleep(1.2)
-                self._setDTR(True)   # IO0=LOW
-                self._setRTS(False)  # EN=HIGH, chip out of reset
-                if esp32r0_delay:
-                    # Sleep longer after reset.
-                    # This workaround only works on revision 0 ESP32 chips,
-                    # it exploits a silicon bug spurious watchdog reset.
-                    time.sleep(0.4)  # allow watchdog reset to occur
-                time.sleep(0.05)
-                self._setDTR(False)  # IO0=HIGH, done
+            self.bootloader_reset(esp32r0_delay, usb_jtag_serial)
 
         for _ in range(5):
             try:
@@ -1158,6 +1165,7 @@ class ESPLoader(object):
         return norm_xtal
 
     def hard_reset(self):
+        print('Hard resetting via RTS pin...')
         self._setRTS(True)  # EN->LOW
         time.sleep(0.1)
         self._setRTS(False)
@@ -4124,7 +4132,6 @@ def main(argv=None, esp=None):
             # the ESP is now running the loaded image, so let it run
             print('Exiting immediately.')
         elif args.after == 'hard_reset':
-            print('Hard resetting via RTS pin...')
             esp.hard_reset()
         elif args.after == 'soft_reset':
             print('Soft resetting...')
