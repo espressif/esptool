@@ -225,7 +225,7 @@ def _get_sbv2_rsa_primitives(public_key):
 def sign_data(args):
     if args.version == '1':
         return sign_secure_boot_v1(args)
-    else:
+    elif args.version == '2':
         return sign_secure_boot_v2(args)
 
 
@@ -259,23 +259,49 @@ def sign_secure_boot_v2(args):
     """ Sign a firmware app image with an RSA private key using RSA-PSS, write output file with a
     Secure Boot V2 header appended.
     """
+    SECTOR_SIZE = 4096
+    SIG_BLOCK_SIZE = 1216
+    SIG_BLOCK_MAX_COUNT = 3
+
+    signature_sector = b""
+    key_count = len(args.keyfile)
     contents = args.datafile.read()
 
-    SECTOR_SIZE = 4096
+    if key_count > SIG_BLOCK_MAX_COUNT:
+        print("WARNING: Upto %d signing keys are supported for ESP32-S2. For ESP32-ECO3 only 1 signing key is supported", SIG_BLOCK_MAX_COUNT)
+
     if len(contents) % SECTOR_SIZE != 0:
         pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
         print("Padding data contents by %d bytes so signature sector aligns at sector boundary" % pad_by)
         contents += b'\xff' * pad_by
+    elif args.append_signatures:
+        sig_block_num = 0
 
+        while sig_block_num < SIG_BLOCK_MAX_COUNT:
+            sig_block = validate_signature_block(contents, sig_block_num)
+            if sig_block is None:
+                break
+            signature_sector += sig_block  # Signature sector is populated with already valid blocks
+            sig_block_num += 1
+
+        assert len(signature_sector) % SIG_BLOCK_SIZE == 0
+
+        if sig_block_num == 0:
+            raise esptool.FatalError("No valid signature blocks found. Discarding --append-signature and proceeding to sign the image afresh.")
+        else:
+            print("%d valid signature block(s) already present in the signature sector." % sig_block_num)
+
+            empty_signature_blocks = SIG_BLOCK_MAX_COUNT - sig_block_num
+            if key_count > empty_signature_blocks:
+                raise esptool.FatalError("Number of keys(%d) more than the empty signature blocks.(%d)" % (key_count, empty_signature_blocks))
+
+            contents = contents[:len(contents) - SECTOR_SIZE]  # Signature stripped off the content (the legitimate blocks are included in signature_sector)
+
+    print("%d signing key(s) found." % key_count)
     # Calculate digest of data file
     digest = hashlib.sha256()
     digest.update(contents)
     digest = digest.digest()
-
-    signature_sector = b""
-
-    if len(args.keyfile) > 1:
-        print("WARNING: Only one signing key is supported for ESP32")  # TODO: need to update for ESP32-S2
 
     for keyfile in args.keyfile:
         private_key = _load_sbv2_rsa_signing_key(keyfile.read())
@@ -310,10 +336,11 @@ def sign_secure_boot_v2(args):
         signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xffffffff)
         signature_block += b'\x00' * 16   # padding
 
-        assert len(signature_block) == 1216
+        assert len(signature_block) == SIG_BLOCK_SIZE
         signature_sector += signature_block
 
-    assert len(signature_sector) > 0
+    assert len(signature_sector) > 0 and len(signature_sector) <= SIG_BLOCK_SIZE * 3 and len(signature_sector) % SIG_BLOCK_SIZE == 0
+    total_sig_blocks = len(signature_sector) // SIG_BLOCK_SIZE
 
     # Pad signature_sector to sector
     signature_sector = signature_sector + \
@@ -326,12 +353,13 @@ def sign_secure_boot_v2(args):
         args.output = args.datafile.name
     with open(args.output, "wb") as f:
         f.write(contents + signature_sector)
+    print("Signed %d bytes of data from %s. Signature sector now has %d signature blocks." % (len(contents), args.datafile.name, total_sig_blocks))
 
 
 def verify_signature(args):
     if args.version == '1':
         return verify_signature_v1(args)
-    else:
+    elif args.version == '2':
         return verify_signature_v2(args)
 
 
@@ -367,36 +395,47 @@ def verify_signature_v1(args):
         raise esptool.FatalError("Signature is not valid")
 
 
+def validate_signature_block(image_content, sig_blk_num):
+    SECTOR_SIZE = 4096
+    SIG_BLOCK_SIZE = 1216  # Refer to secure boot v2 signature block format for more details.
+
+    offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
+    sig_blk = image_content[offset: offset + SIG_BLOCK_SIZE]
+    assert(len(sig_blk) == SIG_BLOCK_SIZE)
+
+    sig_data = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
+    crc = zlib.crc32(sig_blk[:1196])  # The signature block(1216 bytes) consists of the data part(1196 bytes) followed by a crc32(4 byte) and a 16 byte pad.
+
+    if sig_data[0] != 0xe7 or sig_data[1] != 0x02 or sig_data[-1] != crc & 0xffffffff:  # Signature block invalid
+        return None
+
+    print("Signature BLK%d is valid. " % sig_blk_num)
+    return sig_blk
+
+
 def verify_signature_v2(args):
     """ Verify a previously signed binary image, using the RSA public key """
     SECTOR_SIZE = 4096
-    SIG_BLOCK_SIZE = 1216
-    vk = _get_sbv2_rsa_pub_key(args.keyfile)
-    binary_content = args.datafile.read()
+    SIG_BLOCK_MAX_COUNT = 3
 
-    assert(len(binary_content) % SECTOR_SIZE == 0)
+    vk = _get_sbv2_rsa_pub_key(args.keyfile)
+    image_content = args.datafile.read()
+    if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
+        raise esptool.FatalError("Invalid datafile. Data size should be non-zero & a multiple of 4096.")
+
     digest = digest = hashlib.sha256()
-    digest.update(binary_content[:-SECTOR_SIZE])
+    digest.update(image_content[:-SECTOR_SIZE])
     digest = digest.digest()
 
-    for sig_blk_num in range(1):
-        offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
-        sig_blk = binary_content[offset: offset + SIG_BLOCK_SIZE]
-        assert(len(sig_blk) == SIG_BLOCK_SIZE)
-
+    for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
+        sig_blk = validate_signature_block(image_content, sig_blk_num)
+        if sig_blk is None:
+            raise esptool.FatalError("Signature BLK%d invalid. Signature could not be verified with the provided key." % sig_blk_num)
         sig_data = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
-        crc = zlib.crc32(sig_blk[:1196])
 
-        if sig_data[0] != 0xe7:
-            raise esptool.FatalError("Signature block has invalid magic byte %d. Expected 0xe7 (231)." % sig_data[0])
-        if sig_data[1] != 0x02:
-            raise esptool.FatalError("Signature block has invalid version %d. This version  of espsecure only supports version 2." % sig_data[1])
-        if sig_data[-1] != crc & 0xffffffff:
-            raise esptool.FatalError("Signature block crc does not match %d. Expected %d. " % (sig_data[-1], crc))
         if sig_data[2] != digest:
-            esptool.FatalError("Signature block image digest does not match the actual image digest %s. Expected %s." % (digest, sig_data[2]))
+            raise esptool.FatalError("Signature block image digest does not match the actual image digest %s. Expected %s." % (digest, sig_data[2]))
 
-        print("Verifying %d bytes of data" % len(sig_data[-2]))
         try:
             vk.verify(
                 sig_data[-2][::-1],
@@ -407,12 +446,12 @@ def verify_signature_v2(args):
                 ),
                 utils.Prehashed(hashes.SHA256())
             )
-            print("Signature BLK%d verified" % sig_blk_num)
+            print("Signature BLK%d verification successful with %s." % (sig_blk_num, args.keyfile.name))
             return
         except exceptions.InvalidSignature:
-            print("Signature BLK %d is not signed by %s. Checking the next block" % (sig_blk_num, args.keyfile.name))
+            print("Signature BLK%d is not signed by %s. Checking the next block" % (sig_blk_num, args.keyfile.name))
             continue
-    raise esptool.FatalError("Checked all blocks. Signature is not valid.")
+    raise esptool.FatalError("Checked all blocks. Signature could not be verified with the provided key.")
 
 
 def extract_public_key(args):
@@ -657,6 +696,8 @@ def main():
                               'or RSA-PSS w/ SHA-256 (V2).')
     p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices=["1", "2"], required=True)
     p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True, nargs='+')
+    p.add_argument('--append_signatures', '-a', help="Append signature block(s) to already signed image" +
+                   "Valid only for ESP32-S2.", action='store_true')
     p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to sign the input file.")
     p.add_argument('datafile', help="File to sign. For version 1, this can be any file. For version 2, this must be a valid app image.",
                    type=argparse.FileType('rb'))
