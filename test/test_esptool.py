@@ -144,7 +144,7 @@ class TestFlashEncryption(EsptoolTestCase):
     def valid_key_present(self):
         esp = esptool.ESP32ROM(serialport)
         esp.connect()
-        efuses = espefuse.EspEfuses(esp)
+        efuses, _ = espefuse.get_efuses(esp=esp)
         blk1_rd_en = efuses["BLK1"].is_readable()
         return not blk1_rd_en
 

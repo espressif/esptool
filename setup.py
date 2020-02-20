@@ -4,7 +4,7 @@ import io
 import os
 import re
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 # Example code to pull version from esptool.py with regex, taken from
@@ -108,10 +108,13 @@ setup(
     ],
     install_requires=[
         'pyserial>=3.0',
+        'reedsolo',
         'pyaes',
         'ecdsa',
         'cryptography>=2.1.4',
+        'bitstring',
     ],
+    packages=find_packages(exclude=['ecdsa', 'pyaes']),
     scripts=scripts,
     entry_points=entry_points,
 )
