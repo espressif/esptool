@@ -27,7 +27,7 @@ script:
   # this is hacky, installing test script deps via pip as need to be in the virtualenv
   # but don't count if only in setup.py's .eggs dir, and "setup.py test" integration
   # doesn't allow running esptool.py as a script...
-  - pip install pyserial pyelftools
+  - pip install pyserial pyelftools cryptography
   - python test/test_imagegen.py
   - python test/test_espsecure.py
   - pip install flake8 flake8-future-import  # matches tests_require in setup.py, a bit hacky
