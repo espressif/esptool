@@ -201,7 +201,7 @@ class ESPLoader(object):
     ESP_FLASH_DEFL_END   = 0x12
     ESP_SPI_FLASH_MD5    = 0x13
 
-    # Commands supported by ESP32S2 ROM bootloader only
+    # Commands supported by ESP32-S2 ROM bootloader only
     ESP_GET_SECURITY_INFO = 0x14
 
     # Some commands supported by stub only
@@ -234,7 +234,7 @@ class ESPLoader(object):
     FLASH_SECTOR_SIZE = 0x1000
 
     UART_DATE_REG_ADDR = 0x60000078  # used to differentiate ESP8266 vs ESP32*
-    UART_DATE_REG2_ADDR = 0x3f400074  # used to differentiate ESP32S2 vs other models
+    UART_DATE_REG2_ADDR = 0x3f400074  # used to differentiate ESP32-S2 vs other models
 
     UART_CLKDIV_MASK = 0xFFFFF
 
@@ -1434,7 +1434,7 @@ class ESP32ROM(ESPLoader):
 
 
 class ESP32S2ROM(ESP32ROM):
-    CHIP_NAME = "ESP32S2"
+    CHIP_NAME = "ESP32-S2"
     IMAGE_CHIP_ID = 2
 
     IROM_MAP_START = 0x40080000
@@ -1442,7 +1442,7 @@ class ESP32S2ROM(ESP32ROM):
     DROM_MAP_START = 0x3F000000
     DROM_MAP_END   = 0x3F3F0000
 
-    DATE_REG_VALUE = 0x00000500   # This is actually UART_ID_REG(0) on ESP32S2
+    DATE_REG_VALUE = 0x00000500   # This is actually UART_ID_REG(0) on ESP32-S2
     DATE_REG2_VALUE = 0x19031400  # this is the date register
 
     SPI_REG_BASE = 0x3f402000
@@ -1455,7 +1455,7 @@ class ESP32S2ROM(ESP32ROM):
 
     EFUSE_REG_BASE = 0x3f41A030  # BLOCK0 read base address
 
-    MAC_EFUSE_REG = 0x3f41A044  # ESP32S2 has special block for MAC efuses
+    MAC_EFUSE_REG = 0x3f41A044  # ESP32-S2 has special block for MAC efuses
 
     UART_CLKDIV_REG = 0x3f400014
 
@@ -1466,7 +1466,7 @@ class ESP32S2ROM(ESP32ROM):
         return ["WiFi"]
 
     def get_crystal_freq(self):
-        # ESP32S2 XTAL is fixed to 40MHz
+        # ESP32-S2 XTAL is fixed to 40MHz
         return 40
 
     def override_vddsdio(self, new_voltage):
@@ -1499,7 +1499,7 @@ ESP32ROM.STUB_CLASS = ESP32StubLoader
 
 
 class ESP32S2StubLoader(ESP32S2ROM):
-    """ Access class for ESP32S2 stub loader, runs on top of ROM.
+    """ Access class for ESP32-S2 stub loader, runs on top of ROM.
 
     (Basically the same as ESP2StubLoader, but different base class.
     Can possibly be made into a mixin.)
@@ -1528,12 +1528,14 @@ class ESPBOOTLOADER(object):
 
 
 def LoadFirmwareImage(chip, filename):
-    """ Load a firmware image. Can be for ESP8266 or ESP32. ESP8266 images will be examined to determine if they are
-        original ROM firmware images (ESP8266ROMFirmwareImage) or "v2" OTA bootloader images.
+    """ Load a firmware image. Can be for any supported SoC.
+
+        ESP8266 images will be examined to determine if they are original ROM firmware images (ESP8266ROMFirmwareImage)
+        or "v2" OTA bootloader images.
 
         Returns a BaseFirmwareImage subclass, either ESP8266ROMFirmwareImage (v1) or ESP8266V2FirmwareImage (v2).
     """
-    chip = chip.lower()
+    chip = chip.lower().replace("-", "")
     with open(filename, 'rb') as f:
         if chip == 'esp32':
             return ESP32FirmwareImage(f)
