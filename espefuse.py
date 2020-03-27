@@ -903,7 +903,7 @@ def main():
     parser.add_argument(
         '--port', '-p',
         help='Serial port device',
-        default=os.environ.get('ESPTOOL_PORT', esptool.ESPLoader.DEFAULT_PORT))
+        default=os.environ.get('ESPTOOL_PORT', None))
 
     parser.add_argument(
         '--before',
@@ -997,8 +997,10 @@ def main():
     # each 'operation' is a module-level function of the same name
     operation_func = globals()[args.operation]
 
-    esp = esptool.ESP32ROM(args.port, baud=args.baud)
-    esp.connect(args.before)
+    # Connect to a device at given port, or iterate through ports if none provided
+    args.chip = 'auto' # set chip type to auto so connection searches for all devices
+    args.trace = False # set trace_enabled to false, this is the default for esptool.
+    esp = esptool.connect_to_esp(args, args.baud)
 
     # dict mapping register name to its efuse object
     efuses = EspEfuses(esp)

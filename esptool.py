@@ -3084,34 +3084,8 @@ def main(custom_commandline=None):
         else:
             initial_baud = args.baud
 
-        if args.port is None:
-            ser_list = sorted(ports.device for ports in list_ports.comports())
-            print("Found %d serial ports" % len(ser_list))
-        else:
-            ser_list = [args.port]
-        esp = None
-        for each_port in reversed(ser_list):
-            print("Serial port %s" % each_port)
-            try:
-                if args.chip == 'auto':
-                    esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace,
-                                                args.connect_attempts)
-                else:
-                    chip_class = {
-                        'esp8266': ESP8266ROM,
-                        'esp32': ESP32ROM,
-                        'esp32s2': ESP32S2ROM,
-                    }[args.chip]
-                    esp = chip_class(each_port, initial_baud, args.trace)
-                    esp.connect(args.before, args.connect_attempts)
-                break
-            except (FatalError, OSError) as err:
-                if args.port is not None:
-                    raise
-                print("%s failed to connect: %s" % (each_port, err))
-                esp = None
-        if esp is None:
-            raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
+        # Connect to a device at given port, or iterate through ports if none provided
+        esp = connect_to_esp(args, initial_baud)
 
         print("Chip is %s" % (esp.get_chip_description()))
 
@@ -3200,6 +3174,40 @@ def expand_file_arguments():
         print("esptool.py %s" % (" ".join(new_args[1:])))
         sys.argv = new_args
 
+def connect_to_esp(args, initial_baud):
+    """Connects to an esp device at provided serial port.
+
+    If no serial port is provided in arguments, iterate through avaliable ports to find an esp device
+
+    Returns a connected esp device or throws a FatalError
+    """
+    if args.port is None:
+        ser_list = sorted(ports.device for ports in list_ports.comports())
+        print("Found %d serial ports" % len(ser_list))
+    else:
+        ser_list = [args.port]
+    esp = None
+    for each_port in reversed(ser_list):
+        print("Serial port %s" % each_port)
+        try:
+            if args.chip == 'auto':
+                esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace)
+            else:
+                chip_class = {
+                    'esp8266': ESP8266ROM,
+                    'esp32': ESP32ROM,
+                }[args.chip]
+                esp = chip_class(each_port, initial_baud, args.trace)
+                esp.connect(args.before)
+            break
+        except (FatalError, OSError) as err:
+            if args.port is not None:
+                raise
+            print("%s failed to connect: %s" % (each_port, err))
+            esp = None
+    if esp is None:
+            raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
+    return esp
 
 class FlashSizeAction(argparse.Action):
     """ Custom flash size parser class to support backwards compatibility with megabit size arguments.
