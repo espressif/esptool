@@ -3174,6 +3174,7 @@ def expand_file_arguments():
         print("esptool.py %s" % (" ".join(new_args[1:])))
         sys.argv = new_args
 
+
 def connect_to_esp(args, initial_baud):
     """Connects to an esp device at provided serial port.
 
@@ -3206,8 +3207,9 @@ def connect_to_esp(args, initial_baud):
             print("%s failed to connect: %s" % (each_port, err))
             esp = None
     if esp is None:
-            raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
+        raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
     return esp
+
 
 class FlashSizeAction(argparse.Action):
     """ Custom flash size parser class to support backwards compatibility with megabit size arguments.

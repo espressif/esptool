@@ -998,8 +998,8 @@ def main():
     operation_func = globals()[args.operation]
 
     # Connect to a device at given port, or iterate through ports if none provided
-    args.chip = 'auto' # set chip type to auto so connection searches for all devices
-    args.trace = False # set trace_enabled to false, this is the default for esptool.
+    args.chip = 'auto'  # set chip type to auto so connection searches for all devices
+    args.trace = False  # set trace_enabled to false, this is the default for esptool.
     esp = esptool.connect_to_esp(args, args.baud)
 
     # dict mapping register name to its efuse object
