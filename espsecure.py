@@ -409,7 +409,7 @@ def validate_signature_block(image_content, sig_blk_num):
     if sig_data[0] != 0xe7 or sig_data[1] != 0x02 or sig_data[-1] != crc & 0xffffffff:  # Signature block invalid
         return None
 
-    print("Signature BLK%d is valid. " % sig_blk_num)
+    print("Signature block %d is valid. " % sig_blk_num)
     return sig_blk
 
 
@@ -430,7 +430,7 @@ def verify_signature_v2(args):
     for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
         sig_blk = validate_signature_block(image_content, sig_blk_num)
         if sig_blk is None:
-            raise esptool.FatalError("Signature BLK%d invalid. Signature could not be verified with the provided key." % sig_blk_num)
+            raise esptool.FatalError("Signature block %d invalid. Signature could not be verified with the provided key." % sig_blk_num)
         sig_data = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
 
         if sig_data[2] != digest:
@@ -446,10 +446,10 @@ def verify_signature_v2(args):
                 ),
                 utils.Prehashed(hashes.SHA256())
             )
-            print("Signature BLK%d verification successful with %s." % (sig_blk_num, args.keyfile.name))
+            print("Signature block %d verification successful with %s." % (sig_blk_num, args.keyfile.name))
             return
         except exceptions.InvalidSignature:
-            print("Signature BLK%d is not signed by %s. Checking the next block" % (sig_blk_num, args.keyfile.name))
+            print("Signature block %d is not signed by %s. Checking the next block" % (sig_blk_num, args.keyfile.name))
             continue
     raise esptool.FatalError("Checked all blocks. Signature could not be verified with the provided key.")
 
@@ -469,6 +469,41 @@ def extract_public_key(args):
         )
         args.public_keyfile.write(vk)
     print("%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name))
+
+
+def _sha256_digest(data):
+    digest = hashlib.sha256()
+    digest.update(data)
+    return digest.digest()
+
+
+def signature_info_v2(args):
+    """ Validates the signature block and prints the rsa public key digest for valid blocks """
+    SECTOR_SIZE = 4096
+    SIG_BLOCK_MAX_COUNT = 3
+    SIG_BLOCK_SIZE = 1216  # Refer to secure boot v2 signature block format for more details.
+
+    image_content = args.datafile.read()
+    if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
+        raise esptool.FatalError("Invalid datafile. Data size should be non-zero & a multiple of 4096.")
+
+    digest = _sha256_digest(image_content[:-SECTOR_SIZE])
+
+    for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
+        sig_blk = validate_signature_block(image_content, sig_blk_num)
+        if sig_blk is None:
+            print("Signature block %d absent/invalid. Skipping checking next blocks." % sig_blk_num)
+            return
+
+        sig_data = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
+        if sig_data[2] != digest:
+            raise esptool.FatalError("Digest in signature block %d doesn't match the image digest." % (sig_blk_num))
+
+        offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
+        sig_blk = image_content[offset: offset + SIG_BLOCK_SIZE]
+        key_digest = _sha256_digest(sig_blk[36:812])
+
+        print("Public key digest for block %d: %s" % (sig_blk_num, " ".join("{:02x}".format(ord(c)) for c in key_digest)))
 
 
 def _digest_rsa_public_key(keyfile):
@@ -721,6 +756,9 @@ def main():
     p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be private or public key in PEM format.", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('--output', '-o', help="Output file for the digest.", required=True)
+
+    p = subparsers.add_parser('signature_info_v2', help='Reads the signature block and provides the signature block information.')
+    p.add_argument('datafile', help="Secure boot v2 signed data file.", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. ' +
                               'This can be used as a reproducible secure bootloader or flash encryption key.')
