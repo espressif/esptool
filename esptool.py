@@ -1197,6 +1197,9 @@ class ESP32ROM(ESPLoader):
     SPI_MISO_DLEN_OFFS = 0x2c
     EFUSE_REG_BASE = 0x6001a000
 
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE + 0x18
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = (1 << 7)  # EFUSE_RD_DISABLE_DL_ENCRYPT
+
     DR_REG_SYSCON_BASE = 0x3ff66000
 
     SPI_W0_OFFS = 0x80
@@ -1280,6 +1283,12 @@ class ESP32ROM(ESPLoader):
         else:
             # if read of the efuse is disabled we assume it is set correctly
             return 0xF
+
+    def get_encrypted_download_disabled(self):
+        if self.read_reg(self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG) & self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT:
+            return True
+        else:
+            return False
 
     def get_chip_description(self):
         word3 = self.read_efuse(3)
@@ -1439,6 +1448,9 @@ class ESP32S2ROM(ESP32ROM):
     MAC_EFUSE_REG = 0x3f41A044  # ESP32S2 has special block for MAC efuses
 
     UART_CLKDIV_REG = 0x3f400014
+
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 19
 
     def get_chip_description(self):
         return "ESP32S2 Beta"
@@ -2463,6 +2475,11 @@ def write_flash(esp, args):
     # For encrypt option we do few sanity checks before actual flash write
     if args.encrypt:
         do_write = True
+
+        if esp.get_encrypted_download_disabled():
+            raise FatalError("This chip has encrypt functionality in UART download mode disabled. "
+                             + "This is the Flash Encryption configuration for Production mode instead of Development mode.")
+
         crypt_cfg_efuse = esp.get_flash_crypt_config()
 
         if crypt_cfg_efuse != 0xF:
