@@ -2830,6 +2830,7 @@ def main(custom_commandline=None):
 
     parser.add_argument('--chip', '-c',
                         help='Target chip type',
+                        type=lambda c: c.lower().replace('-', ''),  # support ESP32-S2, etc.
                         choices=['auto', 'esp8266', 'esp32', 'esp32s2'],
                         default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
