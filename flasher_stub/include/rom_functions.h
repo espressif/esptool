@@ -87,21 +87,28 @@ typedef struct {
 typedef void (*int_handler_t)(void *arg);
 int_handler_t ets_isr_attach(uint32_t int_num, int_handler_t handler,
                              void *arg);
-/* Some ESP32-only ROM functions */
-#if defined(ESP32) || defined(ESP32S2)
+/* Some ESP32-onwards ROM functions */
+#if ESP32 || ESP32S2
 uint32_t ets_get_detected_xtal_freq(void);
 void uart_tx_flush(int uart);
 uint32_t ets_efuse_get_spiconfig(void);
-SpiFlashOpResult esp_rom_spiflash_write_encrypted(uint32_t addr, const uint8_t *src, uint32_t size);
 
-/* Note: this is a static function whose first argument was elided by the
-   compiler. */
-#ifdef ESP32S2
+#if ESP32
+SpiFlashOpResult esp_rom_spiflash_write_encrypted(uint32_t addr, const uint8_t *src, uint32_t size);
+#else
+void SPI_Write_Encrypt_Enable();
+void SPI_Write_Encrypt_Disable();
+SpiFlashOpResult SPI_Encrypt_Write(uint32_t flash_addr, const void* data, uint32_t len);
+#endif
+
+#if ESP32S2
 SpiFlashOpResult SPI_read_status_high(esp_rom_spiflash_chip_t *spi, uint32_t *status);
 #else
+/* Note: On ESP32 this was a static function whose first argument was elided by the
+   compiler. */
 SpiFlashOpResult SPI_read_status_high(uint32_t *status);
 #endif
 
 SpiFlashOpResult SPI_write_status(esp_rom_spiflash_chip_t *spi, uint32_t status_value);
 
-#endif
+#endif /* ESP32 || ESP32S2 */

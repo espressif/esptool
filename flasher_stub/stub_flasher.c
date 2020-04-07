@@ -224,9 +224,10 @@ void cmd_loop() {
         break;
     case ESP_FLASH_DATA:
     case ESP_FLASH_DEFLATED_DATA:
-#ifdef ESP32
+#if !ESP8266
     case ESP_FLASH_ENCRYPT_DATA:
 #endif
+
       /* ACK DATA commands immediately, then process them a few lines down,
          allowing next command to buffer */
       if(is_in_flash_mode()) {
@@ -306,7 +307,7 @@ void cmd_loop() {
         /* drop into flashing mode, discard 16 byte payload header */
         handle_flash_data(command->data_buf + 16, command->data_len - 16);
         break;
-#ifdef ESP32
+#if !ESP8266
       case ESP_FLASH_ENCRYPT_DATA:
         /* write encrypted data */
         handle_flash_encrypt_data(command->data_buf + 16, command->data_len -16);

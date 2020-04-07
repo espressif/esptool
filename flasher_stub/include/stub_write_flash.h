@@ -32,7 +32,7 @@ esp_command_error handle_flash_deflated_begin(uint32_t uncompressed_size, uint32
 
 void handle_flash_data(void *data_buf, uint32_t length);
 
-#ifdef ESP32
+#if !ESP8266
 void handle_flash_encrypt_data(void *data_buf, uint32_t length);
 #endif
 

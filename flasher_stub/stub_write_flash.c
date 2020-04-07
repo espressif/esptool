@@ -243,8 +243,7 @@ void handle_flash_data(void *data_buf, uint32_t length) {
   fs.remaining -= length;
 }
 
-
-#ifdef ESP32
+#if !ESP8266
 /* Write encrypted data to flash (either direct for non-compressed upload, or
    freshly decompressed.) Erases as it goes.
 
@@ -252,6 +251,11 @@ void handle_flash_data(void *data_buf, uint32_t length) {
 */
 void handle_flash_encrypt_data(void *data_buf, uint32_t length) {
   int last_sector;
+  int res;
+
+#if ESP32S2
+  SPI_Write_Encrypt_Enable();
+#endif
 
   if (length > fs.remaining) {
       /* Trim the final block, as it may have padding beyond
@@ -274,13 +278,24 @@ void handle_flash_encrypt_data(void *data_buf, uint32_t length) {
     {}
 
   /* do the actual write */
-  if (esp_rom_spiflash_write_encrypted(fs.next_write, data_buf, length)) {
+#if ESP32
+  res = esp_rom_spiflash_write_encrypted(fs.next_write, data_buf, length);
+#else
+  res = SPI_Encrypt_Write(fs.next_write, data_buf, length);
+#endif
+
+  if (res) {
     fs.last_error = ESP_FAILED_SPI_OP;
   }
   fs.next_write += length;
   fs.remaining -= length;
-}
+
+#if ESP32S2
+  SPI_Write_Encrypt_Disable();
 #endif
+}
+
+#endif // !ESP8266
 
 void handle_flash_deflated_data(void *data_buf, uint32_t length) {
   static uint8_t out_buf[32768];
