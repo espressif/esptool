@@ -35,6 +35,7 @@
 #define READ_REG(REG) (*((volatile uint32_t *)(REG)))
 #define WRITE_REG(REG, VAL) *((volatile uint32_t *)(REG)) = (VAL)
 #define REG_SET_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)|(mask)))
+#define REG_CLR_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)&(~(mask))))
 
 
 /**********************************************************
@@ -57,6 +58,8 @@
 #define SPI_BASE_REG       0x3f402000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG      0x3f403000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG      0x3f404000
+#define USB_BASE_REG       0x60080000
+#define RTCCNTL_BASE_REG   0x3f408000
 #endif
 
 
@@ -156,3 +159,23 @@
  * We only need to read the strapping register on ESP32 & ESP32S2
  */
 #define GPIO_STRAP_REG    (GPIO_BASE_REG + 0x38)
+
+/**********************************************************
+ * USB peripheral
+ */
+
+#ifdef ESP32S2
+#define ETS_USB_INTR_SOURCE  48
+#define ETS_USB_INUM  9  /* arbitrary level 1 level interrupt */
+#endif // ESP32S2
+
+#define USB_GAHBCFG_REG    (USB_BASE_REG + 0x8)
+#define USB_GLBLLNTRMSK    (1 << 0)
+
+
+/**********************************************************
+ * RTC_CNTL peripheral
+ */
+
+#define RTC_CNTL_OPTION1_REG          (RTCCNTL_BASE_REG + 0x0128)
+#define RTC_CNTL_FORCE_DOWNLOAD_BOOT  (1 << 0)

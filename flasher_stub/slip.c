@@ -15,22 +15,23 @@
  * Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "rom_functions.h"
+#include <stdint.h>
 #include "slip.h"
+#include "stub_io.h"
 
 void SLIP_send_frame_delimiter(void) {
-  uart_tx_one_char('\xc0');
+  stub_tx_one_char('\xc0');
 }
 
 void SLIP_send_frame_data(char ch) {
   if(ch == '\xc0') {
-	uart_tx_one_char('\xdb');
-	uart_tx_one_char('\xdc');
+	stub_tx_one_char('\xdb');
+	stub_tx_one_char('\xdc');
   } else if (ch == '\xdb') {
-	uart_tx_one_char('\xdb');
-	uart_tx_one_char('\xdd');
+	stub_tx_one_char('\xdb');
+	stub_tx_one_char('\xdd');
   } else {
-	uart_tx_one_char(ch);
+	stub_tx_one_char(ch);
   }
 }
 
@@ -82,6 +83,9 @@ int16_t SLIP_recv_byte(char byte, slip_state_t *state)
   return SLIP_NO_BYTE; /* actually a framing error */
 }
 
+/* This function is needed for the synchornous I/O case,
+ * which is only flash_read command at the moment.
+ */
 uint32_t SLIP_recv(void *pkt, uint32_t max_len) {
   uint32_t len = 0;
   slip_state_t state = SLIP_NO_FRAME;
@@ -89,7 +93,7 @@ uint32_t SLIP_recv(void *pkt, uint32_t max_len) {
 
   int16_t r;
   do {
-	r = SLIP_recv_byte(uart_rx_one_char_block(), &state);
+	r = SLIP_recv_byte(stub_rx_one_char(), &state);
 	if(r >= 0 && len < max_len) {
 	  p[len++] = (uint8_t)r;
 	}

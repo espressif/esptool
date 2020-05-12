@@ -125,7 +125,7 @@ class EsptoolTestCase(unittest.TestCase):
         with open(compare_to, "rb") as f:
             ct = f.read()
         if len(rb) != len(ct):
-            print("WARNING: Expected length %d doesn't match comparison %d")
+            print("WARNING: Expected length %d doesn't match comparison %d" % (len(ct), len(rb)))
         print("Readback %d bytes" % len(rb))
         if is_bootloader:
             # writing a bootloader image to bootloader offset can set flash size/etc,
@@ -590,6 +590,9 @@ if __name__ == '__main__':
 
     # unittest also uses argv, so trim the args we used
     sys.argv = [ sys.argv[0] ] + sys.argv[args_used + 1:]
+
+    # esptool skips strapping mode check in USB CDC case, if this is set
+    os.environ["ESPTOOL_TESTING"] = "1"
 
     print("Running esptool.py tests...")
     unittest.main(buffer=True)

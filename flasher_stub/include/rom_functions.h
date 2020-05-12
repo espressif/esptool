@@ -24,6 +24,10 @@
 
 #include <stdint.h>
 
+#if defined(ESP32S2)
+#define WITH_USB 1
+#endif
+
 int uart_rx_one_char(uint8_t *ch);
 uint8_t uart_rx_one_char_block();
 int uart_tx_one_char(char ch);
@@ -63,6 +67,7 @@ void ets_isr_unmask(uint32_t ints);
 void ets_set_user_start(void (*user_start_fn)());
 
 void software_reset();
+void software_reset_cpu(int cpu_no);
 
 struct MD5Context {
   uint32_t buf[4];
@@ -111,4 +116,38 @@ SpiFlashOpResult SPI_read_status_high(uint32_t *status);
 
 SpiFlashOpResult SPI_write_status(esp_rom_spiflash_chip_t *spi, uint32_t status_value);
 
+void intr_matrix_set(int cpu_no, uint32_t module_num, uint32_t intr_num);
 #endif /* ESP32 || ESP32S2 */
+
+
+#ifdef ESP32S2
+extern uint8_t UartDev_buff_uart_no; /* Member of UartDev, indicates which UART is used for SLIP communication */
+#define UART_USB  2                  /* value of the above which indicates that USB CDC is in use */
+#endif // ESP32S2
+
+#ifdef WITH_USB
+#define ACM_BYTES_PER_TX   64
+#define ACM_STATUS_LINESTATE_CHANGED   -1
+#define ACM_STATUS_RX                  -4
+#define LINE_CTRL_BAUD_RATE   (1 << 0)
+#define LINE_CTRL_RTS         (1 << 1)
+#define LINE_CTRL_DTR         (1 << 2)
+#define LINE_CTRL_DCD         (1 << 3)
+#define LINE_CTRL_DSR         (1 << 4)
+#define USBDC_PERSIST_ENA  (1<<31)
+void usb_dw_isr_handler(void* arg);
+typedef void cdc_acm_device;
+extern cdc_acm_device *uart_acm_dev;
+typedef void(*uart_irq_callback_t)(cdc_acm_device *dev, int status);
+void cdc_acm_irq_callback_set(cdc_acm_device *dev, uart_irq_callback_t cb);
+void cdc_acm_irq_rx_enable(cdc_acm_device *dev);
+void cdc_acm_irq_rx_disable(cdc_acm_device *dev);
+int cdc_acm_fifo_read(cdc_acm_device *dev, uint8_t *rx_data, const int size);
+int cdc_acm_fifo_fill(cdc_acm_device *dev, const uint8_t *tx_data, int len);
+int cdc_acm_line_ctrl_get(cdc_acm_device *dev, uint32_t ctrl, uint32_t *val);
+int cdc_acm_rx_fifo_cnt(cdc_acm_device *dev);
+void cdc_acm_irq_state_enable(cdc_acm_device *dev);
+void usb_dc_check_poll_for_interrupts(void);
+void chip_usb_set_persist_flags(uint32_t flags);
+int usb_dc_prepare_persist(void);
+#endif // WITH_USB

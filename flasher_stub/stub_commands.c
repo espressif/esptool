@@ -20,6 +20,7 @@
 #include "rom_functions.h"
 #include "slip.h"
 #include "soc_support.h"
+#include "stub_io.h"
 
 int handle_flash_erase(uint32_t addr, uint32_t len) {
   if (addr % FLASH_SECTOR_SIZE != 0) return 0x32;
@@ -55,7 +56,7 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
   uint32_t num_sent = 0, num_acked = 0;
 
   /* This is one routine where we still do synchronous I/O */
-  ets_isr_mask(1 << ETS_UART0_INUM);
+  stub_rx_async_enable(false);
 
   if (block_size > sizeof(buf)) {
     return;
@@ -81,8 +82,8 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
   MD5Final(digest, &ctx);
   SLIP_send(digest, sizeof(digest));
 
-  /* Go back to async UART */
-  ets_isr_unmask(1 << ETS_UART0_INUM);
+  /* Go back to async RX */
+  stub_rx_async_enable(true);
 }
 
 int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
