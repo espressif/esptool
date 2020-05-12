@@ -55,7 +55,7 @@ STUB_ELF_32 = $(BUILD_DIR)/$(STUB)_32.elf
 STUB_ELF_32S2 = $(BUILD_DIR)/$(STUB)_32s2.elf
 STUB_PY = $(BUILD_DIR)/$(STUB)_snippet.py
 
-.PHONY: all clean
+.PHONY: all clean embed
 
 all: $(STUB_PY)
 
@@ -81,7 +81,11 @@ $(STUB_ELF_32S2): $(SRCS) $(BUILD_DIR) ld/stub_32s2.ld
 
 $(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
-	$(Q) $(WRAP_STUB) $(filter %.elf,$^) $@
+	$(Q) $(WRAP_STUB) --out-file $@ $(filter %.elf,$^)
+
+embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) wrap_stub.py
+	@echo "  WRAP $^ -> esptool.py"
+	$(Q) $(WRAP_STUB) $(filter %.elf,$^)
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR)

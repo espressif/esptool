@@ -22,6 +22,8 @@ import os
 import os.path
 import sys
 import zlib
+import re
+import argparse
 
 sys.path.append('..')
 import esptool
@@ -60,25 +62,69 @@ ESP%sROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b\"\"\"
 %s\"\"\")))
 """
 
-def write_python_snippet(stubs):
-    with open(sys.argv[-1], 'w') as f:
-        f.write("# Binary stub code (see flasher_stub dir for source & details)\n")
-        for key in "8266", "32", "32S2":
-            stub_data = stubs["stub_flasher_%s" % key.lower()]
-            encoded = base64.b64encode(zlib.compress(repr(stub_data).encode("utf-8"), 9)).decode("utf-8")
-            in_lines = ""
-            # split encoded data into 160 character lines
-            LINE_LEN=160
-            for c in range(0, len(encoded), LINE_LEN):
-                in_lines += encoded[c:c+LINE_LEN] + "\\\n"
-            f.write(PYTHON_TEMPLATE % (key, in_lines))
-        print("Python snippet is %d bytes" % f.tell())
+ESPTOOL_PY = "../esptool.py"
+
+
+def write_python_snippet_to_file(stub_name, stub_data, out_file):
+    print("writing %s stub" % stub_name)
+    encoded = base64.b64encode(zlib.compress(repr(stub_data).encode("utf-8"), 9)).decode("utf-8")
+    in_lines = ""
+    # split encoded data into 160 character lines
+    LINE_LEN=160
+    for c in range(0, len(encoded), LINE_LEN):
+        in_lines += encoded[c:c+LINE_LEN] + "\\\n"
+    out_file.write(PYTHON_TEMPLATE % (stub_name, in_lines))
+
+
+def write_python_snippets(stub_dict, out_file):
+    for name, stub_data in stub_dict.items():
+        m = re.match(r"stub_flasher_([a-z0-9_]+)", name)
+        key = m.group(1).upper()
+        write_python_snippet_to_file(key, stub_data, out_file)
+
+
+def embed_python_snippets(stubs):
+    with open(ESPTOOL_PY, 'r') as f:
+        lines = [line for line in f]
+
+    with open(ESPTOOL_PY, "w") as f:
+        skip_until = None
+        for line in lines:
+            if skip_until is not None:
+                if skip_until in line:
+                    skip_until = None
+                continue
+
+            m = re.search(r"ESP([A-Z0-9]+)ROM.STUB_CODE = eval", line)
+            if not m:
+                f.write(line)
+                continue
+
+            key = m.group(1)
+            stub_data = stubs.get("stub_flasher_%s" % key.lower(), None)
+            if not stub_data:
+                f.write(line)
+                continue
+
+            write_python_snippet_to_file(key, stub_data, f)
+            skip_until = r'""")))'
+
 
 def stub_name(filename):
     """ Return a dictionary key for the stub with filename 'filename' """
     return os.path.splitext(os.path.basename(filename))[0]
 
 if __name__ == '__main__':
-    stubs = dict( (stub_name(elf_file),wrap_stub(elf_file)) for elf_file in sys.argv[1:-1] )
-    print('Dumping to Python snippet file %s.' % sys.argv[-1])
-    write_python_snippet(stubs)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--out-file", required=False, type=argparse.FileType('w'),
+                        help="Output file name. If not specified, stubs are embedded into esptool.py.")
+    parser.add_argument("elf_files", nargs="+", help="Stub ELF files to convert")
+    args = parser.parse_args()
+
+    stubs = dict((stub_name(elf_file), wrap_stub(elf_file)) for elf_file in args.elf_files)
+    if args.out_file:
+        print('Dumping to Python snippet file %s.' % args.out_file.name)
+        write_python_snippets(stubs, args.out_file)
+    else:
+        print('Embeddeding Python snippets into esptool.py')
+        embed_python_snippets(stubs)

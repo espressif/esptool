@@ -32,7 +32,7 @@ If you want to build the stub to test modifications or updates, here's how:
 
 # To Test
 
-To test the build stub, you can either copy-paste the code from `build/stub_flasher_snippet.py` into esptool.py manually. Or there are some convenience wrappers to make testing quicker to iterate on:
+To test the built stub, you can run `make embed`, which will update the stubs in `esptool.py` to the newly compiled ones. Or there are some convenience wrappers to make testing quicker to iterate on:
 
 * Running `esptool_test_stub.py` is the same as running `esptool.py`, only it uses the just-compiled stubs from the build directory.
 
