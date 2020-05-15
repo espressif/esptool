@@ -312,7 +312,8 @@ class ESPLoader(object):
                     print(' %s' % inst.CHIP_NAME, end='')
                     return inst
         except UnsupportedCommandError:
-            raise FatalError("Unsupported Command Error received. Probably this means Secure Download Mode is enabled, autodetection will not work. Need to manually specify the chip.")
+            raise FatalError("Unsupported Command Error received. Probably this means Secure Download Mode is enabled, " +
+                             "autodetection will not work. Need to manually specify the chip.")
         finally:
             print('')  # end line
         raise FatalError("Unexpected UART datecode value 0x%08x. Failed to autodetect chip type." % (date_reg))
