@@ -157,7 +157,7 @@ class TestFlashEncryption(EsptoolTestCase):
 
         self.run_esptool("write_flash 0x1000 images/bootloader_esp32.bin 0x8000 images/partitions_singleapp.bin 0x10000 images/helloworld-esp32.bin")
         output = self.run_esptool_error("write_flash --encrypt 0x10000 images/helloworld-esp32.bin")
-        self.assertIn("Incorrect efuse setting: aborting flash write", output)
+        self.assertIn("Flash encryption key is not programmed".lower(), output.lower())
 
     """ since ignore option is specified write should happen even though flash crypt config is 0
     later encrypted flash contents should be read back & compared with precomputed ciphertext
@@ -462,14 +462,13 @@ class TestReadIdentityValues(EsptoolTestCase):
 
 class TestKeepImageSettings(EsptoolTestCase):
     """ Tests for the -fm keep, -ff keep options for write_flash """
-    BL_IMAGE = {
-        "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
-        "esp32": "images/bootloader_esp32.bin",
-        "esp32s2": "images/bootloader_esp32s2.bin",
-        }[chip]
-
     def setUp(self):
         super(TestKeepImageSettings, self).setUp()
+        self.BL_IMAGE = {
+            "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
+            "esp32": "images/bootloader_esp32.bin",
+            "esp32s2": "images/bootloader_esp32s2.bin",
+        }[chip]
         self.flash_offset = 0 if chip == "esp8266" else 0x1000  # bootloader offset
         with open(self.BL_IMAGE, "rb") as f:
             self.header = f.read(8)
