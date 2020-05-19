@@ -1185,6 +1185,7 @@ class ESP8266StubLoader(ESP8266ROM):
     IS_STUB = True
 
     def __init__(self, rom_loader):
+        self.secure_download_mode = rom_loader.secure_download_mode
         self._port = rom_loader._port
         self._trace_enabled = rom_loader._trace_enabled
         self.flush_input()  # resets _slip_reader
