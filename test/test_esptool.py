@@ -63,7 +63,7 @@ class EsptoolTestCase(unittest.TestCase):
             print(e.output)
             raise e
 
-    def run_esptool(self, args, baud=None):
+    def run_esptool(self, args, baud=None, chip_name=chip):
         """ Run esptool with the specified arguments. --chip, --port and --baud
         are filled in automatically from the command line. (can override default baud rate with baud param.)
 
@@ -74,7 +74,10 @@ class EsptoolTestCase(unittest.TestCase):
         if baud is None:
             baud = default_baudrate
         trace_args = [ "--trace" ] if trace_enabled else []
-        cmd = [sys.executable, ESPTOOL_PY ] + trace_args + [ "--chip", chip, "--port", serialport, "--baud", str(baud) ] + args.split(" ")
+        cmd = [sys.executable, ESPTOOL_PY ] + trace_args
+        if chip_name:
+            cmd += [ "--chip", chip ]
+        cmd += ["--port", serialport, "--baud", str(baud) ] + args.split(" ")
         print("Running %s..." % (" ".join(cmd)))
         try:
             output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT)
@@ -571,6 +574,18 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
             output = self.run_esptool("write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, image))
             self.assertIn("not changing any flash settings", output)
             self.verify_readback(self.BL_OFFSET, 1024, image)
+
+
+class TestAutoDetect(EsptoolTestCase):
+    def test_auto_detect(self):
+        output = self.run_esptool("chip_id", chip_name=None)
+        expected_chip_name = {
+            "esp8266": "ESP8266",
+            "esp32": "ESP32",
+            "esp32s2": "ESP32-S2",
+        }[chip]
+        self.assertIn("Detecting chip type... " + expected_chip_name, output)
+        self.assertIn("Chip is " + expected_chip_name, output)
 
 
 if __name__ == '__main__':
