@@ -1522,16 +1522,45 @@ class ESP32S2ROM(ESP32ROM):
     RTC_CNTL_OPTION1_REG = 0x3f408128
     RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x1  # Is download mode forced over USB?
 
+    def get_pkg_version(self):
+        num_word = 3
+        block1_addr = self.EFUSE_BASE + 0x044
+        word3 = self.read_reg(block1_addr + (4 * num_word))
+        pkg_version = (word3 >> 21) & 0x0F
+        return pkg_version
+
     def get_chip_description(self):
-        return "ESP32-S2"
+        chip_name = {
+            0: "ESP32-S2",
+            1: "ESP32-S2FH16",
+            2: "ESP32-S2FH32",
+        }.get(self.get_pkg_version(), "unknown ESP32-S2")
+
+        return "%s" % (chip_name)
 
     def get_chip_features(self):
-        result = ["WiFi"]
+        features = ["WiFi"]
 
         if self.secure_download_mode:
-            result.append("Secure Download Mode Enabled")
+            features += ["Secure Download Mode Enabled"]
 
-        return result
+        pkg_version = self.get_pkg_version()
+
+        if pkg_version in [1, 2]:
+            if pkg_version == 1:
+                features += ["Embedded 2MB Flash"]
+            elif pkg_version == 2:
+                features += ["Embedded 4MB Flash"]
+            features += ["105C temp rating"]
+
+        num_word = 4
+        block2_addr = self.EFUSE_BASE + 0x05C
+        word4 = self.read_reg(block2_addr + (4 * num_word))
+        block2_version = (word4 >> 4) & 0x07
+
+        if block2_version == 1:
+            features += ["ADC and temperature sensor calibration in BLK2 of efuse"]
+        return features
 
     def get_crystal_freq(self):
         # ESP32-S2 XTAL is fixed to 40MHz
