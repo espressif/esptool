@@ -20,21 +20,23 @@ The latest stable esptool.py release can be installed from [pypi](http://pypi.py
 $ pip install esptool
 ```
 
-With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`.
+With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`, or consult your Python installation manual for information about how to access pip.
 
 After installing, you will have `esptool.py` installed into the default Python executables directory and you should be able to run it with the command `esptool.py`.
 
-### Manual Installation
+### Development Mode Installation
 
-Manual installation allows you to run the latest development version from this repository.
+Development mode allows you to run the latest development version from this repository.
 
-esptool.py depends on [pySerial](https://github.com/pyserial/pyserial#readme) version 3.0 or newer for serial communication with the target device.
+```
+$ git clone https://github.com/espressif/esptool.git
+$ cd esptool
+$ pip install --user -e .
+```
 
-If you choose to install esptool.py system-wide by running `python setup.py install`, then this will be taken care of automatically.
+This will install esptool's dependencies and create some executable script wrappers in the user's `bin` directory. The wrappers will run the the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
 
-If not using `setup.py`, then you'll have to install pySerial manually by running something like `pip install pyserial`, `easy_install pyserial` or `apt-get install python-serial`, depending on your platform. (The official pySerial installation instructions are [here](https://pyserial.readthedocs.org/en/latest/pyserial.html#installation)).
-
-esptool.py also bundles the pyaes & ecdsa Python modules as "vendored" libraries. These modules are required when using the ESP32-only `espsecure.py` and `espefuse.py` tools. If you install esptool.py via `pip` or `setup.py` as shown above, then versions of these libraries will be installed from pypi. If you run esptool.py from the repository directory directly, it will use the "vendored" versions.
+It's also possible to run the scripts directly from the working directory with this Development Mode installation.
 
 ## Usage
 

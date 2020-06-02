@@ -108,7 +108,7 @@ setup(
     ],
     install_requires=[
         'pyserial>=3.0',
-        'reedsolo==1.5.3',
+        'reedsolo>=1.5.3,<=1.5.4',
         'pyaes',
         'ecdsa',
         'cryptography>=2.1.4',
