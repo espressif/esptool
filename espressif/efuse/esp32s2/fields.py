@@ -472,7 +472,7 @@ class EfuseField(base_fields.EfuseFieldBase):
 class EfuseTempSensor(EfuseField):
     def get(self, from_read=True):
         value = self.get_bitstring(from_read)
-        sig = -1 * value[0]
+        sig = -1 if value[0] else 1
         return sig * value[1:].uint * 0.1
 
 
@@ -480,7 +480,7 @@ class EfuseAdcPointCalibration(EfuseField):
     def get(self, from_read=True):
         STEP_SIZE = 4
         value = self.get_bitstring(from_read)
-        sig = -1 * value[0]
+        sig = -1 if value[0] else 1
         return sig * value[1:].uint * STEP_SIZE
 
 
