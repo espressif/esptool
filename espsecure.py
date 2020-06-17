@@ -28,20 +28,9 @@ import ecdsa
 import esptool
 from collections import namedtuple
 
-try:  # use pycrypto API if available
-    from Crypto.Cipher import AES
-
-    def ECB(key):
-        return AES.new(key, AES.MODE_ECB)
-
-except ImportError:
-    import pyaes
-
-    def ECB(key):
-        return pyaes.AESModeOfOperationECB(key)
-
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.utils import int_to_bytes
@@ -121,13 +110,15 @@ def digest_secure_bootloader(args):
     # (due to hardware quirks not for security.)
 
     key = _load_hardware_key(args.keyfile)
-    aes = ECB(key)
+    backend = default_backend()
+    cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
+    encryptor = cipher.encryptor()
     digest = hashlib.sha512()
 
     for block in get_chunks(plaintext, 16):
         block = block[::-1]  # reverse each input block
 
-        cipher_block = aes.encrypt(block)
+        cipher_block = encryptor.update(block)
         # reverse and then byte swap each word in the output block
         cipher_block = cipher_block[::-1]
         for block in get_chunks(cipher_block, 4):
@@ -662,7 +653,9 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
         key = int.from_bytes(key, byteorder='big', signed=False)
 
-    aes = None
+    backend = default_backend()
+
+    cipher = None
     block_offs = flash_address
     while True:
         block = input_file.read(16)
@@ -675,24 +668,43 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
             block = block + os.urandom(pad)
             print("Note: Padding with %d bytes of random data (encrypted data must be multiple of 16 bytes long)" % pad)
 
-        if (block_offs % 32 == 0) or aes is None:
+        if block_offs % 32 == 0 or cipher is None:
             # each bit of the flash encryption key is XORed with tweak bits derived from the offset of 32 byte block of flash
             block_key = _flash_encryption_tweak_key(key, block_offs, tweak_range)
-            aes = ECB(block_key)
+
+            if cipher is None:  # first pass
+                cipher = Cipher(algorithms.AES(block_key), modes.ECB(), backend=backend)
+
+                # note AES is used inverted for flash encryption, so
+                # "decrypting" flash uses AES encrypt algorithm and vice
+                # versa. (This does not weaken AES.)
+                actor = cipher.encryptor() if do_decrypt else cipher.decryptor()
+            else:
+                # performance hack: changing the key using pyca-cryptography API requires recreating
+                # 'actor'. With openssl backend, this re-initializes the openssl cipher context. To save some time,
+                # manually call EVP_CipherInit_ex() in the openssl backend to update the key.
+                # If it fails, fall back to recreating the entire context via public API.
+                try:
+                    backend = actor._ctx._backend
+                    res = backend._lib.EVP_CipherInit_ex(
+                        actor._ctx._ctx,
+                        backend._ffi.NULL,
+                        backend._ffi.NULL,
+                        backend._ffi.from_buffer(block_key),
+                        backend._ffi.NULL,
+                        actor._ctx._operation,
+                    )
+                    backend.openssl_assert(res != 0)
+                except AttributeError:
+                    # backend is not an openssl backend, or implementation has changed: fall back to the slow safe version
+                    cipher.algorithm.key = block_key
+                    actor = cipher.encryptor() if do_decrypt else cipher.decryptor()
 
         block = block[::-1]  # reverse input block byte order
+        block = actor.update(block)
 
-        # note AES is used inverted for flash encryption, so
-        # "decrypting" flash uses AES encrypt algorithm and vice
-        # versa. (This does not weaken AES.)
-        if do_decrypt:
-            block = aes.encrypt(block)
-        else:
-            block = aes.decrypt(block)
-
-        block = block[::-1]  # reverse output block byte order
-        output_file.write(block)
-        block_offs += len(block)
+        output_file.write(block[::-1])  # reverse output block byte order
+        block_offs += 16
 
 
 def decrypt_flash_data(args):
