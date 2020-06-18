@@ -21,7 +21,7 @@ import esptool
 import espsecure
 from . import fields
 from .. import util
-from ..base_operations import (dump, burn_efuse, read_protect_efuse, write_protect_efuse,  # noqa: F401
+from ..base_operations import (dump, summary, burn_efuse, read_protect_efuse, write_protect_efuse,  # noqa: F401
                                burn_block_data, burn_bit, add_common_commands, add_force_write_always)  # noqa: F401
 
 
@@ -185,8 +185,8 @@ def burn_key(esp, efuses, args):
 
 
 def burn_key_digest(esp, efuses, args):
-    if efuses.coding_scheme == efuses.CODING_SCHEME_34:
-        raise RuntimeError("burn_key_digest only works with 'None' coding scheme")
+    if efuses.coding_scheme == efuses.REGS.CODING_SCHEME_34:
+        raise esptool.FatalError("burn_key_digest only works with 'None' coding scheme")
 
     chip_revision = esp.get_chip_description()
     if "revision 3" not in chip_revision:

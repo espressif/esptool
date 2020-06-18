@@ -17,6 +17,8 @@ host_tests:
     - ./test/ci/multirun_with_pyenv.sh python setup.py build
     - ./test/ci/multirun_with_pyenv.sh python test/test_imagegen.py
     - ./test/ci/multirun_with_pyenv.sh python test/test_espsecure.py
+    - ./test/ci/multirun_with_pyenv.sh python test/test_espefuse_host.py esp32
+    - ./test/ci/multirun_with_pyenv.sh python test/test_espefuse_host.py esp32s2
 
 check_python_style:
   <<: *test_template

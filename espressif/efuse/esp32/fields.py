@@ -17,10 +17,12 @@
 from __future__ import division, print_function
 
 import struct
+import binascii
 import time
 import esptool
 from .. import base_fields
 from .. import util
+from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 
 
 class EfuseBlock(base_fields.EfuseBlockBase):
@@ -30,7 +32,7 @@ class EfuseBlock(base_fields.EfuseBlockBase):
 
     def __init__(self, parent, param, skip_read=False):
         if skip_read:
-            parent.coding_scheme = parent.CODING_SCHEME_NONE
+            parent.coding_scheme = parent.REGS.CODING_SCHEME_NONE
         else:
             if parent.coding_scheme is None:
                 parent.read_coding_scheme()
@@ -38,7 +40,7 @@ class EfuseBlock(base_fields.EfuseBlockBase):
 
     def apply_coding_scheme(self):
         data = self.get_raw(from_read=False)[::-1]
-        if self.get_coding_scheme() == self.parent.CODING_SCHEME_34:
+        if self.get_coding_scheme() == self.parent.REGS.CODING_SCHEME_34:
             # CODING_SCHEME 3/4 applied only for BLK1..3
             # Takes 24 byte sequence to be represented in 3/4 encoding,
             # returns 8 words suitable for writing "encoded" to an efuse block
@@ -73,127 +75,11 @@ class EspEfuses(base_fields.EspEfusesBase):
     Wrapper object to manage the efuse fields in a connected ESP bootloader
     """
 
-    # List of efuse blocks
-    # Name, Alias, Index, Read address, Write address, Write protect bit, Read protect bit, Len, key_purpose
-    _BLOCKS = [
-        ("BLK0",    None,                  0, 0x3FF5A000, 0x3FF5A01C, None, None, 7,                None),
-        ("BLK1",    "flash_encryption",    1, 0x3FF5A038, 0x3FF5A098, 7,    0,    8,                None),
-        ("BLK2",    "secure_boot",         2, 0x3FF5A058, 0x3FF5A0B8, 8,    1,    8,                None),
-        ("BLK3",    None,                  3, 0x3FF5A078, 0x3FF5A0D8, 9,    2,    8,                None),
-    ]
-
-    BURN_BLOCK_DATA_NAMES = []
-    for block in _BLOCKS:
-        if block[0]:
-            BURN_BLOCK_DATA_NAMES.append(block[0])
-
-    BLOCKS_FOR_KEYS = []
-    for block in _BLOCKS:
-        if block[2] > 0:
-            if block[0]:
-                BLOCKS_FOR_KEYS.append(block[0])
-            if block[1]:
-                BLOCKS_FOR_KEYS.append(block[1])
-
-    # Lists of efuse fields
-    _EFUSES = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('WR_DIS',               "efuse",       0, 0, 0,   "uint:16",   1,    None, None,       "Efuse write disable mask", None),
-        ('RD_DIS',               "efuse",       0, 0, 16,  "uint:4",    0,    None, None,       "Efuse read disable mask", None),
-        ('CODING_SCHEME',        "efuse",       0, 6, 0,   "uint:2",    10,   3,    None,       "Efuse variable block length scheme",
-            {0:"NONE (BLK1-3 len=256 bits)", 1:"3/4 (BLK1-3 len=192 bits)", 2:"REPEAT (BLK1-3 len=128 bits) not supported", 3:"NONE (BLK1-3 len=256 bits)"}),
-        ('KEY_STATUS',           "efuse",       0, 6, 10,  "bool",      10,   3,    None,       "Usage of efuse block 3 (reserved)", None),
-        ('MAC',                  "identity",    0, 1, 0,   "bytes:6",   3,    None, "mac",      "Factory MAC Address", None),
-        ('MAC_CRC',              "identity",    0, 2, 16,  "uint:8",    3,    None, None,       "CRC8 for factory MAC address", None),
-        ('CHIP_VER_REV1',        "identity",    0, 3, 15,  "bool",      3,    None, None,       "Silicon Revision 1", None),
-        ('CHIP_VER_REV2',        "identity",    0, 5, 20,  "bool",      6,    None, None,       "Silicon Revision 2", None),
-        ('CHIP_VERSION',         "identity",    0, 3, 12,  "uint:2",    3,    None, None,       "Reserved for future chip versions", None),
-        ('CHIP_PACKAGE',         "identity",    0, 3, 9,   "uint:3",    3,    None, None,       "Chip package identifier", None),
-        ('XPD_SDIO_FORCE',       "config",      0, 4, 16,  "bool",      5,    None, None,       "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset", None),
-        ('XPD_SDIO_REG',         "config",      0, 4, 14,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset", None),
-        ('XPD_SDIO_TIEH',        "config",      0, 4, 15,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE & XPD_SDIO_REG", {1:"3.3V", 0:"1.8V"}),
-        ('CLK8M_FREQ',           "config",      0, 4, 0,   "uint:8",    None, None, None,       "8MHz clock freq override", None),
-        ('SPI_PAD_CONFIG_CLK',   "config",      0, 5, 0,   "uint:5",    6,    None, "spipin",   "Override SD_CLK pad (GPIO6/SPICLK)", None),
-        ('SPI_PAD_CONFIG_Q',     "config",      0, 5, 5,   "uint:5",    6,    None, "spipin",   "Override SD_DATA_0 pad (GPIO7/SPIQ)", None),
-        ('SPI_PAD_CONFIG_D',     "config",      0, 5, 10,  "uint:5",    6,    None, "spipin",   "Override SD_DATA_1 pad (GPIO8/SPID)", None),
-        ('SPI_PAD_CONFIG_HD',    "config",      0, 3, 4,   "uint:5",    6,    None, "spipin",   "Override SD_DATA_2 pad (GPIO9/SPIHD)", None),
-        ('SPI_PAD_CONFIG_CS0',   "config",      0, 5, 15,  "uint:5",    6,    None, "spipin",   "Override SD_CMD pad (GPIO11/SPICS0)", None),
-        ('DISABLE_SDIO_HOST',    "config",      0, 6, 3,   "bool",      None, None, None,       "Disable SDIO host", None),
-        ('FLASH_CRYPT_CNT',      "security",    0, 0, 20,  "uint:7",    2,    None, "bitcount", "Flash encryption mode counter", None),
-        ('UART_DOWNLOAD_DIS',    "security",    0, 0, 27,  "bool",      2,    None, None,       "Disable UART download mode (ESP32 rev3 only)", None),
-        ('FLASH_CRYPT_CONFIG',   "security",    0, 5, 28,  "uint:4",    10,   3,    None,       "Flash encryption config (key tweak bits)", None),
-        ('CONSOLE_DEBUG_DISABLE',"security",    0, 6, 2,   "bool",      15,   None, None,       "Disable ROM BASIC interpreter fallback", None),
-        ('ABS_DONE_0',           "security",    0, 6, 4,   "bool",      12,   None, None,       "secure boot enabled for bootloader", None),
-        ('ABS_DONE_1',           "security",    0, 6, 5,   "bool",      13,   None, None,       "secure boot abstract 1 locked", None),
-        ('JTAG_DISABLE',         "security",    0, 6, 6,   "bool",      14,   None, None,       "Disable JTAG", None),
-        ('DISABLE_DL_ENCRYPT',   "security",    0, 6, 7,   "bool",      15,   None, None,       "Disable flash encryption in UART bootloader", None),
-        ('DISABLE_DL_DECRYPT',   "security",    0, 6, 8,   "bool",      15,   None, None,       "Disable flash decryption in UART bootloader", None),
-        ('DISABLE_DL_CACHE',     "security",    0, 6, 9,   "bool",      15,   None, None,       "Disable flash cache in UART bootloader", None),
-        ('BLK3_PART_RESERVE',    "calibration", 0, 3, 14,  "bool",      10,   3,    None,       "BLOCK3 partially served for ADC calibration data", None),
-        ('ADC_VREF',             "calibration", 0, 4, 8,   "uint:5",    0,    None, "vref",     "Voltage reference calibration", None),
-        ('MAC_VERSION',          "identity",    3, 5, 24,  "uint:8",    9,    2,    None,       "Version of the MAC field", {1:"Custom MAC in BLK3"}),
-    ]
-
-    # if MAC_VERSION is set "1", these efuse fields are in BLK3:
-    _CUSTOM_MAC = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('CUSTOM_MAC',           "identity",    3, 0, 8,   "bytes:6",   9,    2,   "mac",       "Custom MAC", None),
-        ('CUSTOM_MAC_CRC',       "identity",    3, 0, 0,   "uint:8",    9,    2,    None,       "CRC of custom MAC", None),
-    ]
-
-    # The len of fields depends on coding scheme: for CODING_SCHEME_NONE
-    _KEYBLOCKS_256 = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('BLK1',                 "security",    1, 0, 0,   "bytes:32", 7,    0,    "keyblock", "Flash encryption key", None),
-        ('BLK2',                 "security",    2, 0, 0,   "bytes:32", 8,    1,    "keyblock", "Secure boot key", None),
-        ('BLK3',                 "security",    3, 0, 0,   "bytes:32", 9,    2,    "keyblock", "Variable Block 3", None),
-    ]
-
-    # The len of fields depends on coding scheme: for CODING_SCHEME_34
-    _KEYBLOCKS_192 = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('BLK1',                 "security",    1, 0, 0,   "bytes:24", 7,    0,    "keyblock", "Flash encryption key", None),
-        ('BLK2',                 "security",    2, 0, 0,   "bytes:24", 8,    1,    "keyblock", "Secure boot key", None),
-        ('BLK3',                 "security",    3, 0, 0,   "bytes:24", 9,    2,    "keyblock", "Variable Block 3", None),
-    ]
-
-    # if BLK3_PART_RESERVE is set, these efuse fields are in BLK3:
-    _ADC_CALIBRATION = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('ADC1_TP_LOW',          "calibration", 3, 3, 0,   "uint:7",    9,    2,    "adc_tp",   "ADC1 150mV reading", None),
-        ('ADC1_TP_HIGH',         "calibration", 3, 3, 7,   "uint:9",    9,    2,    "adc_tp",   "ADC1 850mV reading", None),
-        ('ADC2_TP_LOW',          "calibration", 3, 3, 16,  "uint:7",    9,    2,    "adc_tp",   "ADC2 150mV reading", None),
-        ('ADC2_TP_HIGH',         "calibration", 3, 3, 23,  "uint:9",    9,    2,    "adc_tp",   "ADC2 850mV reading", None),
-    ]
-
-    # EFUSE registers & command/conf values
-    EFUSE_REG_CONF = 0x3FF5A0FC
-    EFUSE_CONF_WRITE = 0x5A5A
-    EFUSE_CONF_READ = 0x5AA5
-    EFUSE_REG_CMD  = 0x3FF5A104
-    EFUSE_CMD_WRITE = 0x2
-    EFUSE_CMD_READ  = 0x1
-
-    # 3/4 Coding scheme warnings registers
-    EFUSE_REG_DEC_STATUS = 0x3FF5A11C
-    EFUSE_REG_DEC_STATUS_MASK = 0xFFF
-
-    # Efuse clock control
-    EFUSE_DAC_CONF_REG = 0x3FF5A118
-    EFUSE_CLK_REG = 0x3FF5A0F8
-    EFUSE_DAC_CLK_DIV_MASK = 0xFF
-    EFUSE_CLK_SEL0_MASK = 0x00FF
-    EFUSE_CLK_SEL1_MASK = 0xFF00
-
-    EFUSE_CLK_SETTINGS = {
-        # APB freq: clk_sel0, clk_sel1, dac_clk_div
-        # Taken from TRM chapter "eFuse Controller": Timing Configuration
-        26: (250, 255, 52),
-        40: (160, 255, 80),
-        80: (80, 128, 100),  # this is here for completeness only as esptool never sets an 80MHz APB clock
-    }
-
-    EFUSE_BURN_TIMEOUT = 0.250  # seconds
+    Blocks  = EfuseDefineBlocks()
+    Fields  = EfuseDefineFields()
+    REGS    = EfuseDefineRegisters
+    BURN_BLOCK_DATA_NAMES = Blocks.get_burn_block_data_names()
+    BLOCKS_FOR_KEYS = Blocks.get_blocks_for_keys()
 
     debug = False
     do_not_confirm = False
@@ -202,25 +88,25 @@ class EspEfuses(base_fields.EspEfusesBase):
         self._esp = esp
         self.debug = debug
         self.do_not_confirm = do_not_confirm
-        if esp is not None and type(esp) is not esptool.ESP32ROM:
-            raise esptool.FatalError("The eFuse module describes ESP32 chip. Check the chip setting for esptool, it gives '%s' name." % (esp.CHIP_NAME))
-        self.blocks = [EfuseBlock(self, block, skip_read=skip_connect) for block in self._BLOCKS]
-        self.efuses = [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._EFUSES]
+        if esp.CHIP_NAME != "ESP32":
+            raise esptool.FatalError("Expected the 'esp' param for ESP32 chip but got for '%s'." % (esp.CHIP_NAME))
+        self.blocks = [EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect) for block in self.Blocks.BLOCKS]
+        self.efuses = [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.EFUSES]
         if skip_connect:
-            self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._KEYBLOCKS_256]
-            self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._CUSTOM_MAC]
-            self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._ADC_CALIBRATION]
+            self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS_256]
+            self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.CUSTOM_MAC]
+            self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.ADC_CALIBRATION]
         else:
-            if self.coding_scheme == self.CODING_SCHEME_NONE:
-                self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._KEYBLOCKS_256]
-            elif self.coding_scheme == self.CODING_SCHEME_34:
-                self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._KEYBLOCKS_192]
+            if self.coding_scheme == self.REGS.CODING_SCHEME_NONE:
+                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS_256]
+            elif self.coding_scheme == self.REGS.CODING_SCHEME_34:
+                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS_192]
             else:
                 raise esptool.FatalError("The coding scheme (%d) - is not supported" % self.coding_scheme)
             if self["MAC_VERSION"].get() == 1:
-                self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._CUSTOM_MAC]
+                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.CUSTOM_MAC]
             if self["BLK3_PART_RESERVE"].get():
-                self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._ADC_CALIBRATION]
+                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.ADC_CALIBRATION]
 
     def __getitem__(self, efuse_name):
         """ Return the efuse field with the given name """
@@ -228,13 +114,15 @@ class EspEfuses(base_fields.EspEfusesBase):
             if efuse_name == e.name:
                 return e
         new_fields = False
-        for efuse in self._CUSTOM_MAC:
-            if efuse[0] == efuse_name:
-                self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._CUSTOM_MAC]
+        for efuse in self.Fields.CUSTOM_MAC:
+            e = self.Fields.get(efuse)
+            if e.name == efuse_name:
+                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.CUSTOM_MAC]
                 new_fields = True
-        for efuse in self._ADC_CALIBRATION:
-            if efuse[0] == efuse_name:
-                self.efuses += [EfuseField.from_tuple(self, efuse, efuse[8]) for efuse in self._ADC_CALIBRATION]
+        for efuse in self.Fields.ADC_CALIBRATION:
+            e = self.Fields.get(efuse)
+            if e.name == efuse_name:
+                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.ADC_CALIBRATION]
                 new_fields = True
         if new_fields:
             for e in self.efuses:
@@ -243,7 +131,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         raise KeyError
 
     def read_coding_scheme(self):
-        self.coding_scheme = self._esp.read_efuse(6) & 0x3
+        self.coding_scheme = self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD) & self.REGS.EFUSE_CODING_SCHEME_MASK
 
     def write_efuses(self, block):
         """ Write the values in the efuse write registers to
@@ -251,25 +139,25 @@ class EspEfuses(base_fields.EspEfusesBase):
         """
 
         # Configure clock
-        apb_freq = self._esp.get_crystal_freq()
-        clk_sel0, clk_sel1, dac_clk_div = self.EFUSE_CLK_SETTINGS[apb_freq]
+        apb_freq = self.get_crystal_freq()
+        clk_sel0, clk_sel1, dac_clk_div = self.REGS.EFUSE_CLK_SETTINGS[apb_freq]
 
-        self.update_reg(self.EFUSE_DAC_CONF_REG, self.EFUSE_DAC_CLK_DIV_MASK, dac_clk_div)
-        self.update_reg(self.EFUSE_CLK_REG, self.EFUSE_CLK_SEL0_MASK, clk_sel0)
-        self.update_reg(self.EFUSE_CLK_REG, self.EFUSE_CLK_SEL1_MASK, clk_sel1)
+        self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_CLK_DIV_MASK, dac_clk_div)
+        self.update_reg(self.REGS.EFUSE_CLK_REG, self.REGS.EFUSE_CLK_SEL0_MASK, clk_sel0)
+        self.update_reg(self.REGS.EFUSE_CLK_REG, self.REGS.EFUSE_CLK_SEL1_MASK, clk_sel1)
 
-        self.write_reg(self.EFUSE_REG_CONF, self.EFUSE_CONF_WRITE)
-        self.write_reg(self.EFUSE_REG_CMD, self.EFUSE_CMD_WRITE)
+        self.write_reg(self.REGS.EFUSE_REG_CONF, self.REGS.EFUSE_CONF_WRITE)
+        self.write_reg(self.REGS.EFUSE_REG_CMD, self.REGS.EFUSE_CMD_WRITE)
 
         def wait_idle():
-            deadline = time.time() + self.EFUSE_BURN_TIMEOUT
+            deadline = time.time() + self.REGS.EFUSE_BURN_TIMEOUT
             while time.time() < deadline:
-                if self.read_reg(self.EFUSE_REG_CMD) == 0:
+                if self.read_reg(self.REGS.EFUSE_REG_CMD) == 0:
                     return
             raise esptool.FatalError("Timed out waiting for Efuse controller command to complete")
         wait_idle()
-        self.write_reg(self.EFUSE_REG_CONF, self.EFUSE_CONF_READ)
-        self.write_reg(self.EFUSE_REG_CMD, self.EFUSE_CMD_READ)
+        self.write_reg(self.REGS.EFUSE_REG_CONF, self.REGS.EFUSE_CONF_READ)
+        self.write_reg(self.REGS.EFUSE_REG_CMD, self.REGS.EFUSE_CMD_READ)
         wait_idle()
         return self.get_coding_scheme_warnings()
 
@@ -277,7 +165,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         """ Check if the coding scheme has detected any errors.
         Meaningless for default coding scheme (0)
         """
-        return self.read_reg(self.EFUSE_REG_DEC_STATUS) & self.EFUSE_REG_DEC_STATUS_MASK
+        return self.read_reg(self.REGS.EFUSE_REG_DEC_STATUS) & self.REGS.EFUSE_REG_DEC_STATUS_MASK
 
     def summary(self):
         if self["XPD_SDIO_FORCE"].get() == 0:
@@ -293,13 +181,13 @@ class EspEfuses(base_fields.EspEfusesBase):
 
 class EfuseField(base_fields.EfuseFieldBase):
     @staticmethod
-    def from_tuple(parent, efuse_tuple, category):
+    def from_tuple(parent, efuse_tuple, type_class):
         return {
             "mac":      EfuseMacField,
             "spipin":   EfuseSpiPinField,
             "vref":     EfuseVRefField,
             "adc_tp":   EfuseAdcPointCalibration,
-        }.get(category, EfuseField)(parent, *efuse_tuple)
+        }.get(type_class, EfuseField)(parent, efuse_tuple)
 
     def get_info(self):
         return "%s (BLOCK%d):" % (self.name, self.block)
@@ -320,7 +208,7 @@ class EfuseMacField(EfuseField):
         if len(hexad) != 12:
             raise esptool.FatalError("MAC Address needs to be a 6-byte hexadecimal number (12 hexadecimal characters)!")
         # order of bytearray = b'\xab\xcd\xef\x01\x02\x03',
-        return hexad.decode("hex")
+        return binascii.unhexlify(hexad)
 
     @staticmethod
     def get_and_check(raw_mac, stored_crc):
