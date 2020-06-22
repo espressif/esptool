@@ -138,7 +138,7 @@ def burn_efuse(esp, efuses, args):
                 if efuses.blocks[field.block].get_coding_scheme() != efuses.CODING_SCHEME_NONE:
                     using_the_same_block_names = [e.name for e in efuses if e.block == field.block]
                     wr_names = [e.name for e in burn_list_a_block]
-                    blocked_efuses_after_burn = (list(set(using_the_same_block_names) ^ set(wr_names)))
+                    blocked_efuses_after_burn = [name for name in using_the_same_block_names if name not in wr_names]
                     attention = " (see 'ATTENTION!' above)"
             if attention:
                 print_attention(blocked_efuses_after_burn)
