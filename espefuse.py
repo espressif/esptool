@@ -37,7 +37,7 @@ def summary(esp, efuses, args):
         print(ROW_FORMAT.replace("-50", "-12") % ("EFUSE_NAME (Block)", "Description", "", "[Meaningful Value]", "[Readable/Writeable]", "(Hex Value)"),
               file=args.file)
         print("-" * 88,file=args.file)
-    for category in set(e.category for e in efuses):
+    for category in sorted(set(e.category for e in efuses), key=lambda c: c.title()):
         if human_output:
             print("%s fuses:" % category.title(),file=args.file)
         for e in (e for e in efuses if e.category == category):
