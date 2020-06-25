@@ -31,6 +31,7 @@ try:
 except KeyError:
     ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool.py")
 ESPSECURE_PY = os.path.join(TEST_DIR, "..", "espsecure.py")
+ESPRFC2217SERVER_PY = os.path.join(TEST_DIR, "..", "esp_rfc2217_server.py")
 
 # Command line options for test environment
 global default_baudrate, chip, serialport, trace_enabled
@@ -49,6 +50,25 @@ except IndexError:
 RETURN_CODE_FATAL_ERROR = 2
 
 
+class ESPRFC2217Server(object):
+    """ Creates a virtual serial port accessible through rfc2217 port.
+    """
+    def __init__(self, rfc2217_port=4000):
+        cmd = [sys.executable, ESPRFC2217SERVER_PY, '-p', str(rfc2217_port), serialport]
+        self.p = subprocess.Popen(cmd, cwd=TEST_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        with self.p.stdout:
+            for line in iter(self.p.stdout.readline, b''):
+                # wait for the server to be ready to accept connection
+                if 'TCP/IP port: {}'.format(rfc2217_port) in line.decode("utf-8"):
+                    break
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.p.terminate()
+
+
 class EsptoolTestCase(unittest.TestCase):
 
     def run_espsecure(self, args):
@@ -63,7 +83,7 @@ class EsptoolTestCase(unittest.TestCase):
             print(e.output)
             raise e
 
-    def run_esptool(self, args, baud=None, chip_name=chip):
+    def run_esptool(self, args, baud=None, chip_name=chip, rfc2217_port=None):
         """ Run esptool with the specified arguments. --chip, --port and --baud
         are filled in automatically from the command line. (can override default baud rate with baud param.)
 
@@ -77,7 +97,7 @@ class EsptoolTestCase(unittest.TestCase):
         cmd = [sys.executable, ESPTOOL_PY ] + trace_args
         if chip_name:
             cmd += [ "--chip", chip ]
-        cmd += ["--port", serialport, "--baud", str(baud) ] + args.split(" ")
+        cmd += ["--port", rfc2217_port or serialport, "--baud", str(baud) ] + args.split(" ")
         print("Running %s..." % (" ".join(cmd)))
         try:
             output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT)
@@ -227,6 +247,12 @@ class TestFlashing(EsptoolTestCase):
 
     def test_highspeed_flash(self):
         self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=921600)
+        self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
+
+    def test_highspeed_flash_virtual_port(self):
+        rfc2217_port = 'rfc2217://localhost:4000?ign_set_control'
+        with ESPRFC2217Server(rfc2217_port=4000):
+            self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=921600, rfc2217_port=rfc2217_port)
         self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
 
     def test_adjacent_flash(self):
@@ -577,8 +603,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
 
 
 class TestAutoDetect(EsptoolTestCase):
-    def test_auto_detect(self):
-        output = self.run_esptool("chip_id", chip_name=None)
+    def _check_output(self, output):
         expected_chip_name = {
             "esp8266": "ESP8266",
             "esp32": "ESP32",
@@ -586,6 +611,15 @@ class TestAutoDetect(EsptoolTestCase):
         }[chip]
         self.assertIn("Detecting chip type... " + expected_chip_name, output)
         self.assertIn("Chip is " + expected_chip_name, output)
+
+    def test_auto_detect(self):
+        output = self.run_esptool("chip_id", chip_name=None)
+        self._check_output(output)
+
+    def test_auto_detect_virtual_port(self):
+        with ESPRFC2217Server(rfc2217_port=4000):
+            output = self.run_esptool("chip_id", chip_name=None, rfc2217_port='rfc2217://localhost:4000?ign_set_control')
+            self._check_output(output)
 
 
 if __name__ == '__main__':
