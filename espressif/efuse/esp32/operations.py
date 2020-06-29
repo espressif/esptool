@@ -22,7 +22,7 @@ import espsecure
 from . import fields
 from .. import util
 from ..base_operations import (dump, burn_efuse, read_protect_efuse, write_protect_efuse,  # noqa: F401
-    burn_block_data, burn_bit, add_common_commands, add_force_write_always)  # noqa: F401
+                               burn_block_data, burn_bit, add_common_commands, add_force_write_always)  # noqa: F401
 
 
 def add_commands(subparsers, efuses):

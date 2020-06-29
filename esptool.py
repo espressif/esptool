@@ -2318,7 +2318,7 @@ class ELFFile(object):
         if machine != 0x5e:
             raise FatalError("%s does not appear to be an Xtensa ELF file. e_machine=%04x" % (self.name, machine))
         if shentsize != self.LEN_SEC_HEADER:
-            raise FatalError("%s has unexpected section header entry size 0x%x (not 0x28)" % (self.name, shentsize, self.LEN_SEC_HEADER))
+            raise FatalError("%s has unexpected section header entry size 0x%x (not 0x%x)" % (self.name, shentsize, self.LEN_SEC_HEADER))
         if shnum == 0:
             raise FatalError("%s has 0 section headers" % (self.name))
         self._read_sections(f, shoff, shnum, shstrndx)
