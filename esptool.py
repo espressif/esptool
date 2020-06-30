@@ -1328,6 +1328,12 @@ class ESP32ROM(ESPLoader):
         else:
             return False
 
+    def get_pkg_version(self):
+        word3 = self.read_efuse(3)
+        pkg_version = (word3 >> 9) & 0x07
+        pkg_version += ((word3 >> 2) & 0x1) << 3
+        return pkg_version
+
     def get_chip_description(self):
         word3 = self.read_efuse(3)
         word5 = self.read_efuse(5)
@@ -1335,13 +1341,15 @@ class ESP32ROM(ESPLoader):
         rev_bit0 = (word3 >> 15) & 0x1
         rev_bit1 = (word5 >> 20) & 0x1
         rev_bit2 = (apb_ctl_date >> 31) & 0x1
-        pkg_version = (word3 >> 9) & 0x07
+        pkg_version = self.get_pkg_version()
 
         chip_name = {
             0: "ESP32D0WDQ6",
             1: "ESP32D0WDQ5",
             2: "ESP32D2WDQ5",
-            5: "ESP32-PICO-D4",
+            4: "ESP32-U4WDH",
+            5: "ESP32-PICO",
+            6: "ESP32-PICO-V3-02",
         }.get(pkg_version, "unknown ESP32")
 
         chip_revision = 0
@@ -1353,6 +1361,13 @@ class ESP32ROM(ESPLoader):
                     chip_revision = 2
             else:
                 chip_revision = 1
+
+        if chip_name == "ESP32-PICO":
+            if chip_revision == 1:
+                chip_name += "-D4"
+            elif chip_revision == 3:
+                chip_name += "-V3"
+
         return "%s (revision %d)" % (chip_name, chip_revision)
 
     def get_chip_features(self):
@@ -1381,8 +1396,8 @@ class ESP32ROM(ESPLoader):
             else:
                 features += ["240MHz"]
 
-        pkg_version = (word3 >> 9) & 0x07
-        if pkg_version in [2, 4, 5]:
+        pkg_version = self.get_pkg_version()
+        if pkg_version in [2, 4, 5, 6]:
             features += ["Embedded Flash"]
 
         word4 = self.read_efuse(4)
