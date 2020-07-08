@@ -1257,12 +1257,12 @@ class ESP32ROM(ESPLoader):
 
     OVERRIDE_VDDSDIO_CHOICES = ["1.8V", "1.9V", "OFF"]
 
-    MEMORY_MAP = [[0x3F400000, 0x3F800000, "DROM"],
+    MEMORY_MAP = [[0x00000000, 0x00010000, "PADDING"],
+                  [0x3F400000, 0x3F800000, "DROM"],
                   [0x3F800000, 0x3FC00000, "EXTRAM_DATA"],
                   [0x3FF80000, 0x3FF82000, "RTC_DRAM"],
                   [0x3FF90000, 0x40000000, "BYTE_ACCESSIBLE"],
                   [0x3FFAE000, 0x40000000, "DRAM"],
-                  [0x3FFAE000, 0x40000000, "DMA"],
                   [0x3FFE0000, 0x3FFFFFFC, "DIRAM_DRAM"],
                   [0x40000000, 0x40070000, "IROM"],
                   [0x40070000, 0x40078000, "CACHE_PRO"],
@@ -1536,6 +1536,19 @@ class ESP32S2ROM(ESP32ROM):
     GPIO_STRAP_SPI_BOOT_MASK = 0x8   # Not download mode
     RTC_CNTL_OPTION1_REG = 0x3f408128
     RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x1  # Is download mode forced over USB?
+
+    MEMORY_MAP = [[0x00000000, 0x00010000, "PADDING"],
+                  [0x3F000000, 0x3FF80000, "DROM"],
+                  [0x3F500000, 0x3FF80000, "EXTRAM_DATA"],
+                  [0x3FF9E000, 0x3FFA0000, "RTC_DRAM"],
+                  [0x3FF9E000, 0x40000000, "BYTE_ACCESSIBLE"],
+                  [0x3FF9E000, 0x40072000, "MEM_INTERNAL"],
+                  [0x3FFB0000, 0x40000000, "DRAM"],
+                  [0x40000000, 0x4001A100, "IROM_MASK"],
+                  [0x40020000, 0x40070000, "IRAM"],
+                  [0x40070000, 0x40072000, "RTC_IRAM"],
+                  [0x40080000, 0x40800000, "IROM"],
+                  [0x50000000, 0x50002000, "RTC_DATA"]]
 
     def get_pkg_version(self):
         num_word = 3
