@@ -1290,31 +1290,49 @@ class ESP32ROM(ESPLoader):
         else:
             return False
 
-    def get_chip_description(self):
+    def get_pkg_version(self):
+        word3 = self.read_efuse(3)
+        pkg_version = (word3 >> 9) & 0x07
+        pkg_version += ((word3 >> 2) & 0x1) << 3
+        return pkg_version
+
+    def get_chip_revision(self):
         word3 = self.read_efuse(3)
         word5 = self.read_efuse(5)
         apb_ctl_date = self.read_reg(self.DR_REG_SYSCON_BASE + 0x7C)
+
         rev_bit0 = (word3 >> 15) & 0x1
         rev_bit1 = (word5 >> 20) & 0x1
         rev_bit2 = (apb_ctl_date >> 31) & 0x1
-        pkg_version = (word3 >> 9) & 0x07
-
-        chip_name = {
-            0: "ESP32D0WDQ6",
-            1: "ESP32D0WDQ5",
-            2: "ESP32D2WDQ5",
-            5: "ESP32-PICO-D4",
-        }.get(pkg_version, "unknown ESP32")
-
-        chip_revision = 0
         if rev_bit0:
             if rev_bit1:
                 if rev_bit2:
-                    chip_revision = 3
+                    return 3
                 else:
-                    chip_revision = 2
+                    return 2
             else:
-                chip_revision = 1
+                return 1
+        return 0
+
+    def get_chip_description(self):
+        pkg_version = self.get_pkg_version()
+        chip_revision = self.get_chip_revision()
+        rev3 = (chip_revision == 3)
+        single_core = self.read_efuse(3) & (1 << 0)  # CHIP_VER DIS_APP_CPU
+
+        chip_name = {
+            0: "ESP32-S0WDQ6" if single_core else "ESP32-D0WDQ6",
+            1: "ESP32-S0WD" if single_core else "ESP32-D0WD",
+            2: "ESP32-D2WD",
+            4: "ESP32-U4WDH",
+            5: "ESP32-PICO-V3" if rev3 else "ESP32-PICO-D4",
+            6: "ESP32-PICO-V3-02",
+        }.get(pkg_version, "unknown ESP32")
+
+        # ESP32-D0WD-V3, ESP32-D0WDQ6-V3
+        if chip_name.startswith("ESP32-D0WD") and rev3:
+            chip_name += "-V3"
+
         return "%s (revision %d)" % (chip_name, chip_revision)
 
     def get_chip_features(self):
