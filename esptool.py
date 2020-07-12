@@ -1403,6 +1403,9 @@ class ESP32ROM(ESPLoader):
         if pkg_version in [2, 4, 5, 6]:
             features += ["Embedded Flash"]
 
+        if pkg_version == 6:
+            features += ["Embedded PSRAM"]
+
         word4 = self.read_efuse(4)
         adc_vref = (word4 >> 8) & 0x1F
         if adc_vref:
