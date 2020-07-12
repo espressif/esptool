@@ -76,10 +76,10 @@ class EspEfuses(base_fields.EspEfusesBase):
     # List of efuse blocks
     # Name, Alias, Index, Read address, Write address, Write protect bit, Read protect bit, Len, key_purpose
     _BLOCKS = [
-        ("BLK0",    None,                  0, 0x6001A000, 0x3FF5A01C, None, None, 7,                None),
-        ("BLK1",    "flash_encryption",    1, 0x6001A038, 0x3FF5A098, 7,    0,    8,                None),
-        ("BLK2",    "secure_boot",         2, 0x6001A058, 0x3FF5A0B8, 8,    1,    8,                None),
-        ("BLK3",    None,                  3, 0x6001A078, 0x3FF5A0D8, 9,    2,    8,                None),
+        ("BLK0",    None,                  0, 0x3FF5A000, 0x3FF5A01C, None, None, 7,                None),
+        ("BLK1",    "flash_encryption",    1, 0x3FF5A038, 0x3FF5A098, 7,    0,    8,                None),
+        ("BLK2",    "secure_boot",         2, 0x3FF5A058, 0x3FF5A0B8, 8,    1,    8,                None),
+        ("BLK3",    None,                  3, 0x3FF5A078, 0x3FF5A0D8, 9,    2,    8,                None),
     ]
 
     BURN_BLOCK_DATA_NAMES = []
