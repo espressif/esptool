@@ -2885,7 +2885,10 @@ def elf2image(args):
     else:
         image = ESP8266V2FirmwareImage()
     image.entrypoint = e.entrypoint
-    image.segments = e.sections  # ELFSection is a subclass of ImageSegment
+    if args.use_segments:
+        image.segments = e.segments # ELFSection is a subclass of ImageSegment
+    else:
+        image.segments = e.sections  # ELFSection is a subclass of ImageSegment
     image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
     image.flash_size_freq = image.ROM_LOADER.FLASH_SIZES[args.flash_size]
     image.flash_size_freq += {'40m':0, '26m':1, '20m':2, '80m': 0xf}[args.flash_freq]
@@ -3202,6 +3205,8 @@ def main(custom_commandline=None):
                                   'For Secure Boot v2 images only.')
     parser_elf2image.add_argument('--elf-sha256-offset', help='If set, insert SHA256 hash (32 bytes) of the input ELF file at specified offset in the binary.',
                                   type=arg_auto_int, default=None)
+    parser_elf2image.add_argument('--use_segments', help='If set, ELF segments will be used to instead of ELF sections to genereate the image.',
+                                  action='store_true')
 
     add_spi_flash_subparsers(parser_elf2image, is_elf2image=True)
 
