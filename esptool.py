@@ -2324,6 +2324,9 @@ class ELFFile(object):
 
     LEN_SEC_HEADER = 0x28
 
+    SEG_TYPE_LOAD = 0x01
+    LEN_SEG_HEADER = 0x20
+
     def __init__(self, name):
         # Load sections from the ELF file
         self.name = name
@@ -2356,6 +2359,8 @@ class ELFFile(object):
         if shnum == 0:
             raise FatalError("%s has 0 section headers" % (self.name))
         self._read_sections(f, shoff, shnum, shstrndx)
+        self._read_segments(f, _phoff, _phnum, shstrndx)
+
 
     def _read_sections(self, f, section_header_offs, section_header_count, shstrndx):
         f.seek(section_header_offs)
@@ -2384,19 +2389,46 @@ class ELFFile(object):
         f.seek(sec_offs)
         string_table = f.read(sec_size)
 
+        def read_data(offs,size):
+            f.seek(offs)
+            return f.read(size)
+
         # build the real list of ELFSections by reading the actual section names from the
         # string table section, and actual data for each section from the ELF file itself
         def lookup_string(offs):
             raw = string_table[offs:]
             return raw[:raw.index(b'\x00')]
 
-        def read_data(offs,size):
-            f.seek(offs)
-            return f.read(size)
 
         prog_sections = [ELFSection(lookup_string(n_offs), lma, read_data(offs, size)) for (n_offs, _type, lma, size, offs) in prog_sections
                          if lma != 0 and size > 0]
         self.sections = prog_sections
+
+    def _read_segments(self, f, segment_header_offs, segment_header_count, shstrndx):
+        f.seek(segment_header_offs)
+        len_bytes = segment_header_count * self.LEN_SEG_HEADER
+        segment_header = f.read(len_bytes)
+        if len(segment_header) == 0:
+            raise FatalError("No segment header found at offset %04x in ELF file." % segment_header_offs)
+        if len(segment_header) != (len_bytes):
+            raise FatalError("Only read 0x%x bytes from segment header (expected 0x%x.) Truncated ELF file?" % (len(segment_header), len_bytes))
+
+        # walk through the segment header and extract all segments
+        segment_header_offsets = range(0, len(segment_header), self.LEN_SEG_HEADER)
+
+        def read_segment_header(offs):
+            seg_type,seg_offs,_vaddr,lma,size,_memsize,_flags,_align = struct.unpack_from("<LLLLLLLL", segment_header[offs:])
+            return (seg_type, lma, size, seg_offs)
+        all_segments = [read_segment_header(offs) for offs in segment_header_offsets]
+        prog_segments = [s for s in all_segments if s[0] == ELFFile.SEG_TYPE_LOAD]
+
+        def read_data(offs,size):
+            f.seek(offs)
+            return f.read(size)
+
+        prog_segments = [ELFSection(b'PHDR', lma, read_data(offs, size)) for (_type, lma, size, offs) in prog_segments
+                         if lma != 0 and size > 0]
+        self.segments = prog_segments
 
     def sha256(self):
         # return SHA256 hash of the input ELF file
