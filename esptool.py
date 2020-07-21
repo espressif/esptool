@@ -2569,6 +2569,9 @@ class ELFFile(object):
 
     LEN_SEC_HEADER = 0x28
 
+    SEG_TYPE_LOAD = 0x01
+    LEN_SEG_HEADER = 0x20
+
     def __init__(self, name):
         # Load sections from the ELF file
         self.name = name
@@ -2601,6 +2604,7 @@ class ELFFile(object):
         if shnum == 0:
             raise FatalError("%s has 0 section headers" % (self.name))
         self._read_sections(f, shoff, shnum, shstrndx)
+        self._read_segments(f, _phoff, _phnum, shstrndx)
 
     def _read_sections(self, f, section_header_offs, section_header_count, shstrndx):
         f.seek(section_header_offs)
@@ -2642,6 +2646,32 @@ class ELFFile(object):
         prog_sections = [ELFSection(lookup_string(n_offs), lma, read_data(offs, size)) for (n_offs, _type, lma, size, offs) in prog_sections
                          if lma != 0 and size > 0]
         self.sections = prog_sections
+
+    def _read_segments(self, f, segment_header_offs, segment_header_count, shstrndx):
+        f.seek(segment_header_offs)
+        len_bytes = segment_header_count * self.LEN_SEG_HEADER
+        segment_header = f.read(len_bytes)
+        if len(segment_header) == 0:
+            raise FatalError("No segment header found at offset %04x in ELF file." % segment_header_offs)
+        if len(segment_header) != (len_bytes):
+            raise FatalError("Only read 0x%x bytes from segment header (expected 0x%x.) Truncated ELF file?" % (len(segment_header), len_bytes))
+
+        # walk through the segment header and extract all segments
+        segment_header_offsets = range(0, len(segment_header), self.LEN_SEG_HEADER)
+
+        def read_segment_header(offs):
+            seg_type, seg_offs, _vaddr, lma, size, _memsize, _flags, _align = struct.unpack_from("<LLLLLLLL", segment_header[offs:])
+            return (seg_type, lma, size, seg_offs)
+        all_segments = [read_segment_header(offs) for offs in segment_header_offsets]
+        prog_segments = [s for s in all_segments if s[0] == ELFFile.SEG_TYPE_LOAD]
+
+        def read_data(offs, size):
+            f.seek(offs)
+            return f.read(size)
+
+        prog_segments = [ELFSection(b'PHDR', lma, read_data(offs, size)) for (_type, lma, size, offs) in prog_segments
+                         if lma != 0 and size > 0]
+        self.segments = prog_segments
 
     def sha256(self):
         # return SHA256 hash of the input ELF file
@@ -3179,8 +3209,11 @@ def elf2image(args):
     else:
         image = ESP8266V2FirmwareImage()
     image.entrypoint = e.entrypoint
-    image.segments = e.sections  # ELFSection is a subclass of ImageSegment
     image.flash_mode = {'qio': 0, 'qout': 1, 'dio': 2, 'dout': 3}[args.flash_mode]
+
+    # ELFSection is a subclass of ImageSegment, so can use interchangeably
+    image.segments = e.segments if args.use_segments else e.sections
+
     image.flash_size_freq = image.ROM_LOADER.FLASH_SIZES[args.flash_size]
     image.flash_size_freq += {'40m': 0, '26m': 1, '20m': 2, '80m': 0xf}[args.flash_freq]
 
@@ -3502,6 +3535,8 @@ def main(custom_commandline=None):
                                   'For Secure Boot v2 images only.')
     parser_elf2image.add_argument('--elf-sha256-offset', help='If set, insert SHA256 hash (32 bytes) of the input ELF file at specified offset in the binary.',
                                   type=arg_auto_int, default=None)
+    parser_elf2image.add_argument('--use_segments', help='If set, ELF segments will be used instead of ELF sections to genereate the image.',
+                                  action='store_true')
 
     add_spi_flash_subparsers(parser_elf2image, is_elf2image=True)
 
