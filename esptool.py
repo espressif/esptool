@@ -2361,7 +2361,6 @@ class ELFFile(object):
         self._read_sections(f, shoff, shnum, shstrndx)
         self._read_segments(f, _phoff, _phnum, shstrndx)
 
-
     def _read_sections(self, f, section_header_offs, section_header_count, shstrndx):
         f.seek(section_header_offs)
         len_bytes = section_header_count * self.LEN_SEC_HEADER
@@ -2398,7 +2397,6 @@ class ELFFile(object):
         def lookup_string(offs):
             raw = string_table[offs:]
             return raw[:raw.index(b'\x00')]
-
 
         prog_sections = [ELFSection(lookup_string(n_offs), lma, read_data(offs, size)) for (n_offs, _type, lma, size, offs) in prog_sections
                          if lma != 0 and size > 0]
@@ -2918,7 +2916,7 @@ def elf2image(args):
         image = ESP8266V2FirmwareImage()
     image.entrypoint = e.entrypoint
     if args.use_segments:
-        image.segments = e.segments # ELFSection is a subclass of ImageSegment
+        image.segments = e.segments  # ELFSection is a subclass of ImageSegment
     else:
         image.segments = e.sections  # ELFSection is a subclass of ImageSegment
     image.flash_mode = {'qio':0, 'qout':1, 'dio':2, 'dout': 3}[args.flash_mode]
