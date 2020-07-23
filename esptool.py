@@ -1643,6 +1643,8 @@ class ESP32S2ROM(ESP32ROM):
             and any(p == self.PURPOSE_VAL_XTS_AES256_KEY_2 for p in purposes)
 
     def uses_usb(self, _cache=[]):
+        if self.secure_download_mode:
+            return False  # can't detect native USB in secure download mode
         if not _cache:
             buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xff
             _cache.append(buf_no == self.UARTDEV_BUF_NO_USB)
@@ -2705,21 +2707,22 @@ def write_flash(esp, args):
     if args.encrypt:
         do_write = True
 
-        if esp.get_encrypted_download_disabled():
-            raise FatalError("This chip has encrypt functionality in UART download mode disabled. "
-                             + "This is the Flash Encryption configuration for Production mode instead of Development mode.")
+        if not esp.secure_download_mode:
+            if esp.get_encrypted_download_disabled():
+                raise FatalError("This chip has encrypt functionality in UART download mode disabled. "
+                                 + "This is the Flash Encryption configuration for Production mode instead of Development mode.")
 
-        crypt_cfg_efuse = esp.get_flash_crypt_config()
+            crypt_cfg_efuse = esp.get_flash_crypt_config()
 
-        if crypt_cfg_efuse is not None and crypt_cfg_efuse != 0xF:
-            print('Unexpected FLASH_CRYPT_CONFIG value: 0x%x' % (crypt_cfg_efuse))
-            do_write = False
+            if crypt_cfg_efuse is not None and crypt_cfg_efuse != 0xF:
+                print('Unexpected FLASH_CRYPT_CONFIG value: 0x%x' % (crypt_cfg_efuse))
+                do_write = False
 
-        enc_key_valid = esp.is_flash_encryption_key_valid()
+            enc_key_valid = esp.is_flash_encryption_key_valid()
 
-        if not enc_key_valid:
-            print('Flash encryption key is not programmed')
-            do_write = False
+            if not enc_key_valid:
+                print('Flash encryption key is not programmed')
+                do_write = False
 
         for address, argfile in args.addr_filename:
             if address % esp.FLASH_ENCRYPTED_WRITE_ALIGN:
@@ -3334,16 +3337,13 @@ def main(custom_commandline=None):
         if esp is None:
             raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
 
-        print("Chip is %s" % (esp.get_chip_description()))
-
-        print("Features: %s" % ", ".join(esp.get_chip_features()))
-
-        print("Crystal is %dMHz" % esp.get_crystal_freq())
-
-        try:
+        if esp.secure_download_mode:
+                print("Chip is %s in Secure Download Mode" % esp.CHIP_NAME)
+        else:
+            print("Chip is %s" % (esp.get_chip_description()))
+            print("Features: %s" % ", ".join(esp.get_chip_features()))
+            print("Crystal is %dMHz" % esp.get_crystal_freq())
             read_mac(esp, args)
-        except UnsupportedCommandError:
-            pass  # can't get this data in Secure Download Mode
 
         if not args.no_stub:
             if esp.secure_download_mode:
