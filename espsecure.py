@@ -165,7 +165,7 @@ def generate_signing_key(args):
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
             encryption_algorithm=serialization.NoEncryption()
-        ).decode()
+        )
         with open(args.keyfile, "wb") as f:
             f.write(private_key)
         print("RSA 3072 private key in PEM format written to %s" % args.keyfile)
