@@ -55,3 +55,21 @@ check_stub_build:
     - ./test/ci/setup_ci_build_env.sh
     - make -C flasher_stub V=1 PATH="${TOOLCHAIN_PATHS}:${PATH}"
     - cd flasher_stub && python ./compare_stubs.py
+
+target_esptool_test:
+  timeout: 2 hours 30 minutes
+  stage: test
+  image: $CI_DOCKER_REGISTRY/rpi-test-env$BOT_DOCKER_IMAGE_TAG
+  tags:
+    - esptool_target
+    - internet
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python -m pip install -e .
+    - ./test/ci/run_test_on_chips_parallel.sh
+  artifacts:
+    reports:
+      junit: test/report.xml
+    when: always
+    paths:
+      - test/*.out
+    expire_in: 1 week

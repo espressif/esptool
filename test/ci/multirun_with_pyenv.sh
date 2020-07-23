@@ -45,4 +45,5 @@ do
 done
 
 echo 'Switching back to the system version of Python'
-{ pyenv global system; } || { echo 'Restoring the system version of the Python interpreter has failed!' ; exit 1; }
+# if the global python is not installed the script will log a warning and finish with zero return code
+{ pyenv global system; } || { echo 'Restoring the system version of the Python interpreter has failed!' ;}

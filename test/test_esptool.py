@@ -16,6 +16,8 @@ import sys
 import tempfile
 import time
 import unittest
+from socket import socket, SOCK_STREAM, AF_INET
+
 import serial
 
 sys.path.append('..')
@@ -53,14 +55,27 @@ RETURN_CODE_FATAL_ERROR = 2
 class ESPRFC2217Server(object):
     """ Creates a virtual serial port accessible through rfc2217 port.
     """
-    def __init__(self, rfc2217_port=4000):
-        cmd = [sys.executable, ESPRFC2217SERVER_PY, '-p', str(rfc2217_port), serialport]
+
+    def __init__(self, rfc2217_port=None):
+        self.port = rfc2217_port or self.get_free_port()
+
+        cmd = [sys.executable, ESPRFC2217SERVER_PY, '-p', str(self.port), serialport]
         self.p = subprocess.Popen(cmd, cwd=TEST_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
         with self.p.stdout:
-            for line in iter(self.p.stdout.readline, b''):
-                # wait for the server to be ready to accept connection
-                if 'TCP/IP port: {}'.format(rfc2217_port) in line.decode("utf-8"):
-                    break
+            if any('TCP/IP port: {}'.format(self.port) in line.decode("utf-8") for line in
+                   iter(self.p.stdout.readline, b'')):
+                print("Server started successfully.")
+            else:
+                print("Failed to start a server.")
+
+    @staticmethod
+    def get_free_port():
+        s = socket(AF_INET, SOCK_STREAM)
+        s.bind(('', 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
 
     def __enter__(self):
         return self
@@ -250,8 +265,8 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
 
     def test_highspeed_flash_virtual_port(self):
-        rfc2217_port = 'rfc2217://localhost:4000?ign_set_control'
-        with ESPRFC2217Server(rfc2217_port=4000):
+        with ESPRFC2217Server() as server:
+            rfc2217_port = 'rfc2217://localhost:' + str(server.port) + '?ign_set_control'
             self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=921600, rfc2217_port=rfc2217_port)
         self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
 
@@ -617,8 +632,9 @@ class TestAutoDetect(EsptoolTestCase):
         self._check_output(output)
 
     def test_auto_detect_virtual_port(self):
-        with ESPRFC2217Server(rfc2217_port=4000):
-            output = self.run_esptool("chip_id", chip_name=None, rfc2217_port='rfc2217://localhost:4000?ign_set_control')
+        with ESPRFC2217Server() as server:
+            output = self.run_esptool("chip_id", chip_name=None,
+                                      rfc2217_port='rfc2217://localhost:'+str(server.port)+'?ign_set_control')
             self._check_output(output)
 
 
@@ -644,4 +660,10 @@ if __name__ == '__main__':
     os.environ["ESPTOOL_TESTING"] = "1"
 
     print("Running esptool.py tests...")
-    unittest.main(buffer=True)
+    try:
+        import xmlrunner
+        with open('report.xml', 'w' if sys.version[0] == '2' else 'wb') as output:
+            unittest.main(
+                testRunner=xmlrunner.XMLTestRunner(output=output))
+    except ImportError:
+        unittest.main(buffer=True)
