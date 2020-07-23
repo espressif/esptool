@@ -388,7 +388,7 @@ class ESPLoader(object):
                     return val, data
                 if byte(data, 0) != 0 and byte(data, 1) == self.ROM_INVALID_RECV_MSG:
                     self.flush_input()  # Unsupported read_reg can result in more than one error response for some reason
-                    raise UnsupportedCommandError(self)
+                    raise UnsupportedCommandError(self, op)
 
         finally:
             if new_timeout != saved_timeout:
@@ -2579,18 +2579,18 @@ class NotSupportedError(FatalError):
 # argument.
 
 
-class UnsupportedCommandError(FatalError):
+class UnsupportedCommandError(RuntimeError):
     """
     Wrapper class for when ROM loader returns an invalid command response.
 
     Usually this indicates the loader is running in Secure Download Mode.
     """
-    def __init__(self, esp):
+    def __init__(self, esp, op):
         if esp.secure_download_mode:
-            msg = "This command is not supported in Secure Download Mode"
+            msg = "This command (0x%x) is not supported in Secure Download Mode" % op
         else:
-            msg = "Invalid (unsupported) command"
-        FatalError.__init__(self, msg)
+            msg = "Invalid (unsupported) command 0x%x" % op
+        RuntimeError.__init__(self, msg)
 
 
 def load_ram(esp, args):
@@ -3338,7 +3338,7 @@ def main(custom_commandline=None):
             raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
 
         if esp.secure_download_mode:
-                print("Chip is %s in Secure Download Mode" % esp.CHIP_NAME)
+            print("Chip is %s in Secure Download Mode" % esp.CHIP_NAME)
         else:
             print("Chip is %s" % (esp.get_chip_description()))
             print("Features: %s" % ", ".join(esp.get_chip_features()))
