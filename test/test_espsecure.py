@@ -109,22 +109,22 @@ class SigningTests(EspSecureTestCase):
         'keyfile',
         'datafile' ])
 
+    SignArgs = namedtuple('sign_data_args', [
+        'version',
+        'keyfile',
+        'output',
+        'append_signatures',
+        'datafile' ])
 
     def test_sign_data(self):
-        SignArgs = namedtuple('sign_data_args', [
-            'version',
-            'keyfile',
-            'output',
-            'datafile' ])
-
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
             output_file.close()
 
             # Note: signing bootloader is not actually needed
             # for ESP32, it's just a handy file to sign
-            args = SignArgs('1', [self._open('ecdsa_secure_boot_signing_key.pem')],
-                            output_file.name,
+            args = self.SignArgs('1', [self._open('ecdsa_secure_boot_signing_key.pem')],
+                            output_file.name, None,
                             self._open('bootloader.bin'))
             espsecure.sign_data(args)
 
@@ -137,17 +137,10 @@ class SigningTests(EspSecureTestCase):
 
 
     def test_sign_v2_data(self):
-        SignArgs = namedtuple('sign_data_args', [
-            'version',
-            'keyfile',
-            'output',
-            'append_signatures',
-            'datafile' ])
-
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
 
-            args = SignArgs('2', [self._open('rsa_secure_boot_signing_key.pem')],
+            args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key.pem')],
                             output_file.name, False,
                             self._open('bootloader_unsigned_v2.bin'))
             espsecure.sign_data(args)
@@ -160,11 +153,12 @@ class SigningTests(EspSecureTestCase):
             output_file.close()
             os.unlink(output_file.name)
 
+    def test_sign_v2_multiple_keys(self):
         # 3 keys + Verify with 3rd key
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
 
-            args = SignArgs('2', [self._open('rsa_secure_boot_signing_key.pem'), 
+            args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key.pem'), 
                             self._open('rsa_secure_boot_signing_key2.pem'), 
                             self._open('rsa_secure_boot_signing_key3.pem')],
                             output_file.name, False,
@@ -189,11 +183,12 @@ class SigningTests(EspSecureTestCase):
             output_file.close()
             os.unlink(output_file.name)
 
+    def test_sign_v2_append_signatures(self):
         # Append signatures + Verify with an appended key (bootloader_signed_v2.bin already signed with rsa_secure_boot_signing_key.pem)
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
 
-            args = SignArgs('2', [self._open('rsa_secure_boot_signing_key2.pem'), 
+            args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key2.pem'), 
                             self._open('rsa_secure_boot_signing_key3.pem')],
                             output_file.name, True,
                             self._open('bootloader_signed_v2.bin'))
@@ -216,6 +211,42 @@ class SigningTests(EspSecureTestCase):
         finally:
             output_file.close()
             os.unlink(output_file.name)
+
+    def test_sign_v2_append_signatures_multiple_steps(self):
+        # similar to previous test, but sign in two invocations
+        try:
+            output_file1 = tempfile.NamedTemporaryFile(delete=False)
+            output_file2 = tempfile.NamedTemporaryFile(delete=False)
+
+            args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key2.pem')],
+                            output_file1.name, True,
+                            self._open('bootloader_signed_v2.bin'))
+            espsecure.sign_data(args)
+
+            args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key3.pem')],
+                            output_file2.name, True,
+                            output_file1)
+            espsecure.sign_data(args)
+
+            args = self.VerifyArgs('2', self._open('rsa_secure_boot_signing_key.pem'),
+                                   output_file2)
+            espsecure.verify_signature(args)
+
+            output_file2.seek(0)
+            args = self.VerifyArgs('2', self._open('rsa_secure_boot_signing_key2.pem'),
+                                   output_file2)
+            espsecure.verify_signature(args)
+
+            output_file2.seek(0)
+            args = self.VerifyArgs('2', self._open('rsa_secure_boot_signing_key3.pem'),
+                                   output_file2)
+            espsecure.verify_signature(args)
+
+        finally:
+            output_file1.close()
+            os.unlink(output_file1.name)
+            output_file2.close()
+            os.unlink(output_file2.name)
 
 
     def test_verify_signature_signing_key(self):
