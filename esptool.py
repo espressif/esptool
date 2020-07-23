@@ -624,7 +624,7 @@ class ESPLoader(object):
 
     Returns number of blocks (of size self.FLASH_WRITE_SIZE) to write.
     """
-    def flash_begin(self, size, offset):
+    def flash_begin(self, size, offset, begin_rom_encrypted=False):
         num_blocks = (size + self.FLASH_WRITE_SIZE - 1) // self.FLASH_WRITE_SIZE
         erase_size = self.get_erase_size(offset, size)
 
@@ -636,7 +636,7 @@ class ESPLoader(object):
 
         params = struct.pack('<IIII', erase_size, num_blocks, self.FLASH_WRITE_SIZE, offset)
         if isinstance(self, ESP32S2ROM) and not self.IS_STUB:
-            params += struct.pack('<I', 0)  # enter encrypted flash mode (ROM version of this is unsupported for now)
+            params += struct.pack('<I', 1 if begin_rom_encrypted else 0)
         self.check_command("enter Flash download mode", self.ESP_FLASH_BEGIN,
                            params, timeout=timeout)
         if size != 0 and not self.IS_STUB:
@@ -653,6 +653,11 @@ class ESPLoader(object):
 
     """ Encrypt before writing to flash """
     def flash_encrypt_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
+        if isinstance(self, ESP32S2ROM) and not self.IS_STUB:
+            # ROM support performs the encrypted writes via the normal write command,
+            # triggered by flash_begin(begin_rom_encrypted=True)
+            return self.flash_block(data, seq, timeout)
+
         self.check_command("Write encrypted to target Flash after seq %d" % seq,
                            self.ESP_FLASH_ENCRYPT_DATA,
                            struct.pack('<IIII', len(data), seq, 0, 0) + data,
@@ -2761,7 +2766,7 @@ def write_flash(esp, args):
             blocks = esp.flash_defl_begin(uncsize, len(image), address)
         else:
             ratio = 1.0
-            blocks = esp.flash_begin(uncsize, address)
+            blocks = esp.flash_begin(uncsize, address, begin_rom_encrypted=args.encrypt)
         argfile.seek(0)  # in case we need it again
         seq = 0
         written = 0
