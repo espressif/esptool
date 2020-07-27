@@ -137,9 +137,7 @@ class SigningTests(EspSecureTestCase):
 
 
     def test_sign_v2_data(self):
-        try:
-            output_file = tempfile.NamedTemporaryFile(delete=False)
-
+        with tempfile.NamedTemporaryFile() as output_file:
             args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key.pem')],
                             output_file.name, False,
                             self._open('bootloader_unsigned_v2.bin'))
@@ -149,15 +147,10 @@ class SigningTests(EspSecureTestCase):
                             output_file)
             espsecure.verify_signature(args)
 
-        finally:
-            output_file.close()
-            os.unlink(output_file.name)
 
     def test_sign_v2_multiple_keys(self):
         # 3 keys + Verify with 3rd key
-        try:
-            output_file = tempfile.NamedTemporaryFile(delete=False)
-
+        with tempfile.NamedTemporaryFile() as output_file:
             args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key.pem'), 
                             self._open('rsa_secure_boot_signing_key2.pem'), 
                             self._open('rsa_secure_boot_signing_key3.pem')],
@@ -179,15 +172,10 @@ class SigningTests(EspSecureTestCase):
                             output_file)
             espsecure.verify_signature(args)
 
-        finally:
-            output_file.close()
-            os.unlink(output_file.name)
 
     def test_sign_v2_append_signatures(self):
         # Append signatures + Verify with an appended key (bootloader_signed_v2.bin already signed with rsa_secure_boot_signing_key.pem)
-        try:
-            output_file = tempfile.NamedTemporaryFile(delete=False)
-
+        with tempfile.NamedTemporaryFile() as output_file:
             args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key2.pem'), 
                             self._open('rsa_secure_boot_signing_key3.pem')],
                             output_file.name, True,
@@ -208,16 +196,9 @@ class SigningTests(EspSecureTestCase):
                             output_file)
             espsecure.verify_signature(args)
 
-        finally:
-            output_file.close()
-            os.unlink(output_file.name)
-
     def test_sign_v2_append_signatures_multiple_steps(self):
         # similar to previous test, but sign in two invocations
-        try:
-            output_file1 = tempfile.NamedTemporaryFile(delete=False)
-            output_file2 = tempfile.NamedTemporaryFile(delete=False)
-
+        with tempfile.NamedTemporaryFile() as output_file1, tempfile.NamedTemporaryFile() as output_file2:
             args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key2.pem')],
                             output_file1.name, True,
                             self._open('bootloader_signed_v2.bin'))
@@ -241,12 +222,6 @@ class SigningTests(EspSecureTestCase):
             args = self.VerifyArgs('2', self._open('rsa_secure_boot_signing_key3.pem'),
                                    output_file2)
             espsecure.verify_signature(args)
-
-        finally:
-            output_file1.close()
-            os.unlink(output_file1.name)
-            output_file2.close()
-            os.unlink(output_file2.name)
 
 
     def test_verify_signature_signing_key(self):
@@ -319,9 +294,7 @@ class SigningTests(EspSecureTestCase):
         ExtractKeyArgs = namedtuple('extract_public_key_args',
                                     [ 'version', 'keyfile', 'public_keyfile' ])
 
-        pub_keyfile = tempfile.NamedTemporaryFile(delete=False)
-        pub_keyfile2 = tempfile.NamedTemporaryFile(delete=False)
-        try:
+        with tempfile.NamedTemporaryFile() as pub_keyfile, tempfile.NamedTemporaryFile() as pub_keyfile2:
             args = ExtractKeyArgs('1', self._open('ecdsa_secure_boot_signing_key.pem'),
                                   pub_keyfile)
             espsecure.extract_public_key(args)
@@ -342,10 +315,6 @@ class SigningTests(EspSecureTestCase):
             with self.assertRaises(esptool.FatalError) as cm:
                 espsecure.verify_signature(args)
             self.assertIn("Signature is not valid", str(cm.exception))
-
-        finally:
-            os.unlink(pub_keyfile.name)
-            os.unlink(pub_keyfile2.name)
 
 
 class ESP32FlashEncryptionTests(EspSecureTestCase):
