@@ -100,7 +100,7 @@ def add_common_commands(subparsers, efuses):
 
     summary_cmd = subparsers.add_parser('summary', help='Print human-readable summary of efuse values')
     summary_cmd.add_argument('--format', help='Select the summary format', choices=['summary','json'], default='summary')
-    summary_cmd.add_argument('--file', help='File to save the efuse summary', type=argparse.FileType('wb'), default=sys.stdout)
+    summary_cmd.add_argument('--file', help='File to save the efuse summary', type=argparse.FileType('w'), default=sys.stdout)
 
 
 def add_force_write_always(p):
@@ -149,9 +149,17 @@ def summary(esp, efuses, args):
                         print("%-40s %-50s" % ("", e.description[i:(50 + i)]), file=args.file)
             if args.format == 'json':
                 json_efuse[e.name] = {
+                    'name': e.name,
                     'value': base_value if readable else value,
-                    'readable':readable,
-                    'writeable':writeable}
+                    'readable': readable,
+                    'writeable': writeable,
+                    'description': e.description,
+                    'category': e.category,
+                    'block': e.block,
+                    'word': e.word,
+                    'pos': e.pos,
+                    'efuse_type': e.efuse_type,
+                    'bit_len': e.bit_len}
         if human_output:
             print("",file=args.file)
     if human_output:
