@@ -17,6 +17,7 @@ import tempfile
 import time
 import unittest
 from socket import socket, SOCK_STREAM, AF_INET
+from time import sleep
 
 import serial
 
@@ -58,16 +59,12 @@ class ESPRFC2217Server(object):
 
     def __init__(self, rfc2217_port=None):
         self.port = rfc2217_port or self.get_free_port()
-
         cmd = [sys.executable, ESPRFC2217SERVER_PY, '-p', str(self.port), serialport]
-        self.p = subprocess.Popen(cmd, cwd=TEST_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-        with self.p.stdout:
-            if any('TCP/IP port: {}'.format(self.port) in line.decode("utf-8") for line in
-                   iter(self.p.stdout.readline, b'')):
-                print("Server started successfully.")
-            else:
-                print("Failed to start a server.")
+        self.server_output_file = open(str(chip) + "_server.out", 'a')
+        self.server_output_file.write("************************************")
+        self.p = subprocess.Popen(cmd, cwd=TEST_DIR, stdout=self.server_output_file,
+                                  stderr=subprocess.STDOUT, close_fds=True)
+        self.wait_for_server_starts(attempts_count=5)
 
     @staticmethod
     def get_free_port():
@@ -77,10 +74,24 @@ class ESPRFC2217Server(object):
         s.close()
         return port
 
+    def wait_for_server_starts(self, attempts_count):
+        for attempt in range(attempts_count):
+            sleep(0.1)
+            s = socket(AF_INET, SOCK_STREAM)
+            result = s.connect_ex(('localhost', self.port))
+            s.close()
+            if result == 0:
+                print("Server started successfully.")
+                return
+            else:
+                print("Server start failed." + (" Retrying . . ." if attempt < attempts_count - 1 else ""))
+        raise Exception("Server not started successfully!")
+
     def __enter__(self):
         return self
 
     def __exit__(self, type, value, traceback):
+        self.server_output_file.close()
         self.p.terminate()
 
 
@@ -570,7 +581,7 @@ class TestLoadRAM(EsptoolTestCase):
         """
         self.run_esptool("load_ram images/helloworld-%s.bin" % chip)
         p = serial.serial_for_url(serialport, default_baudrate)
-        p.timeout = 0.2
+        p.timeout = 5
         output = p.read(100)
         print("Output: %r" % output)
         self.assertIn(b"Hello world!", output)
@@ -662,6 +673,7 @@ if __name__ == '__main__':
     print("Running esptool.py tests...")
     try:
         import xmlrunner
+
         with open('report.xml', 'w' if sys.version[0] == '2' else 'wb') as output:
             unittest.main(
                 testRunner=xmlrunner.XMLTestRunner(output=output))

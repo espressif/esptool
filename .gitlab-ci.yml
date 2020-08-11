@@ -75,3 +75,5 @@ target_esptool_test:
     paths:
       - test/*.out
     expire_in: 1 week
+  after_script:
+    - tail -n +1 test/*.out
