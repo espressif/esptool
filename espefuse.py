@@ -124,6 +124,7 @@ def main(custom_commandline=None):
     efuse_operations.add_commands(subparsers, efuses)
 
     args = parser.parse_args(remaining_args)
+    vars(args).update(vars(args1))
     print('espefuse.py v%s' % esptool.__version__)
     if args.operation is None:
         parser.print_help()
