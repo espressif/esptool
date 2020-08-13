@@ -258,7 +258,7 @@ class EfuseBlockBase(EfuseProtectBase):
         data = BitString(bytes=new_data[::-1], length=len(new_data) * 8)
         if self.parent.debug:
             print("\twritten : {} ->\n\tto write: {}".format(self.get_bitstring(), data))
-        self.wr_bitarray.overwrite(data, pos=0)
+        self.wr_bitarray.overwrite(self.wr_bitarray | data, pos=0)
 
     def burn_words(self, words):
         self.parent.efuse_controller_setup()
