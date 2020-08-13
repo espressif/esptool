@@ -53,6 +53,22 @@ class BaseTestCase(unittest.TestCase):
             actual = hex(ord(actual))
         self.assertEqual(expected, actual, message)
 
+    def assertImageDoesNotContainSection(self, image, elf, section_name):
+        """
+        Assert an esptool binary image object does not
+        contain the data for a particular ELF section.
+        """
+        with open(elf, "rb") as f:
+            e = ELFFile(f)
+            section = e.get_section_by_name(section_name)
+            self.assertTrue(section, "%s should be in the ELF" % section_name)
+            sh_addr = section.header.sh_addr
+            data = section.data()
+            # no section should start at the same address as the ELF section.
+            for seg in sorted(image.segments, key=lambda s: s.addr):
+                print("comparing seg 0x%x sec 0x%x len 0x%x" % (seg.addr, sh_addr, len(data)))
+                self.assertFalse(seg.addr == sh_addr, "%s should not be in the binary image" % section_name)
+
     def assertImageContainsSection(self, image, elf, section_name):
         """
         Assert an esptool binary image object contains
@@ -135,10 +151,14 @@ class ESP8266V1ImageTests(BaseTestCase):
 
     def test_loaded_sections(self):
         image = esptool.LoadFirmwareImage("esp8266", self.BIN_LOAD)
-        self.assertEqual(3, len(image.segments))
+        # Adjacent sections are now merged, len(image.segments) should
+        # equal 2 (instead of 3).
+        self.assertEqual(2, len(image.segments))
         self.assertImageContainsSection(image, self.ELF, ".data")
         self.assertImageContainsSection(image, self.ELF, ".text")
-        self.assertImageContainsSection(image, self.ELF, ".rodata")
+        # Section .rodata is merged in the binary with the previous one,
+        # so it won't be found in the binary image.
+        self.assertImageDoesNotContainSection(image, self.ELF, ".rodata")
 
 
 class ESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
@@ -163,14 +183,20 @@ class ESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
 
 class ESP8266V2ImageTests(BaseTestCase):
 
-    def _test_elf2image(self, elfpath, binpath):
+    def _test_elf2image(self, elfpath, binpath, mergedsections=[]):
         try:
             self.run_elf2image("esp8266", elfpath, 2)
             image = esptool.LoadFirmwareImage("esp8266", binpath)
-            self.assertEqual(4, len(image.segments))
-            self.assertImageContainsSection(image, elfpath, ".data")
-            self.assertImageContainsSection(image, elfpath, ".text")
-            self.assertImageContainsSection(image, elfpath, ".rodata")
+            print("In test_elf2image", len(image.segments))
+            self.assertEqual(4 - len(mergedsections), len(image.segments))
+            sections = [".data", ".text", ".rodata"]
+            # Remove the merged sections from the `sections` list
+            sections = [sec for sec in sections if sec not in mergedsections]
+            for sec in sections:
+                self.assertImageContainsSection(image, elfpath, sec)
+            for sec in mergedsections:
+                self.assertImageDoesNotContainSection(image, elfpath, sec)
+
             irom_segment = image.segments[0]
             self.assertEqual(0, irom_segment.addr,
                              "IROM segment 'load address' should be zero")
@@ -203,7 +229,8 @@ class ESP8266V2ImageTests(BaseTestCase):
     def test_espopenrtosimage(self):
         ELF = "esp8266-openrtos-blink-v2.elf"
         BIN = "esp8266-openrtos-blink-v2-0x02000.bin"
-        self._test_elf2image(ELF, BIN)
+        # .rodata section is merged with the previous one: .data
+        self._test_elf2image(ELF, BIN, [".rodata"])
 
 
 class ESP32ImageTests(BaseTestCase):
@@ -229,12 +256,16 @@ class ESP32ImageTests(BaseTestCase):
         ELF = "esp32-app-template.elf"
         BIN = "esp32-app-template.bin"
         image = self._test_elf2image(ELF, BIN)
-        self.assertEqual(6, len(image.segments))
-        # the other segment is a padding segment
-        for section in [".iram0.text", ".iram0.vectors",
-                        ".dram0.data", ".flash.rodata",
-                        ".flash.text"]:
+        # Adjacent sections are now merged, len(image.segments) should
+        # equal 5 (instead of 6).
+        self.assertEqual(5, len(image.segments))
+        # the other segment is a padding or merged segment
+        for section in [".iram0.vectors", ".dram0.data",
+                        ".flash.rodata", ".flash.text"]:
             self.assertImageContainsSection(image, ELF, section)
+        # check that merged sections are not in the binary image
+        for mergedsection in [".iram0.text"]:
+            self.assertImageDoesNotContainSection(image, ELF, mergedsection)
 
     def test_too_many_sections(self):
         ELF = "esp32-too-many-sections.elf"
@@ -250,7 +281,9 @@ class ESP32ImageTests(BaseTestCase):
         BIN = "esp32-zephyr.bin"
         # default behaviour uses ELF sections, this ELF will produce 8 segments in the bin
         image = self._test_elf2image(ELF, BIN)
-        self.assertEqual(8, len(image.segments))
+        # Adjacent sections are now merged, len(image.segments) should
+        # equal 4 (instead of 8).
+        self.assertEqual(4, len(image.segments))
 
         # --use_segments uses ELF segments(phdrs), produces just 2 segments in the bin
         image = self._test_elf2image(ELF, BIN, ["--use_segments"])
