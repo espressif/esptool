@@ -36,6 +36,8 @@ from bitstring import BitString
 import serial
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
+ESPEFUSE_PY = os.path.abspath(os.path.join(TEST_DIR, '..', 'espefuse.py'))
+ESPEFUSE_DIR = os.path.abspath(os.path.join(TEST_DIR, '..'))
 os.chdir(TEST_DIR)
 sys.path.insert(0, os.path.join(TEST_DIR, ".."))
 
@@ -57,9 +59,9 @@ class EfuseTestCase(unittest.TestCase):
     def setUp(self):
         if reset_port is None:
             self.efuse_file = tempfile.NamedTemporaryFile()
-            self.base_cmd = "python ../espefuse.py --chip {} --virt --path-efuse-file {} -d ".format(chip_target, self.efuse_file.name)
+            self.base_cmd = "python {} --chip {} --virt --path-efuse-file {} -d ".format(ESPEFUSE_PY, chip_target, self.efuse_file.name)
         else:
-            self.base_cmd = "python ../espefuse.py --chip {} -p {} -d ".format(chip_target, espefuse_port)
+            self.base_cmd = "python {} --chip {} -p {} -d ".format(ESPEFUSE_PY, chip_target, espefuse_port)
             self.reset_efuses()
 
     def tearDown(self):
@@ -113,7 +115,7 @@ class EfuseTestCase(unittest.TestCase):
             self.assertEqual(repeat, log.count(hex_blk))
 
     def espefuse_not_virt_py(self, cmd, check_msg=None, ret_code=0):
-        full_cmd = ' '.join(('python ../espefuse.py', cmd))
+        full_cmd = ' '.join(('python {}'.format(ESPEFUSE_PY), cmd))
         return self._run_command(full_cmd, check_msg, ret_code)
 
     def espefuse_py(self, cmd, do_not_confirm=True, check_msg=None, ret_code=0):
@@ -703,6 +705,15 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
             output = self.espefuse_py('summary -d')
             self.assertIn('[1 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
             self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=False)
+
+
+class TestExecuteScriptsCommands(EfuseTestCase):
+    def test_execute_scripts_without_sdkconfig(self):
+        self.espefuse_py("execute_scripts -h")
+        name = chip_target if chip_target == 'esp32' else 'esp32xx'
+        os.chdir(os.path.join(TEST_DIR, "efuse_scripts", name))
+        self.espefuse_py("execute_scripts test_efuse_script.py")
+        os.chdir(TEST_DIR)
 
 
 if __name__ == '__main__':

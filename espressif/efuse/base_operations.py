@@ -27,6 +27,8 @@ import esptool
 from . import base_fields
 from . import util
 
+ONLY_BURN_AT_END = False
+
 
 def add_common_commands(subparsers, efuses):
     class ActionEfuseValuePair(argparse.Action):
@@ -104,6 +106,9 @@ def add_common_commands(subparsers, efuses):
     summary_cmd = subparsers.add_parser('summary', help='Print human-readable summary of efuse values')
     summary_cmd.add_argument('--format', help='Select the summary format', choices=['summary', 'json'], default='summary')
     summary_cmd.add_argument('--file', help='File to save the efuse summary', type=argparse.FileType('w'), default=sys.stdout)
+
+    execute_scripts = subparsers.add_parser('execute_scripts', help='Executes scripts to burn at one time.')
+    execute_scripts.add_argument('scripts', help='The special format of python scripts.', nargs="+", type=argparse.FileType('r'))
 
 
 def add_force_write_always(p):
@@ -228,6 +233,8 @@ def burn_efuse(esp, efuses, args):
         print("\n    - '{}' ({}) {} -> {}".format(efuse.name, efuse.description, efuse.get_bitstring(), efuse.convert_to_bitstring(new_value)))
         efuse.save(new_value)
 
+    if ONLY_BURN_AT_END:
+        return
     efuses.burn_all()
 
     print("Checking efuses...")
@@ -260,6 +267,9 @@ def read_protect_efuse(esp, efuses, args):
             names = ", ".join(e.name for e in all_disabling)
             print("Permanently read-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "", names))
             efuse.disable_read()
+
+    if ONLY_BURN_AT_END:
+        return
     efuses.burn_all()
 
     print("Checking efuses...")
@@ -287,6 +297,9 @@ def write_protect_efuse(esp, efuses, args):
             names = ", ".join(e.name for e in all_disabling)
             print("Permanently write-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "", names))
             efuse.disable_write()
+
+    if ONLY_BURN_AT_END:
+        return
     efuses.burn_all()
 
     print("Checking efuses...")
@@ -334,6 +347,9 @@ def burn_block_data(esp, efuses, args):
                                      (block.id, num_bytes, len(data), offset))
         print("[{:02}] {:20} size={:02} bytes, offset={:02} - > [{}].".format(block.id, block.name, len(data), offset, util.hexify(data, " ")))
         block.save(data)
+
+    if ONLY_BURN_AT_END:
+        return
     efuses.burn_all()
     print("Successful")
 
@@ -352,5 +368,8 @@ def burn_bit(esp, efuses, args):
     print("BLOCK%-2d   :" % block.id, data_block)
     block.print_block(data_block, "regs_to_write", debug=True)
     block.save(data_block.bytes[::-1])
+
+    if ONLY_BURN_AT_END:
+        return
     efuses.burn_all()
     print("Successful")
