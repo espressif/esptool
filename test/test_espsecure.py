@@ -13,6 +13,8 @@ import tempfile
 import zlib
 from collections import namedtuple
 
+from .test_esptool import ESPSECURE_PY
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(TEST_DIR)
 
