@@ -60,6 +60,13 @@ except ImportError:
     print("The installed version (%s) of pyserial appears to be too old for esptool.py (Python interpreter %s). "
           "Check the README for installation instructions." % (sys.VERSION, sys.executable))
     raise
+except Exception:
+    if sys.platform == "darwin":
+        # swallow the exception, this is a known issue in pyserial+macOS Big Sur preview ref https://github.com/espressif/esptool/issues/540
+        list_ports = None
+    else:
+        raise
+
 
 __version__ = "2.9-dev"
 
@@ -3097,6 +3104,9 @@ def main(custom_commandline=None):
             initial_baud = args.baud
 
         if args.port is None:
+            if list_ports is None:
+                raise FatalError("Listing all serial ports is currently not available on this operating system version. "
+                                 "Specify the port when running esptool.py")
             ser_list = sorted(ports.device for ports in list_ports.comports())
             print("Found %d serial ports" % len(ser_list))
         else:
