@@ -50,7 +50,7 @@ static struct {
 
 /* SPI status bits */
 static const uint32_t STATUS_WIP_BIT = (1 << 0);
-#if defined(ESP32) || defined(ESP32S2)
+#if ESP32_OR_LATER
 static const uint32_t STATUS_QIE_BIT = (1 << 9);  /* Quad Enable */
 #endif
 
@@ -72,7 +72,7 @@ inline static void spi_wait_ready(void)
   /* Wait for SPI state machine ready */
   while((READ_REG(SPI_EXT2_REG) & SPI_ST))
     { }
-#if defined(ESP32) || defined(ESP32S2)
+#if ESP32_OR_LATER
   while(READ_REG(SPI0_EXT2_REG) & SPI_ST)
   { }
 #endif
@@ -105,7 +105,7 @@ static void spi_write_enable(void)
     { }
 }
 
-#if defined(ESP32) || defined(ESP32S2)
+#if ESP32_OR_LATER
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3ffae270;
 
 /* Stub version of SPIUnlock() that replaces version in ROM.
@@ -120,7 +120,7 @@ SpiFlashOpResult SPIUnlock(void)
   uint32_t status;
 
   spi_wait_ready(); /* ROM SPI_read_status_high() doesn't wait for this */
-#ifdef ESP32S2
+#if ESP32S2_OR_LATER
   if (SPI_read_status_high(flashchip, &status) != SPI_FLASH_RESULT_OK) {
     return SPI_FLASH_RESULT_ERR;
   }
@@ -253,7 +253,7 @@ void handle_flash_encrypt_data(void *data_buf, uint32_t length) {
   int last_sector;
   int res;
 
-#if ESP32S2
+#if ESP32S2_OR_LATER
   SPI_Write_Encrypt_Enable();
 #endif
 
@@ -290,7 +290,7 @@ void handle_flash_encrypt_data(void *data_buf, uint32_t length) {
   fs.next_write += length;
   fs.remaining -= length;
 
-#if ESP32S2
+#if ESP32S2_OR_LATER
   SPI_Write_Encrypt_Disable();
 #endif
 }

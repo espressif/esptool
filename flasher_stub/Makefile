@@ -35,6 +35,7 @@
 CROSS_8266 ?= xtensa-lx106-elf-
 CROSS_32 ?= xtensa-esp32-elf-
 CROSS_32S2 ?= xtensa-esp32s2-elf-
+CROSS_32S3 ?= xtensa-esp32s3-elf-
 
 # Python command to invoke wrap_stub.py
 WRAP_STUB ?= ./wrap_stub.py
@@ -53,6 +54,7 @@ BUILD_DIR = build
 STUB_ELF_8266 = $(BUILD_DIR)/$(STUB)_8266.elf
 STUB_ELF_32 = $(BUILD_DIR)/$(STUB)_32.elf
 STUB_ELF_32S2 = $(BUILD_DIR)/$(STUB)_32s2.elf
+STUB_ELF_32S3 = $(BUILD_DIR)/$(STUB)_32s3beta2.elf
 STUB_PY = $(BUILD_DIR)/$(STUB)_snippet.py
 
 .PHONY: all clean embed
@@ -79,11 +81,15 @@ $(STUB_ELF_32S2): $(SRCS) $(BUILD_DIR) ld/stub_32s2.ld
 	@echo "  CC(32S2)   $^ -> $@"
 	$(Q) $(CROSS_32S2)gcc $(CFLAGS) -DESP32S2=1 -Tstub_32s2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
-$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) wrap_stub.py
+$(STUB_ELF_32S3): $(SRCS) $(BUILD_DIR) ld/stub_32s3.ld
+	@echo "  CC(32S3)   $^ -> $@"
+	$(Q) $(CROSS_32S3)gcc $(CFLAGS) -DESP32S3=1 -Tstub_32s3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
 	$(Q) $(WRAP_STUB) --out-file $@ $(filter %.elf,$^)
 
-embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) wrap_stub.py
+embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3) wrap_stub.py
 	@echo "  WRAP $^ -> esptool.py"
 	$(Q) $(WRAP_STUB) $(filter %.elf,$^)
 

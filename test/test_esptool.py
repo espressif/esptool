@@ -99,7 +99,7 @@ class EsptoolTestCase(unittest.TestCase):
 
     def run_espsecure(self, args):
 
-        cmd = [sys.executable, ESPSECURE_PY ] + args.split(" ")
+        cmd = [sys.executable, ESPSECURE_PY] + args.split(" ")
         print("Running %s..." % (" ".join(cmd)))
         try:
             output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT)
@@ -119,11 +119,11 @@ class EsptoolTestCase(unittest.TestCase):
         """
         if baud is None:
             baud = default_baudrate
-        trace_args = [ "--trace" ] if trace_enabled else []
-        cmd = [sys.executable, ESPTOOL_PY ] + trace_args
+        trace_args = ["--trace"] if trace_enabled else []
+        cmd = [sys.executable, ESPTOOL_PY] + trace_args
         if chip_name:
-            cmd += [ "--chip", chip ]
-        cmd += ["--port", rfc2217_port or serialport, "--baud", str(baud) ] + args.split(" ")
+            cmd += ["--chip", chip]
+        cmd += ["--port", rfc2217_port or serialport, "--baud", str(baud)] + args.split(" ")
         print("Running %s..." % (" ".join(cmd)))
         try:
             output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT)
@@ -148,7 +148,7 @@ class EsptoolTestCase(unittest.TestCase):
 
     def setUp(self):
         self.tempfiles = []
-        print(50*"*")
+        print(50 * "*")
 
     def tearDown(self):
         for t in self.tempfiles:
@@ -198,6 +198,7 @@ class TestFlashEncryption(EsptoolTestCase):
         return not blk1_rd_en
 
     """ since flash crypt config is not set correct this test should abort write """
+
     def test_blank_efuse_encrypt_write_abort(self):
         print('test_blank_efuse_encrypt_write_abort')
 
@@ -211,6 +212,7 @@ class TestFlashEncryption(EsptoolTestCase):
     """ since ignore option is specified write should happen even though flash crypt config is 0
     later encrypted flash contents should be read back & compared with precomputed ciphertext
     pass case """
+
     def test_blank_efuse_encrypt_write_continue1(self):
         print('test_blank_efuse_encrypt_write_continue1')
 
@@ -273,24 +275,24 @@ class TestFlashing(EsptoolTestCase):
 
     def test_highspeed_flash(self):
         self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=921600)
-        self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
+        self.verify_readback(0, 50 * 1024, "images/fifty_kb.bin")
 
     def test_highspeed_flash_virtual_port(self):
         with ESPRFC2217Server() as server:
             rfc2217_port = 'rfc2217://localhost:' + str(server.port) + '?ign_set_control'
             self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=921600, rfc2217_port=rfc2217_port)
-        self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
+        self.verify_readback(0, 50 * 1024, "images/fifty_kb.bin")
 
     def test_adjacent_flash(self):
         self.run_esptool("write_flash 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
         self.verify_readback(0, 4096, "images/sector.bin")
-        self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
+        self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
 
     def test_adjacent_independent_flash(self):
         self.run_esptool("write_flash 0x0 images/sector.bin")
         self.verify_readback(0, 4096, "images/sector.bin")
         self.run_esptool("write_flash 0x1000 images/fifty_kb.bin")
-        self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
+        self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
         # writing flash the second time shouldn't have corrupted the first time
         self.verify_readback(0, 4096, "images/sector.bin")
 
@@ -307,13 +309,13 @@ class TestFlashing(EsptoolTestCase):
     def test_no_compression_flash(self):
         self.run_esptool("write_flash -u 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
         self.verify_readback(0, 4096, "images/sector.bin")
-        self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
+        self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
 
     @unittest.skipUnless(chip != 'esp8266', 'Added in ESP32')
     def test_compressed_nostub_flash(self):
         self.run_esptool("--no-stub write_flash -z 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
         self.verify_readback(0, 4096, "images/sector.bin")
-        self.verify_readback(4096, 50*1024, "images/fifty_kb.bin")
+        self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
 
     def _test_partition_table_then_bootloader(self, args):
         self.run_esptool(args + " 0x4000 images/partitions_singleapp.bin")
@@ -416,6 +418,13 @@ class TestFlashSizes(EsptoolTestCase):
                 "esp32s2": "images/bootloader_esp32s2.bin",
             }[chip]
             offset = 0x1000
+        elif chip in ["esp32s3beta2"]:
+            # this image is configured for 2MB flash by default,
+            # assume this is not the flash size in use
+            image = {
+                "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
+            }[chip]
+            offset = 0x0
         else:
             self.fail("unsupported chip for test: %s" % chip)
 
@@ -427,13 +436,13 @@ class TestFlashSizes(EsptoolTestCase):
         self.verify_readback(offset, image_len, image)
 
 
-
 class TestFlashDetection(EsptoolTestCase):
     def test_correct_offset(self):
         """ Verify writing at an offset actually writes to that offset. """
         res = self.run_esptool("flash_id")
         self.assertTrue("Manufacturer:" in res)
         self.assertTrue("Device:" in res)
+
 
 class TestErase(EsptoolTestCase):
 
@@ -442,7 +451,7 @@ class TestErase(EsptoolTestCase):
         self.verify_readback(0x10000, 0x400, "images/one_kb.bin")
         self.run_esptool("erase_flash")
         empty = self.readback(0x10000, 0x400)
-        self.assertTrue(empty == b'\xFF'*0x400)
+        self.assertTrue(empty == b'\xFF' * 0x400)
 
     def test_region_erase(self):
         self.run_esptool("write_flash 0x10000 images/one_kb.bin")
@@ -453,7 +462,7 @@ class TestErase(EsptoolTestCase):
         self.run_esptool("erase_region 0x10000 0x1000")
         self.verify_readback(0x11000, 0x1000, "images/sector.bin")
         empty = self.readback(0x10000, 0x1000)
-        self.assertTrue(empty == b'\xFF'*0x1000)
+        self.assertTrue(empty == b'\xFF' * 0x1000)
 
     def test_large_region_erase(self):
         # verifies that erasing a large region doesn't time out
@@ -512,19 +521,22 @@ class TestReadIdentityValues(EsptoolTestCase):
         idstr = re.search("Chip ID: 0x([0-9a-f]+)", output)
         self.assertIsNotNone(idstr)
         idstr = idstr.group(1)
-        self.assertNotEqual("0"*8, idstr)
-        self.assertNotEqual("f"*8, idstr)
+        self.assertNotEqual("0" * 8, idstr)
+        self.assertNotEqual("f" * 8, idstr)
+
 
 class TestKeepImageSettings(EsptoolTestCase):
     """ Tests for the -fm keep, -ff keep options for write_flash """
+
     def setUp(self):
         super(TestKeepImageSettings, self).setUp()
         self.BL_IMAGE = {
             "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
             "esp32": "images/bootloader_esp32.bin",
             "esp32s2": "images/bootloader_esp32s2.bin",
+            "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
         }[chip]
-        self.flash_offset = 0 if chip == "esp8266" else 0x1000  # bootloader offset
+        self.flash_offset = 0x1000 if chip in ("esp32", "esp32s2") else 0  # bootloader offset
         with open(self.BL_IMAGE, "rb") as f:
             self.header = f.read(8)
 
@@ -542,8 +554,8 @@ class TestKeepImageSettings(EsptoolTestCase):
         self.run_esptool("write_flash 0x%x %s" % (self.flash_offset, self.BL_IMAGE))
         readback = self.readback(self.flash_offset, 8)
         self.assertEqual(self.header[:3], readback[:3])  # first 3 bytes unchanged
-        self.assertNotEqual(self.header[3], readback[3]) # size_freq byte changed
-        self.assertEqual(self.header[4:], readback[4:]) # rest unchanged
+        self.assertNotEqual(self.header[3], readback[3])  # size_freq byte changed
+        self.assertEqual(self.header[4:], readback[4:])  # rest unchanged
 
     def test_explicit_set_size_freq_mode(self):
         self.run_esptool("write_flash -fs 2MB -fm dout -ff 80m 0x%x %s" % (self.flash_offset, self.BL_IMAGE))
@@ -573,6 +585,7 @@ class TestKeepImageSettings(EsptoolTestCase):
 
 class TestLoadRAM(EsptoolTestCase):
     @unittest.skipIf(chip == "esp32s2", "TODO: write a IRAM test binary for esp32s2")
+    @unittest.skipIf(chip == "esp32s3beta2", "TODO: write a IRAM test binary for esp32s3beta2")
     def test_load_ram(self):
         """ Verify load_ram command
 
@@ -606,15 +619,17 @@ class TestDeepSleepFlash(EsptoolTestCase):
         time.sleep(0.25)  # give ESP8266 time to enter deep sleep
 
         self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=230400)
-        self.verify_readback(0, 50*1024, "images/fifty_kb.bin")
+        self.verify_readback(0, 50 * 1024, "images/fifty_kb.bin")
+
 
 class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
-    BL_OFFSET = 0x0 if chip == "esp8266" else 0x1000
+    BL_OFFSET = 0x1000 if chip in ("esp32", "esp32s2") else 0
 
     def test_flash_header_rewrite(self):
-        bl_image = { "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
-                     "esp32": "images/bootloader_esp32.bin",
-                     "esp32s2": "images/bootloader_esp32s2.bin" }[chip]
+        bl_image = {"esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
+                    "esp32": "images/bootloader_esp32.bin",
+                    "esp32s2": "images/bootloader_esp32s2.bin",
+                    "esp32s3beta2": "images/bootloader_esp32s3beta2.bin"}[chip]
 
         output = self.run_esptool("write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, bl_image))
         self.assertIn("Flash params set to", output)
@@ -622,7 +637,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
     def test_flash_header_no_magic_no_rewrite(self):
         # first image doesn't start with magic byte, second image does
         # but neither are valid bootloader binary images for either chip
-        for image in [ "images/one_kb.bin", "images/one_kb_all_ef.bin" ]:
+        for image in ["images/one_kb.bin", "images/one_kb_all_ef.bin"]:
             output = self.run_esptool("write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, image))
             self.assertIn("not changing any flash settings", output)
             self.verify_readback(self.BL_OFFSET, 1024, image)
@@ -634,6 +649,7 @@ class TestAutoDetect(EsptoolTestCase):
             "esp8266": "ESP8266",
             "esp32": "ESP32",
             "esp32s2": "ESP32-S2",
+            "esp32s3beta2": "ESP32-S3(beta2)",
         }[chip]
         self.assertIn("Detecting chip type... " + expected_chip_name, output)
         self.assertIn("Chip is " + expected_chip_name, output)
@@ -645,7 +661,7 @@ class TestAutoDetect(EsptoolTestCase):
     def test_auto_detect_virtual_port(self):
         with ESPRFC2217Server() as server:
             output = self.run_esptool("chip_id", chip_name=None,
-                                      rfc2217_port='rfc2217://localhost:'+str(server.port)+'?ign_set_control')
+                                      rfc2217_port='rfc2217://localhost:' + str(server.port) + '?ign_set_control')
             self._check_output(output)
 
 
@@ -660,12 +676,12 @@ if __name__ == '__main__':
         default_baudrate = int(sys.argv[3])
         args_used = 3
     except IndexError:
-        pass # no additional args
+        pass  # no additional args
     except ValueError:
-        pass # arg3 not a number, must be a test name
+        pass  # arg3 not a number, must be a test name
 
     # unittest also uses argv, so trim the args we used
-    sys.argv = [ sys.argv[0] ] + sys.argv[args_used + 1:]
+    sys.argv = [sys.argv[0]] + sys.argv[args_used + 1:]
 
     # esptool skips strapping mode check in USB CDC case, if this is set
     os.environ["ESPTOOL_TESTING"] = "1"

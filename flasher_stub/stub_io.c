@@ -130,7 +130,7 @@ void stub_tx_flush(void)
     }
   }
 #endif // WITH_USB
-#if defined(ESP32) || defined(ESP32S2)
+#if ESP32_OR_LATER
   uart_tx_flush(0);
 #endif
 }
@@ -210,7 +210,7 @@ static uint32_t get_new_uart_divider(uint32_t current_baud, uint32_t new_baud)
   */
   uint32_t uart_reg = READ_REG(UART_CLKDIV_REG(0));
   uint32_t uart_div = uart_reg & UART_CLKDIV_M;
-#if defined(ESP32) || defined(ESP32S2)
+#if ESP32_OR_LATER
   // account for fractional part of divider (bottom 4 bits)
   uint32_t fraction = (uart_reg >> UART_CLKDIV_FRAG_S) & UART_CLKDIV_FRAG_V;
   uart_div = (uart_div << 4) + fraction;

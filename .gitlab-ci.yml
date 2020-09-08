@@ -45,14 +45,15 @@ check_stub_build:
       - flasher_stub/build/
     expire_in: 1 week
   variables:
-    # using this directory as the CI image probably already has an ESP32 & ESP32S2 toolchain downloaded into here
+    # using this directory as the CI image probably already has an ESP32 & ESP32S2 # ESP32S3 toolchain downloaded into here
     TOOLCHAIN_DIR: "/root/.espressif/dist"
 
     ESP8266_BINDIR: "${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"
     ESP32_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
     ESP32S2_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32s2-elf/bin"
+    ESP32S3_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32s3-elf/bin"
 
-    TOOLCHAIN_PATHS: "${ESP8266_BINDIR}:${ESP32_BINDIR}:${ESP32S2_BINDIR}"
+    TOOLCHAIN_PATHS: "${ESP8266_BINDIR}:${ESP32_BINDIR}:${ESP32S2_BINDIR}:${ESP32S3_BINDIR}"
   script:
     - ./test/ci/setup_ci_build_env.sh
     - make -C flasher_stub V=1 PATH="${TOOLCHAIN_PATHS}:${PATH}"
