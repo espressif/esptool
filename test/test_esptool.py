@@ -293,6 +293,10 @@ class TestFlashing(EsptoolTestCase):
         output = self.run_esptool_error("write_flash 0x0 images/bootloader_esp32.bin 0x1000 images/one_kb.bin")
         self.assertIn("Detected overlap at address: 0x1000 ", output)
 
+    def test_repeated_address(self):
+        output = self.run_esptool_error("write_flash 0x0 images/one_kb.bin 0x0 images/one_kb.bin")
+        self.assertIn("Detected overlap at address: 0x0 ", output)
+
     def test_write_sector_overlap(self):
         # These two 1KB files don't overlap, but they do both touch sector at 0x1000 so should fail
         output = self.run_esptool_error("write_flash 0xd00 images/one_kb.bin 0x1d00 images/one_kb.bin")
