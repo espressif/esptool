@@ -3526,7 +3526,7 @@ class AddrFilenamePairAction(argparse.Action):
 
         # Sort the addresses and check for overlapping
         end = 0
-        for address, argfile in sorted(pairs):
+        for address, argfile in sorted(pairs, key=lambda x: x[0]):
             argfile.seek(0,2)  # seek to end
             size = argfile.tell()
             argfile.seek(0)
