@@ -391,9 +391,9 @@ class TestBurnCommands(EfuseTestCase):
                               BLOCK_KEY4 images/efuse/256bit_1 SECURE_BOOT_DIGEST1 \
                               BLOCK_KEY5 images/efuse/256bit_2 SECURE_BOOT_DIGEST2')
             output = self.espefuse_py('summary -d')
-            self.check_data_block_in_log(output, "images/efuse/256bit")
-            self.check_data_block_in_log(output, "images/efuse/256bit_1")
-            self.check_data_block_in_log(output, "images/efuse/256bit_2")
+            self.check_key_in_log(output, "images/efuse/256bit")
+            self.check_key_in_log(output, "images/efuse/256bit_1")
+            self.check_key_in_log(output, "images/efuse/256bit_2")
 
     def test_burn_key_with_34_coding_scheme(self):
         if chip_target == "esp32":
@@ -575,6 +575,27 @@ class TestBurnCommands(EfuseTestCase):
             output = self.espefuse_py('summary -d')
             self.assertEqual(1, output.count(" = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"))
             self.assertEqual(2, output.count(" = 90 1a 74 09 23 8d 52 d4 cb f9 6f 56 3f b3 f4 29 6d ab d6 6a 33 f5 3b 15 ee cd 8c b3 e7 ec 45 d3 R/-"))
+
+    def test_burn_key_from_digest(self):
+        #  python espsecure.py digest_rsa_public_key --keyfile test/secure_images/rsa_secure_boot_signing_key.pem \
+        #                                            -o secure_images/rsa_public_key_digest.bin
+        if chip_target == "esp32":
+            self.espefuse_py('burn_key \
+                              BLK2 secure_images/rsa_public_key_digest.bin --no-protect-key')
+            output = self.espefuse_py('summary -d')
+            print(output)
+            self.assertEqual(1, output.count(" = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/W"))
+
+        elif chip_target == "esp32s2":
+            self.espefuse_py('burn_key \
+                              BLOCK_KEY0 secure_images/rsa_public_key_digest.bin SECURE_BOOT_DIGEST0')
+            output = self.espefuse_py('summary -d')
+            self.assertEqual(1, output.count(" = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"))
+
+            self.espefuse_py('burn_key_digest \
+                              BLOCK_KEY1 secure_images/rsa_secure_boot_signing_key.pem SECURE_BOOT_DIGEST1')
+            output = self.espefuse_py('summary -d')
+            self.assertEqual(2, output.count(" = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"))
 
     def test_burn_key_digest_with_34_coding_scheme(self):
         if chip_target == "esp32":

@@ -75,7 +75,7 @@ def add_common_commands(subparsers, efuses):
                                      choices=[e.name for e in efuses.efuses if e.write_disable_bit is not None])
 
     burn_block_data = subparsers.add_parser('burn_block_data', help="Burn non-key data to EFUSE blocks. "
-                                            "(Don't use this command to burn key data for Flash Encryption or Secure Boot, " +
+                                            "(Don't use this command to burn key data for Flash Encryption or ESP32 Secure Boot V1, " +
                                             "as the byte order of keys is swapped (use burn_key)).")
     add_force_write_always(burn_block_data)
     burn_block_data.add_argument('--offset', '-o', help='Byte offset in the efuse block', type=int, default=0)

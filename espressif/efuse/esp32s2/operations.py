@@ -177,7 +177,7 @@ def burn_key(esp, efuses, args, digest=None):
     for block_name, datafile, keypurpose in zip(block_name_list, datafile_list, keypurpose_list):
         efuse = None
         for block in efuses.blocks:
-            if block_name == block.name or block_name == block.alias:
+            if block_name == block.name or block_name in block.alias:
                 efuse = efuses[block.name]
         if efuse is None:
             raise esptool.FatalError("Unknown block name - %s" % (block_name))
@@ -255,7 +255,7 @@ def burn_key_digest(esp, efuses, args):
     for block_name, datafile in zip(block_list, datafile_list):
         efuse = None
         for block in efuses.blocks:
-            if block_name == block.name or block_name == block.alias:
+            if block_name == block.name or block_name in block.alias:
                 efuse = efuses[block.name]
         if efuse is None:
             raise esptool.FatalError("Unknown block name - %s" % (block_name))

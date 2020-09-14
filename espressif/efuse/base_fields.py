@@ -183,7 +183,7 @@ class EfuseBlockBase(EfuseProtectBase):
     def print_block(self, bit_string, comment, debug=False):
         if self.parent.debug or debug:
             bit_string.pos = 0
-            print("%-15s (%-16s) [%-2d] %s:" % (self.name, self.alias, self.id, comment),
+            print("%-15s (%-16s) [%-2d] %s:" % (self.name, " ".join(self.alias)[:16], self.id, comment),
                   " ".join(["%08x" % word for word in bit_string.readlist('%d*uint:32' % (bit_string.len / 32))[::-1]]))
 
     def check_wr_data(self):
@@ -344,7 +344,7 @@ class EspEfusesBase(object):
 
     def get_index_block_by_name(self, name):
         for block in self.blocks:
-            if block.name == name or block.alias == name:
+            if block.name == name or name in block.alias:
                 return block.id
         return None
 

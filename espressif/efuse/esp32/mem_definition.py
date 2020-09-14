@@ -61,10 +61,10 @@ class EfuseDefineBlocks(EfuseBlocksBase):
     # List of efuse blocks
     BLOCKS = [
         # Name, Alias, Index, Read address, Write address, Write protect bit, Read protect bit, Len, key_purpose
-        ("BLK0",    None,                  0, 0x3FF5A000, 0x3FF5A01C, None, None, 7,                None),
-        ("BLK1",    "flash_encryption",    1, 0x3FF5A038, 0x3FF5A098, 7,    0,    8,                None),
-        ("BLK2",    "secure_boot",         2, 0x3FF5A058, 0x3FF5A0B8, 8,    1,    8,                None),
-        ("BLK3",    None,                  3, 0x3FF5A078, 0x3FF5A0D8, 9,    2,    8,                None),
+        ("BLOCK0",    [],                                     0, 0x3FF5A000, 0x3FF5A01C, None, None, 7,                None),
+        ("BLOCK1",    ["flash_encryption"],                   1, 0x3FF5A038, 0x3FF5A098, 7,    0,    8,                None),
+        ("BLOCK2",    ["secure_boot_v1", "secure_boot_v2"],   2, 0x3FF5A058, 0x3FF5A0B8, 8,    1,    8,                None),
+        ("BLOCK3",    [],                                     3, 0x3FF5A078, 0x3FF5A0D8, 9,    2,    8,                None),
     ]
 
     def get_burn_block_data_names(self):
@@ -114,10 +114,10 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('DISABLE_DL_CACHE',     "security",    0, 6, 9,   "bool",      15,   None, None,       "Disable flash cache in UART bootloader", None),
         ('BLK3_PART_RESERVE',    "calibration", 0, 3, 14,  "bool",      10,   3,    None,       "BLOCK3 partially served for ADC calibration data", None),
         ('ADC_VREF',             "calibration", 0, 4, 8,   "uint:5",    0,    None, "vref",     "Voltage reference calibration", None),
-        ('MAC_VERSION',          "identity",    3, 5, 24,  "uint:8",    9,    2,    None,       "Version of the MAC field", {1:"Custom MAC in BLK3"}),
+        ('MAC_VERSION',          "identity",    3, 5, 24,  "uint:8",    9,    2,    None,       "Version of the MAC field", {1:"Custom MAC in BLOCK3"}),
     ]
 
-    # if MAC_VERSION is set "1", these efuse fields are in BLK3:
+    # if MAC_VERSION is set "1", these efuse fields are in BLOCK3:
     CUSTOM_MAC = [
         # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
         ('CUSTOM_MAC',           "identity",    3, 0, 8,   "bytes:6",   9,    2,   "mac",       "Custom MAC", None),
@@ -127,20 +127,20 @@ class EfuseDefineFields(EfuseFieldsBase):
     # The len of fields depends on coding scheme: for CODING_SCHEME_NONE
     KEYBLOCKS_256 = [
         # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('BLK1',                 "security",    1, 0, 0,   "bytes:32", 7,    0,    "keyblock", "Flash encryption key", None),
-        ('BLK2',                 "security",    2, 0, 0,   "bytes:32", 8,    1,    "keyblock", "Secure boot key", None),
-        ('BLK3',                 "security",    3, 0, 0,   "bytes:32", 9,    2,    "keyblock", "Variable Block 3", None),
+        ('BLOCK1',                 "security",    1, 0, 0,   "bytes:32", 7,    0,    "keyblock", "Flash encryption key", None),
+        ('BLOCK2',                 "security",    2, 0, 0,   "bytes:32", 8,    1,    "keyblock", "Secure boot key", None),
+        ('BLOCK3',                 "security",    3, 0, 0,   "bytes:32", 9,    2,    "keyblock", "Variable Block 3", None),
     ]
 
     # The len of fields depends on coding scheme: for CODING_SCHEME_34
     KEYBLOCKS_192 = [
         # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('BLK1',                 "security",    1, 0, 0,   "bytes:24", 7,    0,    "keyblock", "Flash encryption key", None),
-        ('BLK2',                 "security",    2, 0, 0,   "bytes:24", 8,    1,    "keyblock", "Secure boot key", None),
-        ('BLK3',                 "security",    3, 0, 0,   "bytes:24", 9,    2,    "keyblock", "Variable Block 3", None),
+        ('BLOCK1',                 "security",    1, 0, 0,   "bytes:24", 7,    0,    "keyblock", "Flash encryption key", None),
+        ('BLOCK2',                 "security",    2, 0, 0,   "bytes:24", 8,    1,    "keyblock", "Secure boot key", None),
+        ('BLOCK3',                 "security",    3, 0, 0,   "bytes:24", 9,    2,    "keyblock", "Variable Block 3", None),
     ]
 
-    # if BLK3_PART_RESERVE is set, these efuse fields are in BLK3:
+    # if BLK3_PART_RESERVE is set, these efuse fields are in BLOCK3:
     ADC_CALIBRATION = [
         # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
         ('ADC1_TP_LOW',          "calibration", 3, 3, 0,   "uint:7",    9,    2,    "adc_tp",   "ADC1 150mV reading", None),

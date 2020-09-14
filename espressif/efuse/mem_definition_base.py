@@ -46,7 +46,8 @@ class EfuseBlocksBase(object):
                 if blk.name:
                     list_of_names.append(blk.name)
                 if blk.alias:
-                    list_of_names.append(blk.alias)
+                    for alias in blk.alias:
+                        list_of_names.append(alias)
         return list_of_names
 
 
