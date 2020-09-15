@@ -280,7 +280,7 @@ def sign_secure_boot_v2(args):
         assert len(signature_sector) % SIG_BLOCK_SIZE == 0
 
         if sig_block_num == 0:
-            raise esptool.FatalError("No valid signature blocks found. Discarding --append-signature and proceeding to sign the image afresh.")
+            print("No valid signature blocks found. Discarding --append-signature and proceeding to sign the image afresh.")
         else:
             print("%d valid signature block(s) already present in the signature sector." % sig_block_num)
 
@@ -496,7 +496,7 @@ def signature_info_v2(args):
         sig_blk = image_content[offset: offset + SIG_BLOCK_SIZE]
         key_digest = _sha256_digest(sig_blk[36:812])
 
-        print("Public key digest for block %d: %s" % (sig_blk_num, " ".join("{:02x}".format(ord(c)) for c in key_digest)))
+        print("Public key digest for block %d: %s" % (sig_blk_num, " ".join("{:02x}".format(c) for c in bytearray(key_digest))))
 
 
 def _digest_rsa_public_key(keyfile):
