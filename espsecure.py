@@ -520,7 +520,7 @@ def digest_rsa_public_key(args):
     public_key_digest = _digest_rsa_public_key(args.keyfile)
     with open(args.output, "wb") as f:
         print("Writing the public key digest of %s to %s." % (args.keyfile.name, args.output))
-        f.write(public_key_digest[::-1])  # Reversing the byte order as burn key will reverse the byte order
+        f.write(public_key_digest)
 
 
 def digest_private_key(args):
