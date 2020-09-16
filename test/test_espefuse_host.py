@@ -91,9 +91,6 @@ class EfuseTestCase(unittest.TestCase):
         self.espefuse_py('burn_efuse CODING_SCHEME 1')
 
     def check_data_block_in_log(self, log, file_path, repeat=1, reverse_order=False, offset=0):
-        self.check_key_in_log(log, file_path, repeat, reverse_order, offset)
-
-    def check_key_in_log(self, log, file_path, repeat=1, reverse_order=True, offset=0):
         with open(file_path, 'rb') as f:
             data = BitString('0x00') * offset + BitString(f)
             blk = data.readlist("%d*uint:8" % (data.len // 8))
@@ -164,9 +161,9 @@ class TestBurnCommands(EfuseTestCase):
             cmd = 'read_protect_efuse \
                    CODING_SCHEME \
                    MAC_VERSION \
-                   BLK1 \
-                   BLK2 \
-                   BLK3'
+                   BLOCK1 \
+                   BLOCK2 \
+                   BLOCK3'
             count_protects = 5
         else:
             cmd = 'read_protect_efuse \
@@ -199,7 +196,7 @@ class TestBurnCommands(EfuseTestCase):
         if chip_target == "esp32":
             efuse_lists = '''WR_DIS RD_DIS CODING_SCHEME CHIP_VERSION CHIP_PACKAGE XPD_SDIO_FORCE
                            XPD_SDIO_REG XPD_SDIO_TIEH SPI_PAD_CONFIG_CLK FLASH_CRYPT_CNT UART_DOWNLOAD_DIS
-                           FLASH_CRYPT_CONFIG ADC_VREF BLK1 BLK2 BLK3'''
+                           FLASH_CRYPT_CONFIG ADC_VREF BLOCK1 BLOCK2 BLOCK3'''
             efuse_lists2 = 'WR_DIS RD_DIS'
         else:
             efuse_lists = '''RD_DIS DIS_RTC_RAM_BOOT DIS_ICACHE DIS_DCACHE DIS_DOWNLOAD_ICACHE DIS_DOWNLOAD_DCACHE DIS_FORCE_DOWNLOAD
@@ -296,8 +293,8 @@ class TestBurnCommands(EfuseTestCase):
             self.espefuse_py("burn_efuse -h")
             self.espefuse_py('burn_efuse CUSTOM_MAC AB:CD:EF:01:02:03')
             self.espefuse_py('get_custom_mac', check_msg='Custom MAC Address version 1: ab:cd:ef:01:02:03 (CRC 0x61 OK)')
-            blk1 = "BLK1"
-            blk2 = "BLK2"
+            blk1 = "BLOCK1"
+            blk2 = "BLOCK2"
         else:
             self.espefuse_py('burn_efuse \
                               DIS_BOOT_REMAP 1 \
@@ -332,7 +329,7 @@ class TestBurnCommands(EfuseTestCase):
             self._set_34_coding_scheme()
             self.espefuse_py("burn_efuse BLK3_PART_RESERVE 1")
             self.espefuse_py("burn_efuse ADC1_TP_LOW 50")
-            self.espefuse_py("burn_efuse ADC1_TP_HIGH 55", check_msg="Burn into BLK3 is forbidden (3/4 coding scheme does not allow this)", ret_code=2)
+            self.espefuse_py("burn_efuse ADC1_TP_HIGH 55", check_msg="Burn into BLOCK3 is forbidden (3/4 coding scheme does not allow this)", ret_code=2)
 
     def test_burn_efuse_with_34_coding_scheme2(self):
         if chip_target == "esp32":
@@ -347,35 +344,35 @@ class TestBurnCommands(EfuseTestCase):
     def test_burn_key(self):
         self.espefuse_py("burn_key -h")
         if chip_target == "esp32":
-            self.espefuse_py('burn_key BLK1 images/efuse/192bit',
+            self.espefuse_py('burn_key BLOCK1 images/efuse/192bit',
                              check_msg="A fatal error occurred: Incorrect key file size 24. Key file must be 32 bytes (256 bits) of raw binary key data.",
                              ret_code=2)
             self.espefuse_py('burn_key \
-                              BLK1 images/efuse/256bit \
-                              BLK2 images/efuse/256bit_1 \
-                              BLK3 images/efuse/256bit_2 --no-protect-key')
+                              BLOCK1 images/efuse/256bit \
+                              BLOCK2 images/efuse/256bit_1 \
+                              BLOCK3 images/efuse/256bit_2 --no-protect-key')
             output = self.espefuse_py('summary -d')
-            self.check_key_in_log(output, "images/efuse/256bit")
-            self.check_key_in_log(output, "images/efuse/256bit_1")
-            self.check_key_in_log(output, "images/efuse/256bit_2")
+            self.check_data_block_in_log(output, "images/efuse/256bit")
+            self.check_data_block_in_log(output, "images/efuse/256bit_1")
+            self.check_data_block_in_log(output, "images/efuse/256bit_2")
 
             self.espefuse_py('burn_key \
-                              BLK1 images/efuse/256bit \
-                              BLK2 images/efuse/256bit_1 \
-                              BLK3 images/efuse/256bit_2')
+                              BLOCK1 images/efuse/256bit \
+                              BLOCK2 images/efuse/256bit_1 \
+                              BLOCK3 images/efuse/256bit_2')
             output = self.espefuse_py('summary -d')
-            self.assertIn('[1 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
-            self.assertIn('[2 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
-            self.assertIn('[3 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+            self.check_data_block_in_log(output, "images/efuse/256bit")
+            self.check_data_block_in_log(output, "images/efuse/256bit_1")
+            self.check_data_block_in_log(output, "images/efuse/256bit_2")
         elif chip_target == "esp32s2":
             self.espefuse_py('burn_key \
                               BLOCK_KEY0 images/efuse/256bit   XTS_AES_256_KEY_1 \
                               BLOCK_KEY1 images/efuse/256bit_1 XTS_AES_256_KEY_2 \
                               BLOCK_KEY2 images/efuse/256bit_2 XTS_AES_128_KEY   --no-read-protect --no-write-protect')
             output = self.espefuse_py('summary -d')
-            self.check_key_in_log(output, "images/efuse/256bit")
-            self.check_key_in_log(output, "images/efuse/256bit_1")
-            self.check_key_in_log(output, "images/efuse/256bit_2")
+            self.check_data_block_in_log(output, "images/efuse/256bit", reverse_order=True)
+            self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=True)
+            self.check_data_block_in_log(output, "images/efuse/256bit_2", reverse_order=True)
 
             self.espefuse_py('burn_key \
                               BLOCK_KEY0 images/efuse/256bit   XTS_AES_256_KEY_1 \
@@ -391,39 +388,39 @@ class TestBurnCommands(EfuseTestCase):
                               BLOCK_KEY4 images/efuse/256bit_1 SECURE_BOOT_DIGEST1 \
                               BLOCK_KEY5 images/efuse/256bit_2 SECURE_BOOT_DIGEST2')
             output = self.espefuse_py('summary -d')
-            self.check_key_in_log(output, "images/efuse/256bit")
-            self.check_key_in_log(output, "images/efuse/256bit_1")
-            self.check_key_in_log(output, "images/efuse/256bit_2")
+            self.check_data_block_in_log(output, "images/efuse/256bit")
+            self.check_data_block_in_log(output, "images/efuse/256bit_1")
+            self.check_data_block_in_log(output, "images/efuse/256bit_2")
 
     def test_burn_key_with_34_coding_scheme(self):
         if chip_target == "esp32":
             self._set_34_coding_scheme()
-            self.espefuse_py('burn_key BLK1 images/efuse/256bit',
+            self.espefuse_py('burn_key BLOCK1 images/efuse/256bit',
                              check_msg="A fatal error occurred: Incorrect key file size 32. Key file must be 24 bytes (192 bits) of raw binary key data.",
                              ret_code=2)
             self.espefuse_py('burn_key \
-                              BLK1 images/efuse/192bit \
-                              BLK2 images/efuse/192bit_1 \
-                              BLK3 images/efuse/192bit_2 --no-protect-key')
+                              BLOCK1 images/efuse/192bit \
+                              BLOCK2 images/efuse/192bit_1 \
+                              BLOCK3 images/efuse/192bit_2 --no-protect-key')
             output = self.espefuse_py('summary -d')
-            self.check_key_in_log(output, "images/efuse/192bit")
-            self.check_key_in_log(output, "images/efuse/192bit_1")
-            self.check_key_in_log(output, "images/efuse/192bit_2")
+            self.check_data_block_in_log(output, "images/efuse/192bit")
+            self.check_data_block_in_log(output, "images/efuse/192bit_1")
+            self.check_data_block_in_log(output, "images/efuse/192bit_2")
 
             self.espefuse_py('burn_key \
-                              BLK1 images/efuse/192bit \
-                              BLK2 images/efuse/192bit_1 \
-                              BLK3 images/efuse/192bit_2')
+                              BLOCK1 images/efuse/192bit \
+                              BLOCK2 images/efuse/192bit_1 \
+                              BLOCK3 images/efuse/192bit_2')
             output = self.espefuse_py('summary -d')
-            self.assertIn('[1 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000', output)
-            self.assertIn('[2 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000', output)
-            self.assertIn('[3 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000', output)
+            self.check_data_block_in_log(output, "images/efuse/192bit")
+            self.check_data_block_in_log(output, "images/efuse/192bit_1")
+            self.check_data_block_in_log(output, "images/efuse/192bit_2")
 
     def test_burn_block_data_check_args(self):
         self.espefuse_py("burn_block_data -h")
         if chip_target == "esp32":
-            blk0 = "BLK0"
-            blk1 = "BLK1"
+            blk0 = "BLOCK0"
+            blk1 = "BLOCK1"
         else:
             blk0 = "BLOCK0"
             blk1 = "BLOCK1"
@@ -436,18 +433,18 @@ class TestBurnCommands(EfuseTestCase):
     def test_burn_block_data(self):
         if chip_target == "esp32":
             self.espefuse_py('burn_block_data \
-                              BLK0 images/efuse/224bit \
-                              BLK3 images/efuse/256bit')
+                              BLOCK0 images/efuse/224bit \
+                              BLOCK3 images/efuse/256bit')
             output = self.espefuse_py('summary -d')
             self.assertIn('[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc', output)
             self.check_data_block_in_log(output, "images/efuse/256bit")
 
             self.espefuse_py('burn_block_data \
-                              BLK2 images/efuse/256bit_1')
+                              BLOCK2 images/efuse/256bit_1')
             self.check_data_block_in_log(self.espefuse_py('summary -d'), "images/efuse/256bit_1")
 
             self.espefuse_py('burn_block_data \
-                              BLK1 images/efuse/256bit_2')
+                              BLOCK1 images/efuse/256bit_2')
             self.check_data_block_in_log(self.espefuse_py('summary -d'), "images/efuse/256bit_2")
         elif chip_target == "esp32s2":
             self.espefuse_py('burn_block_data \
@@ -474,10 +471,10 @@ class TestBurnCommands(EfuseTestCase):
 
     def test_burn_block_data_with_offset(self):
         if chip_target == "esp32":
-            blk0 = "BLK0"
-            blk1 = "BLK1"
-            blk2 = "BLK2"
-            blk3 = "BLK3"
+            blk0 = "BLOCK0"
+            blk1 = "BLOCK1"
+            blk2 = "BLOCK2"
+            blk3 = "BLOCK3"
         else:
             blk0 = "BLOCK0"
             blk1 = "BLOCK_KEY0"
@@ -502,7 +499,7 @@ class TestBurnCommands(EfuseTestCase):
                          ret_code=2)
         if chip_target == "esp32":
             offset = 1
-            self.espefuse_py('burn_block_data --offset %d BLK0 images/efuse/192bit' % offset)
+            self.espefuse_py('burn_block_data --offset %d BLOCK0 images/efuse/192bit' % offset)
 
         offset = 4
         self.espefuse_py('burn_block_data --offset %d %s images/efuse/192bit_1' % (offset, blk1))
@@ -519,14 +516,14 @@ class TestBurnCommands(EfuseTestCase):
     def test_burn_block_data_with_34_coding_scheme(self):
         if chip_target == "esp32":
             self._set_34_coding_scheme()
-            self.espefuse_py('burn_block_data BLK1 images/efuse/256bit',
+            self.espefuse_py('burn_block_data BLOCK1 images/efuse/256bit',
                              check_msg="A fatal error occurred: Data does not fit: the block1 size is 24 bytes, data file is 32 bytes, offset 0",
                              ret_code=2)
 
             self.espefuse_py('burn_block_data \
-                              BLK1 images/efuse/192bit \
-                              BLK2 images/efuse/192bit_1 \
-                              BLK3 images/efuse/192bit_2')
+                              BLOCK1 images/efuse/192bit \
+                              BLOCK2 images/efuse/192bit_1 \
+                              BLOCK3 images/efuse/192bit_2')
             output = self.espefuse_py('summary -d')
             self.check_data_block_in_log(output, "images/efuse/192bit")
             self.check_data_block_in_log(output, "images/efuse/192bit_1")
@@ -537,15 +534,15 @@ class TestBurnCommands(EfuseTestCase):
             self._set_34_coding_scheme()
 
             offset = 4
-            self.espefuse_py('burn_block_data --offset %d BLK1 images/efuse/128bit' % (offset))
+            self.espefuse_py('burn_block_data --offset %d BLOCK1 images/efuse/128bit' % (offset))
             self.check_data_block_in_log(self.espefuse_py('summary -d'), "images/efuse/128bit", offset=offset)
 
             offset = 6
-            self.espefuse_py('burn_block_data --offset %d BLK2 images/efuse/128bit' % (offset))
+            self.espefuse_py('burn_block_data --offset %d BLOCK2 images/efuse/128bit' % (offset))
             self.check_data_block_in_log(self.espefuse_py('summary -d'), "images/efuse/128bit", offset=offset)
 
             offset = 8
-            self.espefuse_py('burn_block_data --offset %d BLK3 images/efuse/128bit' % (offset))
+            self.espefuse_py('burn_block_data --offset %d BLOCK3 images/efuse/128bit' % (offset))
             self.check_data_block_in_log(self.espefuse_py('summary -d'), "images/efuse/128bit", offset=offset)
 
     def test_burn_key_digest(self):
@@ -581,7 +578,7 @@ class TestBurnCommands(EfuseTestCase):
         #                                            -o secure_images/rsa_public_key_digest.bin
         if chip_target == "esp32":
             self.espefuse_py('burn_key \
-                              BLK2 secure_images/rsa_public_key_digest.bin --no-protect-key')
+                              BLOCK2 secure_images/rsa_public_key_digest.bin --no-protect-key')
             output = self.espefuse_py('summary -d')
             print(output)
             self.assertEqual(1, output.count(" = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/W"))
@@ -607,10 +604,10 @@ class TestBurnCommands(EfuseTestCase):
     def test_burn_bit(self):
         self.espefuse_py("burn_bit -h")
         if chip_target == "esp32":
-            self.espefuse_py('burn_bit BLK3 0 1 2 4 8 16 32 64 96 128 160 192 224 255')
+            self.espefuse_py('burn_bit BLOCK3 0 1 2 4 8 16 32 64 96 128 160 192 224 255')
             self.espefuse_py('summary', check_msg="17 01 01 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 80")
 
-            self.espefuse_py('burn_bit BLK3 3 5 6 7 9 10 11 12 13 14 15 31 63 95 127 159 191 223 254')
+            self.espefuse_py('burn_bit BLOCK3 3 5 6 7 9 10 11 12 13 14 15 31 63 95 127 159 191 223 254')
             self.espefuse_py('summary', check_msg="ff ff 01 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 c0")
         elif chip_target == "esp32s2":
             self.espefuse_py('burn_bit BLOCK3 0 1 2 4 8 16 32 64 96 128 160 192 224 255')
@@ -626,9 +623,44 @@ class TestBurnCommands(EfuseTestCase):
     def test_burn_bit_with_34_coding_scheme(self):
         if chip_target == "esp32":
             self._set_34_coding_scheme()
-            self.espefuse_py('burn_bit BLK3 0 1 2 4 8 16 32 64 96 128 160 191')
+            self.espefuse_py('burn_bit BLOCK3 0 1 2 4 8 16 32 64 96 128 160 191')
             self.espefuse_py('summary', check_msg="17 01 01 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 80")
-            self.espefuse_py('burn_bit BLK3 17', check_msg="Burn into BLK3 is forbidden (3/4 coding scheme does not allow this).", ret_code=2)
+            self.espefuse_py('burn_bit BLOCK3 17', check_msg="Burn into BLOCK3 is forbidden (3/4 coding scheme does not allow this).", ret_code=2)
+
+
+class TestByteOrderBurnKeyCommand(EfuseTestCase):
+    def test_1_secure_boot_v1(self):
+        if chip_target == "esp32":
+            self.espefuse_py('burn_key \
+                              flash_encryption images/efuse/256bit \
+                              secure_boot_v1 images/efuse/256bit_1 --no-protect-key')
+            output = self.espefuse_py('summary -d')
+            self.check_data_block_in_log(output, "images/efuse/256bit", reverse_order=True)
+            self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=True)
+
+            self.espefuse_py('burn_key \
+                              flash_encryption  images/efuse/256bit \
+                              secure_boot_v1    images/efuse/256bit_1')
+            output = self.espefuse_py('summary -d')
+            self.assertIn('[1 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+            self.assertIn('[2 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+            self.assertIn('[3 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+
+    def test_2_secure_boot_v1(self):
+        if chip_target == "esp32":
+            self.espefuse_py('burn_key \
+                              flash_encryption images/efuse/256bit \
+                              secure_boot_v2 images/efuse/256bit_1 --no-protect-key')
+            output = self.espefuse_py('summary -d')
+            self.check_data_block_in_log(output, "images/efuse/256bit", reverse_order=True)
+            self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=False)
+
+            self.espefuse_py('burn_key \
+                              flash_encryption images/efuse/256bit \
+                              secure_boot_v2 images/efuse/256bit_1')
+            output = self.espefuse_py('summary -d')
+            self.assertIn('[1 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+            self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=False)
 
 
 if __name__ == '__main__':

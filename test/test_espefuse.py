@@ -53,9 +53,9 @@ class EfuseTestCase(unittest.TestCase):
         # dict mapping register name to its efuse object
         self.efuses, self.operations = espefuse.get_efuses(esp=self.esp, do_not_confirm=True)
         if type(self.esp) is esptool.ESP32ROM:
-            self.BLK1 = "BLK1"
-            self.BLK2 = "BLK2"
-            self.BLK3 = "BLK3"
+            self.BLK1 = "BLOCK1"
+            self.BLK2 = "BLOCK2"
+            self.BLK3 = "BLOCK3"
             self.chip = "ESP32"
         else:
             self.BLK1 = "BLOCK_KEY1"

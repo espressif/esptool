@@ -194,7 +194,7 @@ class TestFlashEncryption(EsptoolTestCase):
         esp = esptool.ESP32ROM(serialport)
         esp.connect()
         efuses, _ = espefuse.get_efuses(esp=esp)
-        blk1_rd_en = efuses["BLK1"].is_readable()
+        blk1_rd_en = efuses["BLOCK1"].is_readable()
         return not blk1_rd_en
 
     """ since flash crypt config is not set correct this test should abort write """
