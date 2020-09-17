@@ -112,20 +112,22 @@ class EfuseDefineRegisters(EfuseRegistersBase):
 
 class EfuseDefineBlocks(EfuseBlocksBase):
 
+    __base_rd_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE
+    __base_wr_regs = EfuseDefineRegisters.EFUSE_PGM_DATA0_REG
     # List of efuse blocks
     BLOCKS = [
         # Name,             Alias,   Index,  Read address,                           Write address,   Write protect bit, Read protect bit, Len, key_purpose
-        ("BLOCK0",          [],          0,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x02C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, None, None, 6, None),
-        ("MAC_SPI_8M_0",    ["BLOCK1"],  1,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x044, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 20,   None, 6, None),
-        ("BLOCK_SYS_DATA",  ["BLOCK2"],  2,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x05C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 21,   None, 8, None),
-        ("BLOCK_USR_DATA",  ["BLOCK3"],  3,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x07C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 22,   None, 8, None),
-        ("BLOCK_KEY0",      ["BLOCK4"],  4,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x09C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 23,   0,    8, "KEY_PURPOSE_0"),  # noqa: E501
-        ("BLOCK_KEY1",      ["BLOCK5"],  5,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x0BC, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 24,   1,    8, "KEY_PURPOSE_1"),  # noqa: E501
-        ("BLOCK_KEY2",      ["BLOCK6"],  6,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x0DC, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 25,   2,    8, "KEY_PURPOSE_2"),  # noqa: E501
-        ("BLOCK_KEY3",      ["BLOCK7"],  7,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x0FC, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 26,   3,    8, "KEY_PURPOSE_3"),  # noqa: E501
-        ("BLOCK_KEY4",      ["BLOCK8"],  8,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x11C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 27,   4,    8, "KEY_PURPOSE_4"),  # noqa: E501
-        ("BLOCK_KEY5",      ["BLOCK9"],  9,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x13C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 28,   5,    8, "KEY_PURPOSE_5"),  # noqa: E501
-        ("BLOCK_SYS_DATA2", ["BLOCK10"], 10, EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x15C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 29,   6,    8, None),
+        ("BLOCK0",          [],          0,  __base_rd_regs + 0x02C, __base_wr_regs, None, None, 6, None),
+        ("MAC_SPI_8M_0",    ["BLOCK1"],  1,  __base_rd_regs + 0x044, __base_wr_regs, 20,   None, 6, None),
+        ("BLOCK_SYS_DATA",  ["BLOCK2"],  2,  __base_rd_regs + 0x05C, __base_wr_regs, 21,   None, 8, None),
+        ("BLOCK_USR_DATA",  ["BLOCK3"],  3,  __base_rd_regs + 0x07C, __base_wr_regs, 22,   None, 8, None),
+        ("BLOCK_KEY0",      ["BLOCK4"],  4,  __base_rd_regs + 0x09C, __base_wr_regs, 23,   0,    8, "KEY_PURPOSE_0"),
+        ("BLOCK_KEY1",      ["BLOCK5"],  5,  __base_rd_regs + 0x0BC, __base_wr_regs, 24,   1,    8, "KEY_PURPOSE_1"),
+        ("BLOCK_KEY2",      ["BLOCK6"],  6,  __base_rd_regs + 0x0DC, __base_wr_regs, 25,   2,    8, "KEY_PURPOSE_2"),
+        ("BLOCK_KEY3",      ["BLOCK7"],  7,  __base_rd_regs + 0x0FC, __base_wr_regs, 26,   3,    8, "KEY_PURPOSE_3"),
+        ("BLOCK_KEY4",      ["BLOCK8"],  8,  __base_rd_regs + 0x11C, __base_wr_regs, 27,   4,    8, "KEY_PURPOSE_4"),
+        ("BLOCK_KEY5",      ["BLOCK9"],  9,  __base_rd_regs + 0x13C, __base_wr_regs, 28,   5,    8, "KEY_PURPOSE_5"),
+        ("BLOCK_SYS_DATA2", ["BLOCK10"], 10, __base_rd_regs + 0x15C, __base_wr_regs, 29,   6,    8, None),
     ]
 
     def get_burn_block_data_names(self):
@@ -175,7 +177,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("VDD_SPI_TIEH",         "VDD_SPI config",   0,  2,  5,  "bool",     3,    None, None,         "The VDD_SPI power supply voltage at reset",
          {0: "Connect to 1.8V LDO",
           1: "Connect to VDD3P3_RTC_IO"}),
-        ("WDT_DELAY_SEL",            "WDT config",   0,  2,  16, "bool",     3,    None, None,         "Selects RTC WDT timeout threshold at startup", None),
+        ("WDT_DELAY_SEL",            "WDT config",   0,  2,  16, "uint:2",   3,    None, None,         "Selects RTC WDT timeout threshold at startup", None),
         ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, None,         "Enables encryption and decryption, when an SPI boot "
                                                                                                        "mode is set. Enabled when 1 or 3 bits are set,"
                                                                                                        "disabled otherwise",
