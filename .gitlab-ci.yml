@@ -27,6 +27,7 @@ host_tests:
     - ./test/ci/multirun_with_pyenv.sh python test/test_espsecure.py
     - ./test/ci/multirun_with_pyenv.sh python test/test_espefuse_host.py esp32
     - ./test/ci/multirun_with_pyenv.sh python test/test_espefuse_host.py esp32s2
+    - ./test/ci/multirun_with_pyenv.sh python test/test_espefuse_host.py esp32s3beta2
     - ./test/ci/multirun_with_pyenv.sh python test/test_espefuse_host.py esp32c3
 
 check_python_style:
