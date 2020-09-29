@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This file describes eFuses fields and registers for ESP32 chip
+# This file describes eFuses fields and registers for ESP32-C3 chip
 #
 # Copyright (C) 2020 Espressif Systems (Shanghai) PTE LTD
 #
@@ -24,15 +24,15 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_MEM_SIZE = (0x01FC + 4)
 
     # EFUSE registers & command/conf values
-    DR_REG_EFUSE_BASE       = 0x3f41A000
+    DR_REG_EFUSE_BASE       = 0x60008800
     EFUSE_PGM_DATA0_REG     = DR_REG_EFUSE_BASE
     EFUSE_CHECK_VALUE0_REG  = DR_REG_EFUSE_BASE + 0x020
-    EFUSE_CLK_REG           = DR_REG_EFUSE_BASE + 0x1c8
-    EFUSE_CONF_REG          = DR_REG_EFUSE_BASE + 0x1cc
-    EFUSE_STATUS_REG        = DR_REG_EFUSE_BASE + 0x1d0
-    EFUSE_CMD_REG           = DR_REG_EFUSE_BASE + 0x1d4
-    EFUSE_RD_RS_ERR0_REG    = DR_REG_EFUSE_BASE + 0x194
-    EFUSE_RD_RS_ERR1_REG    = DR_REG_EFUSE_BASE + 0x198
+    EFUSE_CLK_REG           = DR_REG_EFUSE_BASE + 0x1C8
+    EFUSE_CONF_REG          = DR_REG_EFUSE_BASE + 0x1CC
+    EFUSE_STATUS_REG        = DR_REG_EFUSE_BASE + 0x1D0
+    EFUSE_CMD_REG           = DR_REG_EFUSE_BASE + 0x1D4
+    EFUSE_RD_RS_ERR0_REG    = DR_REG_EFUSE_BASE + 0x1C0
+    EFUSE_RD_RS_ERR1_REG    = DR_REG_EFUSE_BASE + 0x1C4
     EFUSE_WRITE_OP_CODE     = 0x5A5A
     EFUSE_READ_OP_CODE      = 0x5AA5
     EFUSE_PGM_CMD_MASK      = 0x3
@@ -54,78 +54,29 @@ class EfuseDefineRegisters(EfuseRegistersBase):
         (EFUSE_RD_RS_ERR1_REG,  0x7 << 4,     7),     # BLOCK_SYS_DATA2
     ]
 
-    EFUSE_DAC_CONF_REG = DR_REG_EFUSE_BASE + 0x1e8
-    EFUSE_DAC_CLK_DIV_S = 0
-    EFUSE_DAC_CLK_DIV_M = 0xFF << EFUSE_DAC_CLK_DIV_S
-
-    EFUSE_RD_TIM_CONF_REG = DR_REG_EFUSE_BASE + 0x1EC
-    EFUSE_TSUR_A_S = 16
-    EFUSE_TSUR_A_M = 0xFF << EFUSE_TSUR_A_S
-    EFUSE_TRD_S = 8
-    EFUSE_TRD_M = 0xFF << EFUSE_TRD_S
-    EFUSE_THR_A_S = 0
-    EFUSE_THR_A_M = 0xFF << EFUSE_THR_A_S
-
-    EFUSE_WR_TIM_CONF0_REG = DR_REG_EFUSE_BASE + 0x1F0
-    EFUSE_TPGM_S = 16
-    EFUSE_TPGM_M = 0xFFFF << EFUSE_TPGM_S
-    EFUSE_TPGM_INACTIVE_S = 8
-    EFUSE_TPGM_INACTIVE_M = 0xFF << EFUSE_TPGM_INACTIVE_S
-    EFUSE_THP_A_S = 0
-    EFUSE_THP_A_M = 0xFF << EFUSE_THP_A_S
-
-    EFUSE_WR_TIM_CONF1_REG = DR_REG_EFUSE_BASE + 0x1F4
-    EFUSE_PWR_ON_NUM_S = 8
-    EFUSE_PWR_ON_NUM_M = 0xFFFF << EFUSE_PWR_ON_NUM_S
-    EFUSE_TSUP_A_S = 0
-    EFUSE_TSUP_A_M = 0xFF << EFUSE_TSUP_A_S
-
-    EFUSE_WR_TIM_CONF2_REG = DR_REG_EFUSE_BASE + 0x1F8
+    EFUSE_WR_TIM_CONF2_REG = DR_REG_EFUSE_BASE + 0x1F4
     EFUSE_PWR_OFF_NUM_S = 0
     EFUSE_PWR_OFF_NUM_M = 0xFFFF << EFUSE_PWR_OFF_NUM_S
-
-    # Configure clock
-    EFUSE_PROGRAMMING_TIMING_PARAMETERS = {
-        # APB Frequency: ( EFUSE_TSUP_A, EFUSE_TPGM, EFUSE_THP_A, EFUSE_TPGM_INACTIVE )
-        # Taken from TRM chapter "eFuse Controller": eFuse-Programming Timing
-        80: (0x2, 0x320, 0x2, 0x4),
-        40: (0x1, 0x190, 0x1, 0x2),
-        20: (0x1, 0xC8,  0x1, 0x1),
-    }
-
-    VDDQ_TIMING_PARAMETERS = {
-        # APB Frequency: ( EFUSE_DAC_CLK_DIV, EFUSE_PWR_ON_NUM, EFUSE_PWR_OFF_NUM )
-        # Taken from TRM chapter "eFuse Controller": eFuse VDDQ Timing Setting
-        80: (0xA0, 0xA200, 0x100),
-        40: (0x50, 0x5100, 0x80),
-        20: (0x28, 0x2880, 0x40),
-    }
-
-    EFUSE_READING_PARAMETERS = {
-        # APB Frequency: ( EFUSE_TSUR_A, EFUSE_TRD, EFUSE_THR_A )
-        # Taken from TRM chapter "eFuse Controller": eFuse-Read Timing
-        80: (0x2, 0x4, 0x2),
-        40: (0x1, 0x2, 0x1),
-        20: (0x1, 0x1, 0x1),
-    }
 
 
 class EfuseDefineBlocks(EfuseBlocksBase):
 
+    __base_rd_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE
+    __base_wr_regs = EfuseDefineRegisters.EFUSE_PGM_DATA0_REG
     # List of efuse blocks
     BLOCKS = [
-        # Name,             Alias,   Index,  Read address,                           Write address,   Write protect bit, Read protect bit, Len, key_purpose
-        ("BLOCK0",          [],          0,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x02C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, None, None, 6, None),
-        ("MAC_SPI_8M_0",    ["BLOCK1"],  1,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x044, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 20,   None, 6, None),
-        ("BLOCK_SYS_DATA",  ["BLOCK2"],  2,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x05C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 21,   None, 8, None),
-        ("BLOCK_USR_DATA",  ["BLOCK3"],  3,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x07C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 22,   None, 8, None),
-        ("BLOCK_KEY0",      ["BLOCK4"],  4,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x09C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 23,   0,    8, "KEY_PURPOSE_0"),  # noqa: E501
-        ("BLOCK_KEY1",      ["BLOCK5"],  5,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x0BC, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 24,   1,    8, "KEY_PURPOSE_1"),  # noqa: E501
-        ("BLOCK_KEY2",      ["BLOCK6"],  6,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x0DC, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 25,   2,    8, "KEY_PURPOSE_2"),  # noqa: E501
-        ("BLOCK_KEY3",      ["BLOCK7"],  7,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x0FC, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 26,   3,    8, "KEY_PURPOSE_3"),  # noqa: E501
-        ("BLOCK_KEY4",      ["BLOCK8"],  8,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x11C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 27,   4,    8, "KEY_PURPOSE_4"),  # noqa: E501
-        ("BLOCK_KEY5",      ["BLOCK9"],  9,  EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x13C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 28,   5,    8, "KEY_PURPOSE_5"),  # noqa: E501
-        ("BLOCK_SYS_DATA2", ["BLOCK10"], 10, EfuseDefineRegisters.DR_REG_EFUSE_BASE + 0x15C, EfuseDefineRegisters.EFUSE_PGM_DATA0_REG, 29,   6,    8, None),
+        # Name,             Alias,     Index,  Read address,           Write address,  Write protect bit, Read protect bit, Len, key_purpose
+        ("BLOCK0",          [],          0,  __base_rd_regs + 0x02C, __base_wr_regs, None, None, 6, None),
+        ("MAC_SPI_8M_0",    ["BLOCK1"],  1,  __base_rd_regs + 0x044, __base_wr_regs, 20,   None, 6, None),
+        ("BLOCK_SYS_DATA",  ["BLOCK2"],  2,  __base_rd_regs + 0x05C, __base_wr_regs, 21,   None, 8, None),
+        ("BLOCK_USR_DATA",  ["BLOCK3"],  3,  __base_rd_regs + 0x07C, __base_wr_regs, 22,   None, 8, None),
+        ("BLOCK_KEY0",      ["BLOCK4"],  4,  __base_rd_regs + 0x09C, __base_wr_regs, 23,   0,    8, "KEY_PURPOSE_0"),
+        ("BLOCK_KEY1",      ["BLOCK5"],  5,  __base_rd_regs + 0x0BC, __base_wr_regs, 24,   1,    8, "KEY_PURPOSE_1"),
+        ("BLOCK_KEY2",      ["BLOCK6"],  6,  __base_rd_regs + 0x0DC, __base_wr_regs, 25,   2,    8, "KEY_PURPOSE_2"),
+        ("BLOCK_KEY3",      ["BLOCK7"],  7,  __base_rd_regs + 0x0FC, __base_wr_regs, 26,   3,    8, "KEY_PURPOSE_3"),
+        ("BLOCK_KEY4",      ["BLOCK8"],  8,  __base_rd_regs + 0x11C, __base_wr_regs, 27,   4,    8, "KEY_PURPOSE_4"),
+        ("BLOCK_KEY5",      ["BLOCK9"],  9,  __base_rd_regs + 0x13C, __base_wr_regs, 28,   5,    8, "KEY_PURPOSE_5"),
+        ("BLOCK_SYS_DATA2", ["BLOCK10"], 10, __base_rd_regs + 0x15C, __base_wr_regs, 29,   6,    8, None),
     ]
 
     def get_burn_block_data_names(self):
@@ -151,35 +102,31 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("RD_DIS",                       "efuse",    0,  1,  0,  "uint:7",   0,    None, None,         "Disables software reading from BLOCK4-10", None),
         ("DIS_RTC_RAM_BOOT",             "config",   0,  1,  7,  "bool",     1,    None, None,         "Disables boot from RTC RAM", None),
         ("DIS_ICACHE",                   "config",   0,  1,  8,  "bool",     2,    None, None,         "Disables ICache", None),
-        ("DIS_DCACHE",                   "config",   0,  1,  9,  "bool",     2,    None, None,         "Disables DCache", None),
+        ("DIS_USB_JTAG",             "usb config",   0,  1,  9,  "bool",     2,    None, None,         "Disables USB JTAG", None),
         ("DIS_DOWNLOAD_ICACHE",          "config",   0,  1,  10, "bool",     2,    None, None,         "Disables Icache when SoC is in Download mode", None),
-        ("DIS_DOWNLOAD_DCACHE",          "config",   0,  1,  11, "bool",     2,    None, None,         "Disables Dcache when SoC is in Download mode", None),
+        ("DIS_USB_DEVICE",           "usb config",   0,  1,  11, "bool",     2,    None, None,         "Disables USB DEVICE", None),
         ("DIS_FORCE_DOWNLOAD",           "config",   0,  1,  12, "bool",     2,    None, None,         "Disables forcing chip into Download mode", None),
         ("DIS_USB",                  "usb config",   0,  1,  13, "bool",     2,    None, None,         "Disables the USB OTG hardware", None),
         ("DIS_CAN",                      "config",   0,  1,  14, "bool",     2,    None, None,         "Disables the TWAI Controller hardware", None),
-        ("DIS_BOOT_REMAP",               "config",   0,  1,  15, "bool",     2,    None, None,         "Disables capability to Remap RAM to ROM address space",
-                                                                                                       None),
-        ("SOFT_DIS_JTAG",                "security", 0,  1,  17, "bool",     2,    None, None,         "Software disables JTAG. When software disabled, "
+        ("JTAG_SEL_ENABLE",         "jtag config",   0,  1,  15, "bool",     2,    None, None,         "Set this bit to enable selection between "
+                                                                                                       "usb_to_jtag and pad_to_jtag through strapping "
+                                                                                                       "gpio10 when both reg_dis_usb_jtag and "
+                                                                                                       "reg_dis_pad_jtag are equal to 0.", None),
+        ("SOFT_DIS_JTAG",           "jtag config",   0,  1,  16, "uint:2",   2,    None, None,         "Software disables JTAG. When software disabled, "
                                                                                                        "JTAG can be activated temporarily by HMAC peripheral",
                                                                                                        None),
-        ("HARD_DIS_JTAG",                "security", 0,  1,  18, "bool",     2,    None, None,         "Hardware disables JTAG permanently", None),
-        ("DIS_DOWNLOAD_MANUAL_ENCRYPT",  "security", 0,  1,  19, "bool",     2,    None, None,         "Disables flash encryption when in download boot modes",
+        ("DIS_PAD_JTAG",            "jtag config",   0,  1,  19, "bool",     2,    None, None,         "Disable JTAG in the hard way permanently", None),
+        ("DIS_DOWNLOAD_MANUAL_ENCRYPT", "security",  0,  1,  20, "bool",     2,    None, None,         "Disables flash encryption when in download boot modes",
                                                                                                        None),
-        ("USB_EXCHG_PINS",           "usb config",   0,  1,  24, "bool",     30,   None, None,         "Exchanges USB D+ and D- pins", None),
-        ("EXT_PHY_ENABLE",           "usb config",   0,  1,  25, "bool",     30,   None, None,         "Enables external USB PHY", None),
-        ("USB_FORCE_NOPERSIST",      "usb config",   0,  1,  26, "bool",     30,   None, None,         "Forces to set USB BVALID to 1", None),
-        ("BLOCK0_VERSION",             "identity",   0,  1,  27, "uint:2",   30,   None, None,         "BLOCK0 efuse version", None),
-        ("VDD_SPI_FORCE",        "VDD_SPI config",   0,  2,  6,  "bool",     3,    None, None,         "Force using VDD_SPI_XPD and VDD_SPI_TIEH "
-                                                                                                       "to configure VDD_SPI LDO", None),
-        ("VDD_SPI_XPD",          "VDD_SPI config",   0,  2,  4,  "bool",     3,    None, None,         "The VDD_SPI regulator is powered on", None),
-        ("VDD_SPI_TIEH",         "VDD_SPI config",   0,  2,  5,  "bool",     3,    None, None,         "The VDD_SPI power supply voltage at reset",
-         {0: "Connect to 1.8V LDO",
-          1: "Connect to VDD3P3_RTC_IO"}),
+        ("USB_EXCHG_PINS",           "usb config",   0,  1,  25, "bool",     30,   None, None,         "Exchanges USB D+ and D- pins", None),
+        ("VDD_SPI_AS_GPIO",              "config",   0,  1,  26, "bool",     30,   None, None,         "Set this bit to vdd spi pin function as gpio", None),
+        ("BTLC_GPIO_ENABLE",             "config",   0,  1,  27, "uint:2",   30,   None, None,         "Enable btlc gpio", None),
+        ("POWERGLITCH_EN",               "config",   0,  1,  29, "bool",     30,   None, None,         "Set this bit to enable power glitch function", None),
+        ("POWER_GLITCH_DSENSE",          "config",   0,  1,  30, "uint:2",   30,   None, None,         "Sample delay configuration of power glitch", None),
         ("WDT_DELAY_SEL",            "WDT config",   0,  2,  16, "bool",     3,    None, None,         "Selects RTC WDT timeout threshold at startup", None),
         ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, None,         "Enables encryption and decryption, when an SPI boot "
                                                                                                        "mode is set. Enabled when 1 or 3 bits are set,"
                                                                                                        "disabled otherwise",
-
          {0: "Disable",
           1: "Enable",
           3: "Disable",
@@ -196,36 +143,36 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SECURE_BOOT_EN",               "security", 0,  3, 20,  "bool",     15,   None, None,         "Enables secure boot", None),
         ("SECURE_BOOT_AGGRESSIVE_REVOKE", "security", 0, 3, 21,  "bool",     16,   None, None,         "Enables aggressive secure boot key revocation mode",
                                                                                                        None),
-        ("FLASH_TPUW",                   "config",   0,  3, 28,  "uint:4",   18,   None, None,         "Configures flash startup delay after SoC power-up, "
+        ("FLASH_TPUW",               "flash config", 0,  3, 28,  "uint:4",   18,   None, None,         "Configures flash startup delay after SoC power-up, "
                                                                                                        "unit is (ms/2). When the value is 15, delay is 7.5 ms",
                                                                                                        None),
         ("DIS_DOWNLOAD_MODE",            "security", 0,  4, 0,   "bool",     18,   None, None,         "Disables all Download boot modes", None),
         ("DIS_LEGACY_SPI_BOOT",          "config",   0,  4, 1,   "bool",     18,   None, None,         "Disables Legacy SPI boot mode", None),
         ("UART_PRINT_CHANNEL",           "config",   0,  4, 2,   "bool",     18,   None, None,         "Selects the default UART for printing boot msg",
-
          {0: "UART0",
           1: "UART1"}),
-        ("DIS_USB_DOWNLOAD_MODE",        "config",   0,  4, 4,   "bool",     18,   None, None,         "Disables use of USB in UART download boot mode", None),
-        ("ENABLE_SECURITY_DOWNLOAD",    "security",  0,  4, 5,   "bool",     18,   None, None,         "Enables secure UART download mode "
+        ("FLASH_ECC_MODE",         "flash config",   0,  4, 3,   "bool",     18,   None, None,         "Set this bit to set flsah ecc mode.",
+         {0: "flash ecc 16to18 byte mode",
+          1: "flash ecc 16to17 byte mode"}),
+        ("DIS_USB_DOWNLOAD_MODE",    "usb config",   0,  4, 4,   "bool",     18,   None, None,         "Disables use of USB in UART download boot mode", None),
+        ("ENABLE_SECURITY_DOWNLOAD",   "security",   0,  4, 5,   "bool",     18,   None, None,         "Enables secure UART download mode "
                                                                                                        "(read/write flash only)", None),
         ("UART_PRINT_CONTROL",           "config",   0,  4, 6,   "uint:2",   18,   None, None,         "Sets the default UART boot message output mode",
-
          {0: "Enabled",
           1: "Enable when GPIO 46 is low at reset",
           2: "Enable when GPIO 46 is high at rest",
           3: "Disabled"}),
-        ("PIN_POWER_SELECTION",  "VDD_SPI config",   0,  4, 8,   "bool",     18,   None, None,         "Sets default power supply for GPIO33..37, "
-                                                                                                       "set when SPI flash is initialized",
-
+        ("PIN_POWER_SELECTION",  "VDD_SPI config",   0,  4, 8,   "bool",     18,   None, None,         "GPIO33-GPIO37 power supply selection in ROM code",
          {0: "VDD3P3_CPU",
           1: "VDD_SPI"}),
-        ("FLASH_TYPE",                   "config",   0,  4, 9,   "bool",     18,   None, None,         "Selects SPI flash type",
-
+        ("FLASH_TYPE",             "flash config",   0,  4, 9,   "bool",     18,   None, None,         "Selects SPI flash type",
          {0: "4 data lines",
           1: "8 data lines"}),
-        ("FORCE_SEND_RESUME",            "config",   0,  4, 10,  "bool",     18,   None, None,         "Forces ROM code to send an SPI flash resume command "
+        ("FLASH_PAGE_SIZE",        "flash config",   0,  4, 10,  "uint:2",   18,   None, None,         "Flash page size", None),
+        ("FLASH_ECC_EN",           "flash config",   0,  4, 12,  "bool",     18,   None, None,         "Enable ECC for flash boot", None),
+        ("FORCE_SEND_RESUME",            "config",   0,  4, 13,  "bool",     18,   None, None,         "Force ROM code to send a resume command during SPI boot"
                                                                                                        "during SPI boot", None),
-        ("SECURE_VERSION",             "identity",   0,  4, 11,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
+        ("SECURE_VERSION",             "identity",   0,  4, 14,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
                                                                                                        None),
         #
         # Table 53: Parameters in BLOCK1-10
@@ -245,13 +192,10 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
          {0: "A"}),
         ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Package version",
-
-         {0: "ESP32-S2, QFN 7x7 56 pins",
-          1: "ESP32-S2FH16, QFN 7x7 56 pins, Flash 16Mb t=105C",
-          2: "ESP32-S2FH32, QFN 7x7 56 pins, Flash 32Mb t=105C"}),
+         {0: "ESP32-C3"}),
         ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
-        ('OPTIONAL_UNIQUE_ID',         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
-        ('BLOCK2_VERSION',             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
+        ("OPTIONAL_UNIQUE_ID",         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
+        ("BLOCK2_VERSION",             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
          {0: "No calibration",
           1: "With calibration"}),
     ]
@@ -265,7 +209,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('BLOCK_KEY3',                   "security", 7,  0, 0,   "bytes:32", 26,   3,    "keyblock",   "Encryption key3 or user data", None),
         ('BLOCK_KEY4',                   "security", 8,  0, 0,   "bytes:32", 27,   4,    "keyblock",   "Encryption key4 or user data", None),
         ('BLOCK_KEY5',                   "security", 9,  0, 0,   "bytes:32", 28,   5,    "keyblock",   "Encryption key5 or user data", None),
-        ('BLOCK_SYS_DATA2',              "security", 10, 0, 0,   "bytes:32", 29,   6,    None,         "System data (part 2)", None),
+        ('BLOCK_SYS_DATA2',              "security", 10, 0, 0,   "bytes:32", 29,   6,    "keyblock",   "System data (part 2)", None),
     ]
 
     # if BLOCK2_VERSION is 1, these efuse fields are in BLOCK2

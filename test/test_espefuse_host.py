@@ -39,9 +39,12 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(TEST_DIR)
 sys.path.insert(0, os.path.join(TEST_DIR, ".."))
 
-support_list_chips = ["esp32", "esp32s2"]
+support_list_chips = ["esp32", "esp32s2", "esp32c3"]
 
-global chip_target
+try:
+    chip_target = sys.argv[1]
+except IndexError:
+    chip_target = "esp32"
 
 global reset_port
 reset_port = None
@@ -84,6 +87,8 @@ class EfuseTestCase(unittest.TestCase):
                 import espressif.efuse.esp32 as efuse
             elif chip_target == "esp32s2":
                 import espressif.efuse.esp32s2 as efuse
+            elif chip_target == "esp32c3":
+                import espressif.efuse.esp32c3 as efuse
             else:
                 efuse = None
             esp = efuse.EmulateEfuseController(self.efuse_file.name)
@@ -175,9 +180,8 @@ class TestBurnCommands(EfuseTestCase):
                    BLOCK_KEY2 \
                    BLOCK_KEY3 \
                    BLOCK_KEY4 \
-                   BLOCK_KEY5 \
-                   BLOCK_SYS_DATA2'
-            count_protects = 7
+                   BLOCK_KEY5'
+            count_protects = 6
         self.espefuse_py(cmd)
         output = self.espefuse_py(cmd)
         self.assertEqual(count_protects, output.count("is already read protected"))
@@ -202,15 +206,15 @@ class TestBurnCommands(EfuseTestCase):
                            FLASH_CRYPT_CONFIG ADC_VREF BLOCK1 BLOCK2 BLOCK3'''
             efuse_lists2 = 'WR_DIS RD_DIS'
         else:
-            efuse_lists = '''RD_DIS DIS_RTC_RAM_BOOT DIS_ICACHE DIS_DCACHE DIS_DOWNLOAD_ICACHE DIS_DOWNLOAD_DCACHE DIS_FORCE_DOWNLOAD
-                           DIS_USB DIS_CAN DIS_BOOT_REMAP SOFT_DIS_JTAG HARD_DIS_JTAG DIS_DOWNLOAD_MANUAL_ENCRYPT USB_EXCHG_PINS EXT_PHY_ENABLE
-                           USB_FORCE_NOPERSIST BLOCK0_VERSION VDD_SPI_FORCE VDD_SPI_XPD VDD_SPI_TIEH WDT_DELAY_SEL SPI_BOOT_CRYPT_CNT SECURE_BOOT_KEY_REVOKE0
+            efuse_lists = '''RD_DIS DIS_RTC_RAM_BOOT DIS_ICACHE DIS_DOWNLOAD_ICACHE DIS_FORCE_DOWNLOAD
+                           DIS_USB DIS_CAN SOFT_DIS_JTAG DIS_DOWNLOAD_MANUAL_ENCRYPT USB_EXCHG_PINS
+                           WDT_DELAY_SEL SPI_BOOT_CRYPT_CNT SECURE_BOOT_KEY_REVOKE0
                            SECURE_BOOT_KEY_REVOKE1 SECURE_BOOT_KEY_REVOKE2 KEY_PURPOSE_0 KEY_PURPOSE_1 KEY_PURPOSE_2 KEY_PURPOSE_3 KEY_PURPOSE_4 KEY_PURPOSE_5
                            SECURE_BOOT_EN SECURE_BOOT_AGGRESSIVE_REVOKE FLASH_TPUW DIS_DOWNLOAD_MODE DIS_LEGACY_SPI_BOOT UART_PRINT_CHANNEL
                            DIS_USB_DOWNLOAD_MODE ENABLE_SECURITY_DOWNLOAD UART_PRINT_CONTROL PIN_POWER_SELECTION FLASH_TYPE FORCE_SEND_RESUME SECURE_VERSION
                            MAC SPI_PAD_CONFIG_CLK SPI_PAD_CONFIG_Q SPI_PAD_CONFIG_D SPI_PAD_CONFIG_CS SPI_PAD_CONFIG_HD SPI_PAD_CONFIG_WP SPI_PAD_CONFIG_DQS
                            SPI_PAD_CONFIG_D4 SPI_PAD_CONFIG_D5 SPI_PAD_CONFIG_D6 SPI_PAD_CONFIG_D7 WAFER_VERSION PKG_VERSION BLOCK1_VERSION OPTIONAL_UNIQUE_ID
-                           BLOCK2_VERSION BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1 BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5 BLOCK_SYS_DATA2'''
+                           BLOCK2_VERSION BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1 BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5'''
             efuse_lists2 = 'RD_DIS DIS_RTC_RAM_BOOT'
         self.espefuse_py('write_protect_efuse {}'.format(efuse_lists))
         output = self.espefuse_py('write_protect_efuse {}'.format(efuse_lists2))
@@ -248,6 +252,7 @@ class TestBurnCommands(EfuseTestCase):
                              check_msg='New value contains some bits that cannot be cleared (value will be 0x675745ffefff)',
                              ret_code=2)
 
+    @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
     def test_set_flash_voltage_1_8v(self):
         self.espefuse_py("set_flash_voltage -h")
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
@@ -259,6 +264,7 @@ class TestBurnCommands(EfuseTestCase):
         self.espefuse_py('set_flash_voltage 3.3V', check_msg='Enable internal flash voltage regulator (%s) to 3.3V.' % vdd)
         self.espefuse_py('set_flash_voltage OFF', check_msg=error_msg, ret_code=2)
 
+    @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
     def test_set_flash_voltage_3_3v(self):
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
         self.espefuse_py('set_flash_voltage 3.3V', check_msg='Enable internal flash voltage regulator (%s) to 3.3V.' % vdd)
@@ -274,11 +280,13 @@ class TestBurnCommands(EfuseTestCase):
             error_msg = "A fatal error occurred: Can't set flash regulator to OFF as VDD_SPI_XPD efuse is already burned"
         self.espefuse_py('set_flash_voltage OFF', check_msg=error_msg, ret_code=2)
 
+    @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
     def test_set_flash_voltage_off(self):
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
         self.espefuse_py('set_flash_voltage OFF', check_msg='Disable internal flash voltage regulator (%s)' % vdd)
         self.espefuse_py('set_flash_voltage 3.3V', check_msg='Enable internal flash voltage regulator (%s) to 3.3V.' % vdd)
 
+    @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
     def test_set_flash_voltage_off2(self):
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
         self.espefuse_py('set_flash_voltage OFF', check_msg='Disable internal flash voltage regulator (%s)' % vdd)
@@ -300,7 +308,6 @@ class TestBurnCommands(EfuseTestCase):
             blk2 = "BLOCK2"
         else:
             self.espefuse_py('burn_efuse \
-                              DIS_BOOT_REMAP 1 \
                               SECURE_BOOT_EN 1 \
                               UART_PRINT_CONTROL 1')
             self.espefuse_py('burn_efuse \
@@ -367,7 +374,7 @@ class TestBurnCommands(EfuseTestCase):
             self.check_data_block_in_log(output, "images/efuse/256bit")
             self.check_data_block_in_log(output, "images/efuse/256bit_1")
             self.check_data_block_in_log(output, "images/efuse/256bit_2")
-        elif chip_target == "esp32s2":
+        else:
             self.espefuse_py('burn_key \
                               BLOCK_KEY0 images/efuse/256bit   XTS_AES_256_KEY_1 \
                               BLOCK_KEY1 images/efuse/256bit_1 XTS_AES_256_KEY_2 \
@@ -449,7 +456,7 @@ class TestBurnCommands(EfuseTestCase):
             self.espefuse_py('burn_block_data \
                               BLOCK1 images/efuse/256bit_2')
             self.check_data_block_in_log(self.espefuse_py('summary -d'), "images/efuse/256bit_2")
-        elif chip_target == "esp32s2":
+        else:
             self.espefuse_py('burn_block_data \
                               BLOCK0 images/efuse/192bit \
                               BLOCK3 images/efuse/256bit')
@@ -561,7 +568,7 @@ class TestBurnCommands(EfuseTestCase):
                 self.espefuse_py('burn_key_digest secure_images/rsa_secure_boot_signing_key.pem',
                                  check_msg="Incorrect chip revision for Secure boot v2.",
                                  ret_code=2)
-        elif chip_target == "esp32s2":
+        else:
             self.espefuse_py('burn_key_digest \
                               BLOCK_KEY0 secure_images/rsa_secure_boot_signing_key.pem SECURE_BOOT_DIGEST0 \
                               BLOCK_KEY1 secure_images/rsa_secure_boot_signing_key2.pem SECURE_BOOT_DIGEST1 \
@@ -612,7 +619,7 @@ class TestBurnCommands(EfuseTestCase):
 
             self.espefuse_py('burn_bit BLOCK3 3 5 6 7 9 10 11 12 13 14 15 31 63 95 127 159 191 223 254')
             self.espefuse_py('summary', check_msg="ff ff 01 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 80 01 00 00 c0")
-        elif chip_target == "esp32s2":
+        else:
             self.espefuse_py('burn_bit BLOCK3 0 1 2 4 8 16 32 64 96 128 160 192 224 255')
             self.espefuse_py('summary', check_msg="17 01 01 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 80")
             self.espefuse_py('burn_bit BLOCK3 100', check_msg="Burn into BLOCK_USR_DATA is forbidden (RS coding scheme does not allow this)", ret_code=2)

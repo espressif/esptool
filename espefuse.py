@@ -23,18 +23,20 @@ import sys
 from io import StringIO
 
 import espressif.efuse.esp32 as esp32_efuse
+import espressif.efuse.esp32c3 as esp32c3_efuse
 import espressif.efuse.esp32s2 as esp32s2_efuse
 
 import esptool
 
 
 def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=False, debug=False, virt_efuse_file=None):
-    if chip not in ['auto', 'esp32', 'esp32s2']:
+    if chip not in ['auto', 'esp32', 'esp32s2', 'esp32c3']:
         raise esptool.FatalError("get_esp: Unsupported chip (%s)" % chip)
     if virt:
         esp = {
             'esp32': esp32_efuse,
             'esp32s2': esp32s2_efuse,
+            'esp32c3': esp32c3_efuse,
         }.get(chip, esp32_efuse).EmulateEfuseController(virt_efuse_file, debug)
     else:
         if chip == 'auto' and not skip_connect:
@@ -43,6 +45,7 @@ def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=Fals
             esp = {
                 'esp32': esptool.ESP32ROM,
                 'esp32s2': esptool.ESP32S2ROM,
+                'esp32c3': esptool.ESP32C3ROM,
             }.get(chip, esptool.ESP32ROM)(port if not skip_connect else StringIO(), baud)
             if not skip_connect:
                 esp.connect(connect_mode)
@@ -54,6 +57,7 @@ def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
         efuse = {
             'ESP32': esp32_efuse,
             'ESP32-S2': esp32s2_efuse,
+            'ESP32-C3': esp32c3_efuse,
         }[esp.CHIP_NAME]
     except KeyError:
         raise esptool.FatalError("get_efuses: Unsupported chip (%s)" % esp.CHIP_NAME)
@@ -62,12 +66,12 @@ def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
 
 
 def main():
-    init_parser = argparse.ArgumentParser(description='espefuse.py v%s - [ESP32, ESP32S2] efuse get/set tool' % esptool.__version__, prog='espefuse',
+    init_parser = argparse.ArgumentParser(description='espefuse.py v%s - [ESP32, ESP32S2, ESP32C3] efuse get/set tool' % esptool.__version__, prog='espefuse',
                                           add_help=False)
 
     init_parser.add_argument('--chip', '-c',
                              help='Target chip type',
-                             choices=['auto', 'esp32', 'esp32s2'],
+                             choices=['auto', 'esp32', 'esp32s2', 'esp32c3'],
                              default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
     init_parser.add_argument('--baud', '-b',

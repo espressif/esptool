@@ -37,15 +37,15 @@ class EmulateEfuseControllerBase(object):
         self.efuse_file = efuse_file
         if self.efuse_file:
             try:
-                self.mem = BitString(open(self.efuse_file, 'a+b'), length=(self.REGS.EFUSE_MEM_SIZE & self.REGS.EFUSE_ADDR_MASK) * 8)
+                self.mem = BitString(open(self.efuse_file, 'a+b'), length=self.REGS.EFUSE_MEM_SIZE * 8)
             except ValueError:
                 # the file is empty or does not fit the length.
-                self.mem = BitString(length=(self.REGS.EFUSE_MEM_SIZE & self.REGS.EFUSE_ADDR_MASK) * 8)
+                self.mem = BitString(length=self.REGS.EFUSE_MEM_SIZE * 8)
                 self.mem.set(0)
                 self.mem.tofile(open(self.efuse_file, 'a+b'))
         else:
             # efuse_file is not provided it means we do not want to keep the result of efuse operations
-            self.mem = BitString((self.REGS.EFUSE_MEM_SIZE & self.REGS.EFUSE_ADDR_MASK) * 8)
+            self.mem = BitString(self.REGS.EFUSE_MEM_SIZE * 8)
             self.mem.set(0)
 
     """ esptool method start >> """
@@ -56,16 +56,16 @@ class EmulateEfuseControllerBase(object):
         return self.read_reg(blk.rd_addr + (4 * n))
 
     def read_reg(self, addr):
-        self.mem.pos = self.mem.length - ((addr & self.REGS.EFUSE_ADDR_MASK) * 8 + 32)
+        self.mem.pos = self.mem.length - ((addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + 32)
         return self.mem.read("uint:32")
 
     def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0, delay_after_us=0):
-        self.mem.pos = self.mem.length - ((addr & self.REGS.EFUSE_ADDR_MASK) * 8 + 32)
+        self.mem.pos = self.mem.length - ((addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + 32)
         self.mem.overwrite("uint:32={}".format(value & mask))
         self.handle_writing_event(addr, value)
 
     def update_reg(self, addr, mask, new_val):
-        position = self.mem.length - ((addr & self.REGS.EFUSE_ADDR_MASK) * 8 + 32)
+        position = self.mem.length - ((addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + 32)
         self.mem.pos = position
         cur_val = self.mem.read("uint:32")
         self.mem.pos = position
@@ -138,7 +138,7 @@ class EmulateEfuseControllerBase(object):
             if blk.id == idx:
                 blk_len_bits = self.get_bitlen_of_block(blk, wr=wr_regs)
                 addr = blk.wr_addr if wr_regs else blk.rd_addr
-                self.mem.pos = self.mem.length - ((addr & self.REGS.EFUSE_ADDR_MASK) * 8 + blk_len_bits)
+                self.mem.pos = self.mem.length - ((addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + blk_len_bits)
                 block = self.mem.read(blk_len_bits)
                 break
         return block
@@ -148,7 +148,7 @@ class EmulateEfuseControllerBase(object):
         self.overwrite_mem_from_block(blk, wr_data)
 
     def overwrite_mem_from_block(self, blk, wr_data):
-        self.mem.pos = self.mem.length - ((blk.rd_addr & self.REGS.EFUSE_ADDR_MASK) * 8 + wr_data.len)
+        self.mem.pos = self.mem.length - ((blk.rd_addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + wr_data.len)
         self.mem.overwrite(wr_data)
 
     def check_wr_protection_area(self, num_blk, wr_data):

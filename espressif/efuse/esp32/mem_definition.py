@@ -21,20 +21,20 @@ from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegiste
 
 class EfuseDefineRegisters(EfuseRegistersBase):
 
-    EFUSE_ADDR_MASK = 0x00000FFF
     EFUSE_MEM_SIZE = (0x011C + 4)
 
     # EFUSE registers & command/conf values
-    EFUSE_REG_CONF      = 0x3FF5A0FC
+    DR_REG_EFUSE_BASE   = 0x3ff5A000
+    EFUSE_REG_CONF      = DR_REG_EFUSE_BASE + 0x0FC
     EFUSE_CONF_WRITE    = 0x5A5A
     EFUSE_CONF_READ     = 0x5AA5
-    EFUSE_REG_CMD       = 0x3FF5A104
+    EFUSE_REG_CMD       = DR_REG_EFUSE_BASE + 0x104
     EFUSE_CMD_OP_MASK   = 0x3
     EFUSE_CMD_WRITE     = 0x2
     EFUSE_CMD_READ      = 0x1
 
     # 3/4 Coding scheme warnings registers
-    EFUSE_REG_DEC_STATUS        = 0x3FF5A11C
+    EFUSE_REG_DEC_STATUS        = DR_REG_EFUSE_BASE + 0x11C
     EFUSE_REG_DEC_STATUS_MASK   = 0xFFF
 
     # Coding Scheme
@@ -42,8 +42,8 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_CODING_SCHEME_MASK    = 0x3
 
     # Efuse clock control
-    EFUSE_DAC_CONF_REG      = 0x3FF5A118
-    EFUSE_CLK_REG           = 0x3FF5A0F8
+    EFUSE_DAC_CONF_REG      = DR_REG_EFUSE_BASE + 0x118
+    EFUSE_CLK_REG           = DR_REG_EFUSE_BASE + 0x0F8
     EFUSE_DAC_CLK_DIV_MASK  = 0xFF
     EFUSE_CLK_SEL0_MASK     = 0x00FF
     EFUSE_CLK_SEL1_MASK     = 0xFF00
@@ -59,13 +59,14 @@ class EfuseDefineRegisters(EfuseRegistersBase):
 
 class EfuseDefineBlocks(EfuseBlocksBase):
 
+    __base_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE
     # List of efuse blocks
     BLOCKS = [
         # Name, Alias, Index, Read address, Write address, Write protect bit, Read protect bit, Len, key_purpose
-        ("BLOCK0",    [],                                     0, 0x3FF5A000, 0x3FF5A01C, None, None, 7,                None),
-        ("BLOCK1",    ["flash_encryption"],                   1, 0x3FF5A038, 0x3FF5A098, 7,    0,    8,                None),
-        ("BLOCK2",    ["secure_boot_v1", "secure_boot_v2"],   2, 0x3FF5A058, 0x3FF5A0B8, 8,    1,    8,                None),
-        ("BLOCK3",    [],                                     3, 0x3FF5A078, 0x3FF5A0D8, 9,    2,    8,                None),
+        ("BLOCK0",    [],                                     0, __base_regs + 0x000, __base_regs + 0x01C, None, None, 7, None),
+        ("BLOCK1",    ["flash_encryption"],                   1, __base_regs + 0x038, __base_regs + 0x098, 7,    0,    8, None),
+        ("BLOCK2",    ["secure_boot_v1", "secure_boot_v2"],   2, __base_regs + 0x058, __base_regs + 0x0B8, 8,    1,    8, None),
+        ("BLOCK3",    [],                                     3, __base_regs + 0x078, __base_regs + 0x0D8, 9,    2,    8, None),
     ]
 
     def get_burn_block_data_names(self):
