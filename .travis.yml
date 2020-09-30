@@ -17,6 +17,7 @@ python:
   - "3.5"
   - "3.6"
   - "3.7"
+  - "3.8"
 
 before_install:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.7 ]]; then ./test/ci/setup_ci_build_env.sh; fi
@@ -24,14 +25,10 @@ before_install:
 script:
   # test python components (fast)
   - python setup.py build
-  # this is hacky, installing test script deps via pip as need to be in the virtualenv
-  # but don't count if only in setup.py's .eggs dir, and "setup.py test" integration
-  # doesn't allow running esptool.py as a script...
-  - pip install pyserial pyelftools cryptography
+  - pip install -e .[dev]
   - python test/test_imagegen.py
   - python test/test_espsecure.py
-  - pip install flake8 flake8-future-import  # matches tests_require in setup.py, a bit hacky
-  - python setup.py flake8
+  - python -m flake8
   - python setup.py install
   - ( cd / && esptool.py --help )  # check the installed versions can run
   - ( cd / && espefuse.py --help )

@@ -36,6 +36,8 @@ If not using `setup.py`, then you'll have to install pySerial manually by runnin
 
 esptool.py also bundles the pyaes & ecdsa Python modules as "vendored" libraries. These modules are required when using the ESP32-only `espsecure.py` and `espefuse.py` tools. If you install esptool.py via `pip` or `setup.py` as shown above, then versions of these libraries will be installed from pypi. If you run esptool.py from the repository directory directly, it will use the "vendored" versions.
 
+(Note: if you actually plan to do development work with esptool itself, see the CONTRIBUTING.md file.)
+
 ## Usage
 
 Use `esptool.py -h` to see a summary of all available commands and command line options.

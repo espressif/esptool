@@ -1,5 +1,15 @@
 # Contributing to esptool.py
 
+## Development Setup
+
+To also install additional tools needed for actually developing and testing esptool, run this command to install a development copy of esptool *plus* packages useful for development:
+
+```
+pip install --user -e .[dev]
+```
+
+(This command uses the "extras" feature of setuptools.)
+
 ## Reporting Issues
 
 Please report bugs in esptool.py if you find them.
@@ -26,7 +36,7 @@ Pull Requests with changes and fixes are also welcome!
 
 esptool.py complies with Flake 8 and is valid Python 2 & Python 3 code (in the same source file.)
 
-When you submit a Pull Request, the Travis automated build system will run automated checks for this, using the [flake8 tool](http://flake8.readthedocs.io/en/latest/). If you want to check your code locally before submitting, you can install flake8 and run `python setup.py flake8` to test it.
+When you submit a Pull Request, the Travis automated build system will run automated checks for this, using the [flake8 tool](http://flake8.readthedocs.io/en/latest/). To check your code locally before submitting, run `python -m flake8` (the flake8 tool is installed as part of the development requirements shown at the beginning of this document.)
 
 ### Automated Integration Tests
 

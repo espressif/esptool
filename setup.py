@@ -101,12 +101,17 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    tests_require=[
-        'flake8>=3.2.0',
-        'flake8-future-import',
-        'flake8-import-order',
-    ],
+    extras_require={
+        "dev": [
+            'flake8>=3.2.0',
+            'flake8-future-import',
+            'flake8-import-order',
+            'pyelftools',
+        ],
+    },
     install_requires=[
+        'cryptography>=2.1.4',
+        'ecdsa',
         'pyserial>=3.0',
         'pyaes',
         'ecdsa',
