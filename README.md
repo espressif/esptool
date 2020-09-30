@@ -38,6 +38,8 @@ This will install esptool's dependencies and create some executable script wrapp
 
 It's also possible to run the scripts directly from the working directory with this Development Mode installation.
 
+(Note: if you actually plan to do development work with esptool itself, see the CONTRIBUTING.md file.)
+
 ## Usage
 
 Use `esptool.py -h` to see a summary of all available commands and command line options.

@@ -23,7 +23,10 @@ host_tests:
 check_python_style:
   <<: *test_template
   script:
-    - ./test/ci/multirun_with_pyenv.sh python setup.py flake8
+    # this step installs any 'dev' dependencies (ie flake8) that might be missing in the CI image, but
+    # for best performance these should already be installed
+    - ./test/ci/multirun_with_pyenv.sh pip install --user -e .[dev]
+    - ./test/ci/multirun_with_pyenv.sh python -m flake8
 
 # Check all the scripts can run when installed under all Python versions
 check_installation_can_run:
