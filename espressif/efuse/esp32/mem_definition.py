@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
+from __future__ import division, print_function
 
 from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegistersBase
 
@@ -84,7 +85,10 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('WR_DIS',               "efuse",       0, 0, 0,   "uint:16",   1,    None, None,       "Efuse write disable mask", None),
         ('RD_DIS',               "efuse",       0, 0, 16,  "uint:4",    0,    None, None,       "Efuse read disable mask", None),
         ('CODING_SCHEME',        "efuse",       0, 6, 0,   "uint:2",    10,   3,    None,       "Efuse variable block length scheme",
-            {0:"NONE (BLK1-3 len=256 bits)", 1:"3/4 (BLK1-3 len=192 bits)", 2:"REPEAT (BLK1-3 len=128 bits) not supported", 3:"NONE (BLK1-3 len=256 bits)"}),
+            {0: "NONE (BLK1-3 len=256 bits)",
+             1: "3/4 (BLK1-3 len=192 bits)",
+             2: "REPEAT (BLK1-3 len=128 bits) not supported",
+             3: "NONE (BLK1-3 len=256 bits)"}),
         ('KEY_STATUS',           "efuse",       0, 6, 10,  "bool",      10,   3,    None,       "Usage of efuse block 3 (reserved)", None),
         ('MAC',                  "identity",    0, 1, 0,   "bytes:6",   3,    None, "mac",      "Factory MAC Address", None),
         ('MAC_CRC',              "identity",    0, 2, 16,  "uint:8",    3,    None, None,       "CRC8 for factory MAC address", None),
@@ -94,7 +98,9 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('CHIP_PACKAGE',         "identity",    0, 3, 9,   "uint:3",    3,    None, None,       "Chip package identifier", None),
         ('XPD_SDIO_FORCE',       "config",      0, 4, 16,  "bool",      5,    None, None,       "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset", None),
         ('XPD_SDIO_REG',         "config",      0, 4, 14,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset", None),
-        ('XPD_SDIO_TIEH',        "config",      0, 4, 15,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE & XPD_SDIO_REG", {1:"3.3V", 0:"1.8V"}),
+        ('XPD_SDIO_TIEH',        "config",      0, 4, 15,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE & XPD_SDIO_REG",
+         {1: "3.3V",
+          0: "1.8V"}),
         ('CLK8M_FREQ',           "config",      0, 4, 0,   "uint:8",    None, None, None,       "8MHz clock freq override", None),
         ('SPI_PAD_CONFIG_CLK',   "config",      0, 5, 0,   "uint:5",    6,    None, "spipin",   "Override SD_CLK pad (GPIO6/SPICLK)", None),
         ('SPI_PAD_CONFIG_Q',     "config",      0, 5, 5,   "uint:5",    6,    None, "spipin",   "Override SD_DATA_0 pad (GPIO7/SPIQ)", None),
@@ -104,8 +110,8 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('DISABLE_SDIO_HOST',    "config",      0, 6, 3,   "bool",      None, None, None,       "Disable SDIO host", None),
         ('FLASH_CRYPT_CNT',      "security",    0, 0, 20,  "uint:7",    2,    None, "bitcount", "Flash encryption mode counter", None),
         ('UART_DOWNLOAD_DIS',    "security",    0, 0, 27,  "bool",      2,    None, None,       "Disable UART download mode (ESP32 rev3 only)", None),
-        ('FLASH_CRYPT_CONFIG',   "security",    0, 5, 28,  "uint:4",    10,   3,    None,       "Flash encryption config (key tweak bits)", None),
-        ('CONSOLE_DEBUG_DISABLE',"security",    0, 6, 2,   "bool",      15,   None, None,       "Disable ROM BASIC interpreter fallback", None),
+        ('FLASH_CRYPT_CONFIG',    "security",   0, 5, 28,  "uint:4",    10,   3,    None,       "Flash encryption config (key tweak bits)", None),
+        ('CONSOLE_DEBUG_DISABLE', "security",   0, 6, 2,   "bool",      15,   None, None,       "Disable ROM BASIC interpreter fallback", None),
         ('ABS_DONE_0',           "security",    0, 6, 4,   "bool",      12,   None, None,       "Secure boot V1 is enabled for bootloader image", None),
         ('ABS_DONE_1',           "security",    0, 6, 5,   "bool",      13,   None, None,       "Secure boot V2 is enabled for bootloader image", None),
         ('JTAG_DISABLE',         "security",    0, 6, 6,   "bool",      14,   None, None,       "Disable JTAG", None),
@@ -114,7 +120,8 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('DISABLE_DL_CACHE',     "security",    0, 6, 9,   "bool",      15,   None, None,       "Disable flash cache in UART bootloader", None),
         ('BLK3_PART_RESERVE',    "calibration", 0, 3, 14,  "bool",      10,   3,    None,       "BLOCK3 partially served for ADC calibration data", None),
         ('ADC_VREF',             "calibration", 0, 4, 8,   "uint:5",    0,    None, "vref",     "Voltage reference calibration", None),
-        ('MAC_VERSION',          "identity",    3, 5, 24,  "uint:8",    9,    2,    None,       "Version of the MAC field", {1:"Custom MAC in BLOCK3"}),
+        ('MAC_VERSION',          "identity",    3, 5, 24,  "uint:8",    9,    2,    None,       "Version of the MAC field",
+         {1: "Custom MAC in BLOCK3"}),
     ]
 
     # if MAC_VERSION is set "1", these efuse fields are in BLOCK3:

@@ -23,18 +23,20 @@ import os
 import struct
 import sys
 import zlib
-
-import ecdsa
-import esptool
 from collections import namedtuple
 
+from cryptography import exceptions
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
 from cryptography.utils import int_to_bytes
-from cryptography import exceptions
+
+
+import ecdsa
+
+import esptool
 
 
 def get_chunks(source, chunk_len):
@@ -723,7 +725,7 @@ def main():
         help='Run espsecure.py {command} -h for additional help')
 
     p = subparsers.add_parser('digest_secure_bootloader',
-                              help='Take a bootloader binary image and a secure boot key, and output a combined digest+binary ' +
+                              help='Take a bootloader binary image and a secure boot key, and output a combined digest+binary '
                               'suitable for flashing along with the precalculated secure boot key.')
     p.add_argument('--keyfile', '-k', help="256 bit key for secure boot digest.", type=argparse.FileType('rb'), required=True)
     p.add_argument('--output', '-o', help="Output file for signed digest image.")
@@ -732,18 +734,18 @@ def main():
     p.add_argument('image', help="Bootloader image file to calculate digest from", type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('generate_signing_key',
-                              help='Generate a private key for signing secure boot images as per the secure boot version. ' +
-                              'Key file is generated in PEM format, ' +
+                              help='Generate a private key for signing secure boot images as per the secure boot version. '
+                              'Key file is generated in PEM format, '
                               'Secure Boot V1 - ECDSA NIST256p private key, Secure Boot V2 - RSA 3072 private key .')
     p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices=["1", "2"], default="1")
     p.add_argument('keyfile', help="Filename for private key file (embedded public key)")
 
     p = subparsers.add_parser('sign_data',
-                              help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512 (V1) ' +
+                              help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512 (V1) '
                               'or RSA-PSS w/ SHA-256 (V2).')
     p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices=["1", "2"], required=True)
     p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True, nargs='+')
-    p.add_argument('--append_signatures', '-a', help="Append signature block(s) to already signed image" +
+    p.add_argument('--append_signatures', '-a', help="Append signature block(s) to already signed image"
                    "Valid only for ESP32-S2.", action='store_true')
     p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to sign the input file.")
     p.add_argument('datafile', help="File to sign. For version 1, this can be any file. For version 2, this must be a valid app image.",
@@ -763,7 +765,7 @@ def main():
                    required=True)
     p.add_argument('public_keyfile', help="File to save new public key into", type=argparse.FileType('wb'))
 
-    p = subparsers.add_parser('digest_rsa_public_key', help='Generate an SHA-256 digest of the public key. ' +
+    p = subparsers.add_parser('digest_rsa_public_key', help='Generate an SHA-256 digest of the public key. '
                               'This digest is burned into the eFuse and asserts the legitimacy of the public key for Secure boot v2.')
     p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be private or public key in PEM format.", type=argparse.FileType('rb'),
                    required=True)
@@ -772,7 +774,7 @@ def main():
     p = subparsers.add_parser('signature_info_v2', help='Reads the signature block and provides the signature block information.')
     p.add_argument('datafile', help="Secure boot v2 signed data file.", type=argparse.FileType('rb'))
 
-    p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. ' +
+    p = subparsers.add_parser('digest_private_key', help='Generate an SHA-256 digest of the private signing key. '
                               'This can be used as a reproducible secure bootloader or flash encryption key.')
     p.add_argument('--keyfile', '-k', help="Private key file (PEM format) to generate a digest from.", type=argparse.FileType('rb'),
                    required=True)

@@ -22,15 +22,18 @@
 #            self._setDTR(False)  # IO0=HIGH, done
 #       because the long delay (~6 seconds) after resetting the FPGA.
 #       For FPGA with ESP32-S2 image, it is not necessary
+from __future__ import division, print_function
 
-import unittest
-import sys
 import os
 import subprocess
+import sys
 import tempfile
-import serial
 import time
+import unittest
+
 from bitstring import BitString
+
+import serial
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(TEST_DIR)

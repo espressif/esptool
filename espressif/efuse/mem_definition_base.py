@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
+from __future__ import division, print_function
 
 from collections import namedtuple
 
@@ -32,7 +33,7 @@ class EfuseRegistersBase(object):
 class EfuseBlocksBase(object):
 
     BLOCKS = None
-    NamedtupleBlock = namedtuple('Block','name alias id rd_addr wr_addr write_disable_bit read_disable_bit len key_purpose')
+    NamedtupleBlock = namedtuple('Block', 'name alias id rd_addr wr_addr write_disable_bit read_disable_bit len key_purpose')
 
     @staticmethod
     def get(tuple_block):
@@ -53,7 +54,7 @@ class EfuseBlocksBase(object):
 
 class EfuseFieldsBase(object):
 
-    NamedtupleField = namedtuple('Efuse','name category block word pos type write_disable_bit read_disable_bit class_type description dictionary')
+    NamedtupleField = namedtuple('Efuse', 'name category block word pos type write_disable_bit read_disable_bit class_type description dictionary')
 
     @staticmethod
     def get(tuple_field):

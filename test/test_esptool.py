@@ -8,6 +8,8 @@ Chip name & serial port are passed in as arguments to test. Same test suite
 runs on esp8266 & esp32 (some addresses will change, see below.)
 
 """
+from __future__ import division, print_function
+
 import os
 import os.path
 import re
@@ -16,13 +18,15 @@ import sys
 import tempfile
 import time
 import unittest
-from socket import socket, SOCK_STREAM, AF_INET
+from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
 
-import serial
-
 sys.path.append('..')
-import esptool, espefuse
+import espefuse
+
+import esptool
+
+import serial
 
 # point is this file is not 4 byte aligned in length
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
@@ -182,7 +186,7 @@ class EsptoolTestCase(unittest.TestCase):
             self.assertEqual(ct[0], rb[0], "First bytes should be identical")
             rb = rb[8:]
             ct = ct[8:]
-        for rb_b,ct_b,offs in zip(rb,ct,range(len(rb))):
+        for rb_b, ct_b, offs in zip(rb, ct, range(len(rb))):
             if rb_b != ct_b:
                 self.fail("First difference at offset 0x%x Expected %r got %r" % (offs, ct_b, rb_b))
 
@@ -221,7 +225,8 @@ class TestFlashEncryption(EsptoolTestCase):
 
         self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/helloworld-esp32.bin")
         self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")
-        self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin --flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
+        self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin "
+                           "--flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
 
         try:
             with open("images/read_encrypted_flash.bin", "rb") as file1:
@@ -230,7 +235,7 @@ class TestFlashEncryption(EsptoolTestCase):
             with open("images/local_enc.bin", "rb") as file2:
                 read_file2 = file2.read()
 
-            for rf1, rf2,i in zip(read_file1, read_file2, range(len(read_file2))):
+            for rf1, rf2, i in zip(read_file1, read_file2, range(len(read_file2))):
                 self.assertEqual(rf1, rf2, "encrypted write failed: file mismatch at byte position %d" % i)
 
             print('encrypted write success')
@@ -250,7 +255,8 @@ class TestFlashEncryption(EsptoolTestCase):
 
         self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/helloworld-esp32_edit.bin")
         self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")
-        self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin --flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
+        self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin "
+                           "--flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
 
         try:
             with open("images/read_encrypted_flash.bin", "rb") as file1:
@@ -259,7 +265,7 @@ class TestFlashEncryption(EsptoolTestCase):
             with open("images/local_enc.bin", "rb") as file2:
                 read_file2 = file2.read()
 
-            for rf1, rf2,i in zip(read_file1, read_file2, range(len(read_file2))):
+            for rf1, rf2, i in zip(read_file1, read_file2, range(len(read_file2))):
                 self.assertEqual(rf1, rf2, "files mismatch at byte position %d" % i)
 
         finally:
@@ -340,7 +346,6 @@ class TestFlashing(EsptoolTestCase):
 
     def test_length_not_aligned_4bytes(self):
         nodemcu = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
-        size = 390411
         self.run_esptool("write_flash 0x0 images/%s" % nodemcu)
 
     def test_length_not_aligned_4bytes_no_compression(self):
@@ -369,7 +374,7 @@ class TestFlashing(EsptoolTestCase):
         self.assertIn("zerolength.bin is empty", output)
 
     def test_single_byte(self):
-        output = self.run_esptool("write_flash 0x0 images/onebyte.bin")
+        self.run_esptool("write_flash 0x0 images/onebyte.bin")
         self.verify_readback(0x0, 1, "images/onebyte.bin")
 
 
@@ -568,7 +573,6 @@ class TestKeepImageSettings(EsptoolTestCase):
             except TypeError:
                 return x       # throws TypeError on Python 3 where x is already an integer
 
-        header = list(self.header)
         readback = self.readback(self.flash_offset, 8)
         self.assertEqual(self.header[0], readback[0])
         self.assertEqual(self.header[1], readback[1])

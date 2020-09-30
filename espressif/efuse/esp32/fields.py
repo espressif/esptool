@@ -16,13 +16,15 @@
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 from __future__ import division, print_function
 
-import struct
 import binascii
+import struct
 import time
+
 import esptool
+
+from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from .. import base_fields
 from .. import util
-from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 
 
 class EfuseBlock(base_fields.EfuseBlockBase):
@@ -183,10 +185,10 @@ class EfuseField(base_fields.EfuseFieldBase):
     @staticmethod
     def from_tuple(parent, efuse_tuple, type_class):
         return {
-            "mac":      EfuseMacField,
-            "spipin":   EfuseSpiPinField,
-            "vref":     EfuseVRefField,
-            "adc_tp":   EfuseAdcPointCalibration,
+            "mac": EfuseMacField,
+            "spipin": EfuseSpiPinField,
+            "vref": EfuseVRefField,
+            "adc_tp": EfuseAdcPointCalibration,
         }.get(type_class, EfuseField)(parent, efuse_tuple)
 
     def get_info(self):
@@ -316,8 +318,8 @@ class EfuseVRefField(EfuseField):
 
 class EfuseAdcPointCalibration(EfuseField):
     TP_OFFSET = {  # See TP_xxxx_OFFSET in esp_adc_cal.c in ESP-IDF
-        "ADC1_TP_LOW":  278,
-        "ADC2_TP_LOW":  421,
+        "ADC1_TP_LOW": 278,
+        "ADC2_TP_LOW": 421,
         "ADC1_TP_HIGH": 3265,
         "ADC2_TP_HIGH": 3406,
     }

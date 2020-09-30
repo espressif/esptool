@@ -16,13 +16,16 @@
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 from __future__ import division, print_function
 
-import reedsolo
 import struct
 import time
+
 import esptool
+
+import reedsolo
+
+from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from .. import base_fields
 from .. import util
-from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 
 
 class EfuseBlock(base_fields.EfuseBlockBase):

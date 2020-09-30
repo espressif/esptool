@@ -17,11 +17,14 @@
 from __future__ import division, print_function
 
 import argparse
-import sys
-import esptool
-import re
 import binascii
+import re
+import sys
+
 from bitstring import BitArray, BitString
+
+import esptool
+
 from . import util
 
 

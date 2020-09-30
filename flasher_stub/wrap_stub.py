@@ -16,17 +16,19 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
+from __future__ import division, print_function
 
+import argparse
 import base64
 import os
 import os.path
+import re
 import sys
 import zlib
-import re
-import argparse
 
 sys.path.append('..')
-import esptool
+import esptool  # noqa: E402
+
 
 def wrap_stub(elf_file):
     """ Wrap an ELF file into a stub 'dict' """
@@ -39,10 +41,10 @@ def wrap_stub(elf_file):
     except ValueError:
         data_section = None
     stub = {
-         'text': text_section.data,
-         'text_start': text_section.addr,
-         'entry': e.entrypoint,
-        }
+        'text': text_section.data,
+        'text_start': text_section.addr,
+        'entry': e.entrypoint,
+    }
     if data_section is not None:
         stub['data'] = data_section.data
         stub['data_start'] = data_section.addr
@@ -57,6 +59,7 @@ def wrap_stub(elf_file):
         stub['entry']), file=sys.stderr)
     return stub
 
+
 PYTHON_TEMPLATE = """\
 ESP%sROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b\"\"\"
 %s\"\"\")))
@@ -70,9 +73,9 @@ def write_python_snippet_to_file(stub_name, stub_data, out_file):
     encoded = base64.b64encode(zlib.compress(repr(stub_data).encode("utf-8"), 9)).decode("utf-8")
     in_lines = ""
     # split encoded data into 160 character lines
-    LINE_LEN=160
+    LINE_LEN = 160
     for c in range(0, len(encoded), LINE_LEN):
-        in_lines += encoded[c:c+LINE_LEN] + "\\\n"
+        in_lines += encoded[c:c + LINE_LEN] + "\\\n"
     out_file.write(PYTHON_TEMPLATE % (stub_name, in_lines))
 
 
@@ -114,6 +117,7 @@ def stub_name(filename):
     """ Return a dictionary key for the stub with filename 'filename' """
     return os.path.splitext(os.path.basename(filename))[0]
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--out-file", required=False, type=argparse.FileType('w'),
@@ -126,5 +130,5 @@ if __name__ == '__main__':
         print('Dumping to Python snippet file %s.' % args.out_file.name)
         write_python_snippets(stubs, args.out_file)
     else:
-        print('Embeddeding Python snippets into esptool.py')
+        print('Embedding Python snippets into esptool.py')
         embed_python_snippets(stubs)

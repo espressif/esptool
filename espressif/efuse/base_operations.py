@@ -16,13 +16,16 @@
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 from __future__ import division, print_function
 
-import sys
-import json
 import argparse
+import json
+import sys
+
+from bitstring import BitString
+
 import esptool
+
 from . import base_fields
 from . import util
-from bitstring import BitString
 
 
 def add_common_commands(subparsers, efuses):
@@ -75,14 +78,14 @@ def add_common_commands(subparsers, efuses):
                                      choices=[e.name for e in efuses.efuses if e.write_disable_bit is not None])
 
     burn_block_data = subparsers.add_parser('burn_block_data', help="Burn non-key data to EFUSE blocks. "
-                                            "(Don't use this command to burn key data for Flash Encryption or ESP32 Secure Boot V1, " +
+                                            "(Don't use this command to burn key data for Flash Encryption or ESP32 Secure Boot V1, "
                                             "as the byte order of keys is swapped (use burn_key)).")
     add_force_write_always(burn_block_data)
     burn_block_data.add_argument('--offset', '-o', help='Byte offset in the efuse block', type=int, default=0)
     burn_block_data.add_argument('block', help='Efuse block to burn.', action='append', choices=efuses.BURN_BLOCK_DATA_NAMES)
     burn_block_data.add_argument('datafile', help='File containing data to burn into the efuse block', action='append', type=argparse.FileType('rb'))
     for _ in range(0, len(efuses.BURN_BLOCK_DATA_NAMES)):
-        burn_block_data.add_argument('block',  help='Efuse block to burn.', metavar="BLOCK", nargs="?", action='append',
+        burn_block_data.add_argument('block', help='Efuse block to burn.', metavar="BLOCK", nargs="?", action='append',
                                      choices=efuses.BURN_BLOCK_DATA_NAMES)
         burn_block_data.add_argument('datafile', nargs="?", help='File containing data to burn into the efuse block',
                                      metavar="DATAFILE", action='append', type=argparse.FileType('rb'))
@@ -99,12 +102,12 @@ def add_common_commands(subparsers, efuses):
                           ' it will create: blk0.bin, blk1.bin ... blkN.bin. Use burn_block_data to write it back to another chip.')
 
     summary_cmd = subparsers.add_parser('summary', help='Print human-readable summary of efuse values')
-    summary_cmd.add_argument('--format', help='Select the summary format', choices=['summary','json'], default='summary')
+    summary_cmd.add_argument('--format', help='Select the summary format', choices=['summary', 'json'], default='summary')
     summary_cmd.add_argument('--file', help='File to save the efuse summary', type=argparse.FileType('w'), default=sys.stdout)
 
 
 def add_force_write_always(p):
-    p.add_argument('--force-write-always', help="Write the efuse even if it looks like it's already been written, or is write protected. " +
+    p.add_argument('--force-write-always', help="Write the efuse even if it looks like it's already been written, or is write protected. "
                    "Note that this option can't disable write protection, or clear any bit which has already been set.", action='store_true')
 
 
@@ -118,10 +121,10 @@ def summary(esp, efuses, args):
     if human_output:
         print(ROW_FORMAT.replace("-50", "-12") % ("EFUSE_NAME (Block)", "Description", "", "[Meaningful Value]", "[Readable/Writeable]", "(Hex Value)"),
               file=args.file)
-        print("-" * 88,file=args.file)
+        print("-" * 88, file=args.file)
     for category in sorted(set(e.category for e in efuses), key=lambda c: c.title()):
         if human_output:
-            print("%s fuses:" % category.title(),file=args.file)
+            print("%s fuses:" % category.title(), file=args.file)
         for e in (e for e in efuses if e.category == category):
             if e.efuse_type.startswith("bytes"):
                 raw = ""
@@ -161,17 +164,17 @@ def summary(esp, efuses, args):
                     'efuse_type': e.efuse_type,
                     'bit_len': e.bit_len}
         if human_output:
-            print("",file=args.file)
+            print("", file=args.file)
     if human_output:
         print(efuses.summary(), file=args.file)
         warnings = efuses.get_coding_scheme_warnings()
         if warnings:
-            print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings,file=args.file)
+            print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings, file=args.file)
         if args.file != sys.stdout:
             args.file.close()
             print("Done")
     if args.format == 'json':
-        json.dump(json_efuse,args.file,sort_keys=True,indent=4)
+        json.dump(json_efuse, args.file, sort_keys=True, indent=4)
         print("")
 
 

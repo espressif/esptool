@@ -17,6 +17,7 @@
 from __future__ import division, print_function
 
 import re
+
 from bitstring import BitString
 
 

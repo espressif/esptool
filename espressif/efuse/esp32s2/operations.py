@@ -17,12 +17,15 @@
 from __future__ import division, print_function
 
 import argparse
-import esptool
+
 import espsecure
+
+import esptool
+
 from . import fields
 from .. import util
-from ..base_operations import (dump, summary, burn_efuse, read_protect_efuse, write_protect_efuse,  # noqa: F401
-                               burn_block_data, burn_bit, add_common_commands, add_force_write_always)  # noqa: F401
+from ..base_operations import (add_common_commands, add_force_write_always, burn_bit, burn_block_data, burn_efuse, dump,  # noqa: F401
+                               read_protect_efuse, summary, write_protect_efuse)  # noqa: F401
 
 
 def protect_options(p):
@@ -63,12 +66,12 @@ def add_commands(subparsers, efuses):
                                      choices=fields.EfuseKeyPurposeField.DIGEST_KEY_PURPOSES)
 
     p = subparsers.add_parser('set_flash_voltage',
-                              help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF. ' +
+                              help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF. '
                               'This means GPIO45 can be high or low at reset without changing the flash voltage.')
     p.add_argument('voltage', help='Voltage selection', choices=['1.8V', '3.3V', 'OFF'])
 
     p = subparsers.add_parser('burn_custom_mac', help='Not supported! Burn a 48-bit Custom MAC Address to EFUSE is.')
-    p.add_argument('mac', help='Custom MAC Address to burn given in hexadecimal format with bytes separated by colons' +
+    p.add_argument('mac', help='Custom MAC Address to burn given in hexadecimal format with bytes separated by colons'
                    ' (e.g. AB:CD:EF:01:02:03).', nargs="?")
     add_force_write_always(p)
 

@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
+from __future__ import division, print_function
 
 from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegistersBase
 
@@ -159,7 +160,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("DIS_CAN",                      "config",   0,  1,  14, "bool",     2,    None, None,         "Disables the TWAI Controller hardware", None),
         ("DIS_BOOT_REMAP",               "config",   0,  1,  15, "bool",     2,    None, None,         "Disables capability to Remap RAM to ROM address space",
                                                                                                        None),
-        ("SOFT_DIS_JTAG",                "security", 0,  1,  17, "bool",     2,    None, None,         "Software disables JTAG. When software disabled, " +
+        ("SOFT_DIS_JTAG",                "security", 0,  1,  17, "bool",     2,    None, None,         "Software disables JTAG. When software disabled, "
                                                                                                        "JTAG can be activated temporarily by HMAC peripheral",
                                                                                                        None),
         ("HARD_DIS_JTAG",                "security", 0,  1,  18, "bool",     2,    None, None,         "Hardware disables JTAG permanently", None),
@@ -169,16 +170,21 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("EXT_PHY_ENABLE",           "usb config",   0,  1,  25, "bool",     30,   None, None,         "Enables external USB PHY", None),
         ("USB_FORCE_NOPERSIST",      "usb config",   0,  1,  26, "bool",     30,   None, None,         "Forces to set USB BVALID to 1", None),
         ("BLOCK0_VERSION",             "identity",   0,  1,  27, "uint:2",   30,   None, None,         "BLOCK0 efuse version", None),
-        ("VDD_SPI_FORCE",        "VDD_SPI config",   0,  2,  6,  "bool",     3,    None, None,         "Force using VDD_SPI_XPD and VDD_SPI_TIEH " +
+        ("VDD_SPI_FORCE",        "VDD_SPI config",   0,  2,  6,  "bool",     3,    None, None,         "Force using VDD_SPI_XPD and VDD_SPI_TIEH "
                                                                                                        "to configure VDD_SPI LDO", None),
         ("VDD_SPI_XPD",          "VDD_SPI config",   0,  2,  4,  "bool",     3,    None, None,         "The VDD_SPI regulator is powered on", None),
         ("VDD_SPI_TIEH",         "VDD_SPI config",   0,  2,  5,  "bool",     3,    None, None,         "The VDD_SPI power supply voltage at reset",
-                                                                                                       {0:"Connect to 1.8V LDO", 1:"Connect to VDD3P3_RTC_IO"}),
+         {0: "Connect to 1.8V LDO",
+          1: "Connect to VDD3P3_RTC_IO"}),
         ("WDT_DELAY_SEL",            "WDT config",   0,  2,  16, "bool",     3,    None, None,         "Selects RTC WDT timeout threshold at startup", None),
-        ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, None,         "Enables encryption and decryption, when an SPI boot " +
-                                                                                                       "mode is set. Enabled when 1 or 3 bits are set," +
+        ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, None,         "Enables encryption and decryption, when an SPI boot "
+                                                                                                       "mode is set. Enabled when 1 or 3 bits are set,"
                                                                                                        "disabled otherwise",
-                                                                                                       {0:"Disable", 1:"Enable", 3:"Disable", 7:"Enable"}),
+
+         {0: "Disable",
+          1: "Enable",
+          3: "Disable",
+          7: "Enable"}),
         ("SECURE_BOOT_KEY_REVOKE0",      "security", 0,  2, 21,  "bool",     5,    None, None,         "If set, revokes use of secure boot key digest 0", None),
         ("SECURE_BOOT_KEY_REVOKE1",      "security", 0,  2, 22,  "bool",     6,    None, None,         "If set, revokes use of secure boot key digest 1", None),
         ("SECURE_BOOT_KEY_REVOKE2",      "security", 0,  2, 23,  "bool",     7,    None, None,         "If set, revokes use of secure boot key digest 2", None),
@@ -189,27 +195,36 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("KEY_PURPOSE_4",                "security", 0,  3, 8,   "uint:4",   12,   None, "keypurpose", "KEY4 purpose", None),
         ("KEY_PURPOSE_5",                "security", 0,  3, 12,  "uint:4",   13,   None, "keypurpose", "KEY5 purpose", None),
         ("SECURE_BOOT_EN",               "security", 0,  3, 20,  "bool",     15,   None, None,         "Enables secure boot", None),
-        ("SECURE_BOOT_AGGRESSIVE_REVOKE","security", 0,  3, 21,  "bool",     16,   None, None,         "Enables aggressive secure boot key revocation mode",
+        ("SECURE_BOOT_AGGRESSIVE_REVOKE", "security", 0, 3, 21,  "bool",     16,   None, None,         "Enables aggressive secure boot key revocation mode",
                                                                                                        None),
-        ("FLASH_TPUW",                   "config",   0,  3, 28,  "uint:4",   18,   None, None,         "Configures flash startup delay after SoC power-up, " +
+        ("FLASH_TPUW",                   "config",   0,  3, 28,  "uint:4",   18,   None, None,         "Configures flash startup delay after SoC power-up, "
                                                                                                        "unit is (ms/2). When the value is 15, delay is 7.5 ms",
                                                                                                        None),
         ("DIS_DOWNLOAD_MODE",            "security", 0,  4, 0,   "bool",     18,   None, None,         "Disables all Download boot modes", None),
         ("DIS_LEGACY_SPI_BOOT",          "config",   0,  4, 1,   "bool",     18,   None, None,         "Disables Legacy SPI boot mode", None),
         ("UART_PRINT_CHANNEL",           "config",   0,  4, 2,   "bool",     18,   None, None,         "Selects the default UART for printing boot msg",
-                                                                                                       {0:"UART0", 1:"UART1"}),
+
+         {0: "UART0",
+          1: "UART1"}),
         ("DIS_USB_DOWNLOAD_MODE",        "config",   0,  4, 4,   "bool",     18,   None, None,         "Disables use of USB in UART download boot mode", None),
-        ("ENABLE_SECURITY_DOWNLOAD",    "security",  0,  4, 5,   "bool",     18,   None, None,         "Enables secure UART download mode " +
+        ("ENABLE_SECURITY_DOWNLOAD",    "security",  0,  4, 5,   "bool",     18,   None, None,         "Enables secure UART download mode "
                                                                                                        "(read/write flash only)", None),
         ("UART_PRINT_CONTROL",           "config",   0,  4, 6,   "uint:2",   18,   None, None,         "Sets the default UART boot message output mode",
-                                                                                                       {0:"Enabled", 1:"Enable when GPIO 46 is low at reset",
-                                                                                                        2:"Enable when GPIO 46 is high at rest", 3:"Disabled"}),
-        ("PIN_POWER_SELECTION",  "VDD_SPI config",   0,  4, 8,   "bool",     18,   None, None,         "Sets default power supply for GPIO33..37, " +
+
+         {0: "Enabled",
+          1: "Enable when GPIO 46 is low at reset",
+          2: "Enable when GPIO 46 is high at rest",
+          3: "Disabled"}),
+        ("PIN_POWER_SELECTION",  "VDD_SPI config",   0,  4, 8,   "bool",     18,   None, None,         "Sets default power supply for GPIO33..37, "
                                                                                                        "set when SPI flash is initialized",
-                                                                                                       {0:"VDD3P3_CPU", 1:"VDD_SPI"}),
+
+         {0: "VDD3P3_CPU",
+          1: "VDD_SPI"}),
         ("FLASH_TYPE",                   "config",   0,  4, 9,   "bool",     18,   None, None,         "Selects SPI flash type",
-                                                                                                       {0:"4 data lines", 1:"8 data lines"}),
-        ("FORCE_SEND_RESUME",            "config",   0,  4, 10,  "bool",     18,   None, None,         "Forces ROM code to send an SPI flash resume command " +
+
+         {0: "4 data lines",
+          1: "8 data lines"}),
+        ("FORCE_SEND_RESUME",            "config",   0,  4, 10,  "bool",     18,   None, None,         "Forces ROM code to send an SPI flash resume command "
                                                                                                        "during SPI boot", None),
         ("SECURE_VERSION",             "identity",   0,  4, 11,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
                                                                                                        None),
@@ -228,15 +243,18 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SPI_PAD_CONFIG_D5",    "spi_pad_config",   1,  3, 0,   "uint:6",   20,   None, None,         "SPI D5 pad", None),
         ("SPI_PAD_CONFIG_D6",    "spi_pad_config",   1,  3, 6,   "uint:6",   20,   None, None,         "SPI D6 pad", None),
         ("SPI_PAD_CONFIG_D7",    "spi_pad_config",   1,  3, 12,  "uint:6",   20,   None, None,         "SPI D7 pad", None),
-        ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version", {0:"A"}),
+        ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
+         {0: "A"}),
         ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Package version",
-                                                                                                       {0:"ESP32-S2, QFN 7x7 56 pins",
-                                                                                                        1:"ESP32-S2FH16, QFN 7x7 56 pins, Flash 16Mb t=105C",
-                                                                                                        2:"ESP32-S2FH32, QFN 7x7 56 pins, Flash 32Mb t=105C"}),
+
+         {0: "ESP32-S2, QFN 7x7 56 pins",
+          1: "ESP32-S2FH16, QFN 7x7 56 pins, Flash 16Mb t=105C",
+          2: "ESP32-S2FH32, QFN 7x7 56 pins, Flash 32Mb t=105C"}),
         ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
         ('OPTIONAL_UNIQUE_ID',         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
         ('BLOCK2_VERSION',             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
-                                                                                                       {0:"No calibration", 1:"With calibration"}),
+         {0: "No calibration",
+          1: "With calibration"}),
     ]
 
     KEYBLOCKS = [

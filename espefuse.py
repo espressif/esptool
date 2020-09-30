@@ -18,12 +18,14 @@
 from __future__ import division, print_function
 
 import argparse
-import esptool
-from io import StringIO
 import os
 import sys
+from io import StringIO
+
 import espressif.efuse.esp32 as esp32_efuse
 import espressif.efuse.esp32s2 as esp32s2_efuse
+
+import esptool
 
 
 def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=False, debug=False, virt_efuse_file=None):
@@ -31,7 +33,7 @@ def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=Fals
         raise esptool.FatalError("get_esp: Unsupported chip (%s)" % chip)
     if virt:
         esp = {
-            'esp32':   esp32_efuse,
+            'esp32': esp32_efuse,
             'esp32s2': esp32s2_efuse,
         }.get(chip, esp32_efuse).EmulateEfuseController(virt_efuse_file, debug)
     else:
@@ -39,7 +41,7 @@ def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=Fals
             esp = esptool.ESPLoader.detect_chip(port, baud, connect_mode)
         else:
             esp = {
-                'esp32':   esptool.ESP32ROM,
+                'esp32': esptool.ESP32ROM,
                 'esp32s2': esptool.ESP32S2ROM,
             }.get(chip, esptool.ESP32ROM)(port if not skip_connect else StringIO(), baud)
             if not skip_connect:
@@ -50,7 +52,7 @@ def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=Fals
 def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
     try:
         efuse = {
-            'ESP32':    esp32_efuse,
+            'ESP32': esp32_efuse,
             'ESP32-S2': esp32s2_efuse,
         }[esp.CHIP_NAME]
     except KeyError:

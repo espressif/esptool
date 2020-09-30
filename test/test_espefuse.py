@@ -12,20 +12,24 @@
 # RTS (active low) to reset
 # DTR (active high) to clear efuses
 #
-import unittest
-import serial
+from __future__ import division, print_function
+
+import StringIO
 import struct
 import sys
-import StringIO
 import time
-
-from collections import namedtuple
+import unittest
 
 sys.path.append('..')
-import esptool, espefuse
+import espefuse
+
+import esptool
+
+import serial
 
 global serialport
 serialport = None
+
 
 # Wrapper class containing all possible espefuse.py command line args
 class EspEfuseArgs(object):
@@ -36,6 +40,7 @@ class EspEfuseArgs(object):
         self.block = None
         self.keyfile = None
         self.no_write_protect = False
+
 
 class EfuseTestCase(unittest.TestCase):
 
@@ -67,9 +72,10 @@ class EfuseTestCase(unittest.TestCase):
             if efuse.name == "CLK8M_FREQ":
                 continue
             val = efuse.get_raw()
-            BAD_EFUSE_MSG = "Efuse %s not all zeroes - either this is a real ESP32 chip (VERY BAD, read top of file), or the reset is not erasing all efuses correctly." % efuse.name
+            BAD_EFUSE_MSG = ("Efuse %s not all zeroes - either this is a real ESP32 chip (VERY BAD, read top of file), "
+                             "or the reset is not erasing all efuses correctly.") % efuse.name
             try:
-                self.assertEqual(b'\x00'*len(val), val, BAD_EFUSE_MSG)
+                self.assertEqual(b'\x00' * len(val), val, BAD_EFUSE_MSG)
             except TypeError:
                 self.assertEqual(0, val, BAD_EFUSE_MSG)
 
@@ -81,14 +87,14 @@ class EfuseTestCase(unittest.TestCase):
 
 class TestBurnKey(EfuseTestCase):
     def test_burn_key_no_coding_scheme(self):
-        key_256bit = b"".join(chr(x+1) for x in range(32))
-        self._test_burn_key_common(key_256bit, b"\x00"*32)
+        key_256bit = b"".join(chr(x + 1) for x in range(32))
+        self._test_burn_key_common(key_256bit, b"\x00" * 32)
 
     def test_burn_key_34_coding_scheme(self):
         if self.chip == "ESP32":
             self._set_34_coding_scheme()
-            key_192bit = b"".join(chr(x+0xAA) for x in range(24))
-            self._test_burn_key_common(key_192bit, b"\x00"*24)
+            key_192bit = b"".join(chr(x + 0xAA) for x in range(24))
+            self._test_burn_key_common(key_192bit, b"\x00" * 24)
 
     def _test_burn_key_common(self, new_key, empty_key):
         # Burning key common routine, works in both coding schemes
@@ -211,11 +217,11 @@ class TestBurnBlockData(EfuseTestCase):
 
             words = self.efuses.blocks[self.efuses.get_index_block_by_name(self.BLK3)].get_words()
             self.assertEqual([0,
-                            struct.unpack("<H", "12")[0] << 16,
-                            struct.unpack("<I", "34EA")[0],
-                            0,
-                            0,
-                            0], words)
+                              struct.unpack("<H", "12")[0] << 16,
+                              struct.unpack("<I", "34EA")[0],
+                              0,
+                              0,
+                              0], words)
 
             args.offset = 12
             args.block = [self.BLK3]
@@ -223,12 +229,13 @@ class TestBurnBlockData(EfuseTestCase):
             self.operations.burn_block_data(self.esp, self.efuses, args)
             words = self.efuses.blocks[self.efuses.get_index_block_by_name(self.BLK3)].get_words()
             self.assertEqual([0,
-                            struct.unpack("<H", "12")[0] << 16,
-                            struct.unpack("<I", "34EA")[0],
-                            struct.unpack("<I", "1234")[0],
-                            struct.unpack("<H", "EA")[0],
-                            0], words)
+                              struct.unpack("<H", "12")[0] << 16,
+                              struct.unpack("<I", "34EA")[0],
+                              struct.unpack("<I", "1234")[0],
+                              struct.unpack("<H", "EA")[0],
+                              0], words)
             self.assertEqual(0, self.efuses.get_coding_scheme_warnings())
+
 
 class TestBurnEfuse(EfuseTestCase):
     def test_burn_efuses(self):
@@ -239,7 +246,7 @@ class TestBurnEfuse(EfuseTestCase):
                 "DISABLE_SDIO_HOST": "1",
                 "MAC_VERSION": "1",
                 "ABS_DONE_0": "1",
-                }
+            }
         else:
             args.name_value_pairs = {
                 "SOFT_DIS_JTAG": "1",
@@ -247,7 +254,7 @@ class TestBurnEfuse(EfuseTestCase):
                 "KEY_PURPOSE_0": "2",
                 # "KEY_PURPOSE_1": "XTS_AES_256_KEY_1", the string value is avalible from the command line interface.
                 "SECURE_VERSION": "7",
-                }
+            }
         self.operations.burn_efuse(self.esp, self.efuses, args)
 
 
@@ -270,6 +277,6 @@ if __name__ == '__main__':
     serialport.rts = False
 
     # unittest also uses argv, so trim the args we used
-    sys.argv = [ sys.argv[0] ] + sys.argv[2:]
+    sys.argv = [sys.argv[0]] + sys.argv[2:]
     print("Running espefuse.py tests...")
     unittest.main(buffer=True)

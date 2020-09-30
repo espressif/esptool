@@ -17,6 +17,7 @@
 from __future__ import division, print_function
 
 import time
+
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalError
 

@@ -35,16 +35,18 @@
 # (C) 2009-2015 Chris Liechti <cliechti@gmx.net>
 #
 # SPDX-License-Identifier:    BSD-3-Clause
+from __future__ import division, print_function
 
 import logging
 import socket
 import sys
-import time
 import threading
+import time
+
 import serial
 import serial.rfc2217
-from serial.rfc2217 import (COM_PORT_OPTION, SET_CONTROL, SET_CONTROL_DTR_ON, SET_CONTROL_DTR_OFF, SET_CONTROL_RTS_ON,
-                            SET_CONTROL_RTS_OFF)
+from serial.rfc2217 import (COM_PORT_OPTION, SET_CONTROL, SET_CONTROL_DTR_OFF, SET_CONTROL_DTR_ON, SET_CONTROL_RTS_OFF,
+                            SET_CONTROL_RTS_ON)
 
 
 class EspPortManager(serial.rfc2217.PortManager):
