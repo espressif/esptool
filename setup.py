@@ -107,6 +107,7 @@ setup(
             'flake8-future-import',
             'flake8-import-order',
             'pyelftools',
+            'unittest-xml-reporting<=2.5.2',  # the replacement of the old xmlrunner package (Python 2 comp. version)
         ],
     },
     install_requires=[

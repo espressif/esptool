@@ -10,6 +10,7 @@ runs on esp8266 & esp32 (some addresses will change, see below.)
 """
 from __future__ import division, print_function
 
+import io
 import os
 import os.path
 import re
@@ -698,10 +699,18 @@ if __name__ == '__main__':
 
     print("Running esptool.py tests...")
     try:
-        import xmlrunner
+        import xmlrunner  # it should come from the unittest-xml-reporting package and not from xmlrunner
+        import pkg_resources
 
-        with open('report.xml', 'w' if sys.version[0] == '2' else 'wb') as output:
-            unittest.main(
-                testRunner=xmlrunner.XMLTestRunner(output=output))
+        try:
+            pkg_resources.require('xmlrunner')
+            raise ImportError('The unittest-xml-reporting package should be used instead of xmlrunner')
+        except pkg_resources.DistributionNotFound:
+            # it is desired that xmlrunner is not installed so it will not interfere with unittest-xml-reporting
+            # (conflict of files)
+            pass
+
+        with io.open('report.xml', 'wb') as output:
+            unittest.main(testRunner=xmlrunner.XMLTestRunner(output=output))
     except ImportError:
         unittest.main(buffer=True)
