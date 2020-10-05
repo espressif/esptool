@@ -4,6 +4,14 @@
 stages:
   - test
 
+# cache the pip download directory in all jobs
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/pip-cache"
+
+cache:
+  paths:
+    - "$CI_PROJECT_DIR/pip-cache"
+
 .test_template: &test_template
   stage: test
   image: $CI_DOCKER_REGISTRY/esp32-ci-env$BOT_DOCKER_IMAGE_TAG
@@ -23,8 +31,8 @@ host_tests:
 check_python_style:
   <<: *test_template
   script:
-    # this step installs any 'dev' dependencies (ie flake8) that might be missing in the CI image, but
-    # for best performance these should already be installed
+    # this step installs any 'dev' dependencies (ie flake8) that might be missing in the CI image.
+    # The runner should cache the downloads, so still quite fast.
     - ./test/ci/multirun_with_pyenv.sh pip install --user -e .[dev]
     - ./test/ci/multirun_with_pyenv.sh python -m flake8
 
