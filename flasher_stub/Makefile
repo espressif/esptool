@@ -70,7 +70,7 @@ CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
 CFLAGS_ESP32C3 = -std=c99 -Wall -Werror -Os \
-		 -march=rv32imc \
+		 -march=rv32imc -msmall-data-limit=0 \
          -nostdlib -fno-builtin -flto \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
 LDLIBS = -lgcc
