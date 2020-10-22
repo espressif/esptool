@@ -279,20 +279,71 @@ class ESP32FlashHeaderTests(BaseTestCase):
 
 
 class ELFSHA256Tests(BaseTestCase):
-    ELF = "esp32-app-template.elf"
+    ELF = "esp32-app-cust-ver-info.elf"
     SHA_OFFS = 0xb0  # absolute offset of the SHA in the .bin file
-    BIN = "esp32-app-template.bin"
+    BIN = "esp32-app-cust-ver-info.bin"
+
+    """
+    esp32-app-cust-ver-info.elf was built with the following application version info:
+
+    const __attribute__((section(".rodata_desc"))) esp_app_desc_t esp_app_desc = {
+        .magic_word = 0xffffffff,
+        .secure_version = 0xffffffff,
+        .reserv1 = {0xffffffff, 0xffffffff},
+        .version = "_______________________________",
+        .project_name = "-------------------------------",
+        .time = "xxxxxxxxxxxxxxx",
+        .date = "yyyyyyyyyyyyyyy",
+        .idf_ver = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        .app_elf_sha256 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+        .reserv2 = {0xffffffff,0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
+    };
+
+    This leaves zeroes only for the fiels of SHA-256 and the test will fail if the placement of zeroes are tested at
+    the wrong place.
+
+    00000000: e907 0020 780f 0840 ee00 0000 0000 0000  ... x..@........
+    00000010: 0000 0000 0000 0001 2000 403f 605a 0000  ........ .@?`Z..
+    00000020: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    00000030: 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f  ________________
+    00000040: 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f00  _______________.
+    00000050: 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d  ----------------
+    00000060: 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d 2d00  ---------------.
+    00000070: 7878 7878 7878 7878 7878 7878 7878 7800  xxxxxxxxxxxxxxx.
+    00000080: 7979 7979 7979 7979 7979 7979 7979 7900  yyyyyyyyyyyyyyy.
+    00000090: 7a7a 7a7a 7a7a 7a7a 7a7a 7a7a 7a7a 7a7a  zzzzzzzzzzzzzzzz
+    000000a0: 7a7a 7a7a 7a7a 7a7a 7a7a 7a7a 7a7a 7a00  zzzzzzzzzzzzzzz.
+    000000b0: 0000 0000 0000 0000 0000 0000 0000 0000  ................         SHA-256 should go here
+    000000c0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+    000000d0: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    000000e0: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    000000f0: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    00000100: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    00000110: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    00000120: 6370 755f 7374 6172 7400 0000 1b5b 303b  cpu_start....[0;
+
+    """
 
     def test_binary_patched(self):
-        self.run_elf2image("esp32", self.ELF, extra_args=["--elf-sha256-offset", "0x%x" % self.SHA_OFFS])
-        image = esptool.LoadFirmwareImage("esp32", self.BIN)
-        rodata_segment = image.segments[0]
-        observed_sha256 = rodata_segment.data[self.SHA_OFFS - 0x20: self.SHA_OFFS - 0x20 + 32]  # subtract 0x20 byte header here
+        try:
+            self.run_elf2image("esp32", self.ELF, extra_args=["--elf-sha256-offset", "0x%x" % self.SHA_OFFS])
+            image = esptool.LoadFirmwareImage("esp32", self.BIN)
+            rodata_segment = image.segments[0]
+            bin_sha256 = rodata_segment.data[self.SHA_OFFS - 0x20: self.SHA_OFFS - 0x20 + 32]  # subtract 0x20 byte header here
 
-        with open(self.ELF, "rb") as f:
-            expected_sha256 = hashlib.sha256(f.read()).digest()
+            with open(self.ELF, "rb") as f:
+                elf_computed_sha256 = hashlib.sha256(f.read()).digest()
 
-        self.assertSequenceEqual(expected_sha256, observed_sha256)
+            with open(self.BIN, "rb") as f:
+                f.seek(self.SHA_OFFS)
+                bin_sha256_raw = f.read(len(elf_computed_sha256))
+
+            self.assertSequenceEqual(elf_computed_sha256, bin_sha256)
+            self.assertSequenceEqual(elf_computed_sha256, bin_sha256_raw)
+        finally:
+            try_delete(self.BIN)
 
     def test_no_overwrite_data(self):
         with self.assertRaises(subprocess.CalledProcessError) as e:
