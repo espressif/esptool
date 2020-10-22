@@ -3368,7 +3368,7 @@ def main(custom_commandline=None):
         parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M)'
                             ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1)' + extra_fs_message,
                             action=FlashSizeAction, auto_detect=auto_detect,
-                            default=os.environ.get('ESPTOOL_FS', 'detect' if auto_detect else '1MB'))
+                            default=os.environ.get('ESPTOOL_FS', '1MB' if is_elf2image else 'keep'))
         add_spi_connection_arg(parent)
 
     parser_write_flash = subparsers.add_parser(

@@ -563,7 +563,7 @@ class TestKeepImageSettings(EsptoolTestCase):
         self.run_esptool("verify_flash -fs keep 0x%x %s" % (self.flash_offset, self.BL_IMAGE))
 
     def test_detect_size_changes_size(self):
-        self.run_esptool("write_flash 0x%x %s" % (self.flash_offset, self.BL_IMAGE))
+        self.run_esptool("write_flash -fs detect 0x%x %s" % (self.flash_offset, self.BL_IMAGE))
         readback = self.readback(self.flash_offset, 8)
         self.assertEqual(self.header[:3], readback[:3])  # first 3 bytes unchanged
         self.assertNotEqual(self.header[3], readback[3])  # size_freq byte changed
