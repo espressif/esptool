@@ -3146,6 +3146,90 @@ def make_image(args):
     image.save(args.output)
 
 
+def merge_image(args):
+    # Helper classes
+    class Bin(object):
+        def __init__(self, addr, file):
+            self.addr = addr
+            self.file = file
+            self.file_name = os.path.basename(file.name)
+            self.size = self.get_size()
+
+        def get_size(self):
+            self.file.seek(0, 2)  # seek to end
+            size = self.file.tell()
+            self.file.seek(0)
+            return size
+
+    class MultiBin(object):
+        def __init__(self, name, output_folder='.'):
+            self.name = name
+            self.output_folder = output_folder
+            try:
+                os.makedirs(os.path.realpath(self.output_folder))
+            except:
+                pass
+            self.output_path = os.path.realpath(os.path.join(self.output_folder, self.name))
+            self.bin_array = []
+
+        def add_bin(self, addr, file):
+            self.bin_array.append(Bin(addr, file))
+
+        def sort_bin(self):
+            swapped = True
+            while swapped:
+                swapped = False
+                for i in range(len(self.bin_array) - 1):
+                    if self.bin_array[i].addr > self.bin_array[i + 1].addr:
+                        self.bin_array[i], self.bin_array[i + 1] = self.bin_array[i + 1], self.bin_array[i]
+                        swapped = True
+
+        def add_bin_to_other_bin(self, previous, binary):
+            with open(self.output_path, "a") as output_file:
+                output_file.write('\xff' * (binary.addr - previous))
+            print("Add %s from 0x%x to 0x%x (0x%x)" % (
+            binary.file_name, binary.addr, binary.addr + binary.size, binary.size))
+            with open(self.output_path, "a") as output_file:
+                output_file.write(binary.file.read())
+            return binary.addr + binary.size
+
+        def create_bin(self):
+            new_start = 0
+            open(self.output_path, "wb").close
+            for b in self.bin_array:
+                new_start = self.add_bin_to_other_bin(new_start, b)
+
+        def check_if_possible(self):
+            for i in range(1, len(self.bin_array)):
+                if (self.bin_array[i].addr <= (self.bin_array[i - 1].addr + self.bin_array[i - 1].size)):
+                    print(self.bin_array[i].addr, (self.bin_array[i - 1].addr + self.bin_array[i - 1].size))
+                    raise Exception("Not possible to create this bin, overlapping between %s and %s" % (
+                        self.bin_array[i].file_name, self.bin_array[i - 1].file_name))
+
+    # Check that bins are provided
+    if len(args.addr_filename) == 0:
+        raise FatalError('No segments specified')
+
+    encrypt = bool(args.keyfile is not None)
+    unenc_name = args.output + '.bin'
+    enc_name = args.output + '.enc.bin'
+
+    # Combine bins into unencrypted image
+    mb = MultiBin(unenc_name)
+    for address, argfile in args.addr_filename:
+        mb.add_bin(address, argfile)
+    mb.sort_bin()
+    mb.check_if_possible()
+    mb.create_bin()
+
+    # Encrypt image (if needed)
+    if encrypt:
+        with open(unenc_name, 'rb') as input_file:
+            with open(enc_name, 'wb') as output_file:
+                espsecure._flash_encryption_operation(
+                    output_file, input_file, 0, args.keyfile, args.flash_crypt_conf, False)
+
+
 def elf2image(args):
     e = ELFFile(args.input)
     if args.chip == 'auto':  # Default to ESP8266 for backwards compatibility
@@ -3487,6 +3571,19 @@ def main(custom_commandline=None):
     parser_make_image.add_argument('--segfile', '-f', action='append', help='Segment input file')
     parser_make_image.add_argument('--segaddr', '-a', action='append', help='Segment base address', type=arg_auto_int)
     parser_make_image.add_argument('--entrypoint', '-e', help='Address of entry point', type=arg_auto_int, default=0)
+
+    parser_merge_image = subparsers.add_parser(
+        'merge_image',
+        help='Create an application image from binary files')
+    parser_merge_image.add_argument('addr_filename', metavar='<address> <filename>', help='Address followed by binary filename, separated by space',
+                                    action=AddrFilenamePairAction)
+    parser_merge_image.add_argument('--output', '-o', help='Output image file postfix (default: flash)', type=str, default='flash')
+    parser_merge_image.add_argument('--keyfile', '-k', help="File with flash encryption key", type=argparse.FileType('rb'), default=None)
+    parser_merge_image.add_argument('--flash_crypt_conf', help="Override FLASH_CRYPT_CONF efuse value (default: 0xF).",
+                                   default=0xF, type=arg_auto_int)
+
+    # Adding so we can use the same download.config for image composition
+    add_spi_flash_subparsers(parser_merge_image, is_elf2image=False)
 
     parser_elf2image = subparsers.add_parser(
         'elf2image',
