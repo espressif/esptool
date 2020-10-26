@@ -120,14 +120,14 @@ class SigningTests(EspSecureTestCase):
         'append_signatures',
         'datafile'])
 
-    def test_sign_data(self):
+    def _test_sign_v1_data(self, key_name):
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
             output_file.close()
 
             # Note: signing bootloader is not actually needed
             # for ESP32, it's just a handy file to sign
-            args = self.SignArgs('1', [self._open('ecdsa_secure_boot_signing_key.pem')],
+            args = self.SignArgs('1', [self._open(key_name)],
                                  output_file.name, None,
                                  self._open('bootloader.bin'))
             espsecure.sign_data(args)
@@ -138,6 +138,12 @@ class SigningTests(EspSecureTestCase):
 
         finally:
             os.unlink(output_file.name)
+
+    def test_sign_v1_data(self):
+        self._test_sign_v1_data('ecdsa_secure_boot_signing_key.pem')
+
+    def test_sign_v1_data_pkcs8(self):
+        self._test_sign_v1_data('ecdsa_secure_boot_signing_key_pkcs8.pem')
 
     def test_sign_v2_data(self):
         with tempfile.NamedTemporaryFile() as output_file:
