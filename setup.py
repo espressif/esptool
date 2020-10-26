@@ -113,11 +113,11 @@ setup(
     install_requires=[
         'bitstring>=3.1.6',
         'cryptography>=2.1.4',
-        'ecdsa',
+        'ecdsa>=0.16.0',
         'pyserial>=3.0',
         'reedsolo>=1.5.3,<=1.5.4',
     ],
-    packages=find_packages(exclude=['ecdsa']),
+    packages=find_packages(),
     scripts=scripts,
     entry_points=entry_points,
 )
