@@ -18,14 +18,16 @@
 from __future__ import division, print_function
 
 import argparse
-import esptool
-import espsecure
 import io
 import json
 import os
 import struct
 import sys
 import time
+
+import espsecure
+
+import esptool
 
 
 # Table of efuse values - (category, block, word in block, mask, write disable bit, read disable bit, type, description)

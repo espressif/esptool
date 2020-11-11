@@ -24,15 +24,15 @@ import binascii
 import copy
 import hashlib
 import inspect
-import itertools
 import io
+import itertools
 import os
 import shlex
+import string
 import struct
 import sys
 import time
 import zlib
-import string
 
 try:
     import serial
@@ -1204,7 +1204,7 @@ class ESP32ROM(ESPLoader):
     SPI_MISO_DLEN_OFFS = 0x2c
     EFUSE_REG_BASE = 0x3ff5a000
 
-    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE + 0x18
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_REG_BASE + 0x18
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = (1 << 7)  # EFUSE_RD_DISABLE_DL_ENCRYPT
 
     DR_REG_SYSCON_BASE = 0x3ff66000
@@ -1477,7 +1477,7 @@ class ESP32S2ROM(ESP32ROM):
 
     UART_CLKDIV_REG = 0x3f400014
 
-    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_REG_BASE
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 19
 
     def get_chip_description(self):
@@ -2162,7 +2162,7 @@ class ELFFile(object):
         if machine != 0x5e:
             raise FatalError("%s does not appear to be an Xtensa ELF file. e_machine=%04x" % (self.name, machine))
         if shentsize != self.LEN_SEC_HEADER:
-            raise FatalError("%s has unexpected section header entry size 0x%x (not 0x28)" % (self.name, shentsize, self.LEN_SEC_HEADER))
+            raise FatalError("%s has unexpected section header entry size 0x%x (not 0x%x)" % (self.name, shentsize, self.LEN_SEC_HEADER))
         if shnum == 0:
             raise FatalError("%s has 0 section headers" % (self.name))
         self._read_sections(f, shoff, shnum, shstrndx)
@@ -2506,7 +2506,7 @@ def write_flash(esp, args):
 
         if esp.get_encrypted_download_disabled():
             raise FatalError("This chip has encrypt functionality in UART download mode disabled. "
-                             + "This is the Flash Encryption configuration for Production mode instead of Development mode.")
+                             "This is the Flash Encryption configuration for Production mode instead of Development mode.")
 
         crypt_cfg_efuse = esp.get_flash_crypt_config()
 

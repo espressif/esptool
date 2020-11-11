@@ -23,10 +23,18 @@ import os
 import struct
 import sys
 import zlib
+from collections import namedtuple
+
+from cryptography import exceptions
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
+from cryptography.utils import int_to_bytes
 
 import ecdsa
+
 import esptool
-from collections import namedtuple
 
 try:  # use pycrypto API if available
     from Crypto.Cipher import AES
@@ -39,13 +47,6 @@ except ImportError:
 
     def ECB(key):
         return pyaes.AESModeOfOperationECB(key)
-
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.utils import int_to_bytes
-from cryptography import exceptions
 
 
 def get_chunks(source, chunk_len):
