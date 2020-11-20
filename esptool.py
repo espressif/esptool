@@ -3116,6 +3116,8 @@ def make_image(args):
 
 
 def merge_image(args):
+    import espsecure
+
     # Helper classes
     class Bin(object):
         def __init__(self, addr, file):
@@ -3136,7 +3138,7 @@ def merge_image(args):
             self.output_folder = output_folder
             try:
                 os.makedirs(os.path.realpath(self.output_folder))
-            except:
+            except (FileExistsError, OSError):
                 pass
             self.output_path = os.path.realpath(os.path.join(self.output_folder, self.name))
             self.bin_array = []
@@ -3157,20 +3159,20 @@ def merge_image(args):
             with open(self.output_path, "a") as output_file:
                 output_file.write('\xff' * (binary.addr - previous))
             print("Add %s from 0x%x to 0x%x (0x%x)" % (
-            binary.file_name, binary.addr, binary.addr + binary.size, binary.size))
+                binary.file_name, binary.addr, binary.addr + binary.size, binary.size))
             with open(self.output_path, "a") as output_file:
                 output_file.write(binary.file.read())
             return binary.addr + binary.size
 
         def create_bin(self):
             new_start = 0
-            open(self.output_path, "wb").close
+            open(self.output_path, "wb").close()
             for b in self.bin_array:
                 new_start = self.add_bin_to_other_bin(new_start, b)
 
         def check_if_possible(self):
             for i in range(1, len(self.bin_array)):
-                if (self.bin_array[i].addr <= (self.bin_array[i - 1].addr + self.bin_array[i - 1].size)):
+                if self.bin_array[i].addr <= (self.bin_array[i - 1].addr + self.bin_array[i - 1].size):
                     print(self.bin_array[i].addr, (self.bin_array[i - 1].addr + self.bin_array[i - 1].size))
                     raise Exception("Not possible to create this bin, overlapping between %s and %s" % (
                         self.bin_array[i].file_name, self.bin_array[i - 1].file_name))
@@ -3549,7 +3551,7 @@ def main(custom_commandline=None):
     parser_merge_image.add_argument('--output', '-o', help='Output image file postfix (default: flash)', type=str, default='flash')
     parser_merge_image.add_argument('--keyfile', '-k', help="File with flash encryption key", type=argparse.FileType('rb'), default=None)
     parser_merge_image.add_argument('--flash_crypt_conf', help="Override FLASH_CRYPT_CONF efuse value (default: 0xF).",
-                                   default=0xF, type=arg_auto_int)
+                                    default=0xF, type=arg_auto_int)
 
     # Adding so we can use the same download.config for image composition
     add_spi_flash_subparsers(parser_merge_image, is_elf2image=False)
