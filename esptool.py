@@ -3138,8 +3138,8 @@ def merge_image(args):
             self.output_folder = output_folder
             try:
                 os.makedirs(os.path.realpath(self.output_folder))
-            except (FileExistsError, OSError):
-                pass
+            except OSError:
+                pass    # file already exists, overwrite
             self.output_path = os.path.realpath(os.path.join(self.output_folder, self.name))
             self.bin_array = []
 
