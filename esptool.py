@@ -80,6 +80,7 @@ MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2  # longest any command can run
 SYNC_TIMEOUT = 0.1                    # timeout for syncing with bootloader
 MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating md5sum
 ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
+COMP_BLOCK_WRITE_TIMEOUT_PER_MB = 3   # timeout (per megabyte) for writing compressed data
 MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
@@ -2998,10 +2999,8 @@ def write_flash(esp, args):
         if compress:
             uncimage = image
             image = zlib.compress(uncimage, 9)
-            ratio = uncsize / len(image)
             blocks = esp.flash_defl_begin(uncsize, len(image), address)
         else:
-            ratio = 1.0
             blocks = esp.flash_begin(uncsize, address, begin_rom_encrypted=encrypted)
         argfile.seek(0)  # in case we need it again
         seq = 0
@@ -3012,7 +3011,7 @@ def write_flash(esp, args):
             sys.stdout.flush()
             block = image[0:esp.FLASH_WRITE_SIZE]
             if compress:
-                esp.flash_defl_block(block, seq, timeout=DEFAULT_TIMEOUT * ratio * 2)
+                esp.flash_defl_block(block, seq, timeout=timeout_per_mb(COMP_BLOCK_WRITE_TIMEOUT_PER_MB, uncsize))
             else:
                 # Pad the last block
                 block = block + b'\xff' * (esp.FLASH_WRITE_SIZE - len(block))
