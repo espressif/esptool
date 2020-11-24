@@ -73,16 +73,14 @@ check_stub_build:
     - make -C flasher_stub V=1 PATH="${TOOLCHAIN_PATHS}:${PATH}"
     - cd flasher_stub && python ./compare_stubs.py
 
-target_esptool_test:
-  timeout: 2 hours 30 minutes
+.target_esptool_test:
   stage: test
   image: $CI_DOCKER_REGISTRY/rpi-test-env$BOT_DOCKER_IMAGE_TAG
   tags:
     - esptool_target
     - internet
-  script:
+  before_script:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python -m pip install -e .
-    - ./test/ci/run_test_on_chips_parallel.sh
   artifacts:
     reports:
       junit: test/report.xml
@@ -90,5 +88,29 @@ target_esptool_test:
     paths:
       - test/*.out
     expire_in: 1 week
-  after_script:
-    - tail -n +1 test/*.out
+
+target_esptool_test_esp32:
+  extends: .target_esptool_test
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32 esp32 115200
+
+target_esptool_test_esp32s2:
+  extends: .target_esptool_test
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2 esp32s2 115200
+
+target_esptool_test_esp32s2_usbcdc:
+  extends: .target_esptool_test
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2_USBCDC esp32s2 115200
+
+
+target_esptool_test_esp8266:
+  extends: .target_esptool_test
+  allow_failure: true
+  tags:
+    # tests for esp8266 runs on different runner than tests for other devices
+    - esptool_esp8266_target
+    - internet
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP8266 esp8266 115200
