@@ -227,6 +227,8 @@ class ESPLoader(object):
     CHIP_NAME = "Espressif device"
     IS_STUB = False
 
+    FPGA_SLOW_BOOT = False
+
     DEFAULT_PORT = "/dev/ttyUSB0"
 
     # Commands supported by ESP8266 ROM bootloader
@@ -565,6 +567,9 @@ class ESPLoader(object):
             self._setDTR(False)
             self._setRTS(False)
         else:
+            # This extra delay is for Espressif internal use
+            extra_delay = True if self.FPGA_SLOW_BOOT and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1" else False
+
             self._setDTR(False)  # IO0=HIGH
             self._setRTS(True)   # EN=LOW, chip in reset
             time.sleep(0.1)
@@ -580,6 +585,10 @@ class ESPLoader(object):
                 # This workaround only works on revision 0 ESP32 chips,
                 # it exploits a silicon bug spurious watchdog reset.
                 time.sleep(0.4)  # allow watchdog reset to occur
+
+            if extra_delay:
+                time.sleep(7)
+
             time.sleep(0.05)
             self._setDTR(False)  # IO0=HIGH, done
 
@@ -1401,6 +1410,8 @@ class ESP32ROM(ESPLoader):
     IMAGE_CHIP_ID = 0
     IS_STUB = False
 
+    FPGA_SLOW_BOOT = True
+
     CHIP_DETECT_MAGIC_VALUE = [0x00f01d83]
 
     IROM_MAP_START = 0x400d0000
@@ -1673,6 +1684,8 @@ class ESP32S2ROM(ESP32ROM):
     CHIP_NAME = "ESP32-S2"
     IMAGE_CHIP_ID = 2
 
+    FPGA_SLOW_BOOT = False
+
     IROM_MAP_START = 0x40080000
     IROM_MAP_END   = 0x40b80000
     DROM_MAP_START = 0x3F000000
@@ -1900,6 +1913,8 @@ class ESP32S3ROM(ESP32ROM):
 
     CHIP_DETECT_MAGIC_VALUE = [0x9]
 
+    FPGA_SLOW_BOOT = False
+
     IROM_MAP_START = 0x42000000
     IROM_MAP_END   = 0x44000000
     DROM_MAP_START = 0x3c000000
@@ -2023,6 +2038,8 @@ class ESP32S3BETA2ROM(ESP32S3ROM):
 class ESP32C3ROM(ESP32ROM):
     CHIP_NAME = "ESP32-C3"
     IMAGE_CHIP_ID = 5
+
+    FPGA_SLOW_BOOT = False
 
     IROM_MAP_START = 0x42000000
     IROM_MAP_END   = 0x42800000
