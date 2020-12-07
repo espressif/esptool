@@ -109,13 +109,12 @@ setup(
             'pyelftools',
         ],
     },
+    # Although ecdsa and pyaes are vendored, the packages are left here for the case of installing esptool via pip.
     install_requires=[
         'cryptography>=2.1.4',
-        'ecdsa',
         'pyserial>=3.0',
-        'pyaes',
         'ecdsa',
-        'cryptography>=2.1.4',
+        'pyaes',
     ],
     scripts=scripts,
     entry_points=entry_points,
