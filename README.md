@@ -169,6 +169,8 @@ This command does not require a serial connection.
 
 `elf2image` also accepts the [Flash Modes](#flash-modes) arguments `--flash_freq` and `--flash_mode`, which can be used to set the default values in the image header. This is important when generating any image which will be booted directly by the chip. These values can also be overwritten via the `write_flash` command, see the [write_flash command](#Writing-binaries-to-flash) for details.
 
+By default, `elf2image` uses the sections in the ELF file to generate each segment in the binary executable. To use segments (PHDRs) instead, pass the `--use_segments` option.
+
 #### elf2image for ESP8266
 
 The default command output is two binary files: `my_app.elf-0x00000.bin` and `my_app.elf-0x40000.bin`. You can alter the firmware file name prefix using the `--output/-o` option.
