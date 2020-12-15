@@ -80,6 +80,7 @@ MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2  # longest any command can run
 SYNC_TIMEOUT = 0.1                    # timeout for syncing with bootloader
 MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating md5sum
 ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
+COMP_BLOCK_WRITE_TIMEOUT_PER_MB = 3   # timeout (per megabyte) for writing compressed data
 MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
@@ -91,6 +92,34 @@ def timeout_per_mb(seconds_per_mb, size_bytes):
     if result < DEFAULT_TIMEOUT:
         return DEFAULT_TIMEOUT
     return result
+
+
+def get_default_connected_device(serial_list, port, connect_attempts, initial_baud, chip='auto', trace=False,
+                                 before='default_reset'):
+    _esp = None
+    for each_port in reversed(serial_list):
+        print("Serial port %s" % each_port)
+        try:
+            if chip == 'auto':
+                _esp = ESPLoader.detect_chip(each_port, initial_baud, before, trace,
+                                             connect_attempts)
+            else:
+                chip_class = {
+                    'esp8266': ESP8266ROM,
+                    'esp32': ESP32ROM,
+                    'esp32s2': ESP32S2ROM,
+                    'esp32s3beta2': ESP32S3BETA2ROM,
+                    'esp32c3': ESP32C3ROM,
+                }[chip]
+                _esp = chip_class(each_port, initial_baud, trace)
+                _esp.connect(before, connect_attempts)
+            break
+        except (FatalError, OSError) as err:
+            if port is not None:
+                raise
+            print("%s failed to connect: %s" % (each_port, err))
+            _esp = None
+    return _esp
 
 
 DETECTED_FLASH_SIZES = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB',
@@ -285,6 +314,10 @@ class ESPLoader(object):
             # no write timeout for RFC2217 ports
             # need to set the property back to None or it will continue to fail
             self._port.write_timeout = None
+
+    @property
+    def serial_port(self):
+        return self._port.port
 
     def _set_port_baudrate(self, baud):
         try:
@@ -2998,10 +3031,8 @@ def write_flash(esp, args):
         if compress:
             uncimage = image
             image = zlib.compress(uncimage, 9)
-            ratio = uncsize / len(image)
             blocks = esp.flash_defl_begin(uncsize, len(image), address)
         else:
-            ratio = 1.0
             blocks = esp.flash_begin(uncsize, address, begin_rom_encrypted=encrypted)
         argfile.seek(0)  # in case we need it again
         seq = 0
@@ -3012,7 +3043,7 @@ def write_flash(esp, args):
             sys.stdout.flush()
             block = image[0:esp.FLASH_WRITE_SIZE]
             if compress:
-                esp.flash_defl_block(block, seq, timeout=DEFAULT_TIMEOUT * ratio * 2)
+                esp.flash_defl_block(block, seq, timeout=timeout_per_mb(COMP_BLOCK_WRITE_TIMEOUT_PER_MB, uncsize))
             else:
                 # Pad the last block
                 block = block + b'\xff' * (esp.FLASH_WRITE_SIZE - len(block))
@@ -3682,29 +3713,9 @@ def main(custom_commandline=None):
             print("Found %d serial ports" % len(ser_list))
         else:
             ser_list = [args.port]
-        esp = None
-        for each_port in reversed(ser_list):
-            print("Serial port %s" % each_port)
-            try:
-                if args.chip == 'auto':
-                    esp = ESPLoader.detect_chip(each_port, initial_baud, args.before, args.trace,
-                                                args.connect_attempts)
-                else:
-                    chip_class = {
-                        'esp8266': ESP8266ROM,
-                        'esp32': ESP32ROM,
-                        'esp32s2': ESP32S2ROM,
-                        'esp32s3beta2': ESP32S3BETA2ROM,
-                        'esp32c3': ESP32C3ROM,
-                    }[args.chip]
-                    esp = chip_class(each_port, initial_baud, args.trace)
-                    esp.connect(args.before, args.connect_attempts)
-                break
-            except (FatalError, OSError) as err:
-                if args.port is not None:
-                    raise
-                print("%s failed to connect: %s" % (each_port, err))
-                esp = None
+        esp = get_default_connected_device(ser_list, port=args.port, connect_attempts=args.connect_attempts,
+                                           initial_baud=initial_baud, chip=args.chip, trace=args.trace,
+                                           before=args.before)
         if esp is None:
             raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
 
