@@ -69,7 +69,14 @@ def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
     return (efuse.EspEfuses(esp, skip_connect, debug_mode, do_not_confirm), efuse.operations)
 
 
-def main():
+def main(custom_commandline=None):
+    """
+    Main function for espefuse
+
+    custom_commandline - Optional override for default arguments parsing (that uses sys.argv), can be a list of custom arguments
+    as strings. Arguments and their values need to be added as individual items to the list e.g. "--port /dev/ttyUSB1" thus
+    becomes ['--port', '/dev/ttyUSB1'].
+    """
     init_parser = argparse.ArgumentParser(description='espefuse.py v%s - [ESP32/S2/S3BETA2/C3] efuse get/set tool' % esptool.__version__, prog='espefuse',
                                           add_help=False)
 
@@ -97,7 +104,7 @@ def main():
     init_parser.add_argument('--path-efuse-file', help='For host tests, saves efuse memory to file.', type=str, default=None)
     init_parser.add_argument('--do-not-confirm', help='Do not pause for confirmation before permanently writing efuses. Use with caution.', action='store_true')
 
-    args1, remaining_args = init_parser.parse_known_args()
+    args1, remaining_args = init_parser.parse_known_args(custom_commandline)
     debug_mode = args1.debug or ("dump" in remaining_args)
     just_print_help = [True for arg in remaining_args if arg in ["--help", "-h"]] or remaining_args == []
     esp = get_esp(args1.port, args1.baud, args1.before, args1.chip, just_print_help, args1.virt, args1.debug, args1.path_efuse_file)

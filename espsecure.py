@@ -717,7 +717,14 @@ def encrypt_flash_data(args):
     return _flash_encryption_operation(args.output, args.plaintext_file, args.address, args.keyfile, args.flash_crypt_conf, False)
 
 
-def main():
+def main(custom_commandline=None):
+    """
+    Main function for espsecure
+
+    custom_commandline - Optional override for default arguments parsing (that uses sys.argv), can be a list of custom arguments
+    as strings. Arguments and their values need to be added as individual items to the list e.g. "--port /dev/ttyUSB1" thus
+    becomes ['--port', '/dev/ttyUSB1'].
+    """
     parser = argparse.ArgumentParser(description='espsecure.py v%s - ESP32 Secure Boot & Flash Encryption tool' % esptool.__version__, prog='espsecure')
 
     subparsers = parser.add_subparsers(
@@ -805,7 +812,7 @@ def main():
     p.add_argument('--flash_crypt_conf', help="Override FLASH_CRYPT_CONF efuse value (default is 0XF).", required=False, default=0xF, type=esptool.arg_auto_int)
     p.add_argument('plaintext_file', help="File with plaintext content for encrypting", type=argparse.FileType('rb'))
 
-    args = parser.parse_args()
+    args = parser.parse_args(custom_commandline)
     print('espsecure.py v%s' % esptool.__version__)
     if args.operation is None:
         parser.print_help()
