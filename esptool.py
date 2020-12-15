@@ -3204,7 +3204,6 @@ def merge_image(args):
         def check_if_possible(self):
             for i in range(1, len(self.bin_array)):
                 if self.bin_array[i].addr <= (self.bin_array[i - 1].addr + self.bin_array[i - 1].size):
-                    print(self.bin_array[i].addr, (self.bin_array[i - 1].addr + self.bin_array[i - 1].size))
                     raise Exception("Not possible to create this bin, overlapping between %s and %s" % (
                         self.bin_array[i].file_name, self.bin_array[i - 1].file_name))
 
