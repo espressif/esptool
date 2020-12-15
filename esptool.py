@@ -3152,12 +3152,13 @@ def merge_image(args):
     # Helper classes
     class Bin(object):
         def __init__(self, addr, file):
-            self.addr = addr
+            self.start_addr = addr
             self.file = file
             self.file_name = os.path.basename(file.name)
-            self.size = self.get_size()
+            self.size = self._get_size()
+            self.end_addr = self.start_addr + self.size
 
-        def get_size(self):
+        def _get_size(self):
             self.file.seek(0, 2)  # seek to end
             size = self.file.tell()
             self.file.seek(0)
@@ -3165,41 +3166,58 @@ def merge_image(args):
 
     class MultiBin(object):
         def __init__(self, name, output_folder='.'):
-            self.name = name
-            self.output_folder = output_folder
+            # Create output folder(s) (if needed)
             try:
-                os.makedirs(os.path.realpath(self.output_folder))
+                os.makedirs(os.path.realpath(output_folder))
             except OSError:
                 pass    # file already exists, overwrite
-            self.output_path = os.path.realpath(os.path.join(self.output_folder, self.name))
+
+            self.output_path = os.path.realpath(os.path.join(output_folder, name))
             self.bins = []
 
         def add_bin(self, addr, file):
             self.bins.append(Bin(addr, file))
 
-        def sort_bin(self):
+        def _sort_bins(self):
             self.bins = sorted(self.bins, key=lambda b: b.addr)
 
-        def add_bin_to_other_bin(self, previous, binary):
-            with open(self.output_path, "a") as output_file:
-                output_file.write('\xff' * (binary.addr - previous))
-            print("Add %s from 0x%x to 0x%x (0x%x)" % (
-                binary.file_name, binary.addr, binary.addr + binary.size, binary.size))
-            with open(self.output_path, "a") as output_file:
-                output_file.write(binary.file.read())
-            return binary.addr + binary.size
+        def _check_overlap(self):
+            # Check for bin overlap
+            for bin_index, curr_bin in enumerate(self.bins):
+                if bin_index > 1:
+                    prev_bin = self.bins[bin_index - 1]
+
+                    # Compare current bin start and previous bin end addresses
+                    if prev_bin.end_addr > curr_bin.start_addr:
+                        raise Exception("Not possible to create this bin, overlapping between %s and %s" % (
+                            curr_bin.file_name, prev_bin.file_name))
 
         def create_bin(self):
-            new_start = 0
-            open(self.output_path, "wb").close()
-            for b in self.bins:
-                new_start = self.add_bin_to_other_bin(new_start, b)
+            self._sort_bins()
+            self._check_overlap()
 
-        def check_if_possible(self):
-            for i in range(1, len(self.bins)):
-                if self.bins[i].addr <= (self.bins[i - 1].addr + self.bins[i - 1].size):
-                    raise Exception("Not possible to create this bin, overlapping between %s and %s" % (
-                        self.bins[i].file_name, self.bins[i - 1].file_name))
+            with open(self.output_path, "wb") as output_file:
+                for bin_index, curr_bin in enumerate(self.bins):
+                    # Read previous bin end address
+                    if bin_index > 1:
+                        prev_end = self.bins[bin_index - 1].end_addr
+                    else:
+                        prev_end = 0
+
+                    # Fill the gaps with 0xFF (if needed)
+                    if curr_bin.addr > prev_end:
+                        output_file.write('\xff' * (curr_bin.addr - prev_end))
+
+                    # Inform user
+                    print("Add %s from 0x%x to 0x%x (0x%x)" % (
+                        curr_bin.file_name, curr_bin.start_addr, curr_bin.end_addr, curr_bin.size))
+
+                    # Read bin data
+                    with open(curr_bin.file, 'rb') as f:
+                        bin_data = f.read()
+
+                    # Write bin to output file
+                    output_file.write(bin_data)
 
     # Check that bins are provided
     if len(args.addr_filename) == 0:
@@ -3213,8 +3231,6 @@ def merge_image(args):
     mb = MultiBin(unenc_name)
     for address, argfile in args.addr_filename:
         mb.add_bin(address, argfile)
-    mb.sort_bin()
-    mb.check_if_possible()
     mb.create_bin()
 
     # Encrypt image (if needed)
