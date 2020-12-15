@@ -3178,13 +3178,7 @@ def merge_image(args):
             self.bin_array.append(Bin(addr, file))
 
         def sort_bin(self):
-            swapped = True
-            while swapped:
-                swapped = False
-                for i in range(len(self.bin_array) - 1):
-                    if self.bin_array[i].addr > self.bin_array[i + 1].addr:
-                        self.bin_array[i], self.bin_array[i + 1] = self.bin_array[i + 1], self.bin_array[i]
-                        swapped = True
+            self.bin_array = sorted(self.bin_array, key=lambda b: b.addr)
 
         def add_bin_to_other_bin(self, previous, binary):
             with open(self.output_path, "a") as output_file:
