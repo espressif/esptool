@@ -207,9 +207,9 @@ class ESP8266V2ImageTests(BaseTestCase):
 
 
 class ESP32ImageTests(BaseTestCase):
-    def _test_elf2image(self, elfpath, binpath):
+    def _test_elf2image(self, elfpath, binpath, extra_args=[]):
         try:
-            self.run_elf2image("esp32", elfpath)
+            self.run_elf2image("esp32", elfpath, extra_args=extra_args)
             image = esptool.LoadFirmwareImage("esp32", binpath)
             self.assertImageInfo(binpath, "esp32")
             return image
@@ -244,6 +244,17 @@ class ESP32ImageTests(BaseTestCase):
         output = e.exception.output
         self.assertIn(b"max 16", output)
         self.assertIn(b"linker script", output)
+
+    def test_use_segments(self):
+        ELF = "esp32-zephyr.elf"
+        BIN = "esp32-zephyr.bin"
+        # default behaviour uses ELF sections, this ELF will produce 8 segments in the bin
+        image = self._test_elf2image(ELF, BIN)
+        self.assertEqual(8, len(image.segments))
+
+        # --use_segments uses ELF segments(phdrs), produces just 2 segments in the bin
+        image = self._test_elf2image(ELF, BIN, ["--use_segments"])
+        self.assertEqual(2, len(image.segments))
 
 
 class ESP8266FlashHeaderTests(BaseTestCase):
