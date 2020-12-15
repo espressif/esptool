@@ -3172,13 +3172,13 @@ def merge_image(args):
             except OSError:
                 pass    # file already exists, overwrite
             self.output_path = os.path.realpath(os.path.join(self.output_folder, self.name))
-            self.bin_array = []
+            self.bins = []
 
         def add_bin(self, addr, file):
-            self.bin_array.append(Bin(addr, file))
+            self.bins.append(Bin(addr, file))
 
         def sort_bin(self):
-            self.bin_array = sorted(self.bin_array, key=lambda b: b.addr)
+            self.bins = sorted(self.bins, key=lambda b: b.addr)
 
         def add_bin_to_other_bin(self, previous, binary):
             with open(self.output_path, "a") as output_file:
@@ -3192,14 +3192,14 @@ def merge_image(args):
         def create_bin(self):
             new_start = 0
             open(self.output_path, "wb").close()
-            for b in self.bin_array:
+            for b in self.bins:
                 new_start = self.add_bin_to_other_bin(new_start, b)
 
         def check_if_possible(self):
-            for i in range(1, len(self.bin_array)):
-                if self.bin_array[i].addr <= (self.bin_array[i - 1].addr + self.bin_array[i - 1].size):
+            for i in range(1, len(self.bins)):
+                if self.bins[i].addr <= (self.bins[i - 1].addr + self.bins[i - 1].size):
                     raise Exception("Not possible to create this bin, overlapping between %s and %s" % (
-                        self.bin_array[i].file_name, self.bin_array[i - 1].file_name))
+                        self.bins[i].file_name, self.bins[i - 1].file_name))
 
     # Check that bins are provided
     if len(args.addr_filename) == 0:
