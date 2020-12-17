@@ -3492,7 +3492,7 @@ def main(custom_commandline=None):
         help='Read-modify-write to arbitrary memory location')
     parser_write_mem.add_argument('address', help='Address to write', type=arg_auto_int)
     parser_write_mem.add_argument('value', help='Value', type=arg_auto_int)
-    parser_write_mem.add_argument('mask', help='Mask of bits to write', type=arg_auto_int)
+    parser_write_mem.add_argument('mask', help='Mask of bits to write', type=arg_auto_int, nargs='?', default='0xFFFFFFFF')
 
     def add_spi_flash_subparsers(parent, is_elf2image):
         """ Add common parser arguments for SPI flash properties """
