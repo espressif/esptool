@@ -2941,7 +2941,7 @@ def dump_mem(esp, args):
                 print_overwrite('%d bytes read... (%d %%)' % (f.tell(),
                                                               f.tell() * 100 // args.size))
             sys.stdout.flush()
-    print_overwrite("Read %d bytes" % f.tell(), last_line=True)
+        print_overwrite("Read %d bytes" % f.tell(), last_line=True)
     print('Done!')
 
 
