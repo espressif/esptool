@@ -1,6 +1,6 @@
 # esptool.py
 
-A Python-based, open source, platform independent, utility to communicate with the ROM bootloader in Espressif ESP8266 & ESP32 chips.
+A Python-based, open source, platform independent, utility to communicate with the ROM bootloader in Espressif ESP8266 & ESP32 series chips.
 
 esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/)) as an unofficial community project. It is now also supported by Espressif. Current primary maintainer is Angus Gratton (@[projectgus](https://github.com/projectgus/)).
 
@@ -20,9 +20,11 @@ The latest stable esptool.py release can be installed from [pypi](http://pypi.py
 $ pip install esptool
 ```
 
-With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`, or consult your Python installation manual for information about how to access pip.
+With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`, or consult your [Python installation manual](https://pip.pypa.io/en/stable/installing/) for information about how to access pip.
 
-After installing, you will have `esptool.py` installed into the default Python executables directory and you should be able to run it with the command `esptool.py`.
+[Setuptools](https://setuptools.readthedocs.io/en/latest/userguide/quickstart.html) is also a requirement which is not available on all systems by default. You can install it by a package manager of your operating system, or by `pip install setuptools`.
+
+After installing, you will have `esptool.py` installed into the default Python executables directory and you should be able to run it with the command `esptool.py` or `python -m esptool`. Please note that probably only `python -m esptool` will work for Pythons installed from Windows Store.
 
 ### Development Mode Installation
 
@@ -34,7 +36,7 @@ $ cd esptool
 $ pip install --user -e .
 ```
 
-This will install esptool's dependencies and create some executable script wrappers in the user's `bin` directory. The wrappers will run the the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
+This will install esptool's dependencies and create some executable script wrappers in the user's `bin` directory. The wrappers will run the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
 
 It's also possible to run the scripts directly from the working directory with this Development Mode installation.
 
@@ -56,13 +58,13 @@ To see all options for a particular command, append `-h` to the command name. ie
 
 Note: Windows and macOS may require drivers to be installed for a particular USB/serial adapter, before a serial port is available. Consult the documentation for your particular device. On macOS, you can also consult [System Information](https://support.apple.com/en-us/HT203001)'s list of USB devices to identify the manufacturer or device ID when the adapter is plugged in. On Windows, you can use [Windows Update or Device Manager](https://support.microsoft.com/en-us/help/15048/windows-7-update-driver-hardware-not-working-properly) to find a driver.
 
-If using Cygwin or WSL on Windows, you have to convert the Windows-style name into an Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using esp-idf for ESP32 with the supplied Windows MSYS2 environment, this environment uses a native Windows Python which accepts COM ports as-is.)
+If using Cygwin or WSL on Windows, you have to convert the Windows-style name into a Unix-style path (`COM1` -> `/dev/ttyS0`, and so on). (This is not necessary if using ESP-IDF for ESP32 with the supplied Windows MSYS2 environment, this environment uses a native Windows Python which accepts COM ports as-is.)
 
 In Linux, the current user may not have access to serial ports and a "Permission Denied" error will appear. On most Linux distributions, the solution is to add the user to the `dialout` group with a command like `sudo usermod -a -G dialout <USERNAME>`. Check your Linux distribution's documentation for more information.
 
 ### Baud rate
 
-The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baudrate of your choice). A default baud rate can also be specified using the `ESPTOOL_BAUD` environment variable. This can speed up `write_flash` and `read_flash` operations.
+The default esptool.py baud rate is 115200bps. Different rates may be set using `-b 921600` (or another baud rate of your choice). A default baud rate can also be specified using the `ESPTOOL_BAUD` environment variable. This can speed up `write_flash` and `read_flash` operations.
 
 The baud rate is limited to 115200 when esptool.py establishes the initial connection, higher speeds are only used for data transfers.
 
@@ -115,7 +117,7 @@ By default, the serial transfer data is compressed for better performance. The `
 The read_flash command allows reading back the contents of flash. The arguments to the command are an address, a size, and a filename to dump the output to. For example, to read a full 2MB of attached flash:
 
 ```
-./esptool.py -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
+esptool.py -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
 ```
 
 (Note that if `write_flash` updated the boot image's [flash mode and flash size](#flash-modes) during flashing then these bytes may be different when read back.)
@@ -183,7 +185,7 @@ esptool.py --chip esp8266 elf2image --version=2 -o my_app-ota.bin my_app.elf
 
 #### elf2image for ESP32
 
-For esp32, elf2image produces a single output binary "image file". By default this has the same name as the .elf file, with a .bin extension. ie:
+For ESP32, elf2image produces a single output binary "image file". By default this has the same name as the .elf file, with a .bin extension. ie:
 
 ```
 esptool.py --chip esp32 elf2image my_esp32_app.elf
@@ -248,7 +250,7 @@ For everyone else, three things must happen to enter the serial bootloader - a r
 
 ### Boot Mode
 
-Both ESP8266 and ESP32 chooses the boot mode each time it resets. A reset event can happen in one of several ways:
+Both ESP8266 and ESP32 choose the boot mode each time they reset. A reset event can happen in one of several ways:
 
 * Power applied to chip.
 * The nRESET pin was low and is pulled high (on ESP8266 only).
@@ -263,7 +265,7 @@ For more details on selecting the boot mode, see the following Wiki pages:
 
 ## Flash Modes
 
-`write_flash` and some other comands accept command line arguments to set bootloader flash mode, flash size and flash clock frequency. The chip needs correct mode, frequency and size settings in order to run correctly - although there is some flexibility. A header at the beginning of a bootable image contains these values.
+`write_flash` and some other commands accept command line arguments to set bootloader flash mode, flash size and flash clock frequency. The chip needs correct mode, frequency and size settings in order to run correctly - although there is some flexibility. A header at the beginning of a bootable image contains these values.
 
 To override these values, the options `--flash_mode`, `--flash_size` and/or `--flash_freq` must appear after `write_flash` on the command line, for example:
 
@@ -287,7 +289,7 @@ For a full explanation of these modes, see the [SPI Flash Modes wiki page](https
 
 Clock frequency for SPI flash interactions. Valid values are `keep`, `40m`, `26m`, `20m`, `80m` (MHz). The default is `keep`, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable `ESPTOOL_FF`.
 
-The flash chip connected to most chips works with 40MHz clock speeds, but you can try lower values if the device won't boot. The highest 80MHz flash clock speed will give best performance, but may cause crashing if the flash or board designis not capable of this speed.
+The flash chip connected to most chips works with 40MHz clock speeds, but you can try lower values if the device won't boot. The highest 80MHz flash clock speed will give the best performance, but may cause crashing if the flash or board design is not capable of this speed.
 
 ### Flash Size (--flash_size, -fs)
 
@@ -304,7 +306,7 @@ The default `--flash_size` parameter is `detect`, which tries to autodetect size
 
 If flash size is not successfully detected, you can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)). Alternatively, read off the silkscreen labelling of the flash chip and search for its datasheet.
 
-The default `flash_size`  parameter can also be overriden using the environment variable `ESPTOOL_FS`.
+The default `flash_size`  parameter can also be overridden using the environment variable `ESPTOOL_FS`.
 
 #### ESP8266 and Flash Size
 
@@ -330,7 +332,7 @@ If using OTA, some additional sizes & layouts for OTA "firmware slots" are avail
 
 #### ESP32 and Flash Size
 
-The ESP32 esp-idf flashes a partition table to the flash at offset 0x8000. All of the partitions in this table must fit inside the configured flash size, otherwise the ESP32 will not work correctly.
+The ESP-IDF flashes a partition table to the flash at offset 0x8000. All of the partitions in this table must fit inside the configured flash size, otherwise the ESP32 will not work correctly.
 
 ## Advanced Options
 
@@ -392,9 +394,9 @@ The 3.3V output from FTDI FT232R chips/adapters or Arduino boards *do not* suppl
 
 #### Missing bootloader
 
-Recent ESP8266 SDKs and the ESP32 esp-idf both use a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program. On ESP8266. firmware bootloader image (with a filename like `boot_v1.x.bin`) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot. On ESP32, the bootloader image should be flashed by esp-idf at offset 0x1000.
+Recent ESP8266 SDKs and the ESP32 ESP-IDF both use a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program. On ESP8266. firmware bootloader image (with a filename like `boot_v1.x.bin`) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot. On ESP32, the bootloader image should be flashed by ESP-IDF at offset 0x1000.
 
-Refer to SDK or esp-idf documentation for details regarding which binaries need to be flashed at which offsets.
+Refer to SDK or ESP-IDF documentation for details regarding which binaries need to be flashed at which offsets.
 
 #### SPI Pins which must be disconnected
 

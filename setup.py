@@ -5,7 +5,12 @@ import os
 import re
 import sys
 
-from setuptools import find_packages, setup
+try:
+    from setuptools import find_packages, setup
+except ImportError:
+    print('Package setuptools is missing from your Python installation. Please see the installation section of '
+          'the README for instructions on how to install it.')
+    exit(1)
 
 
 # Example code to pull version from esptool.py with regex, taken from
