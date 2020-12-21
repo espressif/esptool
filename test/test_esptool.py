@@ -536,6 +536,24 @@ class TestReadIdentityValues(EsptoolTestCase):
         self.assertNotEqual("f" * 8, idstr)
 
 
+class TestMemoryOperations(EsptoolTestCase):
+
+    def test_memory_dump(self):
+        output = self.run_esptool("dump_mem 0x50000000 128 memout.bin")
+        self.assertIn("Read 128 bytes", output)
+        os.remove("memout.bin")
+
+    def test_memory_write(self):
+        output = self.run_esptool("write_mem 0x400C0000 0xabad1dea 0x0000ffff")
+        self.assertIn("Wrote abad1dea", output)
+        self.assertIn("mask 0000ffff", output)
+        self.assertIn("to 400c0000", output)
+
+    def test_memory_read(self):
+        output = self.run_esptool("read_mem 0x400C0000")
+        self.assertIn("0x400c0000 =", output)
+
+
 class TestKeepImageSettings(EsptoolTestCase):
     """ Tests for the -fm keep, -ff keep options for write_flash """
 
