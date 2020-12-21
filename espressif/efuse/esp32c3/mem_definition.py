@@ -102,7 +102,8 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("RD_DIS",                       "efuse",    0,  1,  0,  "uint:7",   0,    None, None,         "Disables software reading from BLOCK4-10", None),
         ("DIS_RTC_RAM_BOOT",             "config",   0,  1,  7,  "bool",     1,    None, None,         "Disables boot from RTC RAM", None),
         ("DIS_ICACHE",                   "config",   0,  1,  8,  "bool",     2,    None, None,         "Disables ICache", None),
-        ("DIS_USB_JTAG",             "usb config",   0,  1,  9,  "bool",     2,    None, None,         "Disables USB JTAG", None),
+        ("DIS_USB_JTAG",             "usb config",   0,  1,  9,  "bool",     2,    None, None,         "Disables USB JTAG. "
+                                                                                                       "JTAG access via pads is controlled separately", None),
         ("DIS_DOWNLOAD_ICACHE",          "config",   0,  1,  10, "bool",     2,    None, None,         "Disables Icache when SoC is in Download mode", None),
         ("DIS_USB_DEVICE",           "usb config",   0,  1,  11, "bool",     2,    None, None,         "Disables USB DEVICE", None),
         ("DIS_FORCE_DOWNLOAD",           "config",   0,  1,  12, "bool",     2,    None, None,         "Disables forcing chip into Download mode", None),
@@ -115,7 +116,8 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SOFT_DIS_JTAG",           "jtag config",   0,  1,  16, "uint:2",   2,    None, None,         "Software disables JTAG. When software disabled, "
                                                                                                        "JTAG can be activated temporarily by HMAC peripheral",
                                                                                                        None),
-        ("DIS_PAD_JTAG",            "jtag config",   0,  1,  19, "bool",     2,    None, None,         "Disable JTAG in the hard way permanently", None),
+        ("DIS_PAD_JTAG",            "jtag config",   0,  1,  19, "bool",     2,    None, None,         "Permanently disable JTAG access via pads. "
+                                                                                                       "USB JTAG is controlled separately.", None),
         ("DIS_DOWNLOAD_MANUAL_ENCRYPT", "security",  0,  1,  20, "bool",     2,    None, None,         "Disables flash encryption when in download boot modes",
                                                                                                        None),
         ("USB_EXCHG_PINS",           "usb config",   0,  1,  25, "bool",     30,   None, None,         "Exchanges USB D+ and D- pins", None),
