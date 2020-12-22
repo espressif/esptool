@@ -231,28 +231,34 @@ class TestBurnCommands(EfuseTestCase):
 
     def test_burn_custom_mac(self):
         self.espefuse_py("burn_custom_mac -h")
-        cmd = 'burn_custom_mac AB:CD:EF:11:22:33'
+        cmd = 'burn_custom_mac AA:CD:EF:11:22:33'
         if chip_target == "esp32":
-            self.espefuse_py(cmd, check_msg='Custom MAC Address version 1: ab:cd:ef:11:22:33 (CRC 0x54 OK)')
+            self.espefuse_py(cmd, check_msg='Custom MAC Address version 1: aa:cd:ef:11:22:33 (CRC 0x63 OK)')
         else:
             self.espefuse_py(cmd, check_msg='burn_custom_mac is not supported!', ret_code=2)
 
+    @unittest.skipUnless(chip_target == "esp32", "burn_custom_mac is supported only by esp32")
     def test_burn_custom_mac2(self):
-        if chip_target == "esp32":
-            self.espefuse_py('burn_custom_mac AB:CD:EF:11:22:33:44',
-                             check_msg='A fatal error occurred: MAC Address needs to be a 6-byte hexadecimal format separated by colons (:)!',
-                             ret_code=2)
+        self.espefuse_py('burn_custom_mac AA:CD:EF:11:22:33:44',
+                         check_msg='A fatal error occurred: MAC Address needs to be a 6-byte hexadecimal format separated by colons (:)!',
+                         ret_code=2)
 
+    @unittest.skipUnless(chip_target == "esp32", "burn_custom_mac is supported only by esp32")
+    def test_burn_custom_mac3(self):
+        self.espefuse_py('burn_custom_mac AB:CD:EF:11:22:33',
+                         check_msg='A fatal error occurred: Custom MAC must be a unicast MAC!',
+                         ret_code=2)
+
+    @unittest.skipUnless(chip_target == "esp32", "burn_custom_mac is supported only by esp32")
     def test_burn_custom_mac_with_34_coding_scheme(self):
-        if chip_target == "esp32":
-            self._set_34_coding_scheme()
-            self.espefuse_py("burn_custom_mac -h")
-            self.espefuse_py('burn_custom_mac AB:CD:EF:01:02:03', check_msg='Custom MAC Address version 1: ab:cd:ef:01:02:03 (CRC 0x61 OK)')
-            self.espefuse_py('get_custom_mac', check_msg='Custom MAC Address version 1: ab:cd:ef:01:02:03 (CRC 0x61 OK)')
+        self._set_34_coding_scheme()
+        self.espefuse_py("burn_custom_mac -h")
+        self.espefuse_py('burn_custom_mac AA:CD:EF:01:02:03', check_msg='Custom MAC Address version 1: aa:cd:ef:01:02:03 (CRC 0x56 OK)')
+        self.espefuse_py('get_custom_mac', check_msg='Custom MAC Address version 1: aa:cd:ef:01:02:03 (CRC 0x56 OK)')
 
-            self.espefuse_py('burn_custom_mac FF:22:33:44:55:66',
-                             check_msg='New value contains some bits that cannot be cleared (value will be 0x675745ffefff)',
-                             ret_code=2)
+        self.espefuse_py('burn_custom_mac FE:22:33:44:55:66',
+                         check_msg='New value contains some bits that cannot be cleared (value will be 0x675745ffeffe)',
+                         ret_code=2)
 
     @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
     def test_set_flash_voltage_1_8v(self):
@@ -301,11 +307,12 @@ class TestBurnCommands(EfuseTestCase):
                               CHIP_VER_REV2 1 \
                               DISABLE_DL_ENCRYPT 1 \
                               CONSOLE_DEBUG_DISABLE 1')
-            self.espefuse_py('burn_efuse MAC AB:CD:EF:01:02:03', check_msg="Writing Factory MAC address is not supported", ret_code=2)
+            self.espefuse_py('burn_efuse MAC AA:CD:EF:01:02:03', check_msg="Writing Factory MAC address is not supported", ret_code=2)
             self.espefuse_py('burn_efuse MAC_VERSION 1')
             self.espefuse_py("burn_efuse -h")
-            self.espefuse_py('burn_efuse CUSTOM_MAC AB:CD:EF:01:02:03')
-            self.espefuse_py('get_custom_mac', check_msg='Custom MAC Address version 1: ab:cd:ef:01:02:03 (CRC 0x61 OK)')
+            self.espefuse_py('burn_efuse CUSTOM_MAC AB:CD:EF:01:02:03', check_msg="A fatal error occurred: Custom MAC must be a unicast MAC!", ret_code=2)
+            self.espefuse_py('burn_efuse CUSTOM_MAC AA:CD:EF:01:02:03')
+            self.espefuse_py('get_custom_mac', check_msg='Custom MAC Address version 1: aa:cd:ef:01:02:03 (CRC 0x56 OK)')
             blk1 = "BLOCK1"
             blk2 = "BLOCK2"
         else:

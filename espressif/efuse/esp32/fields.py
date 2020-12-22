@@ -209,8 +209,12 @@ class EfuseMacField(EfuseField):
         hexad = new_value_str.replace(":", "")
         if len(hexad) != 12:
             raise esptool.FatalError("MAC Address needs to be a 6-byte hexadecimal number (12 hexadecimal characters)!")
-        # order of bytearray = b'\xab\xcd\xef\x01\x02\x03',
-        return binascii.unhexlify(hexad)
+        # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
+        bindata = binascii.unhexlify(hexad)
+        # unicast address check according to https://tools.ietf.org/html/rfc7042#section-2.1
+        if esptool.byte(bindata, 0) & 0x01:
+            raise esptool.FatalError("Custom MAC must be a unicast MAC!")
+        return bindata
 
     @staticmethod
     def get_and_check(raw_mac, stored_crc):

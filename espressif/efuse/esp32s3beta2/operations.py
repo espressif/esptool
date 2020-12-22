@@ -72,7 +72,7 @@ def add_commands(subparsers, efuses):
 
     p = subparsers.add_parser('burn_custom_mac', help='Not supported! Burn a 48-bit Custom MAC Address to EFUSE is.')
     p.add_argument('mac', help='Custom MAC Address to burn given in hexadecimal format with bytes separated by colons'
-                   ' (e.g. AB:CD:EF:01:02:03).', nargs="?")
+                   ' (e.g. AA:CD:EF:01:02:03).', nargs="?")
     add_force_write_always(p)
 
     p = subparsers.add_parser('get_custom_mac', help='Not supported! Prints the Custom MAC Address.')
