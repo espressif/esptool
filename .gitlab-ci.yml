@@ -1,0 +1,150 @@
+# Gitlab CI config
+#
+# Note: When updating, please also update .travis.yml
+stages:
+  - test
+  - report
+
+# cache the pip download directory in all jobs
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/pip-cache"
+
+cache:
+  paths:
+    - "$CI_PROJECT_DIR/pip-cache"
+
+.test_template: &test_template
+  stage: test
+  image: $CI_DOCKER_REGISTRY/esp32-ci-env$BOT_DOCKER_IMAGE_TAG
+  tags:
+    - host_test
+  dependencies: []
+
+host_tests:
+  <<: *test_template
+  artifacts:
+    when: always
+    paths:
+      - .coverage.*
+    expire_in: 1 week
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/setup.py build
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_imagegen.py
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espsecure.py
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s2
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3beta2
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c3
+
+check_python_style:
+  <<: *test_template
+  script:
+    # this step installs any 'dev' dependencies (ie flake8) that might be missing in the CI image.
+    # The runner should cache the downloads, so still quite fast.
+    - ./test/ci/multirun_with_pyenv.sh pip install --user -e .[dev]
+    - ./test/ci/multirun_with_pyenv.sh python -m flake8
+
+# Check all the scripts can run when installed under all Python versions
+check_installation_can_run:
+  <<: *test_template
+  artifacts:
+    when: always
+    paths:
+      - .coverage.*
+    expire_in: 1 week
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode setup.py install
+    - cd /
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh esptool.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espefuse.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espsecure.py --help
+
+# Check the stub can build and that a stub built in CI has the same contents
+# as the one embedded in esptool
+check_stub_build:
+  <<: *test_template
+  artifacts:
+    when: always
+    paths:
+      - flasher_stub/build/
+      - flasher_stub/.coverage.*
+    expire_in: 1 week
+  variables:
+    # using this directory as the CI image probably already has an ESP32, ESP32S2, ESP32S3 and ESP32C3 toolchain downloaded into here
+    TOOLCHAIN_DIR: "/root/.espressif/dist"
+
+    ESP8266_BINDIR: "${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"
+    ESP32_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
+    ESP32S2_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32s2-elf/bin"
+    ESP32S3_BINDIR: "${TOOLCHAIN_DIR}/xtensa-esp32s3-elf/bin"
+    ESP32C3_BINDIR: "${TOOLCHAIN_DIR}/riscv32-esp-elf/bin"
+
+    TOOLCHAIN_PATHS: "${ESP8266_BINDIR}:${ESP32_BINDIR}:${ESP32S2_BINDIR}:${ESP32S3_BINDIR}:${ESP32C3_BINDIR}"
+  script:
+    - ./test/ci/setup_ci_build_env.sh
+    - make -C flasher_stub V=1 PATH="${TOOLCHAIN_PATHS}:${PATH}"
+    - cd flasher_stub && ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage run --parallel-mode ./compare_stubs.py
+
+.target_esptool_test:
+  stage: test
+  image: $CI_DOCKER_REGISTRY/rpi-test-env$BOT_DOCKER_IMAGE_TAG
+  before_script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python -m pip install -e .
+  artifacts:
+    reports:
+      junit: test/report.xml
+    when: always
+    paths:
+      - test/*.out
+      - .coverage.*
+    expire_in: 1 week
+
+target_esptool_test_esp32:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32_target
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32 esp32 115200
+
+target_esptool_test_esp32s2:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32s2_target
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2 esp32s2 115200
+
+target_esptool_test_esp32s2_usbcdc:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32s2_cdc_target
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2_USBCDC esp32s2 115200
+
+target_esptool_test_esp8266:
+  extends: .target_esptool_test
+  allow_failure: true
+  tags:
+    - esptool_esp8266_target
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP8266 esp8266 115200
+
+combine_reports:
+  stage: report
+  before_script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python -m pip install -e .
+  artifacts:
+    reports:
+      cobertura: cobertura_report.xml
+    when: always
+    paths:
+      - .coverage
+      - cobertura_report.xml
+      - ./html_report/*.*
+    expire_in: 1 week
+  variables:
+    LC_ALL: C.UTF-8
+  script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage combine
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage report
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage html -d html_report
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage xml -o cobertura_report.xml

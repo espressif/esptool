@@ -1,14 +1,20 @@
-/* Command handlers for writing out to flash.
- *
- *  Called from stub_flasher.c
- *
- * Copyright (c) 2016 Cesanta Software Limited & Espressif Systems (Shanghai) PTE LTD.
+/*
+ * Copyright (c) 2016-2019 Espressif Systems (Shanghai) PTE LTD & Cesanta Software Limited
  * All rights reserved
+ *
+ * This file is part of the esptool.py binary flasher stub.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
  * Foundation; either version 2 of the License, or (at your option) any later version.
  *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+ * Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include "soc_support.h"
 #include "stub_write_flash.h"
@@ -44,8 +50,9 @@ static struct {
 
 /* SPI status bits */
 static const uint32_t STATUS_WIP_BIT = (1 << 0);
-static const uint32_t STATUS_CMP_BIT = (1 << 14); /* Complement Protect */
-static const uint32_t STATUS_QIE_BIT = (1 << 9); /* Quad Enable */
+#if ESP32_OR_LATER
+static const uint32_t STATUS_QIE_BIT = (1 << 9);  /* Quad Enable */
+#endif
 
 bool is_in_flash_mode(void)
 {
@@ -63,11 +70,11 @@ esp_command_error get_flash_error(void)
 inline static void spi_wait_ready(void)
 {
   /* Wait for SPI state machine ready */
-  while((REG_READ(SPI_EXT2_REG(SPI_IDX)) & SPI_ST))
+  while((READ_REG(SPI_EXT2_REG) & SPI_ST))
     { }
-#ifdef ESP32
-  while(REG_READ(SPI_EXT2_REG(0)) & SPI_ST)
-    { }
+#if ESP32_OR_LATER
+  while(READ_REG(SPI0_EXT2_REG) & SPI_ST)
+  { }
 #endif
 }
 
@@ -80,12 +87,12 @@ inline static void spi_wait_ready(void)
 static bool spiflash_is_ready(void)
 {
   spi_wait_ready();
-  REG_WRITE(SPI_RD_STATUS_REG(SPI_IDX), 0);
+  WRITE_REG(SPI_RD_STATUS_REG, 0);
   /* Issue read status command */
-  REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_RDSR);
-  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
+  WRITE_REG(SPI_CMD_REG, SPI_FLASH_RDSR);
+  while(READ_REG(SPI_CMD_REG) != 0)
     { }
-  uint32_t status_value = REG_READ(SPI_RD_STATUS_REG(SPI_IDX));
+  uint32_t status_value = READ_REG(SPI_RD_STATUS_REG);
   return (status_value & STATUS_WIP_BIT) == 0;
 }
 
@@ -93,13 +100,17 @@ static void spi_write_enable(void)
 {
   while(!spiflash_is_ready())
     { }
-  REG_WRITE(SPI_CMD_REG(SPI_IDX), SPI_FLASH_WREN);
-  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
+  WRITE_REG(SPI_CMD_REG, SPI_FLASH_WREN);
+  while(READ_REG(SPI_CMD_REG) != 0)
     { }
 }
 
-#ifdef ESP32
+#if ESP32_OR_LATER
+#ifdef ESP32C3
+static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3fcdfff4;
+#else
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3ffae270;
+#endif
 
 /* Stub version of SPIUnlock() that replaces version in ROM.
 
@@ -113,9 +124,15 @@ SpiFlashOpResult SPIUnlock(void)
   uint32_t status;
 
   spi_wait_ready(); /* ROM SPI_read_status_high() doesn't wait for this */
+#if ESP32S2_OR_LATER
+  if (SPI_read_status_high(flashchip, &status) != SPI_FLASH_RESULT_OK) {
+    return SPI_FLASH_RESULT_ERR;
+  }
+#else
   if (SPI_read_status_high(&status) != SPI_FLASH_RESULT_OK) {
     return SPI_FLASH_RESULT_ERR;
   }
+#endif
 
   /* Clear all bits except QIE, if it is set.
      (This is different from ROM SPIUnlock, which keeps all bits as-is.)
@@ -124,7 +141,7 @@ SpiFlashOpResult SPIUnlock(void)
 
   spi_write_enable();
 
-  SET_PERI_REG_MASK(SPI_CTRL_REG(SPI_IDX), SPI_WRSR_2B);
+  REG_SET_MASK(SPI_CTRL_REG, SPI_WRSR_2B);
   if (SPI_write_status(flashchip, status) != SPI_FLASH_RESULT_OK) {
     return SPI_FLASH_RESULT_ERR;
   }
@@ -186,9 +203,9 @@ static void start_next_erase(void)
 
   uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
   spi_wait_ready();
-  REG_WRITE(SPI_ADDR_REG(SPI_IDX), addr & 0xffffff);
-  REG_WRITE(SPI_CMD_REG(SPI_IDX), command);
-  while(REG_READ(SPI_CMD_REG(SPI_IDX)) != 0)
+  WRITE_REG(SPI_ADDR_REG, addr & 0xffffff);
+  WRITE_REG(SPI_CMD_REG, command);
+  while(READ_REG(SPI_CMD_REG) != 0)
     { }
   fs.remaining_erase_sector -= sectors_to_erase;
   fs.next_erase_sector += sectors_to_erase;
@@ -229,6 +246,60 @@ void handle_flash_data(void *data_buf, uint32_t length) {
   fs.next_write += length;
   fs.remaining -= length;
 }
+
+#if !ESP8266
+/* Write encrypted data to flash (either direct for non-compressed upload, or
+   freshly decompressed.) Erases as it goes.
+
+   Updates fs.remaining_erase_sector, fs.next_write, and fs.remaining
+*/
+void handle_flash_encrypt_data(void *data_buf, uint32_t length) {
+  int last_sector;
+  int res;
+
+#if ESP32S2_OR_LATER
+  SPI_Write_Encrypt_Enable();
+#endif
+
+  if (length > fs.remaining) {
+      /* Trim the final block, as it may have padding beyond
+         the length we are writing */
+      length = fs.remaining;
+  }
+
+  if (length == 0) {
+      return;
+  }
+
+  /* what sector is this write going to end in?
+     make sure we've erased at least that far.
+  */
+  last_sector = (fs.next_write + length) / FLASH_SECTOR_SIZE;
+  while(fs.remaining_erase_sector > 0 && fs.next_erase_sector <= last_sector) {
+    start_next_erase();
+  }
+  while(!spiflash_is_ready())
+    {}
+
+  /* do the actual write */
+#if ESP32
+  res = esp_rom_spiflash_write_encrypted(fs.next_write, data_buf, length);
+#else
+  res = SPI_Encrypt_Write(fs.next_write, data_buf, length);
+#endif
+
+  if (res) {
+    fs.last_error = ESP_FAILED_SPI_OP;
+  }
+  fs.next_write += length;
+  fs.remaining -= length;
+
+#if ESP32S2_OR_LATER
+  SPI_Write_Encrypt_Disable();
+#endif
+}
+
+#endif // !ESP8266
 
 void handle_flash_deflated_data(void *data_buf, uint32_t length) {
   static uint8_t out_buf[32768];

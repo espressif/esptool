@@ -3,8 +3,6 @@ include LICENSE
 # sdist includes test/test*.py by default, but esptool.py tests
 # are so far only intended to run from the git repo itself
 prune test
-prune ecdsa
-prune pyaes
 prune flasher_stub
 prune .github
 exclude .git*

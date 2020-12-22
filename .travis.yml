@@ -1,56 +1,41 @@
+# Travis CI config
+#
+# Note: When updating, please also update .gitlab-ci.yml
 language: python
-sudo: false
+dist: xenial  # required for Python >= 3.7
 env:
-  # Downloadable toolchains & SDKs for esp8266 & esp32
-  #
-  # Toolchains used for automated builds:
-  # ESP8266 - prebuilt gcc 4.8.2 from ESP8266 Arduino
-  # ESP32 - official Espressif toolchain
-  #
-  # Note: if these are updated, you need to flush the Travis cache
-  #
-  # (esp-idf is downloaded a zip file. It doesn't fully work this way, but
-  # we're just using it for some header files.)
-
-  # Toolchains
-  ESP8266_TOOLCHAIN_URL="http://arduino.esp8266.com/linux64-xtensa-lx106-elf.tar.gz"
-  ESP32_TOOLCHAIN_URL="https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-61-gab8375a-5.2.0.tar.gz"
   TOOLCHAIN_DIR="${HOME}/toolchain"
+
   ESP8266_BINDIR="${TOOLCHAIN_DIR}/xtensa-lx106-elf/bin"
   ESP32_BINDIR="${TOOLCHAIN_DIR}/xtensa-esp32-elf/bin"
+  ESP32S2_BINDIR="${TOOLCHAIN_DIR}/xtensa-esp32s2-elf/bin"
+  ESP32S3_BINDIR="${TOOLCHAIN_DIR}/xtensa-esp32s3-elf/bin"
+  ESP32C3_BINDIR="${TOOLCHAIN_DIR}/riscv32-esp-elf/bin"
 
-  SDKS_DIR="${HOME}/sdks"
-  SDK_PATH="${SDKS_DIR}/ESP8266_NONOS_SDK-2.2.0"
-  ESP8266_SDK_URL="https://github.com/espressif/ESP8266_NONOS_SDK/archive/v2.2.0.zip"
-  IDF_PATH="${SDKS_DIR}/esp-idf"
-  ESP32_IDF_URL="https://github.com/espressif/esp-idf/archive/v2.1.zip"
-  PATH="${PATH}:${ESP8266_BINDIR}:${ESP32_BINDIR}"
+  PATH="${PATH}:${ESP8266_BINDIR}:${ESP32_BINDIR}:${ESP32S2_BINDIR}:${ESP32S3_BINDIR}:${ESP32C3_BINDIR}"
 
 python:
   - "2.7"
-  - "3.4"
   - "3.5"
   - "3.6"
+  - "3.7"
+  - "3.8"
 
 before_install:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./.travis_setup_build_env.sh; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.7 ]]; then ./test/ci/setup_ci_build_env.sh; fi
 
 script:
   # test python components (fast)
   - python setup.py build
-  # this is hacky, installing test script deps via pip as need to be in the virtualenv
-  # but don't count if only in setup.py's .eggs dir, and "setup.py test" integration
-  # doesn't allow running esptool.py as a script...
-  - pip install pyserial pyelftools
+  - pip install -e .[dev]
   - python test/test_imagegen.py
   - python test/test_espsecure.py
-  - pip install flake8 flake8-future-import  # matches tests_require in setup.py, a bit hacky
-  - python setup.py flake8
+  - python -m flake8
   - python setup.py install
   - ( cd / && esptool.py --help )  # check the installed versions can run
   - ( cd / && espefuse.py --help )
   - ( cd / && espsecure.py --help )
   # build stub (Python 3 only)
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then make -C flasher_stub V=1; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.7 ]]; then make -C flasher_stub V=1; fi
   # check the just-built stub matches the one in esptool.py
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then cd flasher_stub && python ./compare_stubs.py; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.7 ]]; then cd flasher_stub && python ./compare_stubs.py; fi

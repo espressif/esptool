@@ -30,15 +30,13 @@
 # or set them in a local.mk
 -include local.mk
 
-# Prefix for ESP8266 & ESP32 cross compilers (can include a directory path)
+# Prefix for each cross compiler (can include a directory path)
+# These can be overriden via environment variables or on the make command line
 CROSS_8266 ?= xtensa-lx106-elf-
 CROSS_32 ?= xtensa-esp32-elf-
-
-# Path to the ESP8266 SDK root dir
-SDK_PATH ?= ../../esp_iot_sdk_v2.0.0
-
-# Path to the esp-idf root dir
-IDF_PATH ?= ../../esp-idf
+CROSS_32S2 ?= xtensa-esp32s2-elf-
+CROSS_32S3 ?= xtensa-esp32s3-elf-
+CROSS_32C3 ?= riscv32-esp-elf-
 
 # Python command to invoke wrap_stub.py
 WRAP_STUB ?= ./wrap_stub.py
@@ -49,16 +47,19 @@ Q = @
 endif
 
 STUB = stub_flasher
-SRCS = stub_flasher.c slip.c stub_commands.c stub_write_flash.c
+SRCS = stub_flasher.c slip.c stub_commands.c stub_write_flash.c stub_io.c
 SRCS_8266 = miniz.c
 
 BUILD_DIR = build
 
 STUB_ELF_8266 = $(BUILD_DIR)/$(STUB)_8266.elf
 STUB_ELF_32 = $(BUILD_DIR)/$(STUB)_32.elf
+STUB_ELF_32S2 = $(BUILD_DIR)/$(STUB)_32s2.elf
+STUB_ELF_32S3 = $(BUILD_DIR)/$(STUB)_32s3beta2.elf
+STUB_ELF_32C3 = $(BUILD_DIR)/$(STUB)_32c3.elf
 STUB_PY = $(BUILD_DIR)/$(STUB)_snippet.py
 
-.PHONY: all clean
+.PHONY: all clean embed
 
 all: $(STUB_PY)
 
@@ -67,22 +68,40 @@ $(BUILD_DIR):
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
-         -Wl,-static -g -ffunction-sections -Wl,--gc-sections
+         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
+CFLAGS_ESP32C3 = -std=c99 -Wall -Werror -Os \
+		 -march=rv32imc -msmall-data-limit=0 \
+         -nostdlib -fno-builtin -flto \
+         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
+LDLIBS = -lgcc
 
-CFLAGS_8266 = $(CFLAGS) -I$(SDK_PATH) -I$(SDK_PATH)/include -L$(SDK_PATH)/ld
-CFLAGS_32   = $(CFLAGS) -I$(IDF_PATH)/components/esp32/include -I$(IDF_PATH)/components/soc/esp32/include -L$(IDF_PATH)
-
-$(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) stub_8266.ld | Makefile
+$(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) ld/stub_8266.ld | Makefile
 	@echo "  CC(8266)   $^ -> $@"
-	$(Q) $(CROSS_8266)gcc $(CFLAGS_8266) -DESP8266 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_8266)gcc $(CFLAGS) -DESP8266=1 -Tstub_8266.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
-$(STUB_ELF_32): $(SRCS) $(BUILD_DIR) stub_32.ld | Makefile
+$(STUB_ELF_32): $(SRCS) $(BUILD_DIR) ld/stub_32.ld | Makefile
 	@echo "  CC(32)   $^ -> $@"
-	$(Q) $(CROSS_32)gcc $(CFLAGS_32) -DESP32 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^)
+	$(Q) $(CROSS_32)gcc $(CFLAGS) -DESP32=1 -Tstub_32.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
-$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) wrap_stub.py
+$(STUB_ELF_32S2): $(SRCS) $(BUILD_DIR) ld/stub_32s2.ld
+	@echo "  CC(32S2)   $^ -> $@"
+	$(Q) $(CROSS_32S2)gcc $(CFLAGS) -DESP32S2=1 -Tstub_32s2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(STUB_ELF_32S3): $(SRCS) $(BUILD_DIR) ld/stub_32s3.ld
+	@echo "  CC(32S3)   $^ -> $@"
+	$(Q) $(CROSS_32S3)gcc $(CFLAGS) -DESP32S3=1 -Tstub_32s3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(STUB_ELF_32C3): $(SRCS) $(BUILD_DIR) ld/stub_32c3.ld
+	@echo "  CC(32C3)   $^ -> $@"
+	$(Q) $(CROSS_32C3)gcc $(CFLAGS_ESP32C3) -DESP32C3=1 -Tstub_32c3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
-	$(Q) $(WRAP_STUB) $(filter %.elf,$^) $@
+	$(Q) $(WRAP_STUB) --out-file $@ $(filter %.elf,$^)
+
+embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) wrap_stub.py
+	@echo "  WRAP $^ -> esptool.py"
+	$(Q) $(WRAP_STUB) $(filter %.elf,$^)
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR)

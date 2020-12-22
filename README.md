@@ -20,21 +20,25 @@ The latest stable esptool.py release can be installed from [pypi](http://pypi.py
 $ pip install esptool
 ```
 
-With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`.
+With some Python installations this may not work and you'll receive an error, try `python -m pip install esptool` or `pip2 install esptool`, or consult your Python installation manual for information about how to access pip.
 
 After installing, you will have `esptool.py` installed into the default Python executables directory and you should be able to run it with the command `esptool.py`.
 
-### Manual Installation
+### Development Mode Installation
 
-Manual installation allows you to run the latest development version from this repository.
+Development mode allows you to run the latest development version from this repository.
 
-esptool.py depends on [pySerial](https://github.com/pyserial/pyserial#readme) version 3.0 or newer for serial communication with the target device.
+```
+$ git clone https://github.com/espressif/esptool.git
+$ cd esptool
+$ pip install --user -e .
+```
 
-If you choose to install esptool.py system-wide by running `python setup.py install`, then this will be taken care of automatically.
+This will install esptool's dependencies and create some executable script wrappers in the user's `bin` directory. The wrappers will run the the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
 
-If not using `setup.py`, then you'll have to install pySerial manually by running something like `pip install pyserial`, `easy_install pyserial` or `apt-get install python-serial`, depending on your platform. (The official pySerial installation instructions are [here](https://pyserial.readthedocs.org/en/latest/pyserial.html#installation)).
+It's also possible to run the scripts directly from the working directory with this Development Mode installation.
 
-esptool.py also bundles the pyaes & ecdsa Python modules as "vendored" libraries. These modules are required when using the ESP32-only `espsecure.py` and `espefuse.py` tools. If you install esptool.py via `pip` or `setup.py` as shown above, then versions of these libraries will be installed from pypi. If you run esptool.py from the repository directory directly, it will use the "vendored" versions.
+(Note: if you actually plan to do development work with esptool itself, see the CONTRIBUTING.md file.)
 
 ## Usage
 
@@ -164,6 +168,8 @@ esptool.py --chip esp8266 elf2image my_app.elf
 This command does not require a serial connection.
 
 `elf2image` also accepts the [Flash Modes](#flash-modes) arguments `--flash_freq` and `--flash_mode`, which can be used to set the default values in the image header. This is important when generating any image which will be booted directly by the chip. These values can also be overwritten via the `write_flash` command, see the [write_flash command](#Writing-binaries-to-flash) for details.
+
+By default, `elf2image` uses the sections in the ELF file to generate each segment in the binary executable. To use segments (PHDRs) instead, pass the `--use_segments` option.
 
 #### elf2image for ESP8266
 
@@ -415,6 +421,20 @@ Note that not every serial program supports the unusual ESP8266 74880bps "boot l
 ## Tracing esptool.py interactions
 
 Running `esptool.py --trace` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
+
+## Using esptool from Python
+
+esptool.py, espefuse.py, and espsecure.py can easily be integrated into Python applications or called from other Python scripts.
+
+While it currently does have a poor Python API, something which [#208](https://github.com/espressif/esptool/issues/208) will address, it allows for passing CLI 
+arguments to `esptool.main()`. This workaround makes integration very straightforward as you can pass exactly the 
+same arguments as you would on the CLI.
+
+```python
+command = ['--baud', '460800', 'read_flash', '0', '0x200000', 'flash_contents.bin']
+print('Using command %s' % ' '.join(command))
+esptool.main(command)
+```
 
 ## Internal Technical Documentation
 

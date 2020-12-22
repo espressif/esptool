@@ -11,3 +11,4 @@ dist
 local.mk
 
 .envrc
+report.xml

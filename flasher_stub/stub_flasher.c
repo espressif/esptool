@@ -1,6 +1,8 @@
 /*
- * Copyright (c) 2016 Cesanta Software Limited & Espressif Systems (Shanghai) PTE LTD
+ * Copyright (c) 2016-2019 Espressif Systems (Shanghai) PTE LTD & Cesanta Software Limited
  * All rights reserved
+ *
+ * This file is part of the esptool.py binary flasher stub.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
@@ -16,59 +18,22 @@
  */
 
 /*
- * Spiffy flasher. Implements strong checksums (MD5) and can use higher
- * baud rates. Actual max baud rate will differ from device to device,
- * but 921K seems to be common.
+ * Main flasher stub logic
  *
- * SLIP protocol is used for communication.
- * First packet is a single byte - command number.
- * After that, a packet with a variable number of 32-bit (LE) arguments,
- * depending on command.
+ * This stub uses the same SLIP framing and basic command/response structure
+ * as the in-ROM flasher program, but with some enhanced
+ * functions and also standardizes the flasher features between different chips.
  *
- * Then command produces variable number of packets of output, but first
- * packet of length 1 is the response code: 0 for success, non-zero - error.
- *
- * See individual command description below.
+ * Actual command handlers are implemented in stub_commands.c
  */
-
+#include <stdlib.h>
 #include "stub_flasher.h"
 #include "rom_functions.h"
 #include "slip.h"
 #include "stub_commands.h"
 #include "stub_write_flash.h"
+#include "stub_io.h"
 #include "soc_support.h"
-
-#define UART_RX_INTS (UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA)
-
-
-#ifdef ESP32
-/* ESP32 register naming is a bit more consistent */
-#define UART_INT_CLR(X) UART_INT_CLR_REG(X)
-#define UART_INT_ST(X) UART_INT_ST_REG(X)
-#define UART_INT_ENA(X) UART_INT_ENA_REG(X)
-#define UART_STATUS(X) UART_STATUS_REG(X)
-#define UART_FIFO(X) UART_FIFO_REG(X)
-#endif
-
-static uint32_t get_new_uart_divider(uint32_t current_baud, uint32_t new_baud)
-{
-  uint32_t master_freq;
-  /* ESP32 has ROM code to detect the crystal freq but ESP8266 does not have this...
-     So instead we use the previously auto-synced 115200 baud rate (which we know
-     is correct wrt the relative crystal accuracy of the ESP & the USB/serial adapter).
-     From this we can estimate crystal freq, and update for a new baud rate relative to that.
-  */
-  uint32_t uart_reg = REG_READ(UART_CLKDIV_REG(0));
-  uint32_t uart_div = uart_reg & UART_CLKDIV_M;
-#ifdef ESP32
-  // account for fractional part of divider (bottom 4 bits)
-  uint32_t fraction = (uart_reg >> UART_CLKDIV_FRAG_S) & UART_CLKDIV_FRAG_V;
-  uart_div = (uart_div << 4) + fraction;
-#endif
-  master_freq = uart_div * current_baud;
-  return master_freq / new_baud;
-
-}
 
 /* Buffers for reading from UART. Data is read double-buffered, so
    we can read into one buffer while handling data from the other one
@@ -94,7 +59,7 @@ static uint8_t calculate_checksum(uint8_t *buf, int length)
   return res;
 }
 
-static void uart_isr_receive(char byte)
+static void stub_handle_rx_byte(char byte)
 {
   int16_t r = SLIP_recv_byte(byte, (slip_state_t *)&ub.state);
   if (r >= 0) {
@@ -118,21 +83,6 @@ static void uart_isr_receive(char byte)
   }
 }
 
-void uart_isr(void *arg) {
-  uint32_t int_st = READ_PERI_REG(UART_INT_ST(0));
-  while (1) {
-    uint32_t fifo_len = READ_PERI_REG(UART_STATUS(0)) & 0xff;
-    if (fifo_len == 0) {
-      break;
-    }
-    while (fifo_len-- > 0) {
-      uint8_t byte = READ_PERI_REG(UART_FIFO(0)) & 0xff;
-      uart_isr_receive(byte);
-    }
-  }
-  WRITE_PERI_REG(UART_INT_CLR(0), int_st);
-}
-
 static esp_command_error verify_data_len(esp_command_req_t *command, uint8_t len)
 {
   return (command->data_len == len) ? ESP_OK : ESP_BAD_DATA_LEN;
@@ -141,7 +91,9 @@ static esp_command_error verify_data_len(esp_command_req_t *command, uint8_t len
 void cmd_loop() {
   while(1) {
     /* Wait for a command */
-    while(ub.command == NULL) { }
+    while(ub.command == NULL) {
+      stub_io_idle_hook();
+    }
     esp_command_req_t *command = ub.command;
     ub.command = NULL;
     /* provide easy access for 32-bit data words */
@@ -159,7 +111,7 @@ void cmd_loop() {
     switch(command->op) {
     case ESP_READ_REG:
         if (command->data_len == 4) {
-            resp.value = REG_READ(data_words[0]);
+            resp.value = READ_REG(data_words[0]);
         }
         break;
     case ESP_FLASH_VERIFY_MD5:
@@ -218,7 +170,7 @@ void cmd_loop() {
          2 - block_size (should be MAX_WRITE_BLOCK, relies on num_blocks * block_size >= erase_size)
          3 - offset (used as-is)
        */
-        if (command->data_len == 16 && data_words[2] != MAX_WRITE_BLOCK) {
+        if (command->data_len == 16 && data_words[2] > MAX_WRITE_BLOCK) {
             error = ESP_BAD_BLOCKSIZE;
         } else {
             error = verify_data_len(command, 16) || handle_flash_begin(data_words[0], data_words[3]);
@@ -231,13 +183,18 @@ void cmd_loop() {
          2 - block_size (should be MAX_WRITE_BLOCK, total bytes over serial = num_blocks * block_size)
          3 - offset (used as-is)
       */
-        if (command->data_len == 16 && data_words[2] != MAX_WRITE_BLOCK) {
+        if (command->data_len == 16 && data_words[2] > MAX_WRITE_BLOCK) {
             error = ESP_BAD_BLOCKSIZE;
         } else {
-            error = verify_data_len(command, 16) || handle_flash_deflated_begin(data_words[0], data_words[1] * data_words[2], data_words[3]);            }
+            error = verify_data_len(command, 16) || handle_flash_deflated_begin(data_words[0], data_words[1] * data_words[2], data_words[3]);
+        }
         break;
     case ESP_FLASH_DATA:
     case ESP_FLASH_DEFLATED_DATA:
+#if !ESP8266
+    case ESP_FLASH_ENCRYPT_DATA:
+#endif
+
       /* ACK DATA commands immediately, then process them a few lines down,
          allowing next command to buffer */
       if(is_in_flash_mode()) {
@@ -272,7 +229,7 @@ void cmd_loop() {
       /* params are addr, value, mask (ignored), delay_us (ignored) */
       error = verify_data_len(command, 16);
       if (error == ESP_OK) {
-        REG_WRITE(data_words[0], data_words[1]);
+        WRITE_REG(data_words[0], data_words[1]);
       }
       break;
     case ESP_READ_REG:
@@ -304,9 +261,7 @@ void cmd_loop() {
     if (error == ESP_OK) {
       switch(command->op) {
       case ESP_SET_BAUD:
-        ets_delay_us(10000);
-        uart_div_modify(0, get_new_uart_divider(data_words[1], data_words[0]));
-        ets_delay_us(1000);
+        stub_io_set_baudrate(data_words[1], data_words[0]);
         break;
       case ESP_READ_FLASH:
         /* args are: offset, length, block_size, max_in_flight */
@@ -317,6 +272,12 @@ void cmd_loop() {
         /* drop into flashing mode, discard 16 byte payload header */
         handle_flash_data(command->data_buf + 16, command->data_len - 16);
         break;
+#if !ESP8266
+      case ESP_FLASH_ENCRYPT_DATA:
+        /* write encrypted data */
+        handle_flash_encrypt_data(command->data_buf + 16, command->data_len -16);
+        break;
+#endif
       case ESP_FLASH_DEFLATED_DATA:
         handle_flash_deflated_data(command->data_buf + 16, command->data_len - 16);
         break;
@@ -325,9 +286,7 @@ void cmd_loop() {
         /* passing 0 as parameter for ESP_FLASH_END means reboot now */
         if (data_words[0] == 0) {
           /* Flush the FLASH_END response before rebooting */
-#ifdef ESP32
-          uart_tx_flush(0);
-#endif
+          stub_tx_flush();
           ets_delay_us(10000);
           software_reset();
         }
@@ -337,9 +296,7 @@ void cmd_loop() {
               void (*entrypoint_fn)(void) = (void (*))data_words[1];
               /* Make sure the command response has been flushed out
                  of the UART before we run the new code */
-#ifdef ESP32
-              uart_tx_flush(0);
-#endif
+              stub_tx_flush();
               ets_delay_us(1000);
               /* this is a little different from the ROM loader,
                  which exits the loader routine and _then_ calls this
@@ -397,11 +354,8 @@ void stub_main()
 
   SLIP_send(&greeting, 4);
 
-  /* All UART reads come via uart_isr */
   ub.reading_buf = ub.buf_a;
-  ets_isr_attach(ETS_UART0_INUM, uart_isr, NULL);
-  SET_PERI_REG_MASK(UART_INT_ENA(0), UART_RX_INTS);
-  ets_isr_unmask(1 << ETS_UART0_INUM);
+  stub_io_init(&stub_handle_rx_byte);
 
   /* Configure default SPI flash functionality.
      Can be overriden later by esptool.py. */
@@ -411,7 +365,7 @@ void stub_main()
         spi_flash_attach();
 #else
         uint32_t spiconfig = ets_efuse_get_spiconfig();
-        uint32_t strapping = REG_READ(GPIO_STRAP_REG);
+        uint32_t strapping = READ_REG(GPIO_STRAP_REG);
         /* If GPIO1 (U0TXD) is pulled low and no other boot mode is
            set in efuse, assume HSPI flash mode (same as normal boot)
         */
