@@ -2641,15 +2641,19 @@ def main(custom_commandline, esp=None):
         else:
             ser_list = [args.port]
 
+        esp = get_default_connected_device(ser_list, port=args.port, connect_attempts=args.connect_attempts,
+                                        initial_baud=initial_baud, chip=args.chip, trace=args.trace,
+                                        before=args.before)
         if esp is None:
-            esp = find_port(ser_list, args.chip, initial_baud, args.before, args.trace, args.port is not None)
-        if esp is None:
-            raise FatalError("All of the %d available serial ports could not connect to a Espressif device." % len(ser_list))
+            raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
 
-        print("Chip is %s" % (esp.get_chip_description()))
-
-        print("Features: %s" % ", ".join(esp.get_chip_features()))
-        read_mac(esp, args)
+        if esp.secure_download_mode:
+            print("Chip is %s in Secure Download Mode" % esp.CHIP_NAME)
+        else:
+            print("Chip is %s" % (esp.get_chip_description()))
+            print("Features: %s" % ", ".join(esp.get_chip_features()))
+            print("Crystal is %dMHz" % esp.get_crystal_freq())
+            read_mac(esp, args)
 
         if not args.no_stub:
             esp = esp.run_stub()
@@ -2712,31 +2716,11 @@ def main(custom_commandline, esp=None):
 
 
 def get_port_list():
+    if list_ports is None:      # Ensure the function is available
+        raise FatalError("Listing all serial ports is currently not available on this operating system version. "
+                        "Please specify the port when running esptool.py")
+
     return sorted(ports.device for ports in list_ports.comports())
-
-
-def find_port(ser_list, chip='auto', initial_baud=ESPLoader.ESP_ROM_BAUD, before='default_reset', trace=False, raise_on_error=False):
-    """ Figure out which port to use; provide a list of candidate serial ports in ser_list
-    """
-    for each_port in reversed(ser_list):
-        print("Serial port %s" % each_port)
-        try:
-            if chip == 'auto':
-                esp = ESPLoader.detect_chip(each_port, initial_baud, before, trace)
-            else:
-                chip_class = {
-                    'esp8266': ESP8266ROM,
-                    'esp32': ESP32ROM,
-                }[chip]
-                esp = chip_class(each_port, initial_baud, trace)
-                esp.connect(before)
-            break
-        except (FatalError, OSError) as err:
-            if raise_on_error:
-                raise
-            print("%s failed to connect: %s" % (each_port, err))
-            esp = None
-    return esp
 
 
 def expand_file_arguments(argv):
