@@ -5,6 +5,7 @@
 # Assumes openssl binary is in the PATH
 from __future__ import division, print_function
 
+import binascii
 import io
 import os
 import os.path
@@ -321,7 +322,61 @@ class SigningTests(EspSecureTestCase):
             self.assertIn("Signature is not valid", str(cm.exception))
 
 
-class ESP32FlashEncryptionTests(EspSecureTestCase):
+class FlashEncryptionTests(EspSecureTestCase):
+
+    EncryptArgs = namedtuple('encrypt_flash_data_args',
+                             ['keyfile',
+                              'output',
+                              'address',
+                              'flash_crypt_conf',
+                              'aes_xts',
+                              'plaintext_file']
+                             )
+
+    DecryptArgs = namedtuple('decrypt_flash_data_args',
+                             ['keyfile',
+                              'output',
+                              'address',
+                              'flash_crypt_conf',
+                              'aes_xts',
+                              'encrypted_file']
+                             )
+
+    def _test_encrypt_decrypt(self, input_plaintext, expected_ciphertext, key_path, offset, flash_crypt_conf=0xf, aes_xts=None):
+
+        original_plaintext = self._open(input_plaintext)
+        keyfile = self._open(key_path)
+        ciphertext = io.BytesIO()
+
+        args = self.EncryptArgs(keyfile,
+                                ciphertext,
+                                offset,
+                                flash_crypt_conf,
+                                aes_xts,
+                                original_plaintext)
+        espsecure.encrypt_flash_data(args)
+
+        original_plaintext.seek(0)
+        self.assertNotEqual(original_plaintext.read(), ciphertext.getvalue())
+        with self._open(expected_ciphertext) as f:
+            self.assertEqual(f.read(), ciphertext.getvalue())
+
+        ciphertext.seek(0)
+        keyfile.seek(0)
+        plaintext = io.BytesIO()
+        args = self.DecryptArgs(keyfile,
+                                plaintext,
+                                offset,
+                                flash_crypt_conf,
+                                aes_xts,
+                                ciphertext)
+        espsecure.decrypt_flash_data(args)
+
+        original_plaintext.seek(0)
+        self.assertEqual(original_plaintext.read(), plaintext.getvalue())
+
+
+class ESP32FlashEncryptionTests(FlashEncryptionTests):
 
     def test_encrypt_decrypt_bootloader(self):
         self._test_encrypt_decrypt('bootloader.bin',
@@ -346,51 +401,80 @@ class ESP32FlashEncryptionTests(EspSecureTestCase):
                                        0x1000,
                                        conf)
 
-    def _test_encrypt_decrypt(self, input_plaintext, expected_ciphertext, key_path, offset, flash_crypt_conf=0xf):
-        EncryptArgs = namedtuple('encrypt_flash_data_args',
-                                 ['keyfile',
-                                  'output',
-                                  'address',
-                                  'flash_crypt_conf',
-                                  'plaintext_file'
-                                  ])
 
-        DecryptArgs = namedtuple('decrypt_flash_data_args',
-                                 ['keyfile',
-                                  'output',
-                                  'address',
-                                  'flash_crypt_conf',
-                                  'encrypted_file'
-                                  ])
+class AesXtsFlashEncryptionTests(FlashEncryptionTests):
 
-        original_plaintext = self._open(input_plaintext)
-        keyfile = self._open(key_path)
-        ciphertext = io.BytesIO()
+    def test_encrypt_decrypt_bootloader(self):
+        self._test_encrypt_decrypt('bootloader.bin',
+                                   'bootloader-encrypted-aes-xts.bin',
+                                   '256bit_key.bin',
+                                   0x1000, aes_xts=True)
 
-        args = EncryptArgs(keyfile,
-                           ciphertext,
-                           offset,
-                           flash_crypt_conf,
-                           original_plaintext)
-        espsecure.encrypt_flash_data(args)
+    def test_encrypt_decrypt_app(self):
+        self._test_encrypt_decrypt('hello-world-signed.bin',
+                                   'hello-world-signed-encrypted-aes-xts.bin',
+                                   'ef-flashencryption-key.bin',
+                                   0x20000, aes_xts=True)
 
-        original_plaintext.seek(0)
-        self.assertNotEqual(original_plaintext.read(), ciphertext.getvalue())
-        with self._open(expected_ciphertext) as f:
-            self.assertEqual(f.read(), ciphertext.getvalue())
+    def test_padding(self):
+        # Random 2048 bits hex string
+        plaintext = binascii.unhexlify("c33b7c49f12a969a9bb45af5f660b73f"
+                                       "3b372685012da570df1cf99d1a82eabb"
+                                       "fdf6aa16b9675bd8a2f95e871513e175"
+                                       "3bc89f57986ecfb2707a3d3b59a46968"
+                                       "5e6609d2e9c21d4b2310571175e6e3de"
+                                       "2656ee22243f557b925ef39ff782ab56"
+                                       "f821e6859ee852000daae7c03a7c77ce"
+                                       "58744f15fbdf0ad4ae6e964aedd6316a"
+                                       "cf0e36935eef895cd14a60fe682fb971"
+                                       "eb239eae38b770bdf969017c9decfd91"
+                                       "b7c60329fb0c896684f0e7415f99dec1"
+                                       "da0572fac360a3e6d7219973a7de07e5"
+                                       "33b5abfdf5917ed5bfe54d660a6f5047"
+                                       "32fdb8d07259bfcdc67da87293857c11"
+                                       "427b2bae5f00da4a4b2b00b588ff5109"
+                                       "4c41f07f02f680f8826841b43da3f25b")
 
-        ciphertext.seek(0)
-        keyfile.seek(0)
-        plaintext = io.BytesIO()
-        args = DecryptArgs(keyfile,
-                           plaintext,
-                           offset,
-                           flash_crypt_conf,
-                           ciphertext)
-        espsecure.decrypt_flash_data(args)
+        plaintext_file = io.BytesIO(plaintext)
+        ciphertext_full_block = io.BytesIO()
 
-        original_plaintext.seek(0)
-        self.assertEqual(original_plaintext.read(), plaintext.getvalue())
+        keyfile = self._open('256bit_key.bin')
+        address = 0x1000
+
+        encrypt_args_padded = self.EncryptArgs(keyfile,
+                                               ciphertext_full_block,
+                                               address,
+                                               None,
+                                               'aes_xts',
+                                               plaintext_file)
+
+        espsecure.encrypt_flash_data(encrypt_args_padded)
+
+        # Test with different number of bytes per encryption call
+        # Final ciphertext should still be the same if padding is done correctly
+        bytes_per_encrypt = [16, 32, 64, 128]
+
+        for b in bytes_per_encrypt:
+            ciphertext = io.BytesIO()
+            num_enc_calls = len(plaintext) // b
+
+            for i in range(0, num_enc_calls):
+                keyfile.seek(0)
+                offset = b * i
+
+                # encrypt the whole plaintext a substring of b bytes at a time
+                plaintext_sub = io.BytesIO(plaintext[offset:offset + b])
+
+                encrypt_args = self.EncryptArgs(keyfile,
+                                                ciphertext,
+                                                address + offset,
+                                                None,
+                                                'aes_xts',
+                                                plaintext_sub)
+
+                espsecure.encrypt_flash_data(encrypt_args)
+
+            self.assertEqual(ciphertext_full_block.getvalue(), ciphertext.getvalue())
 
 
 if __name__ == '__main__':

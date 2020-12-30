@@ -640,7 +640,7 @@ def generate_flash_encryption_key(args):
     args.key_file.write(os.urandom(args.keylen // 8))
 
 
-def _flash_encryption_operation(output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt):
+def _flash_encryption_operation_esp32(output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt):
     key = _load_hardware_key(keyfile)
 
     if flash_address % 16 != 0:
@@ -709,12 +709,91 @@ def _flash_encryption_operation(output_file, input_file, flash_address, keyfile,
         block_offs += 16
 
 
+def _flash_encryption_operation_aes_xts(output_file, input_file, flash_address, keyfile, do_decrypt):
+    """
+    Apply the AES-XTS algorithm with the hardware addressing scheme used by Espressif
+
+    key = AES-XTS key (32 or 64 bytes)
+    flash_address = address in flash to encrypt at. Must be multiple of 16 bytes.
+    indata = Data to encrypt/decrypt. Must be multiple of 16 bytes.
+    encrypt = True to Encrypt indata, False to decrypt indata.
+
+    Returns a bitstring of the ciphertext or plaintext result.
+    """
+
+    backend = default_backend()
+    key = _load_hardware_key(keyfile)
+    indata = input_file.read()
+
+    if flash_address % 16 != 0:
+        raise esptool.FatalError("Starting flash address 0x%x must be a multiple of 16" % flash_address)
+
+    if len(indata) % 16 != 0:
+        raise esptool.FatalError("Input data length (%d) must be a multiple of 16" % len(indata))
+
+    if len(indata) == 0:
+        raise esptool.FatalError("Input data must be longer than 0")
+
+    # left pad for a 1024-bit aligned address
+    pad_left = flash_address % 0x80
+    indata = (b"\x00" * pad_left) + indata
+
+    # right pad for full 1024-bit blocks
+    pad_right = len(indata) % 0x80
+    if pad_right > 0:
+        pad_right = 0x80 - pad_right
+    indata = indata + (b"\x00" * pad_right)
+
+    inblocks = _split_blocks(indata, 0x80)  # split into 1024 bit blocks
+
+    output = b""
+    for inblock in inblocks:  # for each block
+        tweak = struct.pack("<I", (flash_address & ~0x7F)) + (b"\x00" * 12)
+        flash_address += 0x80   # for next block
+
+        if len(tweak) != 16:
+            raise esptool.FatalError("Length of tweak must be 16, was {}".format(len(tweak)))
+
+        cipher = Cipher(algorithms.AES(key), modes.XTS(tweak), backend=backend)
+        encryptor = cipher.decryptor() if do_decrypt else cipher.encryptor()
+
+        inblock = inblock[::-1]               # reverse input
+        outblock = encryptor.update(inblock)  # standard algo
+        output += outblock[::-1]              # reverse output
+
+    # undo any padding we applied to the input
+    if pad_right != 0:
+        output = output[:-pad_right]
+    if pad_left != 0:
+        output = output[pad_left:]
+
+    # output length matches original input
+    if len(output) != len(indata) - pad_left - pad_right:
+        raise esptool.FatalError("Length of input data ({}) should match the output data ({})".format(len(indata) - pad_left - pad_right, len(output)))
+
+    output_file.write(output)
+
+
+def _split_blocks(text, block_len=16):
+    """ Take a bitstring, split it into chunks of "block_len" each """
+    assert len(text) % block_len == 0
+    while len(text) > 0:
+        yield text[0:block_len]
+        text = text[block_len:]
+
+
 def decrypt_flash_data(args):
-    return _flash_encryption_operation(args.output, args.encrypted_file, args.address, args.keyfile, args.flash_crypt_conf, True)
+    if args.aes_xts:
+        return _flash_encryption_operation_aes_xts(args.output, args.encrypted_file, args.address, args.keyfile, True)
+    else:
+        return _flash_encryption_operation_esp32(args.output, args.encrypted_file, args.address, args.keyfile, args.flash_crypt_conf, True)
 
 
 def encrypt_flash_data(args):
-    return _flash_encryption_operation(args.output, args.plaintext_file, args.address, args.keyfile, args.flash_crypt_conf, False)
+    if args.aes_xts:
+        return _flash_encryption_operation_aes_xts(args.output, args.plaintext_file, args.address, args.keyfile, False)
+    else:
+        return _flash_encryption_operation_esp32(args.output, args.plaintext_file, args.address, args.keyfile, args.flash_crypt_conf, False)
 
 
 def main(custom_commandline=None):
@@ -748,7 +827,7 @@ def main(custom_commandline=None):
     p.add_argument('keyfile', help="Filename for private key file (embedded public key)")
 
     p = subparsers.add_parser('sign_data',
-                              help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512 (V1) '
+                              help='Sign a data file for use with secure boot. Signing algorithm is deterministic ECDSA w/ SHA-512 (V1) '
                               'or RSA-PSS w/ SHA-256 (V2).')
     p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices=["1", "2"], required=True)
     p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True, nargs='+')
@@ -804,6 +883,7 @@ def main(custom_commandline=None):
     p.add_argument('--flash_crypt_conf', help="Override FLASH_CRYPT_CONF efuse value (default is 0XF).", required=False, default=0xF, type=esptool.arg_auto_int)
 
     p = subparsers.add_parser('encrypt_flash_data', help='Encrypt some data suitable for encrypted flash (using known key)')
+    p.add_argument('--aes_xts', '-x', help="Encrypt data using AES-XTS as used on ESP32-S2 and ESP32-C3", action='store_true')
     p.add_argument('--keyfile', '-k', help="File with flash encryption key", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('--output', '-o', help="Output file for encrypted data.", type=argparse.FileType('wb'),
