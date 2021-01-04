@@ -66,11 +66,10 @@ class ESPRFC2217Server(object):
 
     def __init__(self, rfc2217_port=None):
         self.port = rfc2217_port or self.get_free_port()
-        cmd = [sys.executable, ESPRFC2217SERVER_PY, '-p', str(self.port), serialport]
+        self.cmd = [sys.executable, ESPRFC2217SERVER_PY, '-p', str(self.port), serialport]
         self.server_output_file = open(str(chip) + "_server.out", 'a')
         self.server_output_file.write("************************************")
-        self.p = subprocess.Popen(cmd, cwd=TEST_DIR, stdout=self.server_output_file,
-                                  stderr=subprocess.STDOUT, close_fds=True)
+        self.p = None
         self.wait_for_server_starts(attempts_count=5)
 
     @staticmethod
@@ -83,15 +82,20 @@ class ESPRFC2217Server(object):
 
     def wait_for_server_starts(self, attempts_count):
         for attempt in range(attempts_count):
-            sleep(0.1)
-            s = socket(AF_INET, SOCK_STREAM)
-            result = s.connect_ex(('localhost', self.port))
-            s.close()
-            if result == 0:
-                print("Server started successfully.")
-                return
-            else:
-                print("Server start failed." + (" Retrying . . ." if attempt < attempts_count - 1 else ""))
+            try:
+                self.p = subprocess.Popen(self.cmd, cwd=TEST_DIR, stdout=self.server_output_file,
+                                          stderr=subprocess.STDOUT, close_fds=True)
+                sleep(2)
+                s = socket(AF_INET, SOCK_STREAM)
+                result = s.connect_ex(('localhost', self.port))
+                s.close()
+                if result == 0:
+                    print("Server started successfully.")
+                    return
+            except Exception as e:
+                print(e)
+            print("Server start failed." + (" Retrying . . ." if attempt < attempts_count - 1 else ""))
+            self.p.terminate()
         raise Exception("Server not started successfully!")
 
     def __enter__(self):
