@@ -80,7 +80,7 @@ MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2  # longest any command can run
 SYNC_TIMEOUT = 0.1                    # timeout for syncing with bootloader
 MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating md5sum
 ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
-COMP_BLOCK_WRITE_TIMEOUT_PER_MB = 3   # timeout (per megabyte) for writing compressed data
+ERASE_WRITE_TIMEOUT_PER_MB = 40       # timeout (per megabyte) for erasing and writing data
 MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
@@ -587,12 +587,12 @@ class ESPLoader(object):
         """
         pass
 
-    def read_reg(self, addr):
+    def read_reg(self, addr, timeout=DEFAULT_TIMEOUT):
         """ Read memory address in target """
         # we don't call check_command here because read_reg() function is called
         # when detecting chip type, and the way we check for success (STATUS_BYTES_LENGTH) is different
         # for different chip types (!)
-        val, data = self.command(self.ESP_READ_REG, struct.pack('<I', addr))
+        val, data = self.command(self.ESP_READ_REG, struct.pack('<I', addr), timeout=timeout)
         if byte(data, 0) != 0:
             raise FatalError.WithResult("Failed to read register address %08x" % addr, data)
         return val
@@ -3102,19 +3102,34 @@ def write_flash(esp, args):
         if compress:
             uncimage = image
             image = zlib.compress(uncimage, 9)
+            # Decompress the compressed binary a block at a time, to dynamically calculate the
+            # timeout based on the real write size
+            decompress = zlib.decompressobj()
             blocks = esp.flash_defl_begin(uncsize, len(image), address)
         else:
             blocks = esp.flash_begin(uncsize, address, begin_rom_encrypted=encrypted)
         argfile.seek(0)  # in case we need it again
         seq = 0
-        written = 0
+        bytes_sent = 0  # bytes sent on wire
+        bytes_written = 0  # bytes written to flash
         t = time.time()
+
+        timeout = DEFAULT_TIMEOUT
+
         while len(image) > 0:
-            print_overwrite('Writing at 0x%08x... (%d %%)' % (address + seq * esp.FLASH_WRITE_SIZE, 100 * (seq + 1) // blocks))
+            print_overwrite('Writing at 0x%08x... (%d %%)' % (address + bytes_written, 100 * (seq + 1) // blocks))
             sys.stdout.flush()
             block = image[0:esp.FLASH_WRITE_SIZE]
             if compress:
-                esp.flash_defl_block(block, seq, timeout=timeout_per_mb(COMP_BLOCK_WRITE_TIMEOUT_PER_MB, uncsize))
+                # feeding each compressed block into the decompressor lets us see block-by-block how much will be written
+                block_uncompressed = len(decompress.decompress(block))
+                bytes_written += block_uncompressed
+                block_timeout = max(DEFAULT_TIMEOUT, timeout_per_mb(ERASE_WRITE_TIMEOUT_PER_MB, block_uncompressed))
+                if not esp.IS_STUB:
+                    timeout = block_timeout  # ROM code writes block to flash before ACKing
+                esp.flash_defl_block(block, seq, timeout=timeout)
+                if esp.IS_STUB:
+                    timeout = block_timeout  # Stub ACKs when block is received, then writes to flash while receiving the block after it
             else:
                 # Pad the last block
                 block = block + b'\xff' * (esp.FLASH_WRITE_SIZE - len(block))
@@ -3122,19 +3137,28 @@ def write_flash(esp, args):
                     esp.flash_encrypt_block(block, seq)
                 else:
                     esp.flash_block(block, seq)
+                bytes_written += len(block)
+            bytes_sent += len(block)
             image = image[esp.FLASH_WRITE_SIZE:]
             seq += 1
-            written += len(block)
+
+        if esp.IS_STUB:
+            # Stub only writes each block to flash after 'ack'ing the receive, so do a final dummy operation which will
+            # not be 'ack'ed until the last block has actually been written out to flash
+            esp.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR, timeout=timeout)
+
         t = time.time() - t
         speed_msg = ""
         if compress:
             if t > 0.0:
                 speed_msg = " (effective %.1f kbit/s)" % (uncsize / t * 8 / 1000)
-            print_overwrite('Wrote %d bytes (%d compressed) at 0x%08x in %.1f seconds%s...' % (uncsize, written, address, t, speed_msg), last_line=True)
+            print_overwrite('Wrote %d bytes (%d compressed) at 0x%08x in %.1f seconds%s...' % (uncsize,
+                                                                                               bytes_sent,
+                                                                                               address, t, speed_msg), last_line=True)
         else:
             if t > 0.0:
-                speed_msg = " (%.1f kbit/s)" % (written / t * 8 / 1000)
-            print_overwrite('Wrote %d bytes at 0x%08x in %.1f seconds%s...' % (written, address, t, speed_msg), last_line=True)
+                speed_msg = " (%.1f kbit/s)" % (bytes_written / t * 8 / 1000)
+            print_overwrite('Wrote %d bytes at 0x%08x in %.1f seconds%s...' % (bytes_written, address, t, speed_msg), last_line=True)
 
         if not encrypted and not esp.secure_download_mode:
             try:
