@@ -13,7 +13,9 @@ from __future__ import division, print_function
 import io
 import os
 import os.path
+import random
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -152,21 +154,12 @@ class EsptoolTestCase(unittest.TestCase):
         return failure.output.decode("utf-8")
 
     def setUp(self):
-        self.tempfiles = []
         print(50 * "*")
-
-    def tearDown(self):
-        for t in self.tempfiles:
-            try:
-                os.remove(t)
-            except OSError:
-                pass
 
     def readback(self, offset, length):
         """ Read contents of flash back, return to caller. """
-        tf = tempfile.NamedTemporaryFile(delete=False)  # need a file we can read into
-        self.tempfiles.append(tf.name)
-        tf.close()
+        with tempfile.NamedTemporaryFile(delete=False) as tf:  # need a file we can read into
+            self.addCleanup(os.remove, tf.name)
         self.run_esptool("--before default_reset read_flash %d %d %s" % (offset, length, tf.name))
         with open(tf.name, "rb") as f:
             rb = f.read()
@@ -370,7 +363,20 @@ class TestFlashing(EsptoolTestCase):
         self.assertNotIn("Detected overlap at address", output)
 
     def test_compressible_file(self):
-        self.run_esptool("write_flash 0x10000 images/one_mb_zeroes.bin")
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            self.addCleanup(os.remove, f.name)
+            file_size = 1024 * 1024
+            f.write(b'\x00' * file_size)
+        self.run_esptool("write_flash 0x10000 {}".format(f.name))
+
+    def test_compressible_non_trivial_file(self):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            self.addCleanup(os.remove, f.name)
+            file_size = 1000 * 1000
+            same_bytes = 8000
+            for _ in range(file_size // same_bytes):
+                f.write(struct.pack('B', random.randrange(0, 1 << 8)) * same_bytes)
+        self.run_esptool("write_flash 0x10000 {}".format(f.name))
 
     def test_zero_length(self):
         # Zero length files are skipped with a warning
