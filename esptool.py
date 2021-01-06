@@ -1165,14 +1165,41 @@ class ESP8266ROM(ESPLoader):
         result |= self.read_reg(0x3ff00050)
         return result
 
+    def _get_flash_size(self, efuses):
+        # rX_Y = EFUSE_DATA_OUTX[Y]
+        r0_4 = (efuses & (1 << 4)) != 0
+        r3_25 = (efuses & (1 << 121)) != 0
+        r3_26 = (efuses & (1 << 122)) != 0
+        r3_27 = (efuses & (1 << 123)) != 0
+
+        if r0_4 and not r3_25:
+            if not r3_27 and not r3_26:
+                return 1
+            elif not r3_27 and r3_26:
+                return 2
+        if not r0_4 and r3_25:
+            if not r3_27 and not r3_26:
+                return 2
+            elif not r3_27 and r3_26:
+                return 4
+        return -1
+
     def get_chip_description(self):
         efuses = self.get_efuses()
         is_8285 = (efuses & ((1 << 4) | 1 << 80)) != 0  # One or the other efuse bit is set for ESP8285
-        return "ESP8285" if is_8285 else "ESP8266EX"
+        if is_8285:
+            flash_size = self._get_flash_size(efuses)
+            max_temp = (efuses & (1 << 5)) != 0  # This efuse bit identifies the max flash temperature
+            chip_name = {
+                1: "ESP8285H08" if max_temp else "ESP8285N08",
+                2: "ESP8285H16" if max_temp else "ESP8285N16"
+            }.get(flash_size, "ESP8285")
+            return chip_name
+        return "ESP8266EX"
 
     def get_chip_features(self):
         features = ["WiFi"]
-        if self.get_chip_description() == "ESP8285":
+        if "ESP8285" in self.get_chip_description():
             features += ["Embedded Flash"]
         return features
 
