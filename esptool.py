@@ -94,6 +94,16 @@ def timeout_per_mb(seconds_per_mb, size_bytes):
     return result
 
 
+def _chip_to_rom_loader(chip):
+    return {
+        'esp8266': ESP8266ROM,
+        'esp32': ESP32ROM,
+        'esp32s2': ESP32S2ROM,
+        'esp32s3beta2': ESP32S3BETA2ROM,
+        'esp32c3': ESP32C3ROM,
+    }[chip]
+
+
 def get_default_connected_device(serial_list, port, connect_attempts, initial_baud, chip='auto', trace=False,
                                  before='default_reset'):
     _esp = None
@@ -104,13 +114,7 @@ def get_default_connected_device(serial_list, port, connect_attempts, initial_ba
                 _esp = ESPLoader.detect_chip(each_port, initial_baud, before, trace,
                                              connect_attempts)
             else:
-                chip_class = {
-                    'esp8266': ESP8266ROM,
-                    'esp32': ESP32ROM,
-                    'esp32s2': ESP32S2ROM,
-                    'esp32s3beta2': ESP32S3BETA2ROM,
-                    'esp32c3': ESP32C3ROM,
-                }[chip]
+                chip_class = _chip_to_rom_loader(chip)
                 _esp = chip_class(each_port, initial_baud, trace)
                 _esp.connect(before, connect_attempts)
             break
@@ -738,12 +742,13 @@ class ESPLoader(object):
         # TODO: pack this as some kind of better data type
         return (flags, flash_crypt_cnt, key_purposes)
 
-    def parse_flash_size_arg(self, arg):
+    @classmethod
+    def parse_flash_size_arg(cls, arg):
         try:
-            return self.FLASH_SIZES[arg]
+            return cls.FLASH_SIZES[arg]
         except KeyError:
             raise FatalError("Flash size '%s' is not supported by this chip type. Supported sizes: %s"
-                             % (arg, ", ".join(self.FLASH_SIZES.keys())))
+                             % (arg, ", ".join(cls.FLASH_SIZES.keys())))
 
     def run_stub(self, stub=None):
         if stub is None:
@@ -2031,7 +2036,7 @@ ESP32C3ROM.STUB_CLASS = ESP32C3StubLoader
 
 
 class ESPBOOTLOADER(object):
-    """ These are constants related to software ESP bootloader, working with 'v2' image files """
+    """ These are constants related to software ESP8266 bootloader, working with 'v2' image files """
 
     # First byte of the "v2" application image
     IMAGE_V2_MAGIC = 0xea
@@ -3460,6 +3465,34 @@ def get_security_info(esp, args):
     print('Key_Purposes: %s' % (key_purposes,))
 
 
+def merge_bin(args):
+    chip_class = _chip_to_rom_loader(args.chip)
+
+    # sort the files by offset. The AddrFilenamePairAction has already checked for overlap
+    input_files = sorted(args.addr_filename, key=lambda x: x[0])
+    if not input_files:
+        raise FatalError("No input files specified")
+    first_addr = input_files[0][0]
+    if first_addr < args.target_offset:
+        raise FatalError("Output file target offset is 0x%x. Input file offset 0x%x is before this." % (args.target_offset, first_addr))
+
+    if args.format != 'raw':
+        raise FatalError("This version of esptool only supports the 'raw' output format")
+
+    with open(args.output, 'wb') as of:
+        def pad_to(flash_offs):
+            # account for output file offset if there is any
+            of.write(b'\xFF' * (flash_offs - args.target_offset - of.tell()))
+        for addr, argfile in input_files:
+            pad_to(addr)
+            image = argfile.read()
+            image = _update_image_flash_params(chip_class, addr, args, image)
+            of.write(image)
+        if args.fill_flash_size:
+            pad_to(flash_size_bytes(args.fill_flash_size))
+        print("Wrote 0x%x bytes to file %s, ready to flash to offset 0x%x" % (of.tell(), args.output, args.target_offset))
+
+
 def version(args):
     print(__version__)
 
@@ -3568,26 +3601,29 @@ def main(argv=None, esp=None):
     parser_write_mem.add_argument('value', help='Value', type=arg_auto_int)
     parser_write_mem.add_argument('mask', help='Mask of bits to write', type=arg_auto_int, nargs='?', default='0xFFFFFFFF')
 
-    def add_spi_flash_subparsers(parent, is_elf2image):
+    def add_spi_flash_subparsers(parent, allow_keep, auto_detect):
         """ Add common parser arguments for SPI flash properties """
-        extra_keep_args = [] if is_elf2image else ['keep']
-        auto_detect = not is_elf2image
+        extra_keep_args = ['keep'] if allow_keep else []
 
-        if auto_detect:
+        if auto_detect and allow_keep:
             extra_fs_message = ", detect, or keep"
+        elif auto_detect:
+            extra_fs_message = ", or detect"
+        elif allow_keep:
+            extra_fs_message = ", or keep"
         else:
             extra_fs_message = ""
 
         parent.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
                             choices=extra_keep_args + ['40m', '26m', '20m', '80m'],
-                            default=os.environ.get('ESPTOOL_FF', '40m' if is_elf2image else 'keep'))
+                            default=os.environ.get('ESPTOOL_FF', 'keep' if allow_keep else '40m'))
         parent.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
                             choices=extra_keep_args + ['qio', 'qout', 'dio', 'dout'],
-                            default=os.environ.get('ESPTOOL_FM', 'qio' if is_elf2image else 'keep'))
+                            default=os.environ.get('ESPTOOL_FM', 'keep' if allow_keep else 'qio'))
         parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M)'
                             ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1)' + extra_fs_message,
                             action=FlashSizeAction, auto_detect=auto_detect,
-                            default=os.environ.get('ESPTOOL_FS', '1MB' if is_elf2image else 'keep'))
+                            default=os.environ.get('ESPTOOL_FS', 'keep' if allow_keep else '1MB'))
         add_spi_connection_arg(parent)
 
     parser_write_flash = subparsers.add_parser(
@@ -3600,7 +3636,7 @@ def main(argv=None, esp=None):
                                     help='Erase all regions of flash (not just write areas) before programming',
                                     action="store_true")
 
-    add_spi_flash_subparsers(parser_write_flash, is_elf2image=False)
+    add_spi_flash_subparsers(parser_write_flash, allow_keep=True, auto_detect=True)
     parser_write_flash.add_argument('--no-progress', '-p', help='Suppress progress output', action="store_true")
     parser_write_flash.add_argument('--verify', help='Verify just-written data on flash '
                                     '(mostly superfluous, data is read back during flashing)', action='store_true')
@@ -3653,7 +3689,7 @@ def main(argv=None, esp=None):
     parser_elf2image.add_argument('--use_segments', help='If set, ELF segments will be used instead of ELF sections to genereate the image.',
                                   action='store_true')
 
-    add_spi_flash_subparsers(parser_elf2image, is_elf2image=True)
+    add_spi_flash_subparsers(parser_elf2image, allow_keep=False, auto_detect=False)
 
     subparsers.add_parser(
         'read_mac',
@@ -3700,7 +3736,7 @@ def main(argv=None, esp=None):
                                      action=AddrFilenamePairAction)
     parser_verify_flash.add_argument('--diff', '-d', help='Show differences',
                                      choices=['no', 'yes'], default='no')
-    add_spi_flash_subparsers(parser_verify_flash, is_elf2image=False)
+    add_spi_flash_subparsers(parser_verify_flash, allow_keep=True, auto_detect=True)
 
     parser_erase_flash = subparsers.add_parser(
         'erase_flash',
@@ -3713,6 +3749,22 @@ def main(argv=None, esp=None):
     add_spi_connection_arg(parser_erase_region)
     parser_erase_region.add_argument('address', help='Start address (must be multiple of 4096)', type=arg_auto_int)
     parser_erase_region.add_argument('size', help='Size of region to erase (must be multiple of 4096)', type=arg_auto_int)
+
+    parser_merge_bin = subparsers.add_parser(
+        'merge_bin',
+        help='Merge multiple raw binary files into a single file for later flashing')
+
+    parser_merge_bin.add_argument('--output', '-o', help='Output filename', type=str, required=True)
+    parser_merge_bin.add_argument('--format', '-f', help='Format of the output file', choices='raw', default='raw')  # for future expansion
+    add_spi_flash_subparsers(parser_merge_bin, allow_keep=True, auto_detect=False)
+
+    parser_merge_bin.add_argument('--target-offset', '-t', help='Target offset where the output file will be flashed',
+                                  type=arg_auto_int, default=0)
+    parser_merge_bin.add_argument('--fill-flash-size', help='If set, the final binary file will be padded with FF '
+                                  'bytes up to this flash size.', action=FlashSizeAction)
+    parser_merge_bin.add_argument('addr_filename', metavar='<address> <filename>',
+                                  help='Address followed by binary filename, separated by space',
+                                  action=AddrFilenamePairAction)
 
     subparsers.add_parser(
         'version', help='Print esptool version')

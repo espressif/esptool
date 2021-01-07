@@ -336,6 +336,27 @@ If using OTA, some additional sizes & layouts for OTA "firmware slots" are avail
 
 The ESP-IDF flashes a partition table to the flash at offset 0x8000. All of the partitions in this table must fit inside the configured flash size, otherwise the ESP32 will not work correctly.
 
+## Merging binaries
+
+The `merge_bin` command will merge multiple binary files (of any kind) into a single file that can be flashed to a device later. Any gaps between the input files are padded with 0xFF bytes (same as unwritten flash contents).
+
+For example:
+
+```
+esptool.py --chip esp32 merge_bin -o merged-flash.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
+```
+
+Will create a file `merged-flash.bin` with the contents of the other 3 files. This file can be later be written to flash with `esptool.py write_flash 0x0 merged-flash.bin`.
+
+Note: Because gaps between the input files are padded with 0xFF bytes, when the merged binary is written then any flash sectors between the individual files will be erased. To avoid this, write the files individually.
+
+### Options
+
+* The `merge_bin` command supports the same `--flash_mode`, `--flash_size` and `--flash_speed` options as the `write_flash` command to override the bootloader flash header (see above for details). These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the `--chip` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
+* The `--target-offset 0xNNN` option will create a merged binary that should be flashed at the specified offset, instead of at offset 0x0.
+* The `--fill-flash-size SIZE` option will pad the merged binary with 0xFF bytes to the full flash specified size, for example `--fill-flash-size 4MB` will create a 4MB binary file.
+
+```
 ## Advanced Options
 
 See the [Advanced Options wiki page](https://github.com/espressif/esptool/wiki/Advanced-Options) for some of the more unusual esptool.py command line options.
