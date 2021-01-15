@@ -26,18 +26,19 @@ host_tests:
     when: always
     paths:
       - test/.coverage.*
+      - .coverage.*
     expire_in: 1 week
   variables:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.coveragerc"
   script:
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/setup.py build
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_imagegen.py
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_espsecure.py
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s2
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3beta2
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c3
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/setup.py build
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_imagegen.py
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espsecure.py
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s2
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3beta2
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c3
 
 check_python_style:
   <<: *test_template
@@ -57,9 +58,9 @@ check_installation_can_run:
     expire_in: 1 week
   script:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode setup.py install
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh esptool.py --help
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espefuse.py --help
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espsecure.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode esptool.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode espefuse.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode espsecure.py --help
 
 # Check the stub can build and that a stub built in CI has the same contents
 # as the one embedded in esptool
@@ -110,21 +111,21 @@ target_esptool_test_esp32:
   tags:
     - esptool_esp32_target
   script:
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32 esp32 115200
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32 esp32 115200
 
 target_esptool_test_esp32s2:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s2_target
   script:
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2 esp32s2 115200
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2 esp32s2 115200
 
 target_esptool_test_esp32s2_usbcdc:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s2_cdc_target
   script:
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2_USBCDC esp32s2 115200
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S2_USBCDC esp32s2 115200
 
 target_esptool_test_esp8266:
   extends: .target_esptool_test
@@ -132,7 +133,7 @@ target_esptool_test_esp8266:
   tags:
     - esptool_esp8266_target
   script:
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP8266 esp8266 115200
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP8266 esp8266 115200
 
 combine_reports:
   stage: report
