@@ -1893,12 +1893,20 @@ class ESP32C3ROM(ESP32ROM):
         pkg_version = (word3 >> 21) & 0x0F
         return pkg_version
 
+    def get_chip_revision(self):
+        # reads WAFER_VERSION field from EFUSE_RD_MAC_SPI_SYS_3_REG
+        block1_addr = self.EFUSE_BASE + 0x044
+        num_word = 3
+        pos = 18
+        return (self.read_reg(block1_addr + (4 * num_word)) & (0x7 << pos)) >> pos
+
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C3",
         }.get(self.get_pkg_version(), "unknown ESP32-C3")
+        chip_revision = self.get_chip_revision()
 
-        return "%s" % (chip_name)
+        return "%s (revision %d)" % (chip_name, chip_revision)
 
     def get_chip_features(self):
         return ["Wi-Fi"]
