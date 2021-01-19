@@ -477,6 +477,25 @@ class AesXtsFlashEncryptionTests(FlashEncryptionTests):
             self.assertEqual(ciphertext_full_block.getvalue(), ciphertext.getvalue())
 
 
+class DigestTests(EspSecureTestCase):
+
+    def test_digest_private_key(self):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            self.addCleanup(os.remove, f.name)
+            outfile_name = f.name
+
+        self.run_espsecure('digest_private_key --keyfile secure_images/ecdsa_secure_boot_signing_key.pem {}'.format(outfile_name))
+
+        with open(outfile_name, 'rb') as f:
+            self.assertEqual(f.read(), binascii.unhexlify('7b7b53708fc89d5e0b2df2571fb8f9d778f61a422ff1101a22159c4b34aad0aa'))
+
+    def test_digest_private_key_with_invalid_output(self):
+        fname = 'secure_images/ecdsa_secure_boot_signing_key.pem'
+
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.run_espsecure('digest_private_key --keyfile {} {}'.format(fname, fname))
+
+
 if __name__ == '__main__':
     print("Running espsecure tests...")
     print("Using espsecure %s at %s" % (esptool.__version__, os.path.abspath(espsecure.__file__)))
