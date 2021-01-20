@@ -708,6 +708,39 @@ class TestAutoDetect(EsptoolTestCase):
             self._check_output(output)
 
 
+class TestReadWriteMemory(EsptoolTestCase):
+    def _test_read_write(self, esp):
+        # find the start of one of these named memory regions
+        test_addr = None
+        for test_region in ["RTC_DRAM", "RTC_DATA", "DRAM"]:  # find a probably-unused memory type
+            region = esp.get_memory_region(test_region)
+            if region:
+                test_addr = region[0]
+                break
+
+        print("using test address 0x%x" % test_addr)
+
+        esp.read_reg(test_addr)  # verify we can read this word at all
+
+        esp.write_reg(test_addr, 0x1234567)
+        self.assertEqual(esp.read_reg(test_addr), 0x1234567)
+
+        esp.write_reg(test_addr, 0, delay_us=100)
+        self.assertEqual(esp.read_reg(test_addr), 0)
+
+        esp.write_reg(test_addr, 0x555, delay_after_us=100)
+        self.assertEqual(esp.read_reg(test_addr), 0x555)
+
+    def test_read_write_memory_rom(self):
+        esp = esptool.get_default_connected_device([serialport], serialport, 10, 115200, chip)
+        self._test_read_write(esp)
+
+    def test_read_write_memory_stub(self):
+        esp = esptool.get_default_connected_device([serialport], serialport, 10, 115200, chip)
+        esp = esp.run_stub()
+        self._test_read_write(esp)
+
+
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Usage: %s [--trace] <serial port> <chip name> [optional default baud rate] [optional tests]" % sys.argv[0])

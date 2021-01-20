@@ -169,3 +169,17 @@ esp_command_error handle_mem_finish()
     mem_offset = NULL;
     return res;
 }
+
+esp_command_error handle_write_reg(const write_reg_args_t *cmds, uint32_t num_commands)
+{
+    for (uint32_t i = 0; i < num_commands; i++) {
+        const write_reg_args_t *cmd = &cmds[i];
+        ets_delay_us(cmd->delay_us);
+        uint32_t v = cmd->value & cmd->mask;
+        if (cmd->mask != UINT32_MAX) {
+            v |= READ_REG(cmd->addr) & ~cmd->mask;
+        }
+        WRITE_REG(cmd->addr, v);
+    }
+    return ESP_OK;
+}

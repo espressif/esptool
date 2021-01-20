@@ -42,3 +42,12 @@ esp_command_error handle_mem_begin(uint32_t size, uint32_t offset);
 esp_command_error handle_mem_data(void *data, uint32_t length);
 
 esp_command_error handle_mem_finish(void);
+
+typedef struct {
+    uint32_t addr;
+    uint32_t value;
+    uint32_t mask;
+    uint32_t delay_us;
+} write_reg_args_t;
+
+esp_command_error handle_write_reg(const write_reg_args_t *cmd_buf, uint32_t num_commands);

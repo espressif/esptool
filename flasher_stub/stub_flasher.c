@@ -226,10 +226,11 @@ void cmd_loop() {
       error = verify_data_len(command, 4) || handle_spi_attach(data_words[0]);
       break;
     case ESP_WRITE_REG:
-      /* params are addr, value, mask (ignored), delay_us (ignored) */
-      error = verify_data_len(command, 16);
-      if (error == ESP_OK) {
-        WRITE_REG(data_words[0], data_words[1]);
+      /* The write_reg command can pass multiple write operations in a sequence */
+      if (command->data_len % sizeof(write_reg_args_t) != 0) {
+          error = ESP_BAD_DATA_LEN;
+      } else {
+          error = handle_write_reg((const write_reg_args_t *)data_words, command->data_len/sizeof(write_reg_args_t));
       }
       break;
     case ESP_READ_REG:
