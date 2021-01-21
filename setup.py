@@ -109,7 +109,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
-    setup_requires=['wheel'] if sys.version_info[0:2] != (3, 4) else [],
+    setup_requires=['wheel'] if sys.version_info[0:2] not in [(3, 4), (3, 5)] else [],
     extras_require={
         "dev": [
             'flake8>=3.2.0',

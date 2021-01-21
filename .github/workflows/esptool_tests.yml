@@ -1,0 +1,53 @@
+name: Test esptool
+
+on: [push, pull_request]
+
+jobs:
+  test_esptool:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+
+    steps:
+    - name: Checkout ref commit
+      uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Test python components (fast)
+      run: |
+        python setup.py build
+        pip install -e .[dev]
+        python test/test_imagegen.py
+        python test/test_espsecure.py
+
+    - name: Lint with flake8
+      run: python -m flake8
+
+    - name: Check the installed versions can run
+      run: |
+        esptool.py --help
+        espefuse.py --help
+        espsecure.py --help
+
+    - name: Build stub (Python 3.7 only)
+      if: matrix.python-version == 3.7
+      run: |
+        export TOOLCHAIN_DIR=$HOME/toolchain
+
+        export ESP8266_BINDIR=$TOOLCHAIN_DIR/xtensa-lx106-elf/bin
+        export ESP32_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32-elf/bin
+        export ESP32S2_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s2-elf/bin
+        export ESP32S3_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s3-elf/bin
+        export ESP32C3_BINDIR=$TOOLCHAIN_DIR/riscv32-esp-elf/bin
+
+        export PATH=$PATH:$ESP8266_BINDIR:$ESP32_BINDIR:$ESP32S2_BINDIR:$ESP32S3_BINDIR:$ESP32C3_BINDIR
+
+        ./test/ci/setup_ci_build_env.sh
+        make -C flasher_stub V=1
+        cd flasher_stub && python ./compare_stubs.py
