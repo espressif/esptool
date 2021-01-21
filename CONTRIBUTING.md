@@ -36,15 +36,15 @@ Pull Requests with changes and fixes are also welcome!
 
 esptool.py complies with Flake 8 and is valid Python 2 & Python 3 code (in the same source file.)
 
-When you submit a Pull Request, the Travis automated build system will run automated checks for this, using the [flake8 tool](http://flake8.readthedocs.io/en/latest/). To check your code locally before submitting, run `python -m flake8` (the flake8 tool is installed as part of the development requirements shown at the beginning of this document.)
+When you submit a Pull Request, the GitHub Actions automated build system will run automated checks for this, using the [flake8 tool](http://flake8.readthedocs.io/en/latest/). To check your code locally before submitting, run `python -m flake8` (the flake8 tool is installed as part of the development requirements shown at the beginning of this document.)
 
 ### Automated Integration Tests
 
 The test directory contains an integration suite with some integration tests for esptool.py:
 
-* `test_imagegen.py` tests the elf2image command and is run automatically by Travis for each Pull Request. You can run this command locally to check for regressions in the elf2image functionality.
+* `test_imagegen.py` tests the elf2image command and is run automatically by GitHub Actions for each Pull Request. You can run this command locally to check for regressions in the elf2image functionality.
 
-* `test_esptool.py` is a [Python unittest](https://docs.python.org/3/library/unittest.html) file that contains integration tests to be run against real ESP8266 or ESP32 hardware. These tests need real hardware so are not run automatically by Travis, they need to be run locally:
+* `test_esptool.py` is a [Python unittest](https://docs.python.org/3/library/unittest.html) file that contains integration tests to be run against real ESP8266 or ESP32 hardware. These tests need real hardware so are not run automatically by GitHub Actions, they need to be run locally:
 
 `test_esptool.py` takes a command line with the following format:
 

@@ -8,7 +8,6 @@ prune pyaes
 prune flasher_stub
 prune .github
 exclude .git*
-exclude .travis*
 exclude MANIFEST*
 
 

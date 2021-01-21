@@ -1,6 +1,6 @@
 # Gitlab CI config
 #
-# Note: When updating, please also update .travis.yml
+# Note: When updating, please also update esptool_tests.yml GH Actions workflow file
 stages:
   - test
 
