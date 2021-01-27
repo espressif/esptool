@@ -3468,14 +3468,19 @@ def version(args):
 #
 
 
-def main(argv=None):
+def main(argv=None, esp=None):
     """
     Main function for esptool
 
     argv - Optional override for default arguments parsing (that uses sys.argv), can be a list of custom arguments
     as strings. Arguments and their values need to be added as individual items to the list e.g. "-b 115200" thus
     becomes ['-b', '115200'].
+
+    esp - Optional override of the connected device previously returned by get_default_connected_device()
     """
+
+    external_esp = esp is not None
+
     parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
 
     parser.add_argument('--chip', '-c',
@@ -3752,16 +3757,13 @@ def main(argv=None):
             initial_baud = args.baud
 
         if args.port is None:
-            if list_ports is None:
-                raise FatalError("Listing all serial ports is currently not available on this operating system version. "
-                                 "Specify the port when running esptool.py")
-            ser_list = sorted(ports.device for ports in list_ports.comports())
+            ser_list = get_port_list()
             print("Found %d serial ports" % len(ser_list))
         else:
             ser_list = [args.port]
-        esp = get_default_connected_device(ser_list, port=args.port, connect_attempts=args.connect_attempts,
-                                           initial_baud=initial_baud, chip=args.chip, trace=args.trace,
-                                           before=args.before)
+        esp = esp or get_default_connected_device(ser_list, port=args.port, connect_attempts=args.connect_attempts,
+                                                  initial_baud=initial_baud, chip=args.chip, trace=args.trace,
+                                                  before=args.before)
         if esp is None:
             raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
 
@@ -3831,10 +3833,18 @@ def main(argv=None):
             if esp.IS_STUB:
                 esp.soft_reset(True)  # exit stub back to ROM loader
 
-        esp._port.close()
+        if not external_esp:
+            esp._port.close()
 
     else:
         operation_func(args)
+
+
+def get_port_list():
+    if list_ports is None:
+        raise FatalError("Listing all serial ports is currently not available. Please try to specify the port when "
+                         "running esptool.py or update the pyserial package to the latest version")
+    return sorted(ports.device for ports in list_ports.comports())
 
 
 def expand_file_arguments(argv):
