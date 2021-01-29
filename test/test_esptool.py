@@ -207,8 +207,9 @@ class TestFlashEncryption(EsptoolTestCase):
         if self.valid_key_present() is True:
             raise unittest.SkipTest("Valid encryption key already programmed, aborting the test")
 
-        self.run_esptool("write_flash 0x1000 images/bootloader_esp32.bin 0x8000 images/partitions_singleapp.bin 0x10000 images/helloworld-esp32.bin")
-        output = self.run_esptool_error("write_flash --encrypt 0x10000 images/helloworld-esp32.bin")
+        self.run_esptool("write_flash 0x1000 images/bootloader_esp32.bin 0x8000 images/partitions_singleapp.bin "
+                         "0x10000 images/ram_helloworld/helloworld-esp32.bin")
+        output = self.run_esptool_error("write_flash --encrypt 0x10000 images/ram_helloworld/helloworld-esp32.bin")
         self.assertIn("Flash encryption key is not programmed".lower(), output.lower())
 
     """ since ignore option is specified write should happen even though flash crypt config is 0
@@ -221,10 +222,10 @@ class TestFlashEncryption(EsptoolTestCase):
         if self.valid_key_present() is True:
             raise unittest.SkipTest("Valid encryption key already programmed, aborting the test")
 
-        self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/helloworld-esp32.bin")
+        self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/ram_helloworld/helloworld-esp32.bin")
         self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")
         self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin "
-                           "--flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
+                           "--flash_crypt_conf 0 --output images/local_enc.bin images/ram_helloworld/helloworld-esp32.bin")
 
         try:
             with open("images/read_encrypted_flash.bin", "rb") as file1:
@@ -251,10 +252,10 @@ class TestFlashEncryption(EsptoolTestCase):
         if self.valid_key_present() is True:
             raise unittest.SkipTest("Valid encryption key already programmed, aborting the test")
 
-        self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/helloworld-esp32_edit.bin")
+        self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/ram_helloworld/helloworld-esp32_edit.bin")
         self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")
         self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin "
-                           "--flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
+                           "--flash_crypt_conf 0 --output images/local_enc.bin images/ram_helloworld/helloworld-esp32.bin")
 
         try:
             with open("images/read_encrypted_flash.bin", "rb") as file1:
@@ -623,7 +624,8 @@ class TestKeepImageSettings(EsptoolTestCase):
 
 
 class TestLoadRAM(EsptoolTestCase):
-    @unittest.skipIf(chip == "esp32s2", "TODO: write a IRAM test binary for esp32s2")
+    # flashing an application not supporting USB CDC will make /dev/ttyACM0 disappear and USB CDC tests will not work anymore
+    @unittest.skipIf(chip == "esp32s2", "Not supported because of USB CDC mode")
     @unittest.skipIf(chip == "esp32s3beta2", "TODO: write a IRAM test binary for esp32s3beta2")
     @unittest.skipIf(chip == "esp32c3", "TODO: write a IRAM test binary for esp32c3")
     def test_load_ram(self):
@@ -632,7 +634,7 @@ class TestLoadRAM(EsptoolTestCase):
         The "hello world" binary programs for each chip print
         "Hello world!\n" to the serial port.
         """
-        self.run_esptool("load_ram images/helloworld-%s.bin" % chip)
+        self.run_esptool("load_ram images/ram_helloworld/helloworld-%s.bin" % chip)
         p = serial.serial_for_url(serialport, default_baudrate)
         p.timeout = 5
         output = p.read(100)

@@ -101,12 +101,12 @@ class MergeBinTests(unittest.TestCase):
         self.assertEqual(read_image("one_mb.bin"), merged[0x100000:])
 
     def test_update_bootloader_params(self):
-        merged = self.run_merge_bin("esp32", [(0x1000, "bootloader_esp32.bin"), (0x10000, "helloworld-esp32.bin")],
+        merged = self.run_merge_bin("esp32", [(0x1000, "bootloader_esp32.bin"), (0x10000, "ram_helloworld/helloworld-esp32.bin")],
                                     ["--flash_size", "2MB", "--flash_mode", "dout"])
         self.assertAllFF(merged[:0x1000])
 
         bootloader = read_image("bootloader_esp32.bin")
-        helloworld = read_image("helloworld-esp32.bin")
+        helloworld = read_image("ram_helloworld/helloworld-esp32.bin")
 
         # test the bootloader is unchanged apart from the header (updating the header doesn't change CRC,
         # and doesn't update the SHA although it will invalidate it!)
@@ -126,11 +126,11 @@ class MergeBinTests(unittest.TestCase):
         self.assertEqual(merged[0x10000:0x10000 + len(helloworld)], helloworld)
 
     def test_target_offset(self):
-        merged = self.run_merge_bin("esp32", [(0x1000, "bootloader_esp32.bin"), (0x10000, "helloworld-esp32.bin")],
+        merged = self.run_merge_bin("esp32", [(0x1000, "bootloader_esp32.bin"), (0x10000, "ram_helloworld/helloworld-esp32.bin")],
                                     ["--target-offset", "0x1000"])
 
         bootloader = read_image("bootloader_esp32.bin")
-        helloworld = read_image("helloworld-esp32.bin")
+        helloworld = read_image("ram_helloworld/helloworld-esp32.bin")
         self.assertEqual(bootloader, merged[:len(bootloader)])
         self.assertEqual(helloworld, merged[0xF000:0xF000 + len(helloworld)])
         self.assertAllFF(merged[0x1000 + len(bootloader):0xF000])
@@ -145,13 +145,13 @@ class MergeBinTests(unittest.TestCase):
         self.assertAllFF(merged[len(bootloader):])
 
     def test_fill_flash_size_w_target_offset(self):
-        merged = self.run_merge_bin("esp32", [(0x1000, "bootloader_esp32.bin"), (0x10000, "helloworld-esp32.bin")],
+        merged = self.run_merge_bin("esp32", [(0x1000, "bootloader_esp32.bin"), (0x10000, "ram_helloworld/helloworld-esp32.bin")],
                                     ["--target-offset", "0x1000", "--fill-flash-size", "2MB"])
 
         self.assertEqual(0x200000 - 0x1000, len(merged))  # full length is without target-offset arg
 
         bootloader = read_image("bootloader_esp32.bin")
-        helloworld = read_image("helloworld-esp32.bin")
+        helloworld = read_image("ram_helloworld/helloworld-esp32.bin")
         self.assertEqual(bootloader, merged[:len(bootloader)])
         self.assertEqual(helloworld, merged[0xF000:0xF000 + len(helloworld)])
         self.assertAllFF(merged[0xF000 + len(helloworld):])

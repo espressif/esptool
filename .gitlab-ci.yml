@@ -132,7 +132,6 @@ target_esptool_test_esp32s2_usbcdc:
 
 target_esptool_test_esp8266:
   extends: .target_esptool_test
-  allow_failure: true
   tags:
     - esptool_esp8266_target
   script:
