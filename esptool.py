@@ -2110,11 +2110,10 @@ class ImageSegment(object):
 
     def get_memory_type(self, image):
         """
-        Return a string describing the memory type(s) that is covered by this
+        Return a list describing the memory type(s) that is covered by this
         segment's start address.
         """
-        ranges = [map_range[2] for map_range in image.ROM_LOADER.MEMORY_MAP if map_range[0] <= self.addr < map_range[1]]
-        return ", ".join(ranges)
+        return [map_range[2] for map_range in image.ROM_LOADER.MEMORY_MAP if map_range[0] <= self.addr < map_range[1]]
 
     def pad_to_alignment(self, alignment):
         self.data = pad_to(self.data, alignment, b'\x00')
@@ -2249,37 +2248,36 @@ class BaseFirmwareImage(object):
         if not self.segments:
             return  # nothing to merge
 
-        def merge_adjacent(segments):
-            elem = segments[0]
+        segments = []
+        # The easiest way to merge the sections is the browse them backward.
+        for i in range(len(self.segments) - 1, 0, -1):
+            # elem is the previous section, the one `next_elem` may need to be
+            # merged in
+            elem = self.segments[i - 1]
+            next_elem = self.segments[i]
+            if all((elem.get_memory_type(self) == next_elem.get_memory_type(self),
+                    elem.include_in_checksum == next_elem.include_in_checksum,
+                    next_elem.addr == elem.addr + len(elem.data))):
+                # Merge any segment that ends where the next one starts, without spanning memory types
+                #
+                # (don't 'pad' any gaps here as they may be excluded from the image due to 'noinit'
+                # or other reasons.)
+                elem.data += next_elem.data
+            else:
+                # The section next_elem cannot be merged into the previous one,
+                # which means it needs to be part of the final segments.
+                # As we are browsing the list backward, the elements need to be
+                # inserted at the beginning of the final list.
+                segments.insert(0, next_elem)
 
-            for next_elem in segments[1:]:
-                elem.file_offs = None  # will no longer be valid
-
-                # Sections flags (RWXA) don't need to be checked here for two reasons:
-                # * Resulting binary, to be flashed on the target, doesn't have the notion of permissions.
-                #   Flags are therefore discarded.
-                # * A required condition for merging two adjacent sections is that they will be mapped to
-                #   the same memory type (IRAM, DRAM, Flash, etc...). This is enough for our need. Indeed,
-                #   if these two sections are not merged, they would still be mapped to the same memory,
-                #   regardless of their flags.
-                if all((elem.get_memory_type(self) == next_elem.get_memory_type(self),
-                       elem.include_in_checksum == next_elem.include_in_checksum,
-                       next_elem.addr == elem.addr + len(elem.data))):
-                    # Merge any segment that ends where the next one starts, without spanning memory types
-                    #
-                    # (don't 'pad' any gaps here as they may be excluded from the image due to 'noinit'
-                    # or other reasons.)
-                    elem.data += next_elem.data
-                else:
-                    yield elem
-                    elem = next_elem
-
-            yield elem
+        # The first segment will always be here as it cannot be merged into any
+        # "previous" section.
+        segments.insert(0, self.segments[0])
 
         # note: we could sort segments here as well, but the ordering of segments is sometimes
         # important for other reasons (like embedded ELF SHA-256), so we assume that the linker
         # script will have produced any adjacent sections in linear order in the ELF, anyhow.
-        self.segments = list(merge_adjacent(self.segments))
+        self.segments = segments
 
 
 class ESP8266ROMFirmwareImage(BaseFirmwareImage):
@@ -3304,7 +3302,8 @@ def image_info(args):
     idx = 0
     for seg in image.segments:
         idx += 1
-        seg_name = seg.get_memory_type(image)
+        segs = seg.get_memory_type(image)
+        seg_name = ",".join(segs)
         print('Segment %d: %r [%s]' % (idx, seg, seg_name))
     calc_checksum = image.calculate_checksum()
     print('Checksum: %02x (%s)' % (image.checksum,
