@@ -25,12 +25,12 @@ host_tests:
   artifacts:
     when: always
     paths:
-      - test/.coverage.*
-      - .coverage.*
+      - "**/.coverage*"
+      - ".coverage*"
     expire_in: 1 week
   variables:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
-    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.coveragerc"
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
   script:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/setup.py build
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_imagegen.py
@@ -54,7 +54,8 @@ check_installation_can_run:
   artifacts:
     when: always
     paths:
-      - .coverage.*
+      - "**/.coverage*"
+      - ".coverage*"
     expire_in: 1 week
   script:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode setup.py install
@@ -70,7 +71,8 @@ check_stub_build:
     when: always
     paths:
       - flasher_stub/build/
-      - flasher_stub/.coverage.*
+      - "**/.coverage*"
+      - ".coverage*"
     expire_in: 1 week
   variables:
     # using this directory as the CI image probably already has an ESP32, ESP32S2, ESP32S3 and ESP32C3 toolchain downloaded into here
@@ -93,7 +95,7 @@ check_stub_build:
   image: $CI_DOCKER_REGISTRY/rpi-test-env$BOT_DOCKER_IMAGE_TAG
   variables:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
-    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.coveragerc"
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
   before_script:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python -m pip install -e .
   artifacts:
@@ -102,8 +104,8 @@ check_stub_build:
     when: always
     paths:
       - test/*.out
-      - test/.coverage.*
-      - .coverage.*
+      - "**/.coverage*"
+      - ".coverage*"
     expire_in: 1 week
 
 target_esptool_test_esp32:
@@ -144,16 +146,16 @@ combine_reports:
       cobertura: cobertura_report.xml
     when: always
     paths:
-      - .coverage
+      - ".coverage*"
       - cobertura_report.xml
-      - ./html_report/*.*
+      - ./html_report/
     expire_in: 1 week
   variables:
     LC_ALL: C.UTF-8
   script:
+    # all .coverage files in sub-directories are moved to the parent dir first
+    - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage combine
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage combine --append flasher_stub
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage combine --append test
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage report
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage html -d html_report
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh -p 3.4.8 coverage xml -o cobertura_report.xml
