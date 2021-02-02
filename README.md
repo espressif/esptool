@@ -106,7 +106,7 @@ You may also need to specify arguments for [flash mode and flash size](#flash-mo
 esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
 ```
 
-Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the `.bin` image file, and to detect the flash size. See the [Flash Modes](#flash-modes) section for more details.
+Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the `.bin` image file. See the [Flash Modes](#flash-modes) section for more details.
 
 #### Compression
 
@@ -169,7 +169,7 @@ esptool.py --chip esp8266 elf2image my_app.elf
 
 This command does not require a serial connection.
 
-`elf2image` also accepts the [Flash Modes](#flash-modes) arguments `--flash_freq` and `--flash_mode`, which can be used to set the default values in the image header. This is important when generating any image which will be booted directly by the chip. These values can also be overwritten via the `write_flash` command, see the [write_flash command](#Writing-binaries-to-flash) for details.
+`elf2image` also accepts the [Flash Modes](#flash-modes) arguments `--flash_freq` and `--flash_mode`, which can be used to set the default values in the image header. This is important when generating any image which will be booted directly by the chip. These values can also be overwritten via the `write_flash` command, see the [write_flash command](#write-binary-data-to-flash-write_flash) for details.
 
 By default, `elf2image` uses the sections in the ELF file to generate each segment in the binary executable. To use segments (PHDRs) instead, pass the `--use_segments` option.
 
@@ -297,16 +297,18 @@ Size of the SPI flash, given in megabytes. Valid values vary by chip type:
 
 Chip     | flash_size values
 ---------|---------------------------------------------------------------
-ESP32    | `detect`, `1MB`, `2MB`, `4MB`, `8MB`, `16MB`
-ESP8266  | `detect`, `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `8MB`, `16MB`
+ESP32    | `keep`, `detect`, `1MB`, `2MB`, `4MB`, `8MB`, `16MB`
+ESP8266  | `keep`, `detect`, `256KB`, `512KB`, `1MB`, `2MB`, `4MB`, `2MB-c1`, `4MB-c1`, `8MB`, `16MB`
 
 For ESP8266, some [additional sizes & layouts for OTA "firmware slots" are available](#esp8266-and-flash-size).
 
-The default `--flash_size` parameter is `detect`, which tries to autodetect size based on SPI flash ID. If detection fails, a warning is printed and a default value of of `4MB` (4 megabytes) is used.
+The default `--flash_size` parameter is `keep`. This means that if no `--flash_size` argument is passed when flashing a bootloader, the value in the bootloader .bin file header is kept instead of detecting the actual flash size and updating the header.
 
-If flash size is not successfully detected, you can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id)). Alternatively, read off the silkscreen labelling of the flash chip and search for its datasheet.
+To enable automatic flash size detection based on SPI flash ID, add the argument `esptool.py [...] write_flash [...] -fs detect`. If detection fails, a warning is printed and a default value of of `4MB` (4 megabytes) is used.
 
-The default `flash_size`  parameter can also be overridden using the environment variable `ESPTOOL_FS`.
+If flash size is not successfully detected, you can find the flash size by using the `flash_id` command and then looking up the ID from the output (see [Read SPI flash id](#read-spi-flash-id-flash_id)). Alternatively, read off the silkscreen labelling of the flash chip and search for its datasheet.
+
+The default `flash_size` parameter can also be overridden using the environment variable `ESPTOOL_FS`.
 
 #### ESP8266 and Flash Size
 
