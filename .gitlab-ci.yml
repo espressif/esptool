@@ -20,6 +20,19 @@ cache:
     - host_test
   dependencies: []
 
+version_check:
+  <<: *test_template
+  only:
+    - tags
+  script:
+        - VERSION=$(python esptool.py version | head -n 1)
+        - |
+          if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]] 
+          then
+            echo "Version number and git tag do not match!"
+            exit 1
+          fi
+
 host_tests:
   <<: *test_template
   artifacts:
