@@ -467,11 +467,33 @@ class TestFlashSizes(EsptoolTestCase):
 
 
 class TestFlashDetection(EsptoolTestCase):
-    def test_correct_offset(self):
-        """ Verify writing at an offset actually writes to that offset. """
+    def test_flash_id(self):
+        """ Test manufacturer and device response of flash detection. """
         res = self.run_esptool("flash_id")
         self.assertTrue("Manufacturer:" in res)
         self.assertTrue("Device:" in res)
+
+
+class TestStubReuse(EsptoolTestCase):
+    def test_stub_reuse_with_synchronization(self):
+        """ Keep the flasher stub running and reuse it the next time. """
+        res = self.run_esptool("--after no_reset_stub flash_id")  # flasher stub keeps running after this
+        self.assertTrue("Manufacturer:" in res)
+        res = self.run_esptool("--before no_reset flash_id")  # do sync before (without reset it talks to the flasher stub)
+        self.assertTrue("Manufacturer:" in res)
+
+    @unittest.skipUnless(chip == 'esp8266', 'ESP8266 only')
+    def test_stub_reuse_without_synchronization(self):
+        """
+        Keep the flasher stub running and reuse it the next time without synchronization.
+
+        Synchronization is necessary for chips where the ROM bootloader has different status length in comparison to
+        the flasher stub. Therefore, this is ESP8266 only test.
+        """
+        res = self.run_esptool("--after no_reset_stub flash_id")
+        self.assertTrue("Manufacturer:" in res)
+        res = self.run_esptool("--before no_reset_no_sync flash_id")
+        self.assertTrue("Manufacturer:" in res)
 
 
 class TestErase(EsptoolTestCase):

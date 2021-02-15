@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 Espressif Systems (Shanghai) PTE LTD & Cesanta Software Limited
+ * Copyright (c) 2016-2021 Espressif Systems (Shanghai) CO LTD & Cesanta Software Limited
  * All rights reserved
  *
  * This file is part of the esptool.py binary flasher stub.
@@ -103,7 +103,7 @@ void cmd_loop() {
     esp_command_response_t resp = {
       .resp = 1,
       .op_ret = command->op,
-      .len_ret = 2, /* esptool.py ignores this value, but other users of the stub may not */
+      .len_ret = 2, /* esptool.py checks this length */
       .value = 0,
     };
 
@@ -141,6 +141,27 @@ void cmd_loop() {
 
     /* First stage of command processing - before sending error/status */
     switch (command->op) {
+    case ESP_SYNC:
+      /* Bootloader responds to the SYNC request with eight identical SYNC responses. Stub flasher should react
+      * the same way so SYNC could be possible with the flasher stub as well. This helps in cases when the chip
+      * cannot be reset and the flasher stub keeps running. */
+      error = verify_data_len(command, 36);
+
+      if (error == ESP_OK) {
+        /* resp.value remains 0 which esptool.py can use to detect the flasher stub */
+        resp.value = 0;
+        for (int i = 0; i < 7; ++i) {
+            SLIP_send_frame_data(error);
+            SLIP_send_frame_data(status);
+            SLIP_send_frame_delimiter(); /* end the previous frame */
+
+            SLIP_send_frame_delimiter(); /* start new frame */
+            SLIP_send_frame_data_buf(&resp, sizeof(esp_command_response_t));
+        }
+        /* The last frame is ended outside of the "switch case" at the same place regular one-response frames are
+         * ended. */
+      }
+      break;
     case ESP_ERASE_FLASH:
       error = verify_data_len(command, 0) || SPIEraseChip();
       break;
