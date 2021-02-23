@@ -3345,28 +3345,27 @@ def elf2image(args):
             image.secure_pad = '1'
         elif args.secure_pad_v2:
             image.secure_pad = '2'
-        image.min_rev = int(args.min_rev)
     elif args.chip == 'esp32s2':
         image = ESP32S2FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = '2'
-        image.min_rev = 0
     elif args.chip == 'esp32s3beta2':
         image = ESP32S3BETA2FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = '2'
-        image.min_rev = 0
     elif args.chip == 'esp32c3':
         image = ESP32C3FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = '2'
-        image.min_rev = 0
     elif args.version == '1':  # ESP8266
         image = ESP8266ROMFirmwareImage()
     else:
         image = ESP8266V2FirmwareImage()
     image.entrypoint = e.entrypoint
     image.flash_mode = {'qio': 0, 'qout': 1, 'dio': 2, 'dout': 3}[args.flash_mode]
+
+    if args.chip != 'esp8266':
+        image.min_rev = int(args.min_rev)
 
     # ELFSection is a subclass of ImageSegment, so can use interchangeably
     image.segments = e.segments if args.use_segments else e.sections
