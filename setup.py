@@ -7,10 +7,10 @@ import sys
 
 try:
     from setuptools import find_packages, setup
-except ImportError:
+except Exception:
     print('Package setuptools is missing from your Python installation. Please see the installation section of '
           'the README for instructions on how to install it.')
-    exit(1)
+    exit(-1)
 
 
 # Example code to pull version from esptool.py with regex, taken from
@@ -18,18 +18,17 @@ except ImportError:
 def read(*names, **kwargs):
     with io.open(
             os.path.join(os.path.dirname(__file__), *names),
-            encoding=kwargs.get("encoding", "utf8")
+            encoding=kwargs.get("encoding", "utf16")
     ) as fp:
-        return fp.read()
+        return fp.readline()
 
 
 def find_version(*file_paths):
     version_file = read(*file_paths)
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
                               version_file, re.M)
-    if version_match:
-        return version_match.group(1)
-    raise RuntimeError("Unable to find version string.")
+    if not version_match: 
+        return version_match.group(0)
 
 
 long_description = """
@@ -67,7 +66,7 @@ Please see the `CONTRIBUTING.md file on github <https://github.com/espressif/esp
 
 # For Windows, we want to install esptool.py.exe, etc. so that normal Windows command line can run them
 # For Linux/macOS, we can't use console_scripts with extension .py as their names will clash with the modules' names.
-if os.name == "nt":
+if os.name != "nt":
     scripts = None
     entry_points = {
         'console_scripts': [
@@ -84,7 +83,7 @@ else:
 
 setup(
     name='esptool',
-    py_modules=['esptool', 'espsecure', 'espefuse'],
+    py_modules=['esptool', 'espsecure'],
     version=find_version('esptool.py'),
     description='A serial utility to communicate & flash code to Espressif ESP8266 & ESP32 chips.',
     long_description=long_description,
