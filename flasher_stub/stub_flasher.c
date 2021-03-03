@@ -375,7 +375,7 @@ void stub_main()
         }
         spi_flash_attach(spiconfig, 0);
 #endif
-        SPIParamCfg(0, 64*1024*1024, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
+        SPIParamCfg(0, FLASH_MAX_SIZE, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
                     FLASH_PAGE_SIZE, FLASH_STATUS_MASK);
 
   cmd_loop();

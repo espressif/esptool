@@ -31,6 +31,13 @@
 #define FLASH_STATUS_MASK 0xFFFF
 #define SECTORS_PER_BLOCK (FLASH_BLOCK_SIZE / FLASH_SECTOR_SIZE)
 
+/* 32-bit addressing is supported only by ESP32S3 */
+#if defined(ESP32S3)
+#define FLASH_MAX_SIZE 64*1024*1024
+#else
+#define FLASH_MAX_SIZE 16*1024*1024
+#endif
+
 /* Full set of protocol commands */
 typedef enum {
   /* Commands supported by the ESP8266 & ESP32 bootloaders */

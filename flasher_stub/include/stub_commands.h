@@ -23,6 +23,7 @@
 */
 #pragma once
 #include "stub_flasher.h"
+#include "rom_functions.h"
 #include <stdbool.h>
 
 int handle_flash_erase(uint32_t addr, uint32_t len);
@@ -51,3 +52,8 @@ typedef struct {
 } write_reg_args_t;
 
 esp_command_error handle_write_reg(const write_reg_args_t *cmd_buf, uint32_t num_commands);
+
+/* Enabling 32-bit flash memory addressing for ESP32S3 */
+#if defined(ESP32S3)
+esp_rom_spiflash_result_t SPIRead4B(int spi_num, SpiFlashRdMode mode, uint32_t flash_addr, uint8_t* buf, int len);
+#endif // ESP32S3

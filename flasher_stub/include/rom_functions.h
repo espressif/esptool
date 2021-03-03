@@ -152,3 +152,61 @@ void usb_dc_check_poll_for_interrupts(void);
 void chip_usb_set_persist_flags(uint32_t flags);
 int usb_dc_prepare_persist(void);
 #endif // WITH_USB
+
+/* Enabling 32-bit flash memory addressing for ESP32S3 */
+#if defined(ESP32S3)
+#define BIT(nr)                 (1UL << (nr))
+
+// GigaDevice Flash read commands
+#define ROM_FLASH_CMD_RD4B_GD             0x13
+#define ROM_FLASH_CMD_FSTRD4B_GD          0x0C
+#define ROM_FLASH_CMD_FSTRD4B_OOUT_GD     0x7C
+#define ROM_FLASH_CMD_FSTRD4B_OIOSTR_GD   0xCC
+#define ROM_FLASH_CMD_FSTRD4B_OIODTR_GD   0xFD
+
+// GigaDevice Flash page program commands
+#define ROM_FLASH_CMD_PP4B_GD             0x12
+#define ROM_FLASH_CMD_PP4B_OOUT_GD        0x84
+#define ROM_FLASH_CMD_PP4B_OIOSTR_GD      0x8E
+
+#define ESP_ROM_OPIFLASH_SEL_CS0     (BIT(0))
+
+typedef enum {
+    SPI_FLASH_QIO_MODE = 0,
+    SPI_FLASH_QOUT_MODE,
+    SPI_FLASH_DIO_MODE,
+    SPI_FLASH_DOUT_MODE,
+    SPI_FLASH_FASTRD_MODE,
+    SPI_FLASH_SLOWRD_MODE,
+    SPI_FLASH_OPI_STR_MODE,
+    SPI_FLASH_OPI_DTR_MODE,
+    SPI_FLASH_OOUT_MODE,
+    SPI_FLASH_OIO_STR_MODE,
+    SPI_FLASH_OIO_DTR_MODE,
+    SPI_FLASH_QPI_MODE,
+} SpiFlashRdMode;
+
+typedef enum {
+    ESP_ROM_SPIFLASH_RESULT_OK,
+    ESP_ROM_SPIFLASH_RESULT_ERR,
+    ESP_ROM_SPIFLASH_RESULT_TIMEOUT
+} esp_rom_spiflash_result_t;
+
+/* Stub doesn't currently support OPI flash mode, following functions are used for 32-bit addressing only */
+void esp_rom_opiflash_exec_cmd(int spi_num, SpiFlashRdMode mode,
+    uint32_t cmd, int cmd_bit_len,
+    uint32_t addr, int addr_bit_len,
+    int dummy_bits,
+    uint8_t* mosi_data, int mosi_bit_len,
+    uint8_t* miso_data, int miso_bit_len,
+    uint32_t cs_mask,
+    bool is_write_erase_operation);
+
+esp_rom_spiflash_result_t esp_rom_opiflash_wait_idle(int spi_num, SpiFlashRdMode mode);
+
+esp_rom_spiflash_result_t opi_flash_wren(int spi_num, SpiFlashRdMode mode);
+
+esp_rom_spiflash_result_t esp_rom_opiflash_erase_sector(int spi_num, uint32_t sector_num, SpiFlashRdMode mode);
+
+esp_rom_spiflash_result_t esp_rom_opiflash_erase_block_64k(int spi_num, uint32_t block_num, SpiFlashRdMode mode);
+#endif // ESP32S3
