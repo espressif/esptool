@@ -27,7 +27,7 @@ version_check:
   script:
         - VERSION=$(python esptool.py version | head -n 1)
         - |
-          if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]] 
+          if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]]
           then
             echo "Version number and git tag do not match!"
             exit 1
@@ -52,6 +52,7 @@ host_tests:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s2
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3beta2
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3beta3
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c3
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_modules.py
 

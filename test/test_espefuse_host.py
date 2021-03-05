@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# HOST_TEST for espefuse.py [support esp32, esp32s2, esp32s3beta2, esp32c3]
+# HOST_TEST for espefuse.py [support esp32, esp32s2, esp32s3beta2, esp32s3beta3, esp32c3]
 #
 # How to use it:
 #
@@ -39,7 +39,7 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(TEST_DIR)
 sys.path.insert(0, os.path.join(TEST_DIR, ".."))
 
-support_list_chips = ["esp32", "esp32s2", "esp32s3beta2", "esp32c3"]
+support_list_chips = ["esp32", "esp32s2", "esp32s3beta2", "esp32s3beta3", "esp32c3"]
 
 try:
     chip_target = sys.argv[1]
@@ -89,6 +89,8 @@ class EfuseTestCase(unittest.TestCase):
                 import espressif.efuse.esp32s2 as efuse
             elif chip_target == "esp32s3beta2":
                 import espressif.efuse.esp32s3beta2 as efuse
+            elif chip_target == "esp32s3beta3":
+                import espressif.efuse.esp32s3beta3 as efuse
             elif chip_target == "esp32c3":
                 import espressif.efuse.esp32c3 as efuse
             else:

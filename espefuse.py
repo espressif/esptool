@@ -26,18 +26,20 @@ import espressif.efuse.esp32 as esp32_efuse
 import espressif.efuse.esp32c3 as esp32c3_efuse
 import espressif.efuse.esp32s2 as esp32s2_efuse
 import espressif.efuse.esp32s3beta2 as esp32s3beta2_efuse
+import espressif.efuse.esp32s3beta3 as esp32s3beta3_efuse
 
 import esptool
 
 
 def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=False, debug=False, virt_efuse_file=None):
-    if chip not in ['auto', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32c3']:
+    if chip not in ['auto', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3beta3', 'esp32c3']:
         raise esptool.FatalError("get_esp: Unsupported chip (%s)" % chip)
     if virt:
         esp = {
             'esp32': esp32_efuse,
             'esp32s2': esp32s2_efuse,
             'esp32s3beta2': esp32s3beta2_efuse,
+            'esp32s3beta3': esp32s3beta3_efuse,
             'esp32c3': esp32c3_efuse,
         }.get(chip, esp32_efuse).EmulateEfuseController(virt_efuse_file, debug)
     else:
@@ -48,6 +50,7 @@ def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=Fals
                 'esp32': esptool.ESP32ROM,
                 'esp32s2': esptool.ESP32S2ROM,
                 'esp32s3beta2': esptool.ESP32S3BETA2ROM,
+                'esp32s3beta3': esptool.ESP32S3BETA3ROM,
                 'esp32c3': esptool.ESP32C3ROM,
             }.get(chip, esptool.ESP32ROM)(port if not skip_connect else StringIO(), baud)
             if not skip_connect:
@@ -61,6 +64,7 @@ def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
             'ESP32': esp32_efuse,
             'ESP32-S2': esp32s2_efuse,
             'ESP32-S3(beta2)': esp32s3beta2_efuse,
+            'ESP32-S3(beta3)': esp32s3beta3_efuse,
             'ESP32-C3': esp32c3_efuse,
         }[esp.CHIP_NAME]
     except KeyError:
@@ -77,12 +81,12 @@ def main(custom_commandline=None):
     as strings. Arguments and their values need to be added as individual items to the list e.g. "--port /dev/ttyUSB1" thus
     becomes ['--port', '/dev/ttyUSB1'].
     """
-    init_parser = argparse.ArgumentParser(description='espefuse.py v%s - [ESP32/S2/S3BETA2/C3] efuse get/set tool' % esptool.__version__, prog='espefuse',
-                                          add_help=False)
+    init_parser = argparse.ArgumentParser(description='espefuse.py v%s - [ESP32/S2/S3BETA2/S3BETA3/C3] efuse get/set tool' % esptool.__version__,
+                                          prog='espefuse', add_help=False)
 
     init_parser.add_argument('--chip', '-c',
                              help='Target chip type',
-                             choices=['auto', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32c3'],
+                             choices=['auto', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3beta3', 'esp32c3'],
                              default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
     init_parser.add_argument('--baud', '-b',
