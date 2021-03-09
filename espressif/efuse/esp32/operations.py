@@ -198,7 +198,7 @@ def burn_key_digest(esp, efuses, args):
     if "revision 3" not in chip_revision:
         raise esptool.FatalError("Incorrect chip revision for Secure boot v2. Detected: %s. Expected: (revision 3)" % chip_revision)
 
-    digest = espsecure._digest_rsa_public_key(args.keyfile)
+    digest = espsecure._digest_sbv2_public_key(args.keyfile)
     efuse = efuses["BLOCK2"]
     num_bytes = efuse.bit_len // 8
     if len(digest) != num_bytes:

@@ -7,6 +7,7 @@
 from __future__ import division, print_function
 
 import argparse
+import binascii
 import hashlib
 import operator
 import os
@@ -19,10 +20,13 @@ from cryptography import exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa, utils
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, utils
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.utils import int_to_bytes
 
+# Curve IDs used in Secure Boot V2 ECDSA signature blocks
+CURVE_ID_P192 = 1
+CURVE_ID_P256 = 2
 
 import ecdsa
 
@@ -166,36 +170,53 @@ def generate_signing_key(args):
 
 
 def _load_ecdsa_signing_key(keyfile):
+    """ Load ECDSA signing key for Secure Boot V1 only """
     sk = ecdsa.SigningKey.from_pem(keyfile.read())
     if sk.curve != ecdsa.NIST256p:
         raise esptool.FatalError("Signing key uses incorrect curve. ESP32 Secure Boot only supports NIST256p (openssl calls this curve 'prime256v1")
     return sk
 
 
-def _load_sbv2_rsa_signing_key(keydata):
+def _load_sbv2_signing_key(keydata):
+    """
+    Load Secure Boot V2 signing key, can be rsa.RSAPrivateKey or ec.EllipticCurvePrivateKey
+    """
     sk = serialization.load_pem_private_key(keydata, password=None, backend=default_backend())
-    if not isinstance(sk, rsa.RSAPrivateKey):
-        raise esptool.FatalError("Incorrect RSA Signing key.")
-    if sk.key_size != 3072:
-        raise esptool.FatalError("Key file has length %d bits. Secure boot v2 only supports RSA-3072." % sk.key_size)
-    return sk
+    if isinstance(sk, rsa.RSAPrivateKey):
+        if sk.key_size != 3072:
+            raise esptool.FatalError("Key file has length %d bits. Secure boot v2 only supports RSA-3072." % sk.key_size)
+        return sk
+    if isinstance(sk, ec.EllipticCurvePrivateKey):
+        if not (isinstance(sk.curve, ec.SECP192R1) or isinstance(sk.curve, ec.SECP256R1)):
+            raise esptool.FatalError("Key file uses uses incorrect curve. Secure Boot V2 + ECDSA only supports NIST192p, NIST256p (aka prime192v1, prime256v1)")
+        return sk
+
+    raise esptool.FatalError("Unsupported signing key for Secure Boot V2")
 
 
-def _load_sbv2_rsa_pub_key(keydata):
+def _load_sbv2_pub_key(keydata):
+    """
+    Load Secure Boot V2 public key, can be rsa.RSAPublicKey or ec.EllipticCurvePublicKey
+    """
     vk = serialization.load_pem_public_key(keydata, backend=default_backend())
-    if not isinstance(vk, rsa.RSAPublicKey):
-        raise esptool.FatalError("Public key incorrect. Secure boot v2 requires RSA 3072 public key")
-    if vk.key_size != 3072:
-        raise esptool.FatalError("Key file has length %d bits. Secure boot v2 only supports RSA-3072." % vk.key_size)
-    return vk
+    if isinstance(vk, rsa.RSAPublicKey):
+        if vk.key_size != 3072:
+            raise esptool.FatalError("Key file has length %d bits. Secure boot v2 only supports RSA-3072." % vk.key_size)
+        return vk
+    if isinstance(vk, ec.EllipticCurvePublicKey):
+        if not (isinstance(sk.curve, ec.SECP192R1) or isinstance(sk.curve, ec.SECP256R1)):
+            raise esptool.FatalError("Key file uses uses incorrect curve. Secure Boot V2 + ECDSA only supports NIST192p, NIST256p (aka prime192v1, prime256v1)")
+        return vk
+
+    raise esptool.FatalError("Unsupported public key for Secure Boot V2")
 
 
-def _get_sbv2_rsa_pub_key(keyfile):
+def _get_sbv2_pub_key(keyfile):
     key_data = keyfile.read()
-    if b"-BEGIN RSA PRIVATE KEY" in key_data:
-        vk = _load_sbv2_rsa_signing_key(key_data).public_key()
+    if b"-BEGIN RSA PRIVATE KEY" in key_data or b"-BEGIN EC PRIVATE KEY" in key_data:
+        return _load_sbv2_signing_key(key_data).public_key()
     elif b"-BEGIN PUBLIC KEY" in key_data:
-        vk = _load_sbv2_rsa_pub_key(key_data)
+        vk = _load_sbv2_pub_key(key_data)
     else:
         raise esptool.FatalError("Verification key does not appear to be an RSA Private or Public key in PEM format. Unsupported")
     return vk
@@ -214,6 +235,15 @@ def _get_sbv2_rsa_primitives(public_key):
     rr = 1 << (public_key.key_size * 2)
     primitives.rinv = rr % primitives.n
     return primitives
+
+def _microecc_format(a,b):
+    """
+    Given two numbers (curve coordinates or (r,s) signature), write them out as a little-endian byte sequence suitable for micro-ecc
+    "native little endian" mode
+    """
+    ab = int_to_bytes(a)[::-1] + int_to_bytes(b)[::-1]
+    assert len(ab) == 48 or len(ab) == 64  # note: a,b may need to be byte padded for this to always be true
+    return ab
 
 
 def sign_data(args):
@@ -252,8 +282,9 @@ def sign_secure_boot_v1(args):
 
 
 def sign_secure_boot_v2(args):
-    """ Sign a firmware app image with an RSA private key using RSA-PSS, write output file with a
-    Secure Boot V2 header appended.
+    """ Sign a firmware app image with an RSA private key using RSA-PSS, or ECDSA private key using P192 or P256.
+
+    Write output file with a Secure Boot V2 header appended.
     """
     SECTOR_SIZE = 4096
     SIG_BLOCK_SIZE = 1216
@@ -299,35 +330,65 @@ def sign_secure_boot_v2(args):
     digest.update(contents)
     digest = digest.digest()
 
+    SIG_BLOCK_MAGIC = 0xE7
+    SIG_BLOCK_VERSION_RSA = 0x02
+    SIG_BLOCK_VERSION_ECDSA = 0x03
+
     for keyfile in args.keyfile:
-        private_key = _load_sbv2_rsa_signing_key(keyfile.read())
+        private_key = _load_sbv2_signing_key(keyfile.read())
+
         # Sign
-        signature = private_key.sign(
-            digest,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=32,
-            ),
-            utils.Prehashed(hashes.SHA256())
-        )
+        if isinstance(private_key, rsa.RSAPrivateKey):
+            # RSA signature
+            signature = private_key.sign(
+                digest,
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=32,
+                ),
+                utils.Prehashed(hashes.SHA256())
+            )
+            rsa_primitives = _get_sbv2_rsa_primitives(private_key.public_key())
 
-        rsa_primitives = _get_sbv2_rsa_primitives(private_key.public_key())
+            # Encode in signature block format
+            #
+            # Note: the [::-1] is to byte swap all of the bignum
+            # values (signatures, coefficients) to little endian
+            # for use with the RSA peripheral, rather than big endian
+            # which is conventionally used for RSA.
+            signature_block = struct.pack("<BBxx32s384sI384sI384s",
+                                          SIG_BLOCK_MAGIC,
+                                          SIG_BLOCK_VERSION_RSA,
+                                          digest,
+                                          int_to_bytes(rsa_primitives.n)[::-1],
+                                          rsa_primitives.e,
+                                          int_to_bytes(rsa_primitives.rinv)[::-1],
+                                          rsa_primitives.m & 0xFFFFFFFF,
+                                          signature[::-1])
+        else:
+            # ECDSA signature
+            signature = private_key.sign(digest,
+                                         ec.ECDSA(utils.Prehashed(hashes.SHA256())))
 
-        # Encode in signature block format
-        #
-        # Note: the [::-1] is to byte swap all of the bignum
-        # values (signatures, coefficients) to little endian
-        # for use with the RSA peripheral, rather than big endian
-        # which is conventionally used for RSA.
-        signature_block = struct.pack("<BBxx32s384sI384sI384s",
-                                      0xe7,  # magic byte
-                                      0x02,  # version
-                                      digest,
-                                      int_to_bytes(rsa_primitives.n)[::-1],
-                                      rsa_primitives.e,
-                                      int_to_bytes(rsa_primitives.rinv)[::-1],
-                                      rsa_primitives.m & 0xFFFFFFFF,
-                                      signature[::-1])
+            numbers = private_key.public_key().public_numbers()
+            pubkey_point = _microecc_format(numbers.x, numbers.y)
+
+            print(hex(numbers.x), hex(numbers.y))
+
+            r,s = utils.decode_dss_signature(signature)
+            print(hex(r), hex(s))
+            signature_rs = _microecc_format(r,s)
+            print(binascii.hexlify((signature_rs)))
+            print(binascii.hexlify(digest))
+
+            # block is padded out to the much larger size of the RSA verion of this structure
+            signature_block  = struct.pack("<BBxx32sB64s64s1031x",
+                                           SIG_BLOCK_MAGIC,
+                                           SIG_BLOCK_VERSION_ECDSA,
+                                           digest,
+                                           CURVE_ID_P192 if isinstance(private_key.curve, ec.SECP192R1) else CURVE_ID_P256,
+                                           pubkey_point,
+                                           signature_rs)
 
         signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xffffffff)
         signature_block += b'\x00' * 16   # padding
@@ -399,22 +460,25 @@ def validate_signature_block(image_content, sig_blk_num):
     sig_blk = image_content[offset: offset + SIG_BLOCK_SIZE]
     assert(len(sig_blk) == SIG_BLOCK_SIZE)
 
-    sig_data = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
-    crc = zlib.crc32(sig_blk[:1196])  # The signature block(1216 bytes) consists of the data part(1196 bytes) followed by a crc32(4 byte) and a 16 byte pad.
+    # note: in case of ECDSA key, the exact fields in the middle are wrong (but unused here)
+    magic,version,_,_,_,_,_,_,blk_crc = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
 
-    if sig_data[0] != 0xe7 or sig_data[1] != 0x02 or sig_data[-1] != crc & 0xffffffff:  # Signature block invalid
+    calc_crc = zlib.crc32(sig_blk[:1196])  # The signature block(1216 bytes) consists of the data part(1196 bytes) followed by a crc32(4 byte) and a 16 byte pad.
+
+    if magic != 0xe7 or version not in [0x02, 0x03] or blk_crc != calc_crc & 0xffffffff:  # Signature block invalid
         return None
 
-    print("Signature block %d is valid. " % sig_blk_num)
+    print("Signature block %d is valid (%s). " % (sig_blk_num, "RSA" if version == 0x02 else "ECDSA"))
     return sig_blk
 
 
 def verify_signature_v2(args):
-    """ Verify a previously signed binary image, using the RSA public key """
+    """ Verify a previously signed binary image, using the RSA or ECDSA public key """
     SECTOR_SIZE = 4096
     SIG_BLOCK_MAX_COUNT = 3
 
-    vk = _get_sbv2_rsa_pub_key(args.keyfile)
+    vk = _get_sbv2_pub_key(args.keyfile)
+
     image_content = args.datafile.read()
     if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
         raise esptool.FatalError("Invalid datafile. Data size should be non-zero & a multiple of 4096.")
@@ -423,31 +487,59 @@ def verify_signature_v2(args):
     digest.update(image_content[:-SECTOR_SIZE])
     digest = digest.digest()
 
+    valid = False
+
     for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
         sig_blk = validate_signature_block(image_content, sig_blk_num)
         if sig_blk is None:
-            raise esptool.FatalError("Signature block %d invalid. Signature could not be verified with the provided key." % sig_blk_num)
-        sig_data = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
+            print("Signature block %d invalid. Skipping." % sig_blk_num)
+            continue
+        _,version,blk_digest = struct.unpack("<BBxx32s", sig_blk[:36])
 
-        if sig_data[2] != digest:
-            raise esptool.FatalError("Signature block image digest does not match the actual image digest %s. Expected %s." % (digest, sig_data[2]))
+        if blk_digest != digest:
+            raise esptool.FatalError("Signature block image digest does not match the actual image digest %s. Expected %s." % (digest, blk_digest))
 
         try:
-            vk.verify(
-                sig_data[-2][::-1],
-                digest,
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=32
-                ),
-                utils.Prehashed(hashes.SHA256())
-            )
-            print("Signature block %d verification successful with %s." % (sig_blk_num, args.keyfile.name))
-            return
+            if isinstance(vk, rsa.RSAPublicKey):
+                _,_,_,_,signature,_ = struct.unpack("<384sI384sI384sI16x", sig_blk[36:])
+                vk.verify(
+                    signature[::-1],
+                    digest,
+                    padding.PSS(
+                        mgf=padding.MGF1(hashes.SHA256()),
+                        salt_length=32
+                    ),
+                    utils.Prehashed(hashes.SHA256())
+                )
+            else:
+                curve_id,_pubkey,encoded_rs = struct.unpack("B64s64s1031x4x16x", sig_blk[36:])
+
+                assert curve_id in (CURVE_ID_P192, CURVE_ID_P256)
+
+                keylen = 24 if curve_id == CURVE_ID_P192 else 32  # length of each number in the keypair
+
+                print(binascii.hexlify((encoded_rs)))
+                # TODO: depending on when this is merged, this may have to work on Python 2
+                r = int.from_bytes(encoded_rs[:keylen], "little")
+                s = int.from_bytes(encoded_rs[keylen:keylen * 2], "little")
+
+                print(hex(r), hex(s))
+                signature = utils.encode_dss_signature(r, s)
+
+                vk.verify(
+                    signature,
+                    digest,
+                    ec.ECDSA(utils.Prehashed(hashes.SHA256())))
+            print("Signature block %d verification successful with %s (%s)." % (
+                sig_blk_num, args.keyfile.name, "RSA" if isinstance(vk, rsa.RSAPublicKey) else "ECDSA"))
+            valid = True
+
         except exceptions.InvalidSignature:
             print("Signature block %d is not signed by %s. Checking the next block" % (sig_blk_num, args.keyfile.name))
             continue
-    raise esptool.FatalError("Checked all blocks. Signature could not be verified with the provided key.")
+
+    if not valid:
+        raise esptool.FatalError("Checked all blocks. Signature could not be verified with the provided key.")
 
 
 def extract_public_key(args):
@@ -459,7 +551,7 @@ def extract_public_key(args):
         args.public_keyfile.write(vk.to_string())
     elif args.version == "2":
         """ Load an RSA private key and extract the public key as raw binary data. """
-        sk = _load_sbv2_rsa_signing_key(args.keyfile.read())
+        sk = _load_sbv2_signing_key(args.keyfile.read())
         vk = sk.public_key().public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
@@ -503,28 +595,37 @@ def signature_info_v2(args):
         print("Public key digest for block %d: %s" % (sig_blk_num, " ".join("{:02x}".format(c) for c in bytearray(key_digest))))
 
 
-def _digest_rsa_public_key(keyfile):
-    public_key = _get_sbv2_rsa_pub_key(keyfile)
-    rsa_primitives = _get_sbv2_rsa_primitives(public_key)
+def _digest_sbv2_public_key(keyfile):
+    public_key = _get_sbv2_pub_key(keyfile)
 
-    # Encode in the same way it is represented in the signature block
-    #
-    # Note: the [::-1] is to byte swap all of the bignum
-    # values (signatures, coefficients) to little endian
-    # for use with the RSA peripheral, rather than big endian
-    # which is conventionally used for RSA.
-    binary_format = struct.pack("<384sI384sI",
-                                int_to_bytes(rsa_primitives.n)[::-1],
-                                rsa_primitives.e,
-                                int_to_bytes(rsa_primitives.rinv)[::-1],
-                                rsa_primitives.m & 0xFFFFFFFF)
+    if isinstance(public_key, rsa.RSAPublicKey):
+        rsa_primitives = _get_sbv2_rsa_primitives(public_key)
+
+        # Encode in the same way it is represented in the signature block
+        #
+        # Note: the [::-1] is to byte swap all of the bignum
+        # values (signatures, coefficients) to little endian
+        # for use with the RSA peripheral, rather than big endian
+        # which is conventionally used for RSA.
+        binary_format = struct.pack("<384sI384sI",
+                                    int_to_bytes(rsa_primitives.n)[::-1],
+                                    rsa_primitives.e,
+                                    int_to_bytes(rsa_primitives.rinv)[::-1],
+                                    rsa_primitives.m & 0xFFFFFFFF)
+    else:  # ECC public key
+        numbers = public_key.public_numbers()
+        pubkey_point = _microecc_format(numbers.x, numbers.y)
+
+        binary_format = struct.pack("<B64s",
+                                    CURVE_ID_P192 if isinstance(public_key.curve, ec.SECP192R1) else CURVE_ID_P256,
+                                    pubkey_point)
 
     return hashlib.sha256(binary_format).digest()
 
 
 def digest_rsa_public_key(args):
     _check_output_is_not_input(args.keyfile, args.output)
-    public_key_digest = _digest_rsa_public_key(args.keyfile)
+    public_key_digest = _digest_sbv2_public_key(args.keyfile)
     with open(args.output, "wb") as f:
         print("Writing the public key digest of %s to %s." % (args.keyfile.name, args.output))
         f.write(public_key_digest)
@@ -893,7 +994,7 @@ def main(custom_commandline=None):
 
     p = subparsers.add_parser('sign_data',
                               help='Sign a data file for use with secure boot. Signing algorithm is deterministic ECDSA w/ SHA-512 (V1) '
-                              'or RSA-PSS w/ SHA-256 (V2).')
+                              'or either RSA-PSS or ECDSA w/ SHA-256 (V2).')
     p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices=["1", "2"], required=True)
     p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True, nargs='+')
     p.add_argument('--append_signatures', '-a', help="Append signature block(s) to already signed image"
@@ -916,6 +1017,7 @@ def main(custom_commandline=None):
                    required=True)
     p.add_argument('public_keyfile', help="File to save new public key into", type=OutFileType())
 
+    # TODO: make a new command for 'digest_sbv2_public_key'
     p = subparsers.add_parser('digest_rsa_public_key', help='Generate an SHA-256 digest of the public key. '
                               'This digest is burned into the eFuse and asserts the legitimacy of the public key for Secure boot v2.')
     p.add_argument('--keyfile', '-k', help="Public key file for verification. Can be private or public key in PEM format.", type=argparse.FileType('rb'),
