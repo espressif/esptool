@@ -202,6 +202,11 @@ class TestBurnCommands(EfuseTestCase):
                              check_msg='A fatal error occurred: This efuse cannot be read-disabled due the to RD_DIS field is already write-disabled',
                              ret_code=2)
 
+    @unittest.skipUnless(chip_target == "esp32", "system parameters efuse read-protection is supported only by esp32, other chips protect whole blocks")
+    def test_burn_and_read_protect_efuse(self):
+        self.espefuse_py('burn_efuse FLASH_CRYPT_CONFIG 15 RD_DIS 8',
+                         check_msg='Efuse FLASH_CRYPT_CONFIG is read-protected. Read back the burn value is not possible.')
+
     def test_write_protect_efuse(self):
         self.espefuse_py("write_protect_efuse -h")
         if chip_target == "esp32":

@@ -295,7 +295,7 @@ class EfuseBlockBase(EfuseProtectBase):
             if self.bitarray.all(False):
                 print("Read all '0'")
             else:
-                # Should never be happened
+                # Should never happen
                 raise esptool.FatalError("The {} is read-protected but not all '0' ({})".format(self.name, self.bitarray.hex))
         else:
             if self.wr_bitarray == self.bitarray:
@@ -303,9 +303,12 @@ class EfuseBlockBase(EfuseProtectBase):
             elif self.wr_bitarray & self.bitarray == self.wr_bitarray and self.bitarray & before_burn_bitarray == before_burn_bitarray:
                 print("BURN BLOCK%-2d - OK (all write block bits are set)" % self.id)
             else:
+                # Happens only when an efuse is written and read-protected in one command
                 self.print_block(self.wr_bitarray, "Expected")
                 self.print_block(self.bitarray, "Real    ")
-                raise esptool.FatalError("Burn {} ({}) was not successful".format(self.name, self.alias))
+                # Read-protected BLK0 values are reported back as zeros, raise error only for other blocks
+                if self.id != 0:
+                    raise esptool.FatalError("Burn {} ({}) was not successful".format(self.name, self.alias))
         self.wr_bitarray.set(0)
 
 
