@@ -290,14 +290,20 @@ class EfuseSpiPinField(EfuseField):
             val += 2  # values 30,31 map to 32, 33
         return val
 
-    def save(self, new_value):
-        if new_value in [30, 31]:
+    def check_format(self, new_value_str):
+        if new_value_str is None:
+            return new_value_str
+
+        new_value_int = int(new_value_str, 0)
+
+        if new_value_int in [30, 31]:
             raise esptool.FatalError("IO pins 30 & 31 cannot be set for SPI flash. 0-29, 32 & 33 only.")
-        if new_value > 33:
-            raise esptool.FatalError("IO pin %d cannot be set for SPI flash. 0-29, 32 & 33 only." % new_value)
-        if new_value > 30:
-            new_value -= 2  # values 32,33 map to 30, 31
-        super(EfuseSpiPinField, self).save(new_value)
+        elif new_value_int > 33:
+            raise esptool.FatalError("IO pin %d cannot be set for SPI flash. 0-29, 32 & 33 only." % new_value_int)
+        elif new_value_int in [32, 33]:
+            return str(new_value_int - 2)
+        else:
+            return new_value_str
 
 
 class EfuseVRefField(EfuseField):

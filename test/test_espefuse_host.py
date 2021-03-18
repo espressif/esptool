@@ -307,6 +307,16 @@ class TestBurnCommands(EfuseTestCase):
         self.espefuse_py('set_flash_voltage OFF', check_msg='Disable internal flash voltage regulator (%s)' % vdd)
         self.espefuse_py('set_flash_voltage 1.8V', check_msg='Set internal flash voltage regulator (%s) to 1.8V.' % vdd)
 
+    @unittest.skipUnless(chip_target == "esp32", "IO pins 30 & 31 cannot be set for SPI flash only on esp32")
+    def test_set_spi_flash_pin_efuses(self):
+        self.espefuse_py('burn_efuse SPI_PAD_CONFIG_HD 30',
+                         check_msg='A fatal error occurred: IO pins 30 & 31 cannot be set for SPI flash. 0-29, 32 & 33 only.', ret_code=2)
+        self.espefuse_py('burn_efuse SPI_PAD_CONFIG_Q 0x23',
+                         check_msg='A fatal error occurred: IO pin 35 cannot be set for SPI flash. 0-29, 32 & 33 only.', ret_code=2)
+        output = self.espefuse_py('burn_efuse SPI_PAD_CONFIG_CS0 33')
+        self.assertIn("(Override SD_CMD pad (GPIO11/SPICS0)) 0b00000 -> 0b11111", output)
+        self.assertIn("BURN BLOCK0  - OK (write block == read block)", output)
+
     def test_burn_efuse(self):
         self.espefuse_py("burn_efuse -h")
         if chip_target == "esp32":
