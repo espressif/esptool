@@ -412,14 +412,15 @@ class EfuseSpiPinField(EfuseField):
             val += 2  # values 30,31 map to 32, 33
         return val
 
-    def burn(self, new_value):
+    def check_format(self, new_value):
         if new_value in [30, 31]:
             raise esptool.FatalError("IO pins 30 & 31 cannot be set for SPI flash. 0-29, 32 & 33 only.")
-        if new_value > 33:
+        elif new_value > 33:
             raise esptool.FatalError("IO pin %d cannot be set for SPI flash. 0-29, 32 & 33 only." % new_value)
-        if new_value > 30:
-            new_value -= 2  # values 32,33 map to 30, 31
-        return super(EfuseSpiPinField, self).burn(new_value)
+        elif new_value in [32, 33]:
+            return new_value - 2  # values 32,33 map to 30, 31
+        else:
+            return new_value
 
 
 class EfuseVRefField(EfuseField):
@@ -549,6 +550,7 @@ def burn_efuse(esp, efuses, args):
     elif efuse.efuse_type == "spipin":
         if args.new_value is None or args.new_value == 0:
             raise esptool.FatalError("New value required for efuse %s" % efuse.register_name)
+        args.new_value = efuse.check_format(args.new_value)
     elif efuse.efuse_type == "bitcount":
         if args.new_value is None:  # find the first unset bit and set it
             args.new_value = old_value
