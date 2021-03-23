@@ -351,7 +351,7 @@ class ESPLoader(object):
             chip_magic_value = detect_port.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
 
             for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3BETA3ROM, ESP32C3ROM]:
-                if chip_magic_value == cls.CHIP_DETECT_MAGIC_VALUE:
+                if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                     # don't connect a second time
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
@@ -580,10 +580,10 @@ class ESPLoader(object):
             try:
                 # check the date code registers match what we expect to see
                 chip_magic_value = self.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
-                if chip_magic_value != self.CHIP_DETECT_MAGIC_VALUE:
+                if chip_magic_value not in self.CHIP_DETECT_MAGIC_VALUE:
                     actually = None
                     for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3BETA3ROM, ESP32C3ROM]:
-                        if chip_magic_value == cls.CHIP_DETECT_MAGIC_VALUE:
+                        if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                             actually = cls
                             break
                     if actually is None:
@@ -1133,7 +1133,7 @@ class ESP8266ROM(ESPLoader):
     CHIP_NAME = "ESP8266"
     IS_STUB = False
 
-    CHIP_DETECT_MAGIC_VALUE = 0xfff0c101
+    CHIP_DETECT_MAGIC_VALUE = [0xfff0c101]
 
     # OTP ROM addresses
     ESP_OTP_MAC0    = 0x3ff00050
@@ -1301,7 +1301,7 @@ class ESP32ROM(ESPLoader):
     IMAGE_CHIP_ID = 0
     IS_STUB = False
 
-    CHIP_DETECT_MAGIC_VALUE = 0x00f01d83
+    CHIP_DETECT_MAGIC_VALUE = [0x00f01d83]
 
     IROM_MAP_START = 0x400d0000
     IROM_MAP_END   = 0x40400000
@@ -1578,7 +1578,7 @@ class ESP32S2ROM(ESP32ROM):
     DROM_MAP_START = 0x3F000000
     DROM_MAP_END   = 0x3F3F0000
 
-    CHIP_DETECT_MAGIC_VALUE = 0x000007c6
+    CHIP_DETECT_MAGIC_VALUE = [0x000007c6]
 
     SPI_REG_BASE = 0x3f402000
     SPI_USR_OFFS    = 0x18
@@ -1776,7 +1776,7 @@ class ESP32S3BETA2ROM(ESP32ROM):
 
     UART_DATE_REG_ADDR = 0x60000080
 
-    CHIP_DETECT_MAGIC_VALUE = 0xeb004136
+    CHIP_DETECT_MAGIC_VALUE = [0xeb004136]
 
     SPI_REG_BASE = 0x60002000
     SPI_USR_OFFS    = 0x18
@@ -1841,7 +1841,7 @@ class ESP32S3BETA3ROM(ESP32ROM):
 
     UART_DATE_REG_ADDR = 0x60000080
 
-    CHIP_DETECT_MAGIC_VALUE = 0x9
+    CHIP_DETECT_MAGIC_VALUE = [0x9]
 
     SPI_REG_BASE = 0x60002000
     SPI_USR_OFFS    = 0x18
@@ -1914,7 +1914,8 @@ class ESP32C3ROM(ESP32ROM):
 
     BOOTLOADER_FLASH_OFFSET = 0x0
 
-    CHIP_DETECT_MAGIC_VALUE = 0x6921506f
+    # Magic value for ESP32C3 eco 1+2 and ESP32C3 eco3 respectivly
+    CHIP_DETECT_MAGIC_VALUE = [0x6921506f, 0x1b31506f]
 
     UART_DATE_REG_ADDR = 0x60000000 + 0x7c
 
