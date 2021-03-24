@@ -112,6 +112,12 @@ Since esptool v2.0, these options are not often needed as the default is to keep
 
 By default, the serial transfer data is compressed for better performance. The `-u/--no-compress` option disables this behaviour.
 
+#### Erasing flash before write
+
+To successfully write data into flash, all 4096-byte memory sectors (the smallest erasable unit) affected by the operation have to be erased first. As a result, when the flashing offset address or the data are not 4096-byte aligned, more memory is erased than actually needed. Esptool will display information about which flash memory sectors will be erased.
+
+Use the `-e/--erase-all` option to erase all flash sectors (not just write areas) before programming.
+
 ### Read Flash Contents: read_flash
 
 The read_flash command allows reading back the contents of flash. The arguments to the command are an address, a size, and a filename to dump the output to. For example, to read a full 2MB of attached flash:
@@ -450,8 +456,8 @@ Running `esptool.py --trace` will dump all serial interactions to the standard o
 
 esptool.py, espefuse.py, and espsecure.py can easily be integrated into Python applications or called from other Python scripts.
 
-While it currently does have a poor Python API, something which [#208](https://github.com/espressif/esptool/issues/208) will address, it allows for passing CLI 
-arguments to `esptool.main()`. This workaround makes integration very straightforward as you can pass exactly the 
+While it currently does have a poor Python API, something which [#208](https://github.com/espressif/esptool/issues/208) will address, it allows for passing CLI
+arguments to `esptool.main()`. This workaround makes integration very straightforward as you can pass exactly the
 same arguments as you would on the CLI.
 
 ```python

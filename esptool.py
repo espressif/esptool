@@ -3238,7 +3238,7 @@ def write_flash(esp, args):
     if args.flash_size != 'keep':  # TODO: check this even with 'keep'
         flash_end = flash_size_bytes(args.flash_size)
         for address, argfile in args.addr_filename:
-            argfile.seek(0, 2)  # seek to end
+            argfile.seek(0, os.SEEK_END)
             if address + argfile.tell() > flash_end:
                 raise FatalError(("File %s (length %d) at offset %d will not fit in %d bytes of flash. "
                                   "Use --flash-size argument, or change flashing address.")
@@ -3247,6 +3247,19 @@ def write_flash(esp, args):
 
     if args.erase_all:
         erase_flash(esp, args)
+    else:
+        for address, argfile in args.addr_filename:
+            argfile.seek(0, os.SEEK_END)
+            write_end = address + argfile.tell()
+            argfile.seek(0)
+            bytes_over = address % esp.FLASH_SECTOR_SIZE
+            if bytes_over != 0:
+                print("WARNING: Flash address {:#010x} is not aligned to a {:#x} byte flash sector. "
+                      "{:#x} bytes before this address will be erased."
+                      .format(address, esp.FLASH_SECTOR_SIZE, bytes_over))
+            # Print the address range of to-be-erased flash memory region
+            print("Flash will be erased from {:#010x} to {:#010x}..."
+                  .format(address - bytes_over, div_roundup(write_end, esp.FLASH_SECTOR_SIZE) * esp.FLASH_SECTOR_SIZE - 1))
 
     """ Create a list describing all the files we have to flash. Each entry holds an "encrypt" flag
     marking whether the file needs encryption or not. This list needs to be sorted.

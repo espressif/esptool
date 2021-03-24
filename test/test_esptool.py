@@ -393,6 +393,13 @@ class TestFlashing(EsptoolTestCase):
         self.run_esptool("write_flash 0x0 images/onebyte.bin")
         self.verify_readback(0x0, 1, "images/onebyte.bin")
 
+    def test_erase_range_messages(self):
+        output = self.run_esptool("write_flash 0x1000 images/bootloader_esp32.bin 0x0FC00 images/one_kb.bin")
+        self.assertIn("Flash will be erased from 0x00001000 to 0x00002fff...", output)
+        self.assertIn("WARNING: Flash address 0x0000fc00 is not aligned to a 0x1000 byte flash sector."
+                      " 0xc00 bytes before this address will be erased.", output)
+        self.assertIn("Flash will be erased from 0x0000f000 to 0x0000ffff...", output)
+
 
 class TestFlashSizes(EsptoolTestCase):
 
