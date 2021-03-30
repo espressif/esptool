@@ -1767,9 +1767,8 @@ class ESP32S2ROM(ESP32ROM):
             self._setRTS(False)
 
 
-class ESP32S3BETA2ROM(ESP32ROM):
-    CHIP_NAME = "ESP32-S3(beta2)"
-    IMAGE_CHIP_ID = 4
+class ESP32S3ROM(ESP32ROM):
+    CHIP_NAME = "ESP32-S3"
 
     IROM_MAP_START = 0x42000000
     IROM_MAP_END   = 0x44000000
@@ -1777,8 +1776,6 @@ class ESP32S3BETA2ROM(ESP32ROM):
     DROM_MAP_END   = 0x3e000000
 
     UART_DATE_REG_ADDR = 0x60000080
-
-    CHIP_DETECT_MAGIC_VALUE = [0xeb004136]
 
     SPI_REG_BASE = 0x60002000
     SPI_USR_OFFS    = 0x18
@@ -1788,9 +1785,33 @@ class ESP32S3BETA2ROM(ESP32ROM):
     SPI_MISO_DLEN_OFFS = 0x28
     SPI_W0_OFFS = 0x58
 
-    EFUSE_REG_BASE = 0x6001A030  # BLOCK0 read base address
+    FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
-    MAC_EFUSE_REG = 0x6001A000  # ESP32S3 has special block for MAC efuses
+    # todo: use espefuse APIs to get this info
+    EFUSE_BASE = 0x6001A000  # BLOCK0 read base address
+    MAC_EFUSE_REG = EFUSE_BASE + 0x044
+
+    EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
+
+    EFUSE_PURPOSE_KEY0_REG = EFUSE_BASE + 0x34
+    EFUSE_PURPOSE_KEY0_SHIFT = 24
+    EFUSE_PURPOSE_KEY1_REG = EFUSE_BASE + 0x34
+    EFUSE_PURPOSE_KEY1_SHIFT = 28
+    EFUSE_PURPOSE_KEY2_REG = EFUSE_BASE + 0x38
+    EFUSE_PURPOSE_KEY2_SHIFT = 0
+    EFUSE_PURPOSE_KEY3_REG = EFUSE_BASE + 0x38
+    EFUSE_PURPOSE_KEY3_SHIFT = 4
+    EFUSE_PURPOSE_KEY4_REG = EFUSE_BASE + 0x38
+    EFUSE_PURPOSE_KEY4_SHIFT = 8
+    EFUSE_PURPOSE_KEY5_REG = EFUSE_BASE + 0x38
+    EFUSE_PURPOSE_KEY5_SHIFT = 12
+
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 20
+
+    PURPOSE_VAL_XTS_AES256_KEY_1 = 2
+    PURPOSE_VAL_XTS_AES256_KEY_2 = 3
+    PURPOSE_VAL_XTS_AES128_KEY = 4
 
     UART_CLKDIV_REG = 0x60000014
 
@@ -1808,93 +1829,73 @@ class ESP32S3BETA2ROM(ESP32ROM):
                   [0x600FE000, 0x60100000, "RTC_IRAM"],
                   [0x42000000, 0x42800000, "IROM"],
                   [0x50000000, 0x50002000, "RTC_DATA"]]
+
+    def get_chip_description(self):
+        return "ESP32-S3"
+
+    def get_chip_features(self):
+        return ["WiFi", "BLE"]
+
+    def get_crystal_freq(self):
+        # ESP32S3 XTAL is fixed to 40MHz
+        return 40
+
+    def get_flash_crypt_config(self):
+        return None  # doesn't exist on ESP32-S3
+
+    def get_key_block_purpose(self, key_block):
+        if key_block < 0 or key_block > 5:
+            raise FatalError("Valid key block numbers must be in range 0-5")
+
+        reg, shift = [(self.EFUSE_PURPOSE_KEY0_REG, self.EFUSE_PURPOSE_KEY0_SHIFT),
+                      (self.EFUSE_PURPOSE_KEY1_REG, self.EFUSE_PURPOSE_KEY1_SHIFT),
+                      (self.EFUSE_PURPOSE_KEY2_REG, self.EFUSE_PURPOSE_KEY2_SHIFT),
+                      (self.EFUSE_PURPOSE_KEY3_REG, self.EFUSE_PURPOSE_KEY3_SHIFT),
+                      (self.EFUSE_PURPOSE_KEY4_REG, self.EFUSE_PURPOSE_KEY4_SHIFT),
+                      (self.EFUSE_PURPOSE_KEY5_REG, self.EFUSE_PURPOSE_KEY5_SHIFT)][key_block]
+        return (self.read_reg(reg) >> shift) & 0xF
+
+    def is_flash_encryption_key_valid(self):
+        # Need to see either an AES-128 key or two AES-256 keys
+        purposes = [self.get_key_block_purpose(b) for b in range(6)]
+
+        if any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes):
+            return True
+
+        return any(p == self.PURPOSE_VAL_XTS_AES256_KEY_1 for p in purposes) \
+            and any(p == self.PURPOSE_VAL_XTS_AES256_KEY_2 for p in purposes)
+
+    def override_vddsdio(self, new_voltage):
+        raise NotImplementedInROMError("VDD_SDIO overrides are not supported for ESP32-S3")
+
+    def read_mac(self):
+        mac0 = self.read_reg(self.MAC_EFUSE_REG)
+        mac1 = self.read_reg(self.MAC_EFUSE_REG + 4)  # only bottom 16 bits are MAC
+        bitstring = struct.pack(">II", mac1, mac0)[2:]
+        try:
+            return tuple(ord(b) for b in bitstring)
+        except TypeError:  # Python 3, bitstring elements are already bytes
+            return tuple(bitstring)
+
+
+class ESP32S3BETA2ROM(ESP32S3ROM):
+    CHIP_NAME = "ESP32-S3(beta2)"
+    IMAGE_CHIP_ID = 4
+
+    CHIP_DETECT_MAGIC_VALUE = [0xeb004136]
 
     def get_chip_description(self):
         return "ESP32-S3(beta2)"
 
-    def get_chip_features(self):
-        return ["WiFi", "BLE"]
 
-    def get_crystal_freq(self):
-        # ESP32S3 XTAL is fixed to 40MHz
-        return 40
-
-    def override_vddsdio(self, new_voltage):
-        raise NotImplementedInROMError("VDD_SDIO overrides are not supported for ESP32-S3")
-
-    def read_mac(self):
-        mac0 = self.read_reg(self.MAC_EFUSE_REG)
-        mac1 = self.read_reg(self.MAC_EFUSE_REG + 4)  # only bottom 16 bits are MAC
-        bitstring = struct.pack(">II", mac1, mac0)[2:]
-        try:
-            return tuple(ord(b) for b in bitstring)
-        except TypeError:  # Python 3, bitstring elements are already bytes
-            return tuple(bitstring)
-
-
-class ESP32S3BETA3ROM(ESP32ROM):
+class ESP32S3BETA3ROM(ESP32S3ROM):
     CHIP_NAME = "ESP32-S3(beta3)"
     IMAGE_CHIP_ID = 6
 
-    IROM_MAP_START = 0x42000000
-    IROM_MAP_END   = 0x44000000
-    DROM_MAP_START = 0x3c000000
-    DROM_MAP_END   = 0x3e000000
-
-    UART_DATE_REG_ADDR = 0x60000080
-
     CHIP_DETECT_MAGIC_VALUE = [0x9]
-
-    SPI_REG_BASE = 0x60002000
-    SPI_USR_OFFS    = 0x18
-    SPI_USR1_OFFS   = 0x1c
-    SPI_USR2_OFFS   = 0x20
-    SPI_MOSI_DLEN_OFFS = 0x24
-    SPI_MISO_DLEN_OFFS = 0x28
-    SPI_W0_OFFS = 0x58
-
-    EFUSE_BASE = 0x6001A000  # BLOCK0 read base address
-
-    MAC_EFUSE_REG  = EFUSE_BASE + 0x044  # ESP32S3 has special block for MAC efuses
-
-    UART_CLKDIV_REG = 0x60000014
-
-    GPIO_STRAP_REG = 0x60004038
-
-    MEMORY_MAP = [[0x00000000, 0x00010000, "PADDING"],
-                  [0x3C000000, 0x3D000000, "DROM"],
-                  [0x3D000000, 0x3E000000, "EXTRAM_DATA"],
-                  [0x600FE000, 0x60100000, "RTC_DRAM"],
-                  [0x3FC88000, 0x3FD00000, "BYTE_ACCESSIBLE"],
-                  [0x3FC88000, 0x403E2000, "MEM_INTERNAL"],
-                  [0x3FC88000, 0x3FD00000, "DRAM"],
-                  [0x40000000, 0x4001A100, "IROM_MASK"],
-                  [0x40370000, 0x403E0000, "IRAM"],
-                  [0x600FE000, 0x60100000, "RTC_IRAM"],
-                  [0x42000000, 0x42800000, "IROM"],
-                  [0x50000000, 0x50002000, "RTC_DATA"]]
 
     def get_chip_description(self):
         return "ESP32-S3(beta3)"
-
-    def get_chip_features(self):
-        return ["WiFi", "BLE"]
-
-    def get_crystal_freq(self):
-        # ESP32S3 XTAL is fixed to 40MHz
-        return 40
-
-    def override_vddsdio(self, new_voltage):
-        raise NotImplementedInROMError("VDD_SDIO overrides are not supported for ESP32-S3")
-
-    def read_mac(self):
-        mac0 = self.read_reg(self.MAC_EFUSE_REG)
-        mac1 = self.read_reg(self.MAC_EFUSE_REG + 4)  # only bottom 16 bits are MAC
-        bitstring = struct.pack(">II", mac1, mac0)[2:]
-        try:
-            return tuple(ord(b) for b in bitstring)
-        except TypeError:  # Python 3, bitstring elements are already bytes
-            return tuple(bitstring)
 
 
 class ESP32C3ROM(ESP32ROM):
