@@ -37,10 +37,10 @@
 #define REG_SET_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)|(mask)))
 #define REG_CLR_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)&(~(mask))))
 
-#define ESP32_OR_LATER (ESP32 || ESP32S2 || ESP32S3 || ESP32C3)
-#define ESP32S2_OR_LATER (ESP32S2 || ESP32S3 || ESP32C3)
-#define ESP32S3_OR_LATER (ESP32S3 || ESP32C3)
-#define ESP32C3_OR_LATER (ESP32C3)
+#define ESP32_OR_LATER (ESP32 || ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6)
+#define ESP32S2_OR_LATER (ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6)
+#define ESP32S3_OR_LATER (ESP32S3 || ESP32C3 || ESP32C6)
+#define ESP32C3_OR_LATER (ESP32C3 || ESP32C6)
 
 /**********************************************************
  * Per-SOC based peripheral register base addresses
@@ -82,6 +82,14 @@
 #define RTCCNTL_BASE_REG   0x60008000
 #endif
 
+#ifdef ESP32C6
+#define UART_BASE_REG      0x60000000 /* UART0 */
+#define SPI_BASE_REG       0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG      0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG      0x60004000
+#define RTCCNTL_BASE_REG   0x60008000
+#endif
+
 /**********************************************************
  * UART peripheral
  *
@@ -92,7 +100,7 @@
 #define UART_CLKDIV_REG(X) (UART_BASE_REG + 0x14)
 #define UART_CLKDIV_M      (0x000FFFFF)
 
-#if defined(ESP32) || defined(ESP32S2) || defined(ESP32S3) || defined(ESP32C3)
+#if ESP32_OR_LATER
 #define UART_CLKDIV_FRAG_S 20
 #define UART_CLKDIV_FRAG_V 0xF
 #endif
@@ -133,11 +141,11 @@
 #define SPI_ADDR_REG      (SPI_BASE_REG + 0x04)
 
 #define SPI_CTRL_REG      (SPI_BASE_REG + 0x08)
-#if defined(ESP32) || defined(ESP32S2) || defined(ESP32S3) || defined(ESP32C3)
+#if ESP32_OR_LATER
 #define SPI_WRSR_2B       (1<<22)
 #endif
 
-#if defined(ESP32S2) || defined(ESP32S3) || defined(ESP32C3)
+#if ESP32S2_OR_LATER
 #define SPI_RD_STATUS_REG (SPI_BASE_REG + 0x2C)
 #else
 #define SPI_RD_STATUS_REG (SPI_BASE_REG + 0x10)
@@ -149,11 +157,11 @@
 #ifdef ESP32
 #define SPI_W0_REG        (SPI_BASE_REG + 0x80)
 #endif
-#if defined(ESP32S2) || defined(ESP32S3) || defined(ESP32C3)
+#if ESP32S2_OR_LATER
 #define SPI_W0_REG        (SPI_BASE_REG + 0x58)
 #endif
 
-#if defined(ESP32S2) || defined(ESP32S3) || defined(ESP32C3)
+#if ESP32S2_OR_LATER
 #define SPI_EXT2_REG      (SPI_BASE_REG + 0x54) /* renamed SPI_MEM_FSM_REG */
 #else
 #define SPI_EXT2_REG      (SPI_BASE_REG + 0xF8)
@@ -168,7 +176,7 @@
  */
 #define SPI0_EXT2_REG     (SPI0_BASE_REG + 0xF8)
 #endif
-#if defined(ESP32S2) || defined(ESP32S3) || defined(ESP32C3)
+#if ESP32S2_OR_LATER
 #define SPI0_EXT2_REG     (SPI0_BASE_REG + 0x54)
 #endif
 
