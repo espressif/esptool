@@ -292,6 +292,9 @@ class ESPLoader(object):
     # Response to ESP_SYNC might indicate that flasher stub is running instead of the ROM bootloader
     sync_stub_detected = False
 
+    # Device PIDs
+    USB_JTAG_SERIAL_PID = 0x1001
+
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False):
         """Base constructor for ESPLoader bootloader interaction
 
@@ -502,7 +505,27 @@ class ESPLoader(object):
         # request is sent with the updated RTS state and the same DTR state
         self._port.setDTR(self._port.dtr)
 
-    def _connect_attempt(self, mode='default_reset', esp32r0_delay=False):
+    def _get_pid(self):
+        if list_ports is None:
+            print("\nListing all serial ports is currently not available. Can't get device PID.")
+            return
+        active_port = self._port.port
+
+        # Pyserial only identifies regular ports, URL handlers are not supported
+        if not active_port.startswith(("COM", "/dev/")):
+            print("\nDevice PID identification is only supported on COM and /dev/ serial ports.")
+            return
+        # Return the real path if the active port is a symlink
+        if active_port.startswith("/dev/") and os.path.islink(active_port):
+            active_port = os.path.realpath(active_port)
+
+        ports = list_ports.comports()
+        for p in ports:
+            if p.device == active_port:
+                return p.pid
+        print("\nFailed to get PID of a device on {}, using standard reset sequence.".format(active_port))
+
+    def _connect_attempt(self, mode='default_reset', esp32r0_delay=False, usb_jtag_serial=False):
         """ A single connection attempt, with esp32r0 workaround options """
         # esp32r0_delay is a workaround for bugs with the most common auto reset
         # circuit and Windows, if the EN pin on the dev board does not have
@@ -527,23 +550,37 @@ class ESPLoader(object):
         # DTR & RTS are active low signals,
         # ie True = pin @ 0V, False = pin @ VCC.
         if mode != 'no_reset':
-            self._setDTR(False)  # IO0=HIGH
-            self._setRTS(True)   # EN=LOW, chip in reset
-            time.sleep(0.1)
-            if esp32r0_delay:
-                # Some chips are more likely to trigger the esp32r0
-                # watchdog reset silicon bug if they're held with EN=LOW
-                # for a longer period
-                time.sleep(1.2)
-            self._setDTR(True)   # IO0=LOW
-            self._setRTS(False)  # EN=HIGH, chip out of reset
-            if esp32r0_delay:
-                # Sleep longer after reset.
-                # This workaround only works on revision 0 ESP32 chips,
-                # it exploits a silicon bug spurious watchdog reset.
-                time.sleep(0.4)  # allow watchdog reset to occur
-            time.sleep(0.05)
-            self._setDTR(False)  # IO0=HIGH, done
+            if usb_jtag_serial:
+                self._setRTS(False)
+                self._setDTR(False)  # Idle
+                time.sleep(0.1)
+                self._setDTR(True)  # Set IO0
+                self._setRTS(False)
+                time.sleep(0.1)
+                self._setRTS(True)  # Reset. Note dtr/rts calls inverted so we go through (1,1) instead of (0,0)
+                self._setDTR(False)
+                self._setRTS(True)  # Extra RTS set for RTS as Windows only propagates DTR on RTS setting
+                time.sleep(0.1)
+                self._setDTR(False)
+                self._setRTS(False)
+            else:
+                self._setDTR(False)  # IO0=HIGH
+                self._setRTS(True)   # EN=LOW, chip in reset
+                time.sleep(0.1)
+                if esp32r0_delay:
+                    # Some chips are more likely to trigger the esp32r0
+                    # watchdog reset silicon bug if they're held with EN=LOW
+                    # for a longer period
+                    time.sleep(1.2)
+                self._setDTR(True)   # IO0=LOW
+                self._setRTS(False)  # EN=HIGH, chip out of reset
+                if esp32r0_delay:
+                    # Sleep longer after reset.
+                    # This workaround only works on revision 0 ESP32 chips,
+                    # it exploits a silicon bug spurious watchdog reset.
+                    time.sleep(0.4)  # allow watchdog reset to occur
+                time.sleep(0.05)
+                self._setDTR(False)  # IO0=HIGH, done
 
         for _ in range(5):
             try:
@@ -578,12 +615,14 @@ class ESPLoader(object):
         sys.stdout.flush()
         last_error = None
 
+        usb_jtag_serial = (mode == 'usb_reset') or (self._get_pid() == self.USB_JTAG_SERIAL_PID)
+
         try:
             for _ in range(attempts) if attempts > 0 else itertools.count():
-                last_error = self._connect_attempt(mode=mode, esp32r0_delay=False)
+                last_error = self._connect_attempt(mode=mode, esp32r0_delay=False, usb_jtag_serial=usb_jtag_serial)
                 if last_error is None:
                     break
-                last_error = self._connect_attempt(mode=mode, esp32r0_delay=True)
+                last_error = self._connect_attempt(mode=mode, esp32r0_delay=True, usb_jtag_serial=usb_jtag_serial)
                 if last_error is None:
                     break
         finally:
@@ -3747,7 +3786,7 @@ def main(argv=None, esp=None):
     parser.add_argument(
         '--before',
         help='What to do before connecting to the chip',
-        choices=['default_reset', 'no_reset', 'no_reset_no_sync'],
+        choices=['default_reset', 'usb_reset', 'no_reset', 'no_reset_no_sync'],
         default=os.environ.get('ESPTOOL_BEFORE', 'default_reset'))
 
     parser.add_argument(
