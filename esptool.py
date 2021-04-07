@@ -424,8 +424,6 @@ class ESPLoader(object):
             if not wait_response:
                 return
 
-            self._port.flush()
-
             # tries to get a response until that response has the
             # same operation as the request or a retries limit has
             # exceeded. This is needed for some esp8266s that
