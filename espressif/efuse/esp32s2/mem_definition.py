@@ -178,7 +178,7 @@ class EfuseDefineFields(EfuseFieldsBase):
          {0: "Connect to 1.8V LDO",
           1: "Connect to VDD3P3_RTC_IO"}),
         ("WDT_DELAY_SEL",            "WDT config",   0,  2,  16, "uint:2",   3,    None, None,         "Selects RTC WDT timeout threshold at startup", None),
-        ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, None,         "Enables encryption and decryption, when an SPI boot "
+        ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, "bitcount",   "Enables encryption and decryption, when an SPI boot "
                                                                                                        "mode is set. Enabled when 1 or 3 bits are set,"
                                                                                                        "disabled otherwise",
 

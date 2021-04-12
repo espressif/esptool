@@ -128,7 +128,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("VDD_SPI_FORCE",        "VDD_SPI config",   0,  2,  6,  "bool",     3,    None, None,         "Force using VDD_SPI_XPD and VDD_SPI_TIEH "
                                                                                                        "to configure VDD_SPI LDO", None),
         ("WDT_DELAY_SEL",            "WDT config",   0,  2,  16, "uint:2",   3,    None, None,         "Selects RTC WDT timeout threshold at startup", None),
-        ("SPI_BOOT_CRYPT_CNT",         "security",   0,  2,  18, "uint:3",   4,    None, None,         "Enables encryption and decryption, when an SPI boot "
+        ("SPI_BOOT_CRYPT_CNT",         "security",   0,  2,  18, "uint:3",   4,    None, "bitcount",   "Enables encryption and decryption, when an SPI boot "
                                                                                                        "mode is set. Enabled when 1 or 3 bits are set,"
                                                                                                        "disabled otherwise",
          {0: "Disable",

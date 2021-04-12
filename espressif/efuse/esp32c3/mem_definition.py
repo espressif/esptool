@@ -126,7 +126,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("POWERGLITCH_EN",               "config",   0,  1,  29, "bool",     30,   None, None,         "Set this bit to enable power glitch function", None),
         ("POWER_GLITCH_DSENSE",          "config",   0,  1,  30, "uint:2",   30,   None, None,         "Sample delay configuration of power glitch", None),
         ("WDT_DELAY_SEL",            "WDT config",   0,  2,  16, "bool",     3,    None, None,         "Selects RTC WDT timeout threshold at startup", None),
-        ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, None,         "Enables encryption and decryption, when an SPI boot "
+        ("SPI_BOOT_CRYPT_CNT",           "security", 0,  2,  18, "uint:3",   4,    None, "bitcount",   "Enables encryption and decryption, when an SPI boot "
                                                                                                        "mode is set. Enabled when 1 or 3 bits are set,"
                                                                                                        "disabled otherwise",
          {0: "Disable",
