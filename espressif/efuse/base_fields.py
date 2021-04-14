@@ -129,6 +129,14 @@ class EfuseBlockBase(EfuseProtectBase):
         self.bitarray.set(0)
         self.wr_bitarray = BitString(bit_block_len)
         self.wr_bitarray.set(0)
+        self.fail = False
+        self.num_errors = 0
+        if self.id == 0:
+            self.err_bitarray = BitString(bit_block_len)
+            self.err_bitarray.set(0)
+        else:
+            self.err_bitarray = None
+
         if not skip_read:
             self.read()
 
@@ -275,10 +283,10 @@ class EfuseBlockBase(EfuseProtectBase):
                 print("Addr 0x%08x, data=0x%08x" % (write_reg_addr, word))
             self.parent.write_reg(write_reg_addr, word)
             write_reg_addr += 4
-        warnings_before = self.parent.get_coding_scheme_warnings()
+        warnings_before = self.parent.get_coding_scheme_warnings(silent=True)
         warnings_after = self.parent.write_efuses(self.id)
         if warnings_after & ~warnings_before != 0:
-            print("WARNING: Burning efuse block added coding scheme warnings 0x%x -> 0x%x. Encoding bug?" % (warnings_before, warnings_after))
+            print("WARNING: Burning efuse block added coding scheme warnings")
 
     def burn(self):
         if self.wr_bitarray.all(False):
@@ -326,9 +334,6 @@ class EspEfusesBase(object):
     def __iter__(self):
         return self.efuses.__iter__()
 
-    def print_status_regs(self):
-        pass
-
     def get_crystal_freq(self):
         return self._esp.get_crystal_freq()
 
@@ -357,7 +362,8 @@ class EspEfusesBase(object):
     def read_blocks(self):
         for block in self.blocks:
             block.read()
-        self.get_coding_scheme_warnings()
+        if self.get_coding_scheme_warnings():
+            raise esptool.FatalError("Error(s) were detected in eFuses")
 
     def update_efuses(self):
         for efuse in self.efuses:
@@ -422,6 +428,8 @@ class EfuseFieldBase(EfuseProtectBase):
         self.efuse_type = param.type
         self.description = param.description
         self.dict_value = param.dictionary
+        self.fail = False
+        self.num_errors = 0
         if self.efuse_type.startswith("bool"):
             field_len = 1
         else:
@@ -504,6 +512,13 @@ class EfuseFieldBase(EfuseProtectBase):
         field_len = self.bitarray.len
         bit_array_block.pos = bit_array_block.length - (self.word * 32 + self.pos + field_len)
         self.bitarray.overwrite(bit_array_block.read(field_len), pos=0)
+        err_bitarray = self.parent.blocks[self.block].err_bitarray
+        if err_bitarray is not None:
+            err_bitarray.pos = err_bitarray.length - (self.word * 32 + self.pos + field_len)
+            self.fail = not err_bitarray.read(field_len).all(False)
+        else:
+            self.fail = self.parent.blocks[self.block].fail
+            self.num_errors = self.parent.blocks[self.block].num_errors
 
     def get_raw(self, from_read=True):
         """ Return the raw (unformatted) numeric value of the efuse bits

@@ -34,6 +34,16 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_CMD_REG           = DR_REG_EFUSE_BASE + 0x1D4
     EFUSE_RD_RS_ERR0_REG    = DR_REG_EFUSE_BASE + 0x1C0
     EFUSE_RD_RS_ERR1_REG    = DR_REG_EFUSE_BASE + 0x1C4
+    EFUSE_RD_REPEAT_ERR0_REG = DR_REG_EFUSE_BASE + 0x17C
+    EFUSE_RD_REPEAT_ERR1_REG = DR_REG_EFUSE_BASE + 0x180
+    EFUSE_RD_REPEAT_ERR2_REG = DR_REG_EFUSE_BASE + 0x184
+    EFUSE_RD_REPEAT_ERR3_REG = DR_REG_EFUSE_BASE + 0x188
+    EFUSE_RD_REPEAT_ERR4_REG = DR_REG_EFUSE_BASE + 0x18C
+    EFUSE_DAC_CONF_REG = DR_REG_EFUSE_BASE + 0x1E8
+    EFUSE_RD_TIM_CONF_REG = DR_REG_EFUSE_BASE + 0x1EC
+    EFUSE_WR_TIM_CONF1_REG = DR_REG_EFUSE_BASE + 0x1F4
+    EFUSE_WR_TIM_CONF2_REG = DR_REG_EFUSE_BASE + 0x1F8
+    EFUSE_DATE_REG = DR_REG_EFUSE_BASE + 0x1FC
     EFUSE_WRITE_OP_CODE     = 0x5A5A
     EFUSE_READ_OP_CODE      = 0x5AA5
     EFUSE_PGM_CMD_MASK      = 0x3
@@ -41,21 +51,21 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_READ_CMD          = 0x1
 
     BLOCK_ERRORS = [
-        # error reg,            err_num,    fail_bit
-        (None,                  None,       None),  # BLOCK0
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 0,     3),     # MAC_SPI_8M_0
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 4,     7),     # BLOCK_SYS_DATA
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 8,     11),    # BLOCK_USR_DATA
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 12,    15),    # BLOCK_KEY0
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 16,    19),    # BLOCK_KEY1
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 20,    23),    # BLOCK_KEY2
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 24,    27),    # BLOCK_KEY3
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 28,    31),    # BLOCK_KEY4
-        (EFUSE_RD_RS_ERR1_REG,  0x7 << 0,     3),     # BLOCK_KEY5
-        (EFUSE_RD_RS_ERR1_REG,  0x7 << 4,     7),     # BLOCK_KEY6
+        # error_reg,               err_num_mask, err_num_offs,     fail_bit
+        (EFUSE_RD_REPEAT_ERR0_REG, None,         None,             None),  # BLOCK0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          0,                3),     # MAC_SPI_8M_0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          4,                7),     # BLOCK_SYS_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          8,                11),    # BLOCK_USR_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          12,               15),    # BLOCK_KEY0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          16,               19),    # BLOCK_KEY1
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          20,               23),    # BLOCK_KEY2
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          24,               27),    # BLOCK_KEY3
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          28,               31),    # BLOCK_KEY4
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          0,                3),     # BLOCK_KEY5
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          4,                7),     # BLOCK_SYS_DATA2
     ]
 
-    EFUSE_WR_TIM_CONF2_REG = DR_REG_EFUSE_BASE + 0x1F8
+    # EFUSE_WR_TIM_CONF2_REG
     EFUSE_PWR_OFF_NUM_S = 0
     EFUSE_PWR_OFF_NUM_M = 0xFFFF << EFUSE_PWR_OFF_NUM_S
 

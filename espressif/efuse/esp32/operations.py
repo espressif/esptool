@@ -26,7 +26,7 @@ import esptool
 from . import fields
 from .. import util
 from ..base_operations import (add_common_commands, add_force_write_always, burn_bit, burn_block_data,  # noqa: F401
-                               burn_efuse, dump, read_protect_efuse, summary, write_protect_efuse)  # noqa: F401
+                               burn_efuse, check_error, dump, read_protect_efuse, summary, write_protect_efuse)  # noqa: F401
 
 
 def add_commands(subparsers, efuses):

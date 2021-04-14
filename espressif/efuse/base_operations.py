@@ -108,6 +108,8 @@ def add_common_commands(subparsers, efuses):
     execute_scripts = subparsers.add_parser('execute_scripts', help='Executes scripts to burn at one time.')
     execute_scripts.add_argument('scripts', help='The special format of python scripts.', nargs="+", type=argparse.FileType('r'))
 
+    subparsers.add_parser('check_error', help='Checks eFuse errors')
+
 
 def add_force_write_always(p):
     p.add_argument('--force-write-always', help="Write the efuse even if it looks like it's already been written, or is write protected. "
@@ -116,7 +118,7 @@ def add_force_write_always(p):
 
 def summary(esp, efuses, args):
     """ Print a human-readable summary of efuse contents """
-    ROW_FORMAT = "%-40s %-50s%s = %s %s %s"
+    ROW_FORMAT = "%-50s %-50s%s = %s %s %s"
     human_output = (args.format == 'summary')
     json_efuse = {}
     if args.file != sys.stdout:
@@ -152,7 +154,7 @@ def summary(esp, efuses, args):
                 if desc_len:
                     desc_len += 50
                     for i in range(50, desc_len, 50):
-                        print("%-40s %-50s" % ("", e.description[i:(50 + i)]), file=args.file)
+                        print("%-50s %-50s" % ("", e.description[i:(50 + i)]), file=args.file)
             if args.format == 'json':
                 json_efuse[e.name] = {
                     'name': e.name,
@@ -172,7 +174,7 @@ def summary(esp, efuses, args):
         print(efuses.summary(), file=args.file)
         warnings = efuses.get_coding_scheme_warnings()
         if warnings:
-            print("WARNING: Coding scheme has encoding bit error warnings (0x%x)" % warnings, file=args.file)
+            print("WARNING: Coding scheme has encoding bit error warnings", file=args.file)
         if args.file != sys.stdout:
             args.file.close()
             print("Done")
@@ -383,3 +385,9 @@ def burn_bit(esp, efuses, args):
         return
     efuses.burn_all()
     print("Successful")
+
+
+def check_error(esp, efuses, args):
+    if efuses.get_coding_scheme_warnings():
+        raise esptool.FatalError("Error(s) were detected in eFuses")
+    print("No errors detected")

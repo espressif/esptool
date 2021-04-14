@@ -20,6 +20,8 @@ import binascii
 import struct
 import time
 
+from bitstring import BitArray
+
 import esptool
 
 import reedsolo
@@ -80,6 +82,8 @@ class EspEfuses(base_fields.EspEfusesBase):
         if esp.CHIP_NAME != "ESP32-C3":
             raise esptool.FatalError("Expected the 'esp' param for ESP32-C3 chip but got for '%s'." % (esp.CHIP_NAME))
         self.blocks = [EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect) for block in self.Blocks.BLOCKS]
+        if not skip_connect:
+            self.get_coding_scheme_warnings()
         self.efuses = [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.EFUSES]
         self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS]
         if skip_connect:
@@ -113,20 +117,13 @@ class EspEfuses(base_fields.EspEfusesBase):
 
     def print_status_regs(self):
         print("")
-        print("RD_RS_ERR0_REG 0x%08x RD_RS_ERR1_REG 0x%08x" % (
-              self.read_reg(self.REGS.EFUSE_RD_RS_ERR0_REG),
-              self.read_reg(self.REGS.EFUSE_RD_RS_ERR1_REG)))
+        self.blocks[0].print_block(self.blocks[0].err_bitarray, "err__regs", debug=True)
+        print('{:27} 0x{:08x}'.format('EFUSE_RD_RS_ERR0_REG', self.read_reg(self.REGS.EFUSE_RD_RS_ERR0_REG)))
+        print('{:27} 0x{:08x}'.format('EFUSE_RD_RS_ERR1_REG', self.read_reg(self.REGS.EFUSE_RD_RS_ERR1_REG)))
 
     def get_block_errors(self, block_num):
         """ Returns (error count, failure boolean flag) """
-        read_reg, err_num_mask, fail_bit_mask = self.REGS.BLOCK_ERRORS[block_num]
-        if read_reg is None:
-            return 0, False
-        reg_value = self.read_reg(read_reg)
-        err_num_shift = esptool._mask_to_shift(err_num_mask)
-        err_num_val = (reg_value & err_num_mask) >> err_num_shift
-        fail_bit_val = (reg_value & (1 << fail_bit_mask)) != 0
-        return err_num_val, fail_bit_val
+        return self.blocks[block_num].num_errors, self.blocks[block_num].fail
 
     def efuse_controller_setup(self):
         self.set_efuse_timing()
@@ -135,7 +132,7 @@ class EspEfuses(base_fields.EspEfusesBase):
 
     def write_efuses(self, block):
         self.efuse_program(block)
-        return self.get_coding_scheme_warnings()
+        return self.get_coding_scheme_warnings(silent=True)
 
     def clear_pgm_registers(self):
         self.wait_efuse_idle()
@@ -175,17 +172,34 @@ class EspEfuses(base_fields.EspEfusesBase):
 
         self.update_reg(self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x190)
 
-    def get_coding_scheme_warnings(self):
-        """ Check if the coding scheme has detected any errors.
-        Meaningless for default coding scheme (0)
-        """
-        warning = False
+    def get_coding_scheme_warnings(self, silent=False):
+        """ Check if the coding scheme has detected any errors. """
+        old_addr_reg = 0
+        reg_value = 0
+        ret_fail = False
         for block in self.blocks:
-            errs, fail = self.get_block_errors(block.id)
-            if errs != 0 or fail:
-                print("Block %d has ERRORS:%d FAIL:%d" % (block.id, errs, fail))
-                warning = True
-        return warning
+            if block.id == 0:
+                words = [self.read_reg(self.REGS.EFUSE_RD_REPEAT_ERR0_REG + offs * 4) for offs in range(5)]
+                data = BitArray()
+                for word in reversed(words):
+                    data.append("uint:32=%d" % word)
+                # pos=32 because EFUSE_WR_DIS goes first it is 32bit long and not under error control
+                block.err_bitarray.overwrite(data, pos=32)
+                block.num_errors = block.err_bitarray.count(True)
+                block.fail = block.num_errors != 0
+            else:
+                addr_reg, err_num_mask, err_num_offs, fail_bit = self.REGS.BLOCK_ERRORS[block.id]
+                if addr_reg != old_addr_reg:
+                    old_addr_reg = addr_reg
+                    reg_value = self.read_reg(addr_reg)
+                block.fail = reg_value & (1 << fail_bit) != 0
+                block.num_errors = (reg_value >> err_num_offs) & err_num_mask
+            ret_fail |= block.fail
+            if not silent and (block.fail or block.num_errors):
+                print("Error(s) in BLOCK%d [ERRORS:%d FAIL:%d]" % (block.id, block.num_errors, block.fail))
+        if (self.debug or ret_fail) and not silent:
+            self.print_status_regs()
+        return ret_fail
 
     def summary(self):
         # TODO add support set_flash_voltage - "Flash voltage (VDD_SPI)"
@@ -204,12 +218,10 @@ class EfuseField(base_fields.EfuseFieldBase):
 
     def get_info(self):
         output = "%s (BLOCK%d)" % (self.name, self.block)
+        errs, fail = self.parent.get_block_errors(self.block)
+        if errs != 0 or fail:
+            output += "[FAIL:%d]" % (fail) if self.block == 0 else "[ERRS:%d FAIL:%d]" % (errs, fail)
         if self.efuse_class == "keyblock":
-            err_msg = "0 errors"
-            errs, fail = self.parent.get_block_errors(self.block)
-            if errs != 0 or fail:
-                err_msg = "ERRORS:%d FAIL:%d" % (errs, fail)
-            output += "(%s):" % err_msg
             name = self.parent.blocks[self.block].key_purpose_name
             if name is not None:
                 output += "\n  Purpose: %s\n " % (self.parent[name].get())

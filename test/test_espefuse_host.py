@@ -169,6 +169,10 @@ class TestReadCommands(EfuseTestCase):
         self.espefuse_py("adc_info -h")
         self.espefuse_py("adc_info")
 
+    def test_check_error(self):
+        self.espefuse_py("check_error -h")
+        self.espefuse_py("check_error")
+
 
 class TestBurnCommands(EfuseTestCase):
     def test_read_protect_efuse(self):
