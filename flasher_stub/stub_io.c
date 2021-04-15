@@ -26,12 +26,12 @@
 
 
 static void(*s_rx_cb_func)(char);
-#ifdef WITH_USB
+#ifdef WITH_USB_OTG
 static uint32_t s_cdcacm_old_rts;
 static volatile bool s_cdcacm_reset_requested;
 static char s_cdcacm_txbuf[ACM_BYTES_PER_TX];
 static size_t s_cdcacm_txpos;
-#endif // WITH_USB
+#endif // WITH_USB_OTG
 
 
 void uart_isr(void *arg) {
@@ -49,15 +49,45 @@ void uart_isr(void *arg) {
   WRITE_REG(UART_INT_CLR(0), int_st);
 }
 
+#if WITH_USB_JTAG_SERIAL
+static bool stub_uses_usb_jtag_serial(void)
+{
+  UartDevice *uart = GetUartDevice();
+
+  /* buff_uart_no indicates which UART is used for SLIP communication) */
+  return uart->buff_uart_no == UART_USB_JTAG_SERIAL;
+}
+
+void jtag_serial_isr(void *arg)
+{
+    WRITE_REG(USB_DEVICE_INT_CLR_REG, USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_CLR); //ack interrupt
+    while (READ_REG(USB_DEVICE_EP1_CONF_REG) & USB_DEVICE_SERIAL_OUT_EP_DATA_AVAIL)
+    {
+      uint8_t byte = READ_REG(USB_DEVICE_EP1_REG);
+      (*s_rx_cb_func)(byte);
+    }
+}
+#endif // WITH_USB_JTAG_SERIAL
+
 static void stub_configure_rx_uart(void)
 {
-  /* All UART reads come via uart_isr */
+  /* All UART reads come via uart_isr or jtag_serial_isr */
+#if WITH_USB_JTAG_SERIAL
+  if (stub_uses_usb_jtag_serial()) {
+    WRITE_REG(INTERRUPT_CORE0_USB_INTR_MAP_REG, ETS_USB_INUM);
+    esprv_intc_int_set_priority(ETS_USB_INUM, 1);
+    ets_isr_attach(ETS_USB_INUM, jtag_serial_isr, NULL);
+    REG_SET_MASK(USB_DEVICE_INT_ENA_REG, USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_ENA);
+    ets_isr_unmask(1 << ETS_USB_INUM);
+    return;
+  }
+#endif // WITH_USB_JTAG_SERIAL
   ets_isr_attach(ETS_UART0_INUM, uart_isr, NULL);
   REG_SET_MASK(UART_INT_ENA(0), UART_RX_INTS);
   ets_isr_unmask(1 << ETS_UART0_INUM);
 }
 
-#ifdef WITH_USB
+#ifdef WITH_USB_OTG
 
 void stub_cdcacm_cb(cdc_acm_device *dev, int status)
 {
@@ -92,9 +122,9 @@ static void stub_cdcacm_write_char(char ch)
     }
 }
 
-static bool stub_uses_usb(void)
+static bool stub_uses_usb_otg(void)
 {
-  return UartDev_buff_uart_no == UART_USB;
+  return UartDev_buff_uart_no == UART_USB_OTG;
 }
 
 static void stub_configure_rx_usb(void)
@@ -108,28 +138,39 @@ static void stub_configure_rx_usb(void)
   cdc_acm_irq_state_enable(uart_acm_dev);
   REG_SET_MASK(USB_GAHBCFG_REG, USB_GLBLLNTRMSK);
 }
-#endif // !WITH_USB
+#endif // WITH_USB_OTG
 
 void stub_tx_one_char(char c)
 {
-#if WITH_USB
-  if (stub_uses_usb()) {
+#if WITH_USB_OTG
+  if (stub_uses_usb_otg()) {
     stub_cdcacm_write_char(c);
     return;
   }
-#endif // WITH_USB
+#endif // WITH_USB_OTG
   uart_tx_one_char(c);
+#if WITH_USB_JTAG_SERIAL
+  if (stub_uses_usb_jtag_serial()){
+    stub_tx_flush();
+  }
+#endif // WITH_USB_JTAG_SERIAL
 }
 
 void stub_tx_flush(void)
 {
-#if WITH_USB
-  if (stub_uses_usb()) {
+#if WITH_USB_OTG
+  if (stub_uses_usb_otg()) {
     if (s_cdcacm_txpos > 0) {
       stub_cdcacm_flush();
     }
   }
-#endif // WITH_USB
+#endif // WITH_USB_OTG
+#if WITH_USB_JTAG_SERIAL
+  if (stub_uses_usb_jtag_serial()){
+      uart_tx_flush(UART_USB_JTAG_SERIAL);
+      return;
+  }
+#endif // WITH_USB_JTAG_SERIAL
 #if ESP32_OR_LATER
   uart_tx_flush(0);
 #endif
@@ -149,8 +190,8 @@ char stub_rx_one_char(void)
 void stub_rx_async_enable(bool enable)
 {
   uint32_t mask;
-#if WITH_USB
-  if (stub_uses_usb()) {
+#if WITH_USB_OTG
+  if (stub_uses_usb_otg()) {
     mask = 1 << ETS_USB_INUM;
     if (enable) {
       cdc_acm_irq_rx_enable(uart_acm_dev);
@@ -161,8 +202,12 @@ void stub_rx_async_enable(bool enable)
     }
     return;
   }
-#endif // WITH_USB
+#endif // WITH_USB_OTG
+#if WITH_USB_JTAG_SERIAL
+  mask = stub_uses_usb_jtag_serial() ? 1 << ETS_USB_INUM : 1 << ETS_UART0_INUM;
+#else
   mask = 1 << ETS_UART0_INUM;
+#endif
   if (enable) {
     ets_isr_unmask(mask);
   } else {
@@ -172,7 +217,7 @@ void stub_rx_async_enable(bool enable)
 
 void stub_io_idle_hook(void)
 {
-#if WITH_USB
+#if WITH_USB_OTG
   if (s_cdcacm_reset_requested)
   {
     s_cdcacm_reset_requested = false;
@@ -185,18 +230,18 @@ void stub_io_idle_hook(void)
     usb_dc_prepare_persist();
     software_reset_cpu(0);
   }
-#endif // WITH_USB
+#endif // WITH_USB_OTG
 }
 
 void stub_io_init(void(*rx_cb_func)(char))
 {
   s_rx_cb_func = rx_cb_func;
-#if WITH_USB
-  if (stub_uses_usb()) {
+#if WITH_USB_OTG
+  if (stub_uses_usb_otg()) {
     stub_configure_rx_usb();
     return;
   }
-#endif // WITH_USB
+#endif // WITH_USB_OTG
   stub_configure_rx_uart();
 }
 
@@ -221,15 +266,15 @@ static uint32_t get_new_uart_divider(uint32_t current_baud, uint32_t new_baud)
 
 void stub_io_set_baudrate(uint32_t current_baud, uint32_t new_baud)
 {
-#if WITH_USB
+#if WITH_USB_OTG
   /* Technically no harm in increasing UART baud rate when communicating over USB,
    * however for debugging the USB part it is occasionally useful to ets_printf
    * something to UART. Not changing the baud rate helps in such case.
    */
-  if (stub_uses_usb()) {
+  if (stub_uses_usb_otg()) {
     return;
   }
-#endif // WITH_USB
+#endif // WITH_USB_OTG
   ets_delay_us(10000);
   uart_div_modify(0, get_new_uart_divider(current_baud, new_baud));
   ets_delay_us(1000);

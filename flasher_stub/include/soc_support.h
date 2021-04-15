@@ -80,6 +80,7 @@
 #define SPI0_BASE_REG      0x60003000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG      0x60004000
 #define RTCCNTL_BASE_REG   0x60008000
+#define USB_DEVICE_BASE_REG          0x60043000
 #endif
 
 #ifdef ESP32C6
@@ -195,6 +196,22 @@
 #define ETS_USB_INTR_SOURCE  48
 #define ETS_USB_INUM  9  /* arbitrary level 1 level interrupt */
 #endif // ESP32S2
+
+#ifdef ESP32C3
+#define USB_DEVICE_INT_CLR_REG          (USB_DEVICE_BASE_REG + 0x014)
+#define USB_DEVICE_EP1_CONF_REG         (USB_DEVICE_BASE_REG + 0x004)
+#define USB_DEVICE_EP1_REG              (USB_DEVICE_BASE_REG + 0x000)
+#define USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_CLR  (1<<2)
+#define USB_DEVICE_SERIAL_OUT_EP_DATA_AVAIL     (1<<2)
+
+#define DR_REG_INTERRUPT_CORE0_BASE             0x600c2000
+#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_CORE0_BASE + 0x068)
+
+#define USB_DEVICE_INT_ENA_REG                  (USB_DEVICE_BASE_REG + 0x010)
+#define USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_ENA  (1<<2)
+
+#define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
+#endif
 
 #define USB_GAHBCFG_REG    (USB_BASE_REG + 0x8)
 #define USB_GLBLLNTRMSK    (1 << 0)
