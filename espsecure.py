@@ -656,7 +656,7 @@ def main():
     p = subparsers.add_parser('sign_data',
                               help='Sign a data file for use with secure boot. Signing algorithm is determinsitic ECDSA w/ SHA-512 (V1) ' +
                               'or RSA-PSS w/ SHA-256 (V2).')
-    p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices=["1", "2"], required=True)
+    p.add_argument('--version', '-v', help="Version of the secure boot signing scheme to use.", choices=["1", "2"], default="1")
     p.add_argument('--keyfile', '-k', help="Private key file for signing. Key is in PEM format.", type=argparse.FileType('rb'), required=True, nargs='+')
     p.add_argument('--output', '-o', help="Output file for signed digest image. Default is to sign the input file.")
     p.add_argument('datafile', help="File to sign. For version 1, this can be any file. For version 2, this must be a valid app image.",
