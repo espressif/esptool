@@ -469,7 +469,7 @@ def extract_public_key(args):
         args.public_keyfile.write(vk.to_string())
     elif args.version == "2":
         """ Load an RSA private key and extract the public key as raw binary data. """
-        sk = _load_sbv2_rsa_signing_key(args.keyfile)
+        sk = _load_sbv2_rsa_signing_key(args.keyfile.read())
         vk = sk.public_key().public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
