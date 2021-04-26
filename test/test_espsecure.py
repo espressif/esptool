@@ -121,6 +121,15 @@ class SigningTests(EspSecureTestCase):
         'append_signatures',
         'datafile'])
 
+    ExtractKeyArgs = namedtuple('extract_public_key_args', [
+        'version',
+        'keyfile',
+        'public_keyfile'])
+
+    GenerateKeyArgs = namedtuple('generate_key_args', [
+        'version',
+        'keyfile'])
+
     def _test_sign_v1_data(self, key_name):
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
@@ -296,16 +305,14 @@ class SigningTests(EspSecureTestCase):
         self.assertIn("Signature could not be verified with the provided key.", str(cm.exception))
 
     def test_extract_binary_public_key(self):
-        ExtractKeyArgs = namedtuple('extract_public_key_args',
-                                    ['version', 'keyfile', 'public_keyfile'])
 
         with tempfile.NamedTemporaryFile() as pub_keyfile, tempfile.NamedTemporaryFile() as pub_keyfile2:
-            args = ExtractKeyArgs('1', self._open('ecdsa_secure_boot_signing_key.pem'),
-                                  pub_keyfile)
+            args = self.ExtractKeyArgs('1', self._open('ecdsa_secure_boot_signing_key.pem'),
+                                       pub_keyfile)
             espsecure.extract_public_key(args)
 
-            args = ExtractKeyArgs('1', self._open('ecdsa_secure_boot_signing_key2.pem'),
-                                  pub_keyfile2)
+            args = self.ExtractKeyArgs('1', self._open('ecdsa_secure_boot_signing_key2.pem'),
+                                       pub_keyfile2)
             espsecure.extract_public_key(args)
 
             pub_keyfile.seek(0)
@@ -320,6 +327,21 @@ class SigningTests(EspSecureTestCase):
             with self.assertRaises(esptool.FatalError) as cm:
                 espsecure.verify_signature(args)
             self.assertIn("Signature is not valid", str(cm.exception))
+
+    def test_generate_and_extract_key_v2(self):
+        keydir = tempfile.mkdtemp()  # tempfile.TemporaryDirectory() would be better but we need compatibility with old Pythons
+        self.addCleanup(os.rmdir, keydir)
+
+        # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile() cannot be used for keyfile
+        keyfile_name = os.path.join(keydir, 'key.pem')
+        self.addCleanup(os.remove, keyfile_name)
+
+        args = self.GenerateKeyArgs('2', keyfile_name)
+        espsecure.generate_signing_key(args)
+
+        with tempfile.NamedTemporaryFile() as pub_keyfile, open(keyfile_name, 'rb') as keyfile:
+            args = self.ExtractKeyArgs('2', keyfile, pub_keyfile)
+            espsecure.extract_public_key(args)
 
 
 class FlashEncryptionTests(EspSecureTestCase):
