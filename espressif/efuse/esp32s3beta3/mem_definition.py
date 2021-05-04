@@ -147,6 +147,12 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SECURE_BOOT_EN",               "security", 0,  3, 20,  "bool",     15,   None, None,         "Enables secure boot", None),
         ("SECURE_BOOT_AGGRESSIVE_REVOKE", "security", 0, 3, 21,  "bool",     16,   None, None,         "Enables aggressive secure boot key revocation mode",
                                                                                                        None),
+        ("DIS_USB_JTAG",               "usb config", 0,  3, 22,   "bool",     2,   None, None,         "Disable usb_serial_jtag-to-jtag function", None),
+        ("DIS_USB_SERIAL_JTAG",        "usb config", 0,  3, 23,   "bool",     2,   None, None,         "Disable usb_serial_jtag module", None),
+        ("STRAP_JTAG_SEL",               "security", 0,  3, 24,   "bool",     2,   None, None,         "Enable selection between usb_to_jtag"
+                                                                                                       "or pad_to_jtag through gpio10", None),
+        ("USB_PHY_SEL",                "usb config", 0,  3, 25,   "bool",     2,   None, None,         "Select internal/external PHY for USB OTG"
+                                                                                                       "and usb_serial_jtag", None),
         ("FLASH_TPUW",                   "config",   0,  3, 28,  "uint:4",   18,   None, None,         "Configures flash startup delay after SoC power-up, "
                                                                                                        "unit is (ms/2). When the value is 15, delay is 7.5 ms",
                                                                                                        None),
