@@ -6,7 +6,7 @@ esptool.py was started by Fredrik Ahlberg (@[themadinventor](https://github.com/
 
 esptool.py is Free Software under a GPLv2 license.
 
-[![Test esptool](https://github.com/espressif/esptool/workflows/Test%20esptool/badge.svg?branch=master)](https://github.com/espressif/esptool)
+[![Test esptool](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml)[![Build esptool](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml)
 
 ## Installation / dependencies
 

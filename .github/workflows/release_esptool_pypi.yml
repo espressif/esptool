@@ -1,6 +1,6 @@
 # This workflow will upload an esptool Python package when a release is created
 
-name: Upload release to PyPI
+name: PyPI release
 
 on:
   release:
