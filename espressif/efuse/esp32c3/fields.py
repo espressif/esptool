@@ -172,7 +172,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         if apb_freq != 40:
             raise esptool.FatalError("The eFuse supports only xtal=40M (xtal was %d)" % apb_freq)
 
-        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x60)
+        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x190)
 
     def get_coding_scheme_warnings(self):
         """ Check if the coding scheme has detected any errors.
