@@ -246,16 +246,22 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SPI_PAD_CONFIG_D7",    "spi_pad_config",   1,  3, 12,  "uint:6",   20,   None, None,         "SPI D7 pad", None),
         ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
          {0: "A"}),
-        ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Package version",
-
-         {0: "ESP32-S2, QFN 7x7 56 pins",
-          1: "ESP32-S2FH16, QFN 7x7 56 pins, Flash 16Mb t=105C",
-          2: "ESP32-S2FH32, QFN 7x7 56 pins, Flash 32Mb t=105C"}),
+        ("FLASH_VERSION",              "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Flash version",
+         {0: "No Embedded Flash",
+          1: "Embedded Flash 2MB",
+          2: "Embedded Flash 4MB"}),
         ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
+        ("PSRAM_VERSION",              "identity",   1,  3, 28,  "uint:4",   20,   None, None,         "PSRAM version",
+         {0: "No Embedded PSRAM",
+          1: "Embedded PSRAM 2MB",
+          2: "Embedded PSRAM 4MB"}),
+        ("PKG_VERSION",                "identity",   1,  4, 0,   "uint:4",   20,   None, None,         "Package version",
+         {0: "ESP32-S2"}),
         ('OPTIONAL_UNIQUE_ID',         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
         ('BLOCK2_VERSION',             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
          {0: "No calibration",
-          1: "With calibration"}),
+          1: "With ADC calibration V1",
+          2: "With ADC calibration V2"}),
     ]
 
     KEYBLOCKS = [
