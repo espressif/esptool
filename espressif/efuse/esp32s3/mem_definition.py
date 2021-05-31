@@ -101,7 +101,6 @@ class EfuseDefineFields(EfuseFieldsBase):
         # Name                           Category Block Word Pos Type:len   WR_DIS RD_DIS Class        Description                Dictionary
         ("WR_DIS",                       "efuse",    0,  0,  0,  "uint:32",  None, None, None,         "Disables programming of individual eFuses", None),
         ("RD_DIS",                       "efuse",    0,  1,  0,  "uint:7",   0,    None, None,         "Disables software reading from BLOCK4-10", None),
-        ("DIS_RTC_RAM_BOOT",             "config",   0,  1,  7,  "bool",     1,    None, None,         "Disables boot from RTC RAM", None),
         ("DIS_ICACHE",                   "config",   0,  1,  8,  "bool",     2,    None, None,         "Disables ICache", None),
         ("DIS_DCACHE",                   "config",   0,  1,  9,  "bool",     2,    None, None,         "Disables DCache", None),
         ("DIS_DOWNLOAD_ICACHE",          "config",   0,  1,  10, "bool",     2,    None, None,         "Disables Icache when SoC is in Download mode", None),
