@@ -106,10 +106,10 @@ static void spi_write_enable(void)
 }
 
 #if ESP32_OR_LATER
-#ifdef ESP32C3
+#if ESP32C3 || ESP32C6
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3fcdfff4;
-#elif ESP32C6
-static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3fcdfff4;
+#elif ESP32H2
+static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3fcdfff0;
 #else
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3ffae270;
 #endif
