@@ -22,7 +22,7 @@ APP_ELF_8266 = $(BUILD_DIR)/$(APP)_8266.elf
 APP_ELF_32 = $(BUILD_DIR)/$(APP)_32.elf
 APP_ELF_32S2 = $(BUILD_DIR)/$(APP)_32s2.elf
 APP_ELF_32S3_BETA_2 = $(BUILD_DIR)/$(APP)_32s3beta2.elf
-APP_ELF_32S3_BETA_3 = $(BUILD_DIR)/$(APP)_32s3beta3.elf
+APP_ELF_32S3 = $(BUILD_DIR)/$(APP)_32s3.elf
 APP_ELF_32C3 = $(BUILD_DIR)/$(APP)_32c3.elf
 
 .PHONY: all clean
@@ -57,7 +57,7 @@ $(APP_ELF_32S3_BETA_2): $(SRCS) $(BUILD_DIR) ld/app_32s3_beta_2.ld
 	@echo "  CC(32S3)   $^ -> $@"
 	$(Q) $(CROSS_32S3)gcc $(CFLAGS) -DESP32S3=1 -Tapp_32s3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
-$(APP_ELF_32S3_BETA_3): $(SRCS) $(BUILD_DIR) ld/app_32s3_beta_3.ld
+$(APP_ELF_32S3): $(SRCS) $(BUILD_DIR) ld/app_32s3.ld
 	@echo "  CC(32S3)   $^ -> $@"
 	$(Q) $(CROSS_32S3)gcc $(CFLAGS) -DESP32S3=1 -Tapp_32s3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 

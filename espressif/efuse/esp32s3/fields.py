@@ -76,8 +76,8 @@ class EspEfuses(base_fields.EspEfusesBase):
         self._esp = esp
         self.debug = debug
         self.do_not_confirm = do_not_confirm
-        if esp.CHIP_NAME != "ESP32-S3(beta3)":
-            raise esptool.FatalError("Expected the 'esp' param for ESP32-S3(beta3) chip but got for '%s'." % (esp.CHIP_NAME))
+        if esp.CHIP_NAME != "ESP32-S3":
+            raise esptool.FatalError("Expected the 'esp' param for ESP32-S3 chip but got for '%s'." % (esp.CHIP_NAME))
         self.blocks = [EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect) for block in self.Blocks.BLOCKS]
         self.efuses = [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.EFUSES]
         self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS]

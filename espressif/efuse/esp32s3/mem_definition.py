@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# This file describes eFuses fields and registers for ESP32-S3(beta3) chip
+# This file describes eFuses fields and registers for ESP32-S3 chip
 #
-# Copyright (C) 2020 Espressif Systems (Shanghai) PTE LTD
+# Copyright (C) 2020-2021 Espressif Systems (Shanghai) CO LTD
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -25,7 +25,7 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_MEM_SIZE = (0x01FC + 4)
 
     # EFUSE registers & command/conf values
-    DR_REG_EFUSE_BASE       = 0x6001A000
+    DR_REG_EFUSE_BASE       = 0x60007000
     EFUSE_PGM_DATA0_REG     = DR_REG_EFUSE_BASE
     EFUSE_CHECK_VALUE0_REG  = DR_REG_EFUSE_BASE + 0x020
     EFUSE_CLK_REG           = DR_REG_EFUSE_BASE + 0x1C8

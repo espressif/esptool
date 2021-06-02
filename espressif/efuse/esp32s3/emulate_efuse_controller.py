@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# This file describes eFuses controller for ESP32-S3(beta3) chip
+# This file describes eFuses controller for ESP32-S3 chip
 #
-# Copyright (C) 2020 Espressif Systems (Shanghai) PTE LTD
+# Copyright (C) 2020-2021 Espressif Systems (Shanghai) CO LTD
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -23,9 +23,9 @@ from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalErr
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):
-    """ The class for virtual ESP32-S3(beta3) operation. Using for HOST_TEST.
+    """ The class for virtual ESP32-S3 operation. Using for HOST_TEST.
     """
-    CHIP_NAME = "ESP32-S3(beta3)"
+    CHIP_NAME = "ESP32-S3"
     mem = None
     debug = False
     Blocks  = EfuseDefineBlocks

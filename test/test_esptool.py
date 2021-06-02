@@ -446,12 +446,12 @@ class TestFlashSizes(EsptoolTestCase):
                 "esp32s2": "images/bootloader_esp32s2.bin",
             }[chip]
             offset = 0x1000
-        elif chip in ["esp32s3beta2", "esp32s3beta3", "esp32c3"]:
+        elif chip in ["esp32s3beta2", "esp32s3", "esp32c3"]:
             # this image is configured for 2MB flash by default,
             # assume this is not the flash size in use
             image = {
                 "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
-                "esp32s3beta3": "images/bootloader_esp32s3beta3.bin",
+                "esp32s3": "images/bootloader_esp32s3.bin",
                 "esp32c3": "images/bootloader_esp32c3.bin",
             }[chip]
             offset = 0x0
@@ -605,7 +605,7 @@ class TestKeepImageSettings(EsptoolTestCase):
             "esp32": "images/bootloader_esp32.bin",
             "esp32s2": "images/bootloader_esp32s2.bin",
             "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
-            "esp32s3beta3": "images/bootloader_esp32s3beta3.bin",
+            "esp32s3": "images/bootloader_esp32s3.bin",
             "esp32c3": "images/bootloader_esp32c3.bin",
         }[chip]
         self.flash_offset = 0x1000 if chip in ("esp32", "esp32s2") else 0  # bootloader offset
@@ -658,7 +658,7 @@ class TestLoadRAM(EsptoolTestCase):
     # flashing an application not supporting USB CDC will make /dev/ttyACM0 disappear and USB CDC tests will not work anymore
     @unittest.skipIf(chip == "esp32s2", "Not supported because of USB CDC mode")
     @unittest.skipIf(chip == "esp32s3beta2", "TODO: write a IRAM test binary for esp32s3beta2")
-    @unittest.skipIf(chip == "esp32s3beta3", "TODO: write a IRAM test binary for esp32s3beta3")
+    @unittest.skipIf(chip == "esp32s3", "TODO: write a IRAM test binary for esp32s3")
     @unittest.skipIf(chip == "esp32c3", "TODO: write a IRAM test binary for esp32c3")
     def test_load_ram(self):
         """ Verify load_ram command
@@ -704,7 +704,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
                     "esp32": "images/bootloader_esp32.bin",
                     "esp32s2": "images/bootloader_esp32s2.bin",
                     "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
-                    "esp32s3beta3": "images/bootloader_esp32s3beta3.bin",
+                    "esp32s3": "images/bootloader_esp32s3.bin",
                     "esp32c3": "images/bootloader_esp32c3.bin",
                     }[chip]
 
@@ -727,7 +727,7 @@ class TestAutoDetect(EsptoolTestCase):
             "esp32": "ESP32",
             "esp32s2": "ESP32-S2",
             "esp32s3beta2": "ESP32-S3(beta2)",
-            "esp32s3beta3": "ESP32-S3(beta3)",
+            "esp32s3": "ESP32-S3",
             "esp32c3": "ESP32-C3",
         }[chip]
         self.assertIn("Detecting chip type... " + expected_chip_name, output)

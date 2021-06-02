@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# This file includes the operations with eFuses for ESP32-S3(beta3) chip
+# This file includes the operations with eFuses for ESP32-S3 chip
 #
-# Copyright (C) 2020 Espressif Systems (Shanghai) PTE LTD
+# Copyright (C) 2020-2021 Espressif Systems (Shanghai) CO LTD
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
