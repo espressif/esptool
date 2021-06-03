@@ -162,6 +162,11 @@ def stub_and_esp32_function_only(func):
     return check_supported_function(func, lambda o: o.IS_STUB or isinstance(o, ESP32ROM))
 
 
+def esp32s3_or_newer_function_only(func):
+    """ Attribute for a function only supported by ESP32S3/32C3 ROM """
+    return check_supported_function(func, lambda o: isinstance(o, ESP32S3ROM) or isinstance(o, ESP32C3ROM))
+
+
 PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
 
 # Function to return nth byte of a bitstring
@@ -295,6 +300,9 @@ class ESPLoader(object):
     # Device PIDs
     USB_JTAG_SERIAL_PID = 0x1001
 
+    # Chip IDs that are no longer supported by esptool
+    UNSUPPORTED_CHIPS = {6: "ESP32-S3(beta 3)"}
+
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False):
         """Base constructor for ESPLoader bootloader interaction
 
@@ -308,6 +316,7 @@ class ESPLoader(object):
 
         """
         self.secure_download_mode = False  # flag is set to True if esptool detects the ROM is in Secure Download Mode
+        self.stub_is_disabled = False  # flag is set to True if esptool detects conditions which requires the stub to be disabled
 
         if isinstance(port, basestring):
             self._port = serial.serial_for_url(port)
@@ -363,6 +372,8 @@ class ESPLoader(object):
                     # don't connect a second time
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
+                    inst.check_chip_id()
+
                     print(' %s' % inst.CHIP_NAME, end='')
                     if detect_port.sync_stub_detected:
                         inst = inst.STUB_CLASS(inst)
@@ -656,6 +667,7 @@ class ESPLoader(object):
             except UnsupportedCommandError:
                 self.secure_download_mode = True
             self._post_connect()
+            self.check_chip_id()
 
     def _post_connect(self):
         """
@@ -805,6 +817,7 @@ class ESPLoader(object):
         # TODO: pack this as some kind of better data type
         return (flags, flash_crypt_cnt, key_purposes)
 
+    @esp32s3_or_newer_function_only
     def get_chip_info(self):
         # TODO: this only works on the ESP32S3/C3 ROM code loader and needs to work in stub loader also
         res = self.check_command('get security info', self.ESP_GET_SECURITY_INFO, b'')
@@ -1197,6 +1210,17 @@ class ESPLoader(object):
                 # running user code from stub loader requires some hacks
                 # in the stub loader
                 self.command(self.ESP_RUN_USER_CODE, wait_response=False)
+
+    def check_chip_id(self):
+        try:
+            chip_id, _ = self.get_chip_info()
+            if chip_id != self.IMAGE_CHIP_ID:
+                print("WARNING: Chip ID {} ({}) doesn't match expected Chip ID {}. esptool may not work correctly."
+                      .format(chip_id, self.UNSUPPORTED_CHIPS.get(chip_id, 'Unknown'), self.IMAGE_CHIP_ID))
+                # Try to flash anyways by disabling stub
+                self.stub_is_disabled = True
+        except NotImplementedInROMError:
+            pass
 
 
 class ESP8266ROM(ESPLoader):
@@ -1841,7 +1865,6 @@ class ESP32S3ROM(ESP32ROM):
     CHIP_NAME = "ESP32-S3"
 
     IMAGE_CHIP_ID = 9
-    UNSUPPORTED_CHIPS = {"6": "ESP32-S3(beta 3)"}
 
     CHIP_DETECT_MAGIC_VALUE = [0x9]
 
@@ -1951,13 +1974,6 @@ class ESP32S3ROM(ESP32ROM):
             return tuple(ord(b) for b in bitstring)
         except TypeError:  # Python 3, bitstring elements are already bytes
             return tuple(bitstring)
-
-    def _post_connect(self):
-        chip_id, eco_version = self.get_chip_info()
-
-        if str(chip_id) in self.UNSUPPORTED_CHIPS:
-            raise FatalError("This is a {} (eco {}) which is not supported by the esptool version you are using"
-                             .format(self.UNSUPPORTED_CHIPS[str(chip_id)], eco_version))
 
 
 class ESP32S3BETA2ROM(ESP32S3ROM):
@@ -4085,6 +4101,7 @@ def main(argv=None, esp=None):
         esp = esp or get_default_connected_device(ser_list, port=args.port, connect_attempts=args.connect_attempts,
                                                   initial_baud=initial_baud, chip=args.chip, trace=args.trace,
                                                   before=args.before)
+
         if esp is None:
             raise FatalError("Could not connect to an Espressif device on any of the %d available serial ports." % len(ser_list))
 
@@ -4099,6 +4116,9 @@ def main(argv=None, esp=None):
         if not args.no_stub:
             if esp.secure_download_mode:
                 print("WARNING: Stub loader is not supported in Secure Download Mode, setting --no-stub")
+                args.no_stub = True
+            elif esp.stub_is_disabled:
+                print("WARNING: Stub loader has been disabled for compatibility, setting --no-stub")
                 args.no_stub = True
             else:
                 esp = esp.run_stub()
