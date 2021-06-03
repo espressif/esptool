@@ -805,6 +805,13 @@ class ESPLoader(object):
         # TODO: pack this as some kind of better data type
         return (flags, flash_crypt_cnt, key_purposes)
 
+    def get_chip_info(self):
+        # TODO: this only works on the ESP32S3/C3 ROM code loader and needs to work in stub loader also
+        res = self.check_command('get security info', self.ESP_GET_SECURITY_INFO, b'')
+        res = struct.unpack("<IBBBBBBBBII", res)
+        chip_id, eco_version = res[-2], res[-1]
+        return (chip_id, eco_version)
+
     @classmethod
     def parse_flash_size_arg(cls, arg):
         try:
@@ -1833,6 +1840,11 @@ class ESP32S2ROM(ESP32ROM):
 class ESP32S3ROM(ESP32ROM):
     CHIP_NAME = "ESP32-S3"
 
+    IMAGE_CHIP_ID = 9
+    UNSUPPORTED_CHIPS = {"6": "ESP32-S3(beta 3)"}
+
+    CHIP_DETECT_MAGIC_VALUE = [0x9]
+
     IROM_MAP_START = 0x42000000
     IROM_MAP_END   = 0x44000000
     DROM_MAP_START = 0x3c000000
@@ -1851,7 +1863,7 @@ class ESP32S3ROM(ESP32ROM):
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
     # todo: use espefuse APIs to get this info
-    EFUSE_BASE = 0x6001A000  # BLOCK0 read base address
+    EFUSE_BASE = 0x60007000  # BLOCK0 read base address
     MAC_EFUSE_REG = EFUSE_BASE + 0x044
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
@@ -1940,6 +1952,13 @@ class ESP32S3ROM(ESP32ROM):
         except TypeError:  # Python 3, bitstring elements are already bytes
             return tuple(bitstring)
 
+    def _post_connect(self):
+        chip_id, eco_version = self.get_chip_info()
+
+        if str(chip_id) in self.UNSUPPORTED_CHIPS:
+            raise FatalError("This is a {} (eco {}) which is not supported by the esptool version you are using"
+                             .format(self.UNSUPPORTED_CHIPS[str(chip_id)], eco_version))
+
 
 class ESP32S3BETA2ROM(ESP32S3ROM):
     CHIP_NAME = "ESP32-S3(beta2)"
@@ -1947,18 +1966,10 @@ class ESP32S3BETA2ROM(ESP32S3ROM):
 
     CHIP_DETECT_MAGIC_VALUE = [0xeb004136]
 
+    EFUSE_BASE = 0x6001A000  # BLOCK0 read base address
+
     def get_chip_description(self):
         return "ESP32-S3(beta2)"
-
-
-class ESP32S3ROM(ESP32S3ROM):
-    CHIP_NAME = "ESP32-S3"
-    IMAGE_CHIP_ID = 9
-
-    CHIP_DETECT_MAGIC_VALUE = [0x9]
-
-    def get_chip_description(self):
-        return "ESP32-S3"
 
 
 class ESP32C3ROM(ESP32ROM):
