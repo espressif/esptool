@@ -54,6 +54,7 @@ host_tests:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3beta2
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c3
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32h2
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_modules.py
 
 check_python_style:

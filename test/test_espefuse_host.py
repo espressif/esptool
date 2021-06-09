@@ -39,7 +39,7 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(TEST_DIR)
 sys.path.insert(0, os.path.join(TEST_DIR, ".."))
 
-support_list_chips = ["esp32", "esp32s2", "esp32s3beta2", "esp32s3", "esp32c3"]
+support_list_chips = ["esp32", "esp32s2", "esp32s3beta2", "esp32s3", "esp32c3", "esp32h2"]
 
 try:
     chip_target = sys.argv[1]
@@ -93,6 +93,8 @@ class EfuseTestCase(unittest.TestCase):
                 import espressif.efuse.esp32s3 as efuse
             elif chip_target == "esp32c3":
                 import espressif.efuse.esp32c3 as efuse
+            elif chip_target == "esp32h2":
+                import espressif.efuse.esp32h2 as efuse
             else:
                 efuse = None
             esp = efuse.EmulateEfuseController(self.efuse_file.name)
@@ -268,6 +270,7 @@ class TestBurnCommands(EfuseTestCase):
                          ret_code=2)
 
     @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
+    @unittest.skipIf(chip_target == "esp32h2", "TODO: add support set_flash_voltage for ESP32-H2")
     def test_set_flash_voltage_1_8v(self):
         self.espefuse_py("set_flash_voltage -h")
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
@@ -280,6 +283,7 @@ class TestBurnCommands(EfuseTestCase):
         self.espefuse_py('set_flash_voltage OFF', check_msg=error_msg, ret_code=2)
 
     @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
+    @unittest.skipIf(chip_target == "esp32h2", "TODO: add support set_flash_voltage for ESP32-H2")
     def test_set_flash_voltage_3_3v(self):
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
         self.espefuse_py('set_flash_voltage 3.3V', check_msg='Enable internal flash voltage regulator (%s) to 3.3V.' % vdd)
@@ -296,12 +300,14 @@ class TestBurnCommands(EfuseTestCase):
         self.espefuse_py('set_flash_voltage OFF', check_msg=error_msg, ret_code=2)
 
     @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
+    @unittest.skipIf(chip_target == "esp32h2", "TODO: add support set_flash_voltage for ESP32-H2")
     def test_set_flash_voltage_off(self):
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
         self.espefuse_py('set_flash_voltage OFF', check_msg='Disable internal flash voltage regulator (%s)' % vdd)
         self.espefuse_py('set_flash_voltage 3.3V', check_msg='Enable internal flash voltage regulator (%s) to 3.3V.' % vdd)
 
     @unittest.skipIf(chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3")
+    @unittest.skipIf(chip_target == "esp32h2", "TODO: add support set_flash_voltage for ESP32-H2")
     def test_set_flash_voltage_off2(self):
         vdd = "VDD_SDIO" if chip_target == "esp32" else "VDD_SPI"
         self.espefuse_py('set_flash_voltage OFF', check_msg='Disable internal flash voltage regulator (%s)' % vdd)

@@ -287,14 +287,12 @@ class EfuseKeyPurposeField(EfuseField):
     def need_reverse(self, new_key_purpose):
         for key in self.KEY_PURPOSES:
             if key[0] == new_key_purpose:
-                return True if key[3] == "Reverse" else False
-        return None
+                return key[3] == "Reverse"
 
     def need_rd_protect(self, new_key_purpose):
         for key in self.KEY_PURPOSES:
             if key[0] == new_key_purpose:
-                return True if key[4] == "need_rd_protect" else False
-        return None
+                return key[4] == "need_rd_protect"
 
     def get(self, from_read=True):
         try:
