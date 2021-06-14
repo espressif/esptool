@@ -33,6 +33,10 @@
 #define WITH_USB_JTAG_SERIAL 1
 #endif
 
+#if defined(ESP32S3)
+#define WITH_USB_JTAG_SERIAL 1
+#endif
+
 int uart_rx_one_char(uint8_t *ch);
 uint8_t uart_rx_one_char_block();
 int uart_tx_one_char(char ch);
@@ -133,6 +137,10 @@ extern uint8_t UartDev_buff_uart_no; /* Member of UartDev, indicates which UART 
 #ifdef ESP32C3
 #define UART_USB_JTAG_SERIAL  3
 #endif // ESP32C3
+
+#ifdef ESP32S3
+#define UART_USB_JTAG_SERIAL  4
+#endif // ESP32S3
 
 #ifdef WITH_USB_OTG
 #define ACM_BYTES_PER_TX   64

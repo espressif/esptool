@@ -116,7 +116,7 @@ $(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BET
 	@echo "  WRAP $^ -> $@"
 	$(Q) $(WRAP_STUB) --out-file $@ $(filter %.elf,$^)
 
-embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) wrap_stub.py
+embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2) wrap_stub.py
 	@echo "  WRAP $^ -> esptool.py"
 	$(Q) $(WRAP_STUB) $(filter %.elf,$^)
 
