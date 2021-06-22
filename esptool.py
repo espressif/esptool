@@ -317,7 +317,7 @@ class ESPLoader(object):
 
         """
         self.secure_download_mode = False  # flag is set to True if esptool detects the ROM is in Secure Download Mode
-        self.stub_is_disabled = False  # flag is set to True if esptool detects conditions which requires the stub to be disabled
+        self.stub_is_disabled = False  # flag is set to True if esptool detects conditions which require the stub to be disabled
 
         if isinstance(port, basestring):
             self._port = serial.serial_for_url(port)
@@ -4266,7 +4266,7 @@ def main(argv=None, esp=None):
             if esp.secure_download_mode:
                 print("WARNING: Stub loader is not supported in Secure Download Mode, setting --no-stub")
                 args.no_stub = True
-            elif esp.stub_is_disabled:
+            elif not esp.IS_STUB and esp.stub_is_disabled:
                 print("WARNING: Stub loader has been disabled for compatibility, setting --no-stub")
                 args.no_stub = True
             else:
