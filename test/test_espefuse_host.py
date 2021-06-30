@@ -125,8 +125,8 @@ class EfuseTestCase(unittest.TestCase):
     def _run_command(self, cmd, check_msg, ret_code):
         try:
             p = subprocess.Popen(cmd.split(), shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-            returncode = p.wait()
             output, _ = p.communicate()
+            returncode = p.returncode
             if check_msg:
                 self.assertIn(check_msg, output)
             if returncode:
