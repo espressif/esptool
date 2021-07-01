@@ -1842,10 +1842,10 @@ class ESP32S2ROM(ESP32ROM):
         strap_reg = self.read_reg(self.GPIO_STRAP_REG)
         force_dl_reg = self.read_reg(self.RTC_CNTL_OPTION1_REG)
         if strap_reg & self.GPIO_STRAP_SPI_BOOT_MASK == 0 and force_dl_reg & self.RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK == 0:
-            print("ERROR: {} chip was placed into download mode using GPIO0.\n"
+            print("WARNING: {} chip was placed into download mode using GPIO0.\n"
                   "esptool.py can not exit the download mode over USB. "
                   "To run the app, reset the chip manually.\n"
-                  "To suppress this error, set --after option to 'no_reset'.".format(self.get_chip_description()))
+                  "To suppress this note, set --after option to 'no_reset'.".format(self.get_chip_description()))
             raise SystemExit(1)
 
     def hard_reset(self):
