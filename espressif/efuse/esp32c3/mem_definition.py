@@ -193,7 +193,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SPI_PAD_CONFIG_D7",    "spi_pad_config",   1,  3, 12,  "uint:6",   20,   None, None,         "SPI D7 pad", None),
         ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
          {0: "(revision 0)", 1: "(revision 1)"}),
-        ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Package version",
+        ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:3",   20,   None, None,         "Package version",
          {0: "ESP32-C3"}),
         ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
         ("OPTIONAL_UNIQUE_ID",         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
