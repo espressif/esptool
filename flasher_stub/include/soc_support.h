@@ -37,12 +37,13 @@
 #define REG_SET_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)|(mask)))
 #define REG_CLR_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)&(~(mask))))
 
-#define ESP32_OR_LATER (ESP32 || ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2)
-#define ESP32S2_OR_LATER (ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2)
-#define ESP32S3_OR_LATER (ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2)
-#define ESP32C3_OR_LATER (ESP32C3 || ESP32C6 || ESP32H2)
-#define ESP32C6_OR_LATER (ESP32C6 || ESP32H2)
-#define ESP32H2_OR_LATER (ESP32H2)
+#define ESP32_OR_LATER (ESP32 || ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
+#define ESP32S2_OR_LATER (ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
+#define ESP32S3_OR_LATER (ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
+#define ESP32C3_OR_LATER (ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
+#define ESP32C6_OR_LATER (ESP32C6 || ESP32H2 || ESP8684)
+#define ESP32H2_OR_LATER (ESP32H2 || ESP8684)
+#define ESP8684_OR_LATER (ESP8684)
 
 /**********************************************************
  * Per-SOC capabilities
@@ -120,6 +121,13 @@
 #define RTCCNTL_BASE_REG    0x60008000
 #endif
 
+#ifdef ESP8684
+#define UART_BASE_REG      0x60000000 /* UART0 */
+#define SPI_BASE_REG       0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG      0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG      0x60004000
+#define RTCCNTL_BASE_REG   0x60008000
+#endif
 /**********************************************************
  * UART peripheral
  *
