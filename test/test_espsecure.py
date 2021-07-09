@@ -438,6 +438,12 @@ class AesXtsFlashEncryptionTests(FlashEncryptionTests):
                                    'ef-flashencryption-key.bin',
                                    0x20000, aes_xts=True)
 
+    def test_encrypt_decrypt_app_512_bit_key(self):
+        self._test_encrypt_decrypt('hello-world-signed.bin',
+                                   'hello-world-signed-encrypted-aes-xts-256.bin',
+                                   '512bit_key.bin',
+                                   0x10000, aes_xts=True)
+
     def test_padding(self):
         # Random 2048 bits hex string
         plaintext = binascii.unhexlify("c33b7c49f12a969a9bb45af5f660b73f"

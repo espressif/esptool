@@ -67,21 +67,22 @@ def swap_word_order(source):
 
 
 def _load_hardware_key(keyfile):
-    """ Load a 256-bit key, similar to stored in efuse, from a file
+    """ Load a 256/512-bit key, similar to stored in efuse, from a file
 
     192-bit keys will be extended to 256-bit using the same algorithm used
     by hardware if 3/4 Coding Scheme is set.
     """
     key = keyfile.read()
-    if len(key) not in [24, 32]:
-        raise esptool.FatalError("Key file contains wrong length (%d bytes), 24 or 32 expected." % len(key))
+    if len(key) not in [24, 32, 64]:
+        raise esptool.FatalError("Key file contains wrong length (%d bytes), 24, 32 or 64 expected." % len(key))
     if len(key) == 24:
         key = key + key[8:16]
+        assert len(key) == 32
         print("Using 192-bit key (extended)")
-    else:
+    elif len(key) == 32:
         print("Using 256-bit key")
-
-    assert len(key) == 32
+    else:
+        print("Using 512-bit key")
     return key
 
 
