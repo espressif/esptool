@@ -25,18 +25,6 @@
 #include <stdint.h>
 #include "soc_support.h"
 
-#if defined(ESP32S2)
-#define WITH_USB_OTG 1
-#endif
-
-#if defined(ESP32C3)
-#define WITH_USB_JTAG_SERIAL 1
-#endif
-
-#if defined(ESP32S3)
-#define WITH_USB_JTAG_SERIAL 1
-#endif
-
 int uart_rx_one_char(uint8_t *ch);
 uint8_t uart_rx_one_char_block();
 int uart_tx_one_char(char ch);
@@ -126,22 +114,14 @@ SpiFlashOpResult SPI_read_status_high(uint32_t *status);
 SpiFlashOpResult SPI_write_status(esp_rom_spiflash_chip_t *spi, uint32_t status_value);
 
 void intr_matrix_set(int cpu_no, uint32_t module_num, uint32_t intr_num);
-#endif /* ESP32 || ESP32S2 */
+#endif /* ESP32_OR_LATER */
 
+/* RISC-V-only ROM functions */
+#if IS_RISCV
+void esprv_intc_int_set_priority(int intr_num, int priority);
+#endif // IS_RISCV
 
-#ifdef ESP32S2
-extern uint8_t UartDev_buff_uart_no; /* Member of UartDev, indicates which UART is used for SLIP communication */
-#define UART_USB_OTG  2                  /* value of the above which indicates that USB CDC is in use */
-#endif // ESP32S2
-
-#ifdef ESP32C3
-#define UART_USB_JTAG_SERIAL  3
-#endif // ESP32C3
-
-#ifdef ESP32S3
-#define UART_USB_JTAG_SERIAL  4
-#endif // ESP32S3
-
+/* USB-OTG and USB-JTAG-Serial imports */
 #ifdef WITH_USB_OTG
 #define ACM_BYTES_PER_TX   64
 #define ACM_STATUS_LINESTATE_CHANGED   -1
@@ -168,6 +148,31 @@ void usb_dc_check_poll_for_interrupts(void);
 void chip_usb_set_persist_flags(uint32_t flags);
 int usb_dc_prepare_persist(void);
 #endif // WITH_USB_OTG
+
+#if WITH_USB_JTAG_SERIAL || WITH_USB_OTG
+typedef struct {
+    uint8_t *pRcvMsgBuff;
+    uint8_t *pWritePos;
+    uint8_t *pReadPos;
+    uint8_t  TrigLvl;
+    int BuffState;
+} RcvMsgBuff;
+
+typedef struct {
+    int     baud_rate;
+    int     data_bits;
+    int     exist_parity;
+    int     parity;
+    int     stop_bits;
+    int     flow_ctrl;
+    uint8_t buff_uart_no;
+    RcvMsgBuff     rcv_buff;
+    int     rcv_state;
+    int     received;
+} UartDevice;
+
+UartDevice * GetUartDevice();
+#endif // WITH_USB_JTAG_SERIAL || WITH_USB_OTG
 
 /* Enabling 32-bit flash memory addressing for ESP32S3 */
 #if defined(ESP32S3)
@@ -226,30 +231,3 @@ esp_rom_spiflash_result_t esp_rom_opiflash_erase_sector(int spi_num, uint32_t se
 
 esp_rom_spiflash_result_t esp_rom_opiflash_erase_block_64k(int spi_num, uint32_t block_num, SpiFlashRdMode mode);
 #endif // ESP32S3
-
-#if WITH_USB_JTAG_SERIAL
-typedef struct {
-    uint8_t *pRcvMsgBuff;
-    uint8_t *pWritePos;
-    uint8_t *pReadPos;
-    uint8_t  TrigLvl;
-    int BuffState;
-} RcvMsgBuff;
-
-typedef struct {
-    int     baud_rate;
-    int     data_bits;
-    int     exist_parity;
-    int     parity;
-    int     stop_bits;
-    int     flow_ctrl;
-    uint8_t buff_uart_no;
-    RcvMsgBuff     rcv_buff;
-    int     rcv_state;
-    int     received;
-} UartDevice;
-
-UartDevice * GetUartDevice();
-
-void esprv_intc_int_set_priority(int intr_num, int priority);
-#endif // WITH_USB_JTAG_SERIAL

@@ -128,13 +128,20 @@ static void stub_cdcacm_write_char(char ch)
 
 static bool stub_uses_usb_otg(void)
 {
-  return UartDev_buff_uart_no == UART_USB_OTG;
+  UartDevice *uart = GetUartDevice();
+
+  /* buff_uart_no indicates which UART is used for SLIP communication) */
+  return uart->buff_uart_no == UART_USB_OTG;
 }
 
 static void stub_configure_rx_usb(void)
 {
   cdc_acm_line_ctrl_get(uart_acm_dev, LINE_CTRL_RTS, &s_cdcacm_old_rts);
-  intr_matrix_set(0, ETS_USB_INTR_SOURCE, ETS_USB_INUM);
+  #if ESP32S2
+    intr_matrix_set(0, ETS_USB_INTR_SOURCE, ETS_USB_INUM);
+  #elif ESP32S3
+    WRITE_REG(INTERRUPT_CORE0_USB_INTR_MAP_REG, ETS_USB_INUM);
+  #endif
   ets_isr_attach(ETS_USB_INUM, usb_dw_isr_handler, NULL);
   ets_isr_unmask(1 << ETS_USB_INUM);
   cdc_acm_irq_callback_set(uart_acm_dev, &stub_cdcacm_cb);
