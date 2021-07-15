@@ -112,7 +112,7 @@ class EfuseDefineFields(EfuseFieldsBase):
                                                                                                        "usb_to_jtag and pad_to_jtag through strapping "
                                                                                                        "gpio10 when both reg_dis_usb_jtag and "
                                                                                                        "reg_dis_pad_jtag are equal to 0.", None),
-        ("SOFT_DIS_JTAG",           "jtag config",   0,  1,  16, "uint:2",   2,    None, None,         "Software disables JTAG. When software disabled, "
+        ("SOFT_DIS_JTAG",           "jtag config",   0,  1,  16, "uint:3",   2,    None, None,         "Software disables JTAG. When software disabled, "
                                                                                                        "JTAG can be activated temporarily by HMAC peripheral",
                                                                                                        None),
         ("DIS_PAD_JTAG",            "jtag config",   0,  1,  19, "bool",     2,    None, None,         "Permanently disable JTAG access via pads. "
