@@ -158,12 +158,12 @@ class TestReadCommands(EfuseTestCase):
     def test_get_custom_mac(self):
         self.espefuse_py("get_custom_mac -h")
         if chip_target == "esp32":
-            error_msg = None
-            ret_code = 0
+            right_msg = 'Custom MAC Address is not set in the device.'
+        elif chip_target == "esp32h2":
+            right_msg = 'Custom MAC Address: 00:00:00:00:00:00:00:00 (OK)'
         else:
-            error_msg = "get_custom_mac is not supported!"
-            ret_code = 2
-        self.espefuse_py("get_custom_mac", check_msg=error_msg, ret_code=ret_code)
+            right_msg = 'Custom MAC Address: 00:00:00:00:00:00 (OK)'
+        self.espefuse_py("get_custom_mac", check_msg=right_msg)
 
     def test_adc_info(self):
         self.espefuse_py("adc_info -h")
@@ -257,21 +257,20 @@ class TestBurnCommands(EfuseTestCase):
         if chip_target == "esp32":
             self.espefuse_py(cmd, check_msg='Custom MAC Address version 1: aa:cd:ef:11:22:33 (CRC 0x63 OK)')
         else:
-            self.espefuse_py(cmd, check_msg='burn_custom_mac is not supported!', ret_code=2)
+            mac_custom = 'aa:cd:ef:11:22:33:00:00' if chip_target == "esp32h2" else 'aa:cd:ef:11:22:33'
+            self.espefuse_py(cmd, check_msg='Custom MAC Address: %s (OK)' % mac_custom)
 
-    @unittest.skipUnless(chip_target == "esp32", "burn_custom_mac is supported only by esp32")
     def test_burn_custom_mac2(self):
         self.espefuse_py('burn_custom_mac AA:CD:EF:11:22:33:44',
                          check_msg='A fatal error occurred: MAC Address needs to be a 6-byte hexadecimal format separated by colons (:)!',
                          ret_code=2)
 
-    @unittest.skipUnless(chip_target == "esp32", "burn_custom_mac is supported only by esp32")
     def test_burn_custom_mac3(self):
         self.espefuse_py('burn_custom_mac AB:CD:EF:11:22:33',
                          check_msg='A fatal error occurred: Custom MAC must be a unicast MAC!',
                          ret_code=2)
 
-    @unittest.skipUnless(chip_target == "esp32", "burn_custom_mac is supported only by esp32")
+    @unittest.skipUnless(chip_target == "esp32", "3/4 coding scheme is only in esp32")
     def test_burn_custom_mac_with_34_coding_scheme(self):
         self._set_34_coding_scheme()
         self.espefuse_py("burn_custom_mac -h")

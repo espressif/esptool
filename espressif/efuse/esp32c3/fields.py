@@ -16,6 +16,7 @@
 # Street, Fifth Floor, Boston, MA 02110-1301 USA.
 from __future__ import division, print_function
 
+import binascii
 import struct
 import time
 
@@ -231,6 +232,21 @@ class EfuseAdcPointCalibration(EfuseField):
 
 
 class EfuseMacField(EfuseField):
+    def check_format(self, new_value_str):
+        if new_value_str is None:
+            raise esptool.FatalError("Required MAC Address in AB:CD:EF:01:02:03 format!")
+        if new_value_str.count(":") != 5:
+            raise esptool.FatalError("MAC Address needs to be a 6-byte hexadecimal format separated by colons (:)!")
+        hexad = new_value_str.replace(":", "")
+        if len(hexad) != 12:
+            raise esptool.FatalError("MAC Address needs to be a 6-byte hexadecimal number (12 hexadecimal characters)!")
+        # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
+        bindata = binascii.unhexlify(hexad)
+        # unicast address check according to https://tools.ietf.org/html/rfc7042#section-2.1
+        if esptool.byte(bindata, 0) & 0x01:
+            raise esptool.FatalError("Custom MAC must be a unicast MAC!")
+        return bindata
+
     def check(self):
         errs, fail = self.parent.get_block_errors(self.block)
         if errs != 0 or fail:
@@ -240,11 +256,23 @@ class EfuseMacField(EfuseField):
         return "(" + output + ")"
 
     def get(self, from_read=True):
-        return "%s: %s" % (util.hexify(self.get_raw(from_read), ":"), self.check())
+        if self.name == "CUSTOM_MAC":
+            mac = self.get_raw(from_read)[::-1]
+        else:
+            mac = self.get_raw(from_read)
+        return "%s %s" % (util.hexify(mac, ":"), self.check())
 
-    def burn(self, new_value):
-        # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not sensible, as it's written in the factory.
-        raise esptool.FatalError("Writing Factory MAC address is not supported")
+    def save(self, new_value):
+        def print_field(e, new_value):
+            print("    - '{}' ({}) {} -> {}".format(e.name, e.description, e.get_bitstring(), new_value))
+
+        if self.name == "CUSTOM_MAC":
+            bitarray_mac = self.convert_to_bitstring(new_value)
+            print_field(self, bitarray_mac)
+            super(EfuseMacField, self).save(new_value)
+        else:
+            # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not sensible, as it's written in the factory.
+            raise esptool.FatalError("Writing Factory MAC address is not supported")
 
 
 class EfuseKeyPurposeField(EfuseField):

@@ -71,20 +71,24 @@ def add_commands(subparsers, efuses):
                               'This means GPIO45 can be high or low at reset without changing the flash voltage.')
     p.add_argument('voltage', help='Voltage selection', choices=['1.8V', '3.3V', 'OFF'])
 
-    p = subparsers.add_parser('burn_custom_mac', help='Not supported! Burn a 48-bit Custom MAC Address to EFUSE is.')
+    p = subparsers.add_parser('burn_custom_mac', help='Burn a 48-bit Custom MAC Address to EFUSE BLOCK3.')
     p.add_argument('mac', help='Custom MAC Address to burn given in hexadecimal format with bytes separated by colons'
-                   ' (e.g. AA:CD:EF:01:02:03).', nargs="?")
+                   ' (e.g. AA:CD:EF:01:02:03).', type=fields.base_fields.CheckArgValue(efuses, "CUSTOM_MAC"))
     add_force_write_always(p)
 
-    p = subparsers.add_parser('get_custom_mac', help='Not supported! Prints the Custom MAC Address.')
+    p = subparsers.add_parser('get_custom_mac', help='Prints the Custom MAC Address.')
 
 
 def burn_custom_mac(esp, efuses, args):
-    raise esptool.FatalError("burn_custom_mac is not supported!")
+    efuses["CUSTOM_MAC"].save(args.mac)
+    if ONLY_BURN_AT_END:
+        return
+    efuses.burn_all()
+    get_custom_mac(esp, efuses, args)
 
 
 def get_custom_mac(esp, efuses, args):
-    raise esptool.FatalError("get_custom_mac is not supported!")
+    print("Custom MAC Address: {}".format(efuses["CUSTOM_MAC"].get()))
 
 
 def set_flash_voltage(esp, efuses, args):

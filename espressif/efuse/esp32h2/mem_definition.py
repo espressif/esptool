@@ -194,11 +194,13 @@ class EfuseDefineFields(EfuseFieldsBase):
          {0: "(revision 0)", 1: "(revision 1)"}),
         ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Package version",
          {0: "ESP32-H2"}),
-        ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
+        ("BLOCK1_VERSION",             "identity",   1,  3, 24,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
+        ("MAC_EXT",                    "identity",   1,  3, 27,  "bytes:2",  20,   None, "mac",        "MAC extension", None),
         ("OPTIONAL_UNIQUE_ID",         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
         ("BLOCK2_VERSION",             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
          {0: "No calibration",
           1: "With calibration"}),
+        ("CUSTOM_MAC",                 "identity",   3,  6, 8,   "bytes:6",  22,   None, "mac",        "Custom MAC Address", None),
     ]
 
     KEYBLOCKS = [

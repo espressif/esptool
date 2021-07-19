@@ -202,6 +202,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('BLOCK2_VERSION',             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "??? Version of BLOCK2",
          {0: "No calibration",
           1: "With calibration"}),
+        ("CUSTOM_MAC",                 "identity",   3,  6, 8,   "bytes:6",  22,   None, "mac",        "Custom MAC Address", None),
     ]
 
     KEYBLOCKS = [

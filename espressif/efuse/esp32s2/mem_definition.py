@@ -262,6 +262,7 @@ class EfuseDefineFields(EfuseFieldsBase):
          {0: "No calibration",
           1: "With ADC calibration V1",
           2: "With ADC calibration V2"}),
+        ("CUSTOM_MAC",                 "identity",   3,  6, 8,   "bytes:6",  22,   None, "mac",        "Custom MAC Address", None),
     ]
 
     KEYBLOCKS = [
