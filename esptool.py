@@ -542,9 +542,8 @@ class ESPLoader(object):
                 return p.pid
         print("\nFailed to get PID of a device on {}, using standard reset sequence.".format(active_port))
 
-    def bootloader_reset(self, esp32r0_delay=False, usb_jtag_serial=False):
-        """ Issue a reset-to-bootloader, with esp32r0 workaround options
-        and USB-JTAG-Serial custom reset sequence option
+    def bootloader_reset(self, usb_jtag_serial=False):
+        """ Issue a reset-to-bootloader, with USB-JTAG-Serial custom reset sequence option
         """
         # RTS = either CH_PD/EN or nRESET (both active low = chip in reset)
         # DTR = GPIO0 (active low = boot to flasher)
@@ -573,18 +572,8 @@ class ESPLoader(object):
             self._setDTR(False)  # IO0=HIGH
             self._setRTS(True)   # EN=LOW, chip in reset
             time.sleep(0.1)
-            if esp32r0_delay:
-                # Some chips are more likely to trigger the esp32r0
-                # watchdog reset silicon bug if they're held with EN=LOW
-                # for a longer period
-                time.sleep(1.2)
             self._setDTR(True)   # IO0=LOW
             self._setRTS(False)  # EN=HIGH, chip out of reset
-            if esp32r0_delay:
-                # Sleep longer after reset.
-                # This workaround only works on revision 0 ESP32 chips,
-                # it exploits a silicon bug spurious watchdog reset.
-                time.sleep(0.4)  # allow watchdog reset to occur
 
             if extra_delay:
                 time.sleep(7)
@@ -592,17 +581,8 @@ class ESPLoader(object):
             time.sleep(0.05)
             self._setDTR(False)  # IO0=HIGH, done
 
-    def _connect_attempt(self, mode='default_reset', esp32r0_delay=False, usb_jtag_serial=False):
-        """ A single connection attempt, with esp32r0 workaround options """
-        # esp32r0_delay is a workaround for bugs with the most common auto reset
-        # circuit and Windows, if the EN pin on the dev board does not have
-        # enough capacitance.
-        #
-        # Newer dev boards shouldn't have this problem (higher value capacitor
-        # on the EN pin), and ESP32 revision 1 can't use this workaround as it
-        # relies on a silicon bug.
-        #
-        # Details: https://github.com/espressif/esptool/issues/136
+    def _connect_attempt(self, mode='default_reset', usb_jtag_serial=False):
+        """ A single connection attempt """
         last_error = None
 
         # If we're doing no_sync, we're likely communicating as a pass through
@@ -611,7 +591,7 @@ class ESPLoader(object):
             return last_error
 
         if mode != 'no_reset':
-            self.bootloader_reset(esp32r0_delay, usb_jtag_serial)
+            self.bootloader_reset(usb_jtag_serial)
 
         for _ in range(5):
             try:
@@ -620,10 +600,7 @@ class ESPLoader(object):
                 self.sync()
                 return None
             except FatalError as e:
-                if esp32r0_delay:
-                    print('_', end='')
-                else:
-                    print('.', end='')
+                print('.', end='')
                 sys.stdout.flush()
                 time.sleep(0.05)
                 last_error = e
@@ -650,10 +627,7 @@ class ESPLoader(object):
 
         try:
             for _ in range(attempts) if attempts > 0 else itertools.count():
-                last_error = self._connect_attempt(mode=mode, esp32r0_delay=False, usb_jtag_serial=usb_jtag_serial)
-                if last_error is None:
-                    break
-                last_error = self._connect_attempt(mode=mode, esp32r0_delay=True, usb_jtag_serial=usb_jtag_serial)
+                last_error = self._connect_attempt(mode=mode, usb_jtag_serial=usb_jtag_serial)
                 if last_error is None:
                     break
         finally:
