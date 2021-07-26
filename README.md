@@ -70,7 +70,7 @@ The baud rate is limited to 115200 when esptool.py establishes the initial conne
 
 Most hardware configurations will work with `-b 230400`, some with `-b 460800`, `-b 921600` and/or `-b 1500000` or higher.
 
-If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output [boot log](#boot-log) information.
+If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output [boot log](https://github.com/espressif/esptool/wiki/ESP8266-Boot-ROM-Log) information.
 
 ## Commands
 
