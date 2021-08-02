@@ -262,6 +262,19 @@ def read_protect_efuse(esp, efuses, args):
         if not efuse.is_readable():
             print("Efuse %s is already read protected" % efuse.name)
         else:
+            if esp.CHIP_NAME == "ESP32":
+                if efuse_name == 'BLOCK2' and not efuses['ABS_DONE_0'].get() and "revision 3" in esp.get_chip_description():
+                    if efuses['ABS_DONE_1'].get():
+                        raise esptool.FatalError("Secure Boot V2 is on (ABS_DONE_1 = True), BLOCK2 must be readable, stop this operation!")
+                    else:
+                        print("In case using Secure Boot V2, the BLOCK2 must be readable, please stop this operation!")
+            else:
+                for block in efuses.Blocks.BLOCKS:
+                    block = efuses.Blocks.get(block)
+                    if block.name == efuse_name and block.key_purpose is not None:
+                        if not efuses[block.key_purpose].need_rd_protect(efuses[block.key_purpose].get()):
+                            raise esptool.FatalError("%s must be readable, stop this operation!" % efuse_name)
+                        break
             # make full list of which efuses will be disabled (ie share a read disable bit)
             all_disabling = [e for e in efuses if e.read_disable_bit == efuse.read_disable_bit]
             names = ", ".join(e.name for e in all_disabling)

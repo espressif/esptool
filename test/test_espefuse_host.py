@@ -182,6 +182,13 @@ class TestBurnCommands(EfuseTestCase):
                    BLOCK3'
             count_protects = 5
         else:
+            self.espefuse_py('burn_efuse \
+                              KEY_PURPOSE_0 XTS_AES_256_KEY_1 \
+                              KEY_PURPOSE_1 XTS_AES_256_KEY_2 \
+                              KEY_PURPOSE_2 XTS_AES_128_KEY \
+                              KEY_PURPOSE_3 HMAC_DOWN_ALL \
+                              KEY_PURPOSE_4 HMAC_DOWN_JTAG \
+                              KEY_PURPOSE_5 HMAC_DOWN_DIGITAL_SIGNATURE')
             cmd = 'read_protect_efuse \
                    BLOCK_KEY0 \
                    BLOCK_KEY1 \
@@ -202,9 +209,41 @@ class TestBurnCommands(EfuseTestCase):
                              ret_code=2)
         else:
             self.espefuse_py('write_protect_efuse RD_DIS')
-            self.espefuse_py('read_protect_efuse BLOCK_KEY0',
+            self.espefuse_py('read_protect_efuse BLOCK_SYS_DATA2',
                              check_msg='A fatal error occurred: This efuse cannot be read-disabled due the to RD_DIS field is already write-disabled',
                              ret_code=2)
+
+    @unittest.skipUnless(chip_target == "esp32", "when the purpose of BLOCK2 is set")
+    def test_read_protect_efuse3(self):
+        self.espefuse_py('burn_efuse ABS_DONE_1 1')
+        self.espefuse_py('burn_key BLOCK2 images/efuse/256bit')
+        self.espefuse_py('read_protect_efuse BLOCK2',
+                         check_msg='Secure Boot V2 is on (ABS_DONE_1 = True), BLOCK2 must be readable, stop this operation!',
+                         ret_code=2)
+
+    def test_read_protect_efuse4(self):
+        if chip_target == "esp32":
+            self.espefuse_py('burn_key BLOCK2 images/efuse/256bit')
+            msg = 'must be readable, please stop this operation!'
+            self.espefuse_py('read_protect_efuse BLOCK2', check_msg=msg)
+        else:
+            self.espefuse_py('burn_key BLOCK_KEY0 images/efuse/256bit USER \
+                              BLOCK_KEY1 images/efuse/256bit RESERVED \
+                              BLOCK_KEY2 images/efuse/256bit SECURE_BOOT_DIGEST0 \
+                              BLOCK_KEY3 images/efuse/256bit SECURE_BOOT_DIGEST1 \
+                              BLOCK_KEY4 images/efuse/256bit SECURE_BOOT_DIGEST2 \
+                              BLOCK_KEY5 images/efuse/256bit HMAC_UP')
+            self.espefuse_py('read_protect_efuse BLOCK_KEY0',
+                             check_msg='A fatal error occurred: BLOCK_KEY0 must be readable, stop this operation!', ret_code=2)
+            self.espefuse_py('read_protect_efuse BLOCK_KEY1',
+                             check_msg='A fatal error occurred: BLOCK_KEY1 must be readable, stop this operation!', ret_code=2)
+            self.espefuse_py('read_protect_efuse BLOCK_KEY2',
+                             check_msg='A fatal error occurred: BLOCK_KEY2 must be readable, stop this operation!', ret_code=2)
+            self.espefuse_py('read_protect_efuse BLOCK_KEY3',
+                             check_msg='A fatal error occurred: BLOCK_KEY3 must be readable, stop this operation!', ret_code=2)
+            self.espefuse_py('read_protect_efuse BLOCK_KEY4',
+                             check_msg='A fatal error occurred: BLOCK_KEY4 must be readable, stop this operation!', ret_code=2)
+            self.espefuse_py('read_protect_efuse BLOCK_KEY5')
 
     @unittest.skipUnless(chip_target == "esp32", "system parameters efuse read-protection is supported only by esp32, other chips protect whole blocks")
     def test_burn_and_read_protect_efuse(self):
