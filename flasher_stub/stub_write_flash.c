@@ -422,7 +422,7 @@ void handle_flash_deflated_data(void *data_buf, uint32_t length) {
 
     next_out += out_bytes;
     size_t bytes_in_out_buf = next_out - out_buf;
-    if (status <= TINFL_STATUS_DONE || bytes_in_out_buf == sizeof(out_buf)) {
+    if (status == TINFL_STATUS_DONE || bytes_in_out_buf == sizeof(out_buf)) {
       // Output buffer full, or done
       handle_flash_data(out_buf, bytes_in_out_buf);
       next_out = out_buf;
