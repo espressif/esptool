@@ -25,7 +25,7 @@ import esptool
 
 from . import fields
 from .. import util
-from ..base_operations import (ONLY_BURN_AT_END, add_common_commands, add_force_write_always, burn_bit, burn_block_data,  # noqa: F401
+from ..base_operations import (add_common_commands, add_force_write_always, burn_bit, burn_block_data,  # noqa: F401
                                burn_efuse, dump, read_protect_efuse, summary, write_protect_efuse)  # noqa: F401
 
 
@@ -69,7 +69,7 @@ def burn_custom_mac(esp, efuses, args):
     #  - CUSTOM_MAC = AA:CD:EF:01:02:03
     #  - CUSTOM_MAC_CRC = crc8(CUSTOM_MAC)
     efuses["CUSTOM_MAC"].save(args.mac)
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
     get_custom_mac(esp, efuses, args)
@@ -119,7 +119,7 @@ The following efuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG, XPD_SDIO_TIEH.
     if args.voltage == '3.3V':
         sdio_tieh.save(1)
     print("VDD_SDIO setting complete.")
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
 
@@ -194,7 +194,7 @@ def burn_key(esp, efuses, args):
     else:
         msg += "The key block will be read and write protected (no further changes or readback)"
     print(msg, '\n')
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
     print("Successful")
@@ -221,7 +221,7 @@ def burn_key_digest(esp, efuses, args):
         print("Disabling write to efuse %s..." % (efuse.name))
         efuse.disable_write()
 
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
 
@@ -245,8 +245,7 @@ def execute_scripts(esp, efuses, args):
     del args.operation
     scripts = args.scripts
     del args.scripts
-    global ONLY_BURN_AT_END
-    ONLY_BURN_AT_END = True
+    args.only_burn_at_end = True
 
     for file in scripts:
         with open(file.name, 'r') as file:

@@ -757,7 +757,14 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
 
 
 class TestExecuteScriptsCommands(EfuseTestCase):
-    def test_execute_scripts_without_sdkconfig(self):
+    def test_execute_scripts_with_check_that_only_one_burn(self):
+        self.espefuse_py("execute_scripts -h")
+        name = chip_target if chip_target == 'esp32' else 'esp32xx'
+        os.chdir(os.path.join(TEST_DIR, "efuse_scripts", name))
+        self.espefuse_py("execute_scripts test_efuse_script2.py")
+        os.chdir(TEST_DIR)
+
+    def test_execute_scripts_with_check(self):
         self.espefuse_py("execute_scripts -h")
         name = chip_target if chip_target == 'esp32' else 'esp32xx'
         os.chdir(os.path.join(TEST_DIR, "efuse_scripts", name))

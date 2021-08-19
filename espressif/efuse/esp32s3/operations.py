@@ -25,7 +25,7 @@ import esptool
 
 from . import fields
 from .. import util
-from ..base_operations import (ONLY_BURN_AT_END, add_common_commands, add_force_write_always, burn_bit, burn_block_data,  # noqa: F401
+from ..base_operations import (add_common_commands, add_force_write_always, burn_bit, burn_block_data,  # noqa: F401
                                burn_efuse, dump, read_protect_efuse, summary, write_protect_efuse)  # noqa: F401
 
 
@@ -81,7 +81,7 @@ def add_commands(subparsers, efuses):
 
 def burn_custom_mac(esp, efuses, args):
     efuses["CUSTOM_MAC"].save(args.mac)
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
     get_custom_mac(esp, efuses, args)
@@ -128,7 +128,7 @@ The following efuses are burned: VDD_SPI_FORCE, VDD_SPI_XPD, VDD_SPI_TIEH.
     if args.voltage == '3.3V':
         sdio_tieh.save(1)
     print("VDD_SPI setting complete.")
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
 
@@ -254,7 +254,7 @@ def burn_key(esp, efuses, args, digest=None):
     if args.no_read_protect:
         print("Keys will remain readable (due to --no-read-protect)")
 
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
     print("Successful")
@@ -299,8 +299,7 @@ def execute_scripts(esp, efuses, args):
     del args.operation
     scripts = args.scripts
     del args.scripts
-    global ONLY_BURN_AT_END
-    ONLY_BURN_AT_END = True
+    args.only_burn_at_end = True
 
     for file in scripts:
         with open(file.name, 'r') as file:

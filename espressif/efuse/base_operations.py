@@ -27,8 +27,6 @@ import esptool
 from . import base_fields
 from . import util
 
-ONLY_BURN_AT_END = False
-
 
 def add_common_commands(subparsers, efuses):
     class ActionEfuseValuePair(argparse.Action):
@@ -232,8 +230,7 @@ def burn_efuse(esp, efuses, args):
     for efuse, new_value in zip(burn_efuses_list, new_value_list):
         print("\n    - '{}' ({}) {} -> {}".format(efuse.name, efuse.description, efuse.get_bitstring(), efuse.convert_to_bitstring(new_value)))
         efuse.save(new_value)
-
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
 
@@ -281,7 +278,7 @@ def read_protect_efuse(esp, efuses, args):
             print("Permanently read-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "", names))
             efuse.disable_read()
 
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
 
@@ -311,7 +308,7 @@ def write_protect_efuse(esp, efuses, args):
             print("Permanently write-disabling efuse%s %s" % ("s" if len(all_disabling) > 1 else "", names))
             efuse.disable_write()
 
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
 
@@ -361,7 +358,7 @@ def burn_block_data(esp, efuses, args):
         print("[{:02}] {:20} size={:02} bytes, offset={:02} - > [{}].".format(block.id, block.name, len(data), offset, util.hexify(data, " ")))
         block.save(data)
 
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
     print("Successful")
@@ -382,7 +379,7 @@ def burn_bit(esp, efuses, args):
     block.print_block(data_block, "regs_to_write", debug=True)
     block.save(data_block.bytes[::-1])
 
-    if ONLY_BURN_AT_END:
+    if args.only_burn_at_end:
         return
     efuses.burn_all()
     print("Successful")
