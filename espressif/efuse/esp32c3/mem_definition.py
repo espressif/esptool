@@ -52,16 +52,16 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     BLOCK_ERRORS = [
         # error_reg,               err_num_mask, err_num_offs,     fail_bit
         (EFUSE_RD_REPEAT_ERR0_REG, None,         None,             None),  # BLOCK0
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          0,                3),     # MAC_SPI_8M_0
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          4,                7),     # BLOCK_SYS_DATA
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          8,                11),    # BLOCK_USR_DATA
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          12,               15),    # BLOCK_KEY0
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          16,               19),    # BLOCK_KEY1
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          20,               23),    # BLOCK_KEY2
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          24,               27),    # BLOCK_KEY3
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          28,               31),    # BLOCK_KEY4
-        (EFUSE_RD_RS_ERR1_REG,     0x7,          0,                3),     # BLOCK_KEY5
-        (EFUSE_RD_RS_ERR1_REG,     0x7,          4,                7),     # BLOCK_SYS_DATA2
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          4,                7),     # MAC_SPI_8M_0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          8,                11),    # BLOCK_SYS_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          12,               15),    # BLOCK_USR_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          16,               19),    # BLOCK_KEY0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          20,               23),    # BLOCK_KEY1
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          24,               27),    # BLOCK_KEY2
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          28,               31),    # BLOCK_KEY3
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          0,                3),     # BLOCK_KEY4
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          4,                7),     # BLOCK_KEY5
+        (EFUSE_RD_RS_ERR1_REG,     None,         None,             None),  # BLOCK_SYS_DATA2
     ]
 
     # EFUSE_WR_TIM_CONF2_REG

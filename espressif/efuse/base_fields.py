@@ -269,24 +269,31 @@ class EfuseBlockBase(EfuseProtectBase):
         self.wr_bitarray.overwrite(self.wr_bitarray | data, pos=0)
 
     def burn_words(self, words):
-        self.parent.efuse_controller_setup()
-        if self.parent.debug:
-            print("Write data to BLOCK%d" % (self.id))
-        write_reg_addr = self.wr_addr
-        for word in words:
-            # for ep32s2: using EFUSE_PGM_DATA[0..7]_REG for writing data
-            #   32 bytes to EFUSE_PGM_DATA[0..7]_REG
-            #   12 bytes to EFUSE_CHECK_VALUE[0..2]_REG. These regs are next after EFUSE_PGM_DATA_REG
-            # for esp32:
-            #   each block has the special regs EFUSE_BLK[0..3]_WDATA[0..7]_REG for writing data
+        for burns in range(3):
+            self.parent.efuse_controller_setup()
             if self.parent.debug:
-                print("Addr 0x%08x, data=0x%08x" % (write_reg_addr, word))
-            self.parent.write_reg(write_reg_addr, word)
-            write_reg_addr += 4
-        warnings_before = self.parent.get_coding_scheme_warnings(silent=True)
-        warnings_after = self.parent.write_efuses(self.id)
-        if warnings_after & ~warnings_before != 0:
-            print("WARNING: Burning efuse block added coding scheme warnings")
+                print("Write data to BLOCK%d" % (self.id))
+            write_reg_addr = self.wr_addr
+            for word in words:
+                # for ep32s2: using EFUSE_PGM_DATA[0..7]_REG for writing data
+                #   32 bytes to EFUSE_PGM_DATA[0..7]_REG
+                #   12 bytes to EFUSE_CHECK_VALUE[0..2]_REG. These regs are next after EFUSE_PGM_DATA_REG
+                # for esp32:
+                #   each block has the special regs EFUSE_BLK[0..3]_WDATA[0..7]_REG for writing data
+                if self.parent.debug:
+                    print("Addr 0x%08x, data=0x%08x" % (write_reg_addr, word))
+                self.parent.write_reg(write_reg_addr, word)
+                write_reg_addr += 4
+
+            self.parent.write_efuses(self.id)
+            for _ in range(5):
+                self.parent.efuse_read()
+                self.parent.get_coding_scheme_warnings(silent=True)
+                if self.fail or self.num_errors:
+                    print("Error in BLOCK%d, re-burn it again (#%d), to fix it. fail_bit=%d, num_errors=%d" % (self.id, burns, self.fail, self.num_errors))
+                    break
+            if not self.fail and self.num_errors == 0:
+                break
 
     def burn(self):
         if self.wr_bitarray.all(False):
@@ -362,8 +369,6 @@ class EspEfusesBase(object):
     def read_blocks(self):
         for block in self.blocks:
             block.read()
-        if self.get_coding_scheme_warnings():
-            raise esptool.FatalError("Error(s) were detected in eFuses")
 
     def update_efuses(self):
         for efuse in self.efuses:
@@ -384,7 +389,11 @@ class EspEfusesBase(object):
 
         # Burn from BLKn -> BLK0. Because BLK0 can set rd or/and wr protection bits.
         for block in reversed(self.blocks):
+            old_fail = block.fail
+            old_num_errors = block.num_errors
             block.burn()
+            if (block.fail and old_fail != block.fail) or (block.num_errors and block.num_errors > old_num_errors):
+                raise esptool.FatalError("Error(s) were detected in eFuses")
         print("Reading updated efuses...")
         self.read_coding_scheme()
         self.read_blocks()

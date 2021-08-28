@@ -367,6 +367,7 @@ def burn_block_data(esp, efuses, args):
 
 
 def burn_bit(esp, efuses, args):
+    efuses.force_write_always = args.force_write_always
     num_block = efuses.get_index_block_by_name(args.block)
     block = efuses.blocks[num_block]
     data_block = BitString(block.get_block_len() * 8)

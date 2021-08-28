@@ -189,6 +189,8 @@ class EspEfuses(base_fields.EspEfusesBase):
                 block.fail = block.num_errors != 0
             else:
                 addr_reg, err_num_mask, err_num_offs, fail_bit = self.REGS.BLOCK_ERRORS[block.id]
+                if err_num_mask is None or err_num_offs is None or fail_bit is None:
+                    continue
                 if addr_reg != old_addr_reg:
                     old_addr_reg = addr_reg
                     reg_value = self.read_reg(addr_reg)
