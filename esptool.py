@@ -356,38 +356,53 @@ class ESPLoader(object):
                     connect_attempts=DEFAULT_CONNECT_ATTEMPTS):
         """ Use serial access to detect the chip type.
 
-        We use the UART's datecode register for this, it's mapped at
-        the same address on ESP8266 & ESP32 so we can use one
-        memory read and compare to the datecode register for each chip
-        type.
+        First, get_security_info command is sent to detect the ID of the chip
+        (supported only by ESP32-C3 and later, works even in the Secure Download Mode).
+        If this fails, we reconnect and fall-back to reading the magic number.
+        It's mapped at a specific ROM address and has a different value on each chip model.
+        This way we can use one memory read and compare it to the magic number for each chip type.
 
         This routine automatically performs ESPLoader.connect() (passing
         connect_mode parameter) as part of querying the chip.
         """
+        inst = None
         detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
         detect_port.connect(connect_mode, connect_attempts, detecting=True)
         try:
             print('Detecting chip type...', end='')
-            sys.stdout.flush()
-            chip_magic_value = detect_port.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
+            res = detect_port.check_command('get security info', ESPLoader.ESP_GET_SECURITY_INFO, b'')
+            res = struct.unpack("<IBBBBBBBBI", res[:16])  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
+            chip_id = res[9]  # 2/4 status bytes invariant
 
-            for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM]:
-                if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
-                    # don't connect a second time
+            for cls in [ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM]:
+                if chip_id == cls.IMAGE_CHIP_ID:
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
-                    inst.check_chip_id()
+        except (UnsupportedCommandError, struct.error, FatalError):
+            # UnsupportedCmdErr: ESP8266, ESP32 ROM | struct.err: ESP32S2 | FatalErr: ESP8266, ESP32 STUB
+            print(" Unsupported detection protocol, switching and trying again...")
+            try:
+                detect_port.connect(connect_mode, connect_attempts, detecting=True, warnings=False)  # Need to connect again
+                print('Detecting chip type...', end='')
+                sys.stdout.flush()
+                chip_magic_value = detect_port.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
 
-                    print(' %s' % inst.CHIP_NAME, end='')
-                    if detect_port.sync_stub_detected:
-                        inst = inst.STUB_CLASS(inst)
-                        inst.sync_stub_detected = True
-                    return inst
-        except UnsupportedCommandError:
-            raise FatalError("Unsupported Command Error received. Probably this means Secure Download Mode is enabled, "
-                             "autodetection will not work. Need to manually specify the chip.")
+                for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM]:
+                    if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
+                        inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
+                        inst._post_connect()
+                        inst.check_chip_id()
+            except UnsupportedCommandError:
+                raise FatalError("Unsupported Command Error received. Probably this means Secure Download Mode is enabled, "
+                                 "autodetection will not work. Need to manually specify the chip.")
         finally:
-            print('')  # end line
+            if inst is not None:
+                print(' %s' % inst.CHIP_NAME, end='')
+                if detect_port.sync_stub_detected:
+                    inst = inst.STUB_CLASS(inst)
+                    inst.sync_stub_detected = True
+                print('')  # end line
+                return inst
         raise FatalError("Unexpected CHIP magic value 0x%08x. Failed to autodetect chip type." % (chip_magic_value))
 
     """ Read a SLIP packet from the serial port """
@@ -632,9 +647,9 @@ class ESPLoader(object):
         except IndexError:
             return None
 
-    def connect(self, mode='default_reset', attempts=DEFAULT_CONNECT_ATTEMPTS, detecting=False):
+    def connect(self, mode='default_reset', attempts=DEFAULT_CONNECT_ATTEMPTS, detecting=False, warnings=True):
         """ Try connecting repeatedly until successful, or giving up """
-        if mode in ['no_reset', 'no_reset_no_sync']:
+        if warnings and mode in ['no_reset', 'no_reset_no_sync']:
             print('WARNING: Pre-connection option "{}" was selected.'.format(mode),
                   'Connection may fail if the chip is not in bootloader or flasher stub mode.')
         print('Connecting...', end='')
@@ -665,7 +680,7 @@ class ESPLoader(object):
                         if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                             actually = cls
                             break
-                    if actually is None:
+                    if warnings and actually is None:
                         print(("WARNING: This chip doesn't appear to be a %s (chip magic value 0x%08x). "
                                "Probably it is unsupported by this version of esptool.") % (self.CHIP_NAME, chip_magic_value))
                     else:
@@ -824,12 +839,11 @@ class ESPLoader(object):
         return (flags, flash_crypt_cnt, key_purposes)
 
     @esp32s3_or_newer_function_only
-    def get_chip_info(self):
-        # TODO: this only works on the ESP32S3/C3 ROM code loader and needs to work in stub loader also
+    def get_chip_id(self):
         res = self.check_command('get security info', self.ESP_GET_SECURITY_INFO, b'')
-        res = struct.unpack("<IBBBBBBBBII", res)
-        chip_id, eco_version = res[-2], res[-1]
-        return (chip_id, eco_version)
+        res = struct.unpack("<IBBBBBBBBI", res[:16])  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
+        chip_id = res[9]  # 2/4 status bytes invariant
+        return chip_id
 
     @classmethod
     def parse_flash_size_arg(cls, arg):
@@ -1219,7 +1233,7 @@ class ESPLoader(object):
 
     def check_chip_id(self):
         try:
-            chip_id, _ = self.get_chip_info()
+            chip_id = self.get_chip_id()
             if chip_id != self.IMAGE_CHIP_ID:
                 print("WARNING: Chip ID {} ({}) doesn't match expected Chip ID {}. esptool may not work correctly."
                       .format(chip_id, self.UNSUPPORTED_CHIPS.get(chip_id, 'Unknown'), self.IMAGE_CHIP_ID))
@@ -1889,6 +1903,7 @@ class ESP32S2ROM(ESP32ROM):
         if self.uses_usb():
             self._check_if_can_reset()
 
+        print('Hard resetting via RTS pin...')
         self._setRTS(True)  # EN->LOW
         if self.uses_usb():
             # Give the chip some time to come out of reset, to be able to handle further DTR/RTS transitions
@@ -2056,6 +2071,7 @@ class ESP32S3ROM(ESP32ROM):
         if self.uses_usb():
             self._check_if_can_reset()
 
+        print('Hard resetting via RTS pin...')
         self._setRTS(True)  # EN->LOW
         if self.uses_usb():
             # Give the chip some time to come out of reset, to be able to handle further DTR/RTS transitions

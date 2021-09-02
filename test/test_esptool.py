@@ -475,8 +475,6 @@ class TestFlashDetection(EsptoolTestCase):
 
 
 class TestStubReuse(EsptoolTestCase):
-    @unittest.skipIf(chip == "esp32s3", "TODO: will work when get_security_info is implemented in stub")
-    @unittest.skipIf(chip == "esp32c3", "TODO: will work when get_security_info is implemented in stub")
     def test_stub_reuse_with_synchronization(self):
         """ Keep the flasher stub running and reuse it the next time. """
         res = self.run_esptool("--after no_reset_stub flash_id")  # flasher stub keeps running after this
