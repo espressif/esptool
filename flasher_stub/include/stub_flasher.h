@@ -62,6 +62,9 @@ typedef enum {
   ESP_FLASH_DEFLATED_END = 0x12,
   ESP_FLASH_VERIFY_MD5 = 0x13,
 
+  /* Commands supported by the ESP32S2 and later bootloaders */
+  ESP_GET_SECURITY_INFO = 0x14,
+
   /* Stub-only commands */
   ESP_ERASE_FLASH = 0xD0,
   ESP_ERASE_REGION = 0xD1,

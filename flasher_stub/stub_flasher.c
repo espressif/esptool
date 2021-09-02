@@ -117,6 +117,11 @@ void cmd_loop() {
     case ESP_FLASH_VERIFY_MD5:
         resp.len_ret = 16 + 2; /* Will sent 16 bytes of data with MD5 value */
         break;
+    #if ESP32S2_OR_LATER
+    case ESP_GET_SECURITY_INFO:
+        resp.len_ret = SECURITY_INFO_BYTES; /* Buffer size varies */
+        break;
+    #endif // ESP32S2_OR_LATER
     default:
         break;
     }
@@ -132,9 +137,9 @@ void cmd_loop() {
       continue;
     }
 
-    /* ... ESP_FLASH_VERIFY_MD5 will insert in-frame response data
-       between here and when we send the status bytes at the
-       end of the frame */
+    /* ... ESP_FLASH_VERIFY_MD5 and ESP_GET_SECURITY_INFO will insert
+    * in-frame response data between here and when we send the
+    * status bytes at the end of the frame */
 
     esp_command_error error = ESP_CMD_NOT_IMPLEMENTED;
     int status = 0;
@@ -162,6 +167,11 @@ void cmd_loop() {
          * ended. */
       }
       break;
+    #if ESP32S2_OR_LATER
+    case ESP_GET_SECURITY_INFO:
+      error = verify_data_len(command, 0) || handle_get_security_info();
+      break;
+    #endif // ESP32S2_OR_LATER
     case ESP_ERASE_FLASH:
       error = verify_data_len(command, 0) || SPIEraseChip();
       break;

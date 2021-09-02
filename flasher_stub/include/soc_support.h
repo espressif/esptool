@@ -283,3 +283,15 @@
 #endif
 
 #define RTC_CNTL_FORCE_DOWNLOAD_BOOT  (1 << 0)
+
+/**********************************************************
+ * Per-SOC security info buffer size
+ */
+
+#ifdef ESP32S2
+#define SECURITY_INFO_BYTES 12 /* doesn't include chip_id and api_version */
+#endif // ESP32S2
+
+#if ESP32S3_OR_LATER
+#define SECURITY_INFO_BYTES 20
+#endif // ESP32S3_OR_LATER

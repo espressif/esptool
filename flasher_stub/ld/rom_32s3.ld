@@ -68,6 +68,7 @@ esp_rom_get_rtc_wake_addr = 0x40000738;
 send_packet = 0x40000744;
 recv_packet = 0x40000750;
 GetUartDevice = 0x4000075c;
+GetSecurityInfoProc = 0x40048174;
 UartDwnLdProc = 0x40000768;
 Uart_Init = 0x40000774;
 ets_set_user_start = 0x40000780;

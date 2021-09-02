@@ -104,6 +104,7 @@ SpiFlashOpResult SPI_Encrypt_Write(uint32_t flash_addr, const void* data, uint32
 #endif
 
 #if ESP32S2_OR_LATER
+uint32_t GetSecurityInfoProc(int* pMsg, int* pnErr, uint8_t *buf);  // pMsg and pnErr unused in ROM
 SpiFlashOpResult SPI_read_status_high(esp_rom_spiflash_chip_t *spi, uint32_t *status);
 #else
 /* Note: On ESP32 this was a static function whose first argument was elided by the
