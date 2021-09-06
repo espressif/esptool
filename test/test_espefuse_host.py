@@ -513,6 +513,53 @@ class TestBurnCommands(EfuseTestCase):
             self.check_data_block_in_log(output, "images/efuse/192bit_1")
             self.check_data_block_in_log(output, "images/efuse/192bit_2")
 
+    @unittest.skipUnless(chip_target in ["esp32s2", "esp32s3"], "512 bit keys are only supported on ESP32-S2 and S3")
+    def test_burn_key_512bit(self):
+        self.espefuse_py('burn_key \
+                          BLOCK_KEY0 images/efuse/256bit_1_256bit_2_combined XTS_AES_256_KEY --no-read-protect --no-write-protect')
+        output = self.espefuse_py('summary -d')
+        self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=True)
+        self.check_data_block_in_log(output, "images/efuse/256bit_2", reverse_order=True)
+
+    @unittest.skipUnless(chip_target in ["esp32s2", "esp32s3"], "512 bit keys are only supported on ESP32-S2 and S3")
+    def test_burn_key_512bit_non_consecutive_blocks(self):
+
+        # Burn efuses seperately to test different kinds of "key used" detection criteria
+        self.espefuse_py('burn_key \
+                          BLOCK_KEY2 images/efuse/256bit XTS_AES_128_KEY')
+        self.espefuse_py('burn_key \
+                          BLOCK_KEY3 images/efuse/256bit USER --no-read-protect --no-write-protect')
+        self.espefuse_py('burn_key \
+                          BLOCK_KEY4 images/efuse/256bit SECURE_BOOT_DIGEST0')
+
+        self.espefuse_py('burn_key \
+                          BLOCK_KEY1 images/efuse/256bit_1_256bit_2_combined XTS_AES_256_KEY --no-read-protect --no-write-protect')
+
+        # Second half of key should burn to first available key block (BLOCK_KEY5)
+        output = self.espefuse_py('summary -d')
+        self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=True)
+        self.check_data_block_in_log(output, "images/efuse/256bit_2", reverse_order=True)
+
+        self.assertIn('[5 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 11a1a2a3', output)
+        self.assertIn('[9 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 22a1a2a3', output)
+
+    @unittest.skipUnless(chip_target in ["esp32s2", "esp32s3"], "512 bit keys are only supported on ESP32-S2 and S3")
+    def test_burn_key_512bit_non_consecutive_blocks_loop_around(self):
+        self.espefuse_py('burn_key \
+                          BLOCK_KEY2 images/efuse/256bit XTS_AES_128_KEY \
+                          BLOCK_KEY3 images/efuse/256bit USER \
+                          BLOCK_KEY4 images/efuse/256bit SECURE_BOOT_DIGEST0 \
+                          BLOCK_KEY5 images/efuse/256bit SECURE_BOOT_DIGEST1 \
+                          BLOCK_KEY1 images/efuse/256bit_1_256bit_2_combined XTS_AES_256_KEY --no-read-protect --no-write-protect')
+
+        # Second half of key should burn to first available key block (BLOCK_KEY0)
+        output = self.espefuse_py('summary -d')
+        self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=True)
+        self.check_data_block_in_log(output, "images/efuse/256bit_2", reverse_order=True)
+
+        self.assertIn('[5 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 11a1a2a3', output)
+        self.assertIn('[4 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 22a1a2a3', output)
+
     def test_burn_block_data_check_args(self):
         self.espefuse_py("burn_block_data -h")
         if chip_target == "esp32":

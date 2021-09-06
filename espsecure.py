@@ -944,10 +944,10 @@ def main(custom_commandline=None):
                    choices=[192, 256], default=256, type=int)
     p.add_argument('digest_file', help="File to write 32 byte digest into", type=OutFileType())
 
-    p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use 32 byte flash encryption key with random data.')
+    p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use flash encryption key with random data.')
     p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme requires 192 bit key.",
-                   choices=[192, 256], default=256, type=int)
-    p.add_argument('key_file', help="File to write 24 or 32 byte digest into", type=OutFileType())
+                   choices=[192, 256, 512], default=256, type=int)
+    p.add_argument('key_file', help="File to write 24, 32 or 64 byte key into", type=OutFileType())
 
     p = subparsers.add_parser('decrypt_flash_data', help='Decrypt some data read from encrypted flash (using known key)')
     p.add_argument('encrypted_file', help="File with encrypted flash contents", type=argparse.FileType('rb'))
