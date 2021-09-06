@@ -85,6 +85,7 @@ ERASE_WRITE_TIMEOUT_PER_MB = 40       # timeout (per megabyte) for erasing and w
 MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
+DEFAULT_SYNC_ATTEMPTS = 5             # default number of times to try sync
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
@@ -353,7 +354,7 @@ class ESPLoader(object):
 
     @staticmethod
     def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False,
-                    connect_attempts=DEFAULT_CONNECT_ATTEMPTS):
+                    connect_attempts=DEFAULT_CONNECT_ATTEMPTS, sync_attempts=DEFAULT_SYNC_ATTEMPTS):
         """ Use serial access to detect the chip type.
 
         We use the UART's datecode register for this, it's mapped at
@@ -365,7 +366,7 @@ class ESPLoader(object):
         connect_mode parameter) as part of querying the chip.
         """
         detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
-        detect_port.connect(connect_mode, connect_attempts, detecting=True)
+        detect_port.connect(connect_mode, connect_attempts, sync_attempts, detecting=True)
         try:
             print('Detecting chip type...', end='')
             sys.stdout.flush()
@@ -582,7 +583,7 @@ class ESPLoader(object):
             time.sleep(0.05)
             self._setDTR(False)  # IO0=HIGH, done
 
-    def _connect_attempt(self, mode='default_reset', usb_jtag_serial=False):
+    def _connect_attempt(self, mode='default_reset', usb_jtag_serial=False, sync_attempts=DEFAULT_SYNC_ATTEMPTS):
         """ A single connection attempt """
         last_error = None
         boot_log_detected = False
@@ -606,7 +607,7 @@ class ESPLoader(object):
                 boot_mode = data.group(1)
                 download_mode = data.group(2) is not None
 
-        for _ in range(5):
+        for _ in range(sync_attempts):
             try:
                 self.flush_input()
                 self._port.flushOutput()
@@ -632,7 +633,7 @@ class ESPLoader(object):
         except IndexError:
             return None
 
-    def connect(self, mode='default_reset', attempts=DEFAULT_CONNECT_ATTEMPTS, detecting=False):
+    def connect(self, mode='default_reset', connect_attempts=DEFAULT_CONNECT_ATTEMPTS, sync_attempts=DEFAULT_SYNC_ATTEMPTS, detecting=False):
         """ Try connecting repeatedly until successful, or giving up """
         if mode in ['no_reset', 'no_reset_no_sync']:
             print('WARNING: Pre-connection option "{}" was selected.'.format(mode),
@@ -644,8 +645,8 @@ class ESPLoader(object):
         usb_jtag_serial = (mode == 'usb_reset') or (self._get_pid() == self.USB_JTAG_SERIAL_PID)
 
         try:
-            for _ in range(attempts) if attempts > 0 else itertools.count():
-                last_error = self._connect_attempt(mode=mode, usb_jtag_serial=usb_jtag_serial)
+            for _ in range(connect_attempts) if connect_attempts > 0 else itertools.count():
+                last_error = self._connect_attempt(mode=mode, usb_jtag_serial=usb_jtag_serial, sync_attempts=sync_attempts)
                 if last_error is None:
                     break
         finally:
