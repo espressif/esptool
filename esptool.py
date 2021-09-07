@@ -831,12 +831,16 @@ class ESPLoader(object):
         return self.run_spiflash_command(SPIFLASH_RDID, b"", 24)
 
     def get_security_info(self):
-        # TODO: this only works on the ESP32S2 ROM code loader and needs to work in stub loader also
         res = self.check_command('get security info', self.ESP_GET_SECURITY_INFO, b'')
-        res = struct.unpack("<IBBBBBBBB", res)
-        flags, flash_crypt_cnt, key_purposes = res[0], res[1], res[2:]
-        # TODO: pack this as some kind of better data type
-        return (flags, flash_crypt_cnt, key_purposes)
+        esp32s2 = True if len(res) == 12 else False
+        res = struct.unpack("<IBBBBBBBB" if esp32s2 else "<IBBBBBBBBII", res)
+        return {
+            "flags": res[0],
+            "flash_crypt_cnt": res[1],
+            "key_purposes": res[2:9],
+            "chip_id": None if esp32s2 else res[9],
+            "api_version": None if esp32s2 else res[10],
+        }
 
     @esp32s3_or_newer_function_only
     def get_chip_id(self):
@@ -4008,11 +4012,14 @@ def write_flash_status(esp, args):
 
 
 def get_security_info(esp, args):
-    (flags, flash_crypt_cnt, key_purposes) = esp.get_security_info()
-    # TODO: better display
-    print('Flags: 0x%08x (%s)' % (flags, bin(flags)))
-    print('Flash_Crypt_Cnt: 0x%x' % flash_crypt_cnt)
-    print('Key_Purposes: %s' % (key_purposes,))
+    si = esp.get_security_info()
+    # TODO: better display and tests
+    print('Flags: {:#010x} ({})'.format(si["flags"], bin(si["flags"])))
+    print('Flash_Crypt_Cnt: {:#x}'.format(si["flash_crypt_cnt"]))
+    print('Key_Purposes: {}'.format(si["key_purposes"]))
+    if si["chip_id"] is not None and si["api_version"] is not None:
+        print('Chip_ID: {}'.format(si["chip_id"]))
+        print('Api_Version: {}'.format(si["api_version"]))
 
 
 def merge_bin(args):
