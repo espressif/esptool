@@ -167,7 +167,7 @@ void cmd_loop() {
          * ended. */
       }
       break;
-    #if ESP32S2_OR_LATER
+    #if ESP32S2_OR_LATER && !ESP8684
     case ESP_GET_SECURITY_INFO:
       error = verify_data_len(command, 0) || handle_get_security_info();
       break;
@@ -396,7 +396,12 @@ void stub_main()
 
         spi_flash_attach();
 #else
+#if !ESP8684
         uint32_t spiconfig = ets_efuse_get_spiconfig();
+#else
+        // ESP8684 doesn't support get spiconfig.
+        uint32_t spiconfig = 0;
+#endif
         uint32_t strapping = READ_REG(GPIO_STRAP_REG);
         /* If GPIO1 (U0TXD) is pulled low and no other boot mode is
            set in efuse, assume HSPI flash mode (same as normal boot)

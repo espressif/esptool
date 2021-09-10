@@ -263,7 +263,7 @@ esp_command_error handle_write_reg(const write_reg_args_t *cmds, uint32_t num_co
     return ESP_OK;
 }
 
-#if ESP32S2_OR_LATER
+#if ESP32S2_OR_LATER && !ESP8684
 esp_command_error handle_get_security_info()
 {
   uint8_t buf[SECURITY_INFO_BYTES];

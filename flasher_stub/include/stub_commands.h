@@ -59,6 +59,6 @@ esp_rom_spiflash_result_t SPIRead4B(int spi_num, SpiFlashRdMode mode, uint32_t f
 #endif // ESP32S3
 
 /* Get security info command only on ESP32S2 and later */
-#if ESP32S2_OR_LATER
+#if ESP32S2_OR_LATER && !ESP8684
 esp_command_error handle_get_security_info(void);
 #endif // ESP32S2_OR_LATER

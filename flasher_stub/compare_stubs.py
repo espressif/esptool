@@ -75,7 +75,7 @@ if __name__ == "__main__":
         print("ESP32H2 stub code in esptool.py is different to just-built stub.")
         verbose_diff(esptool.ESP32H2ROM.STUB_CODE, old_32h2_stub)
         same = False
-    if esptool.ESP8684ROM.STUB_CODE != old_32h2_stub:
+    if esptool.ESP8684ROM.STUB_CODE != old_8684_stub:
         print("ESP8684 stub code in esptool.py is different to just-built stub.")
         verbose_diff(esptool.ESP8684ROM.STUB_CODE, old_8684_stub)
         same = False
