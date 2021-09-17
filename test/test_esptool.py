@@ -282,6 +282,7 @@ class TestFlashing(EsptoolTestCase):
         self.run_esptool("write_flash 0x0 images/fifty_kb.bin", baud=921600)
         self.verify_readback(0, 50 * 1024, "images/fifty_kb.bin")
 
+    @unittest.skip('Temporarily isolated rfc2217 tests')
     def test_highspeed_flash_virtual_port(self):
         with ESPRFC2217Server() as server:
             rfc2217_port = 'rfc2217://localhost:' + str(server.port) + '?ign_set_control'
@@ -737,6 +738,7 @@ class TestAutoDetect(EsptoolTestCase):
         output = self.run_esptool("chip_id", chip_name=None)
         self._check_output(output)
 
+    @unittest.skip('Temporarily isolated rfc2217 tests')
     def test_auto_detect_virtual_port(self):
         with ESPRFC2217Server() as server:
             output = self.run_esptool("chip_id", chip_name=None,
