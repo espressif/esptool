@@ -558,7 +558,7 @@ class ESPLoader(object):
                 return p.pid
         print("\nFailed to get PID of a device on {}, using standard reset sequence.".format(active_port))
 
-    def bootloader_reset(self, usb_jtag_serial=False):
+    def bootloader_reset(self, usb_jtag_serial=False, extra_delay=False):
         """ Issue a reset-to-bootloader, with USB-JTAG-Serial custom reset sequence option
         """
         # RTS = either CH_PD/EN or nRESET (both active low = chip in reset)
@@ -582,22 +582,19 @@ class ESPLoader(object):
             self._setDTR(False)
             self._setRTS(False)
         else:
-            # This extra delay is for Espressif internal use
-            extra_delay = True if self.FPGA_SLOW_BOOT and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1" else False
+            # This fpga delay is for Espressif internal use
+            fpga_delay = True if self.FPGA_SLOW_BOOT and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1" else False
+            delay = 7 if fpga_delay else 0.5 if extra_delay else 0.05  # 0.5 needed for ESP32 rev0 and rev1
 
             self._setDTR(False)  # IO0=HIGH
             self._setRTS(True)   # EN=LOW, chip in reset
             time.sleep(0.1)
             self._setDTR(True)   # IO0=LOW
             self._setRTS(False)  # EN=HIGH, chip out of reset
-
-            if extra_delay:
-                time.sleep(7)
-
-            time.sleep(0.05)
+            time.sleep(delay)
             self._setDTR(False)  # IO0=HIGH, done
 
-    def _connect_attempt(self, mode='default_reset', usb_jtag_serial=False):
+    def _connect_attempt(self, mode='default_reset', usb_jtag_serial=False, extra_delay=False):
         """ A single connection attempt """
         last_error = None
         boot_log_detected = False
@@ -610,7 +607,7 @@ class ESPLoader(object):
 
         if mode != 'no_reset':
             self._port.flushInput()  # Empty serial buffer to isolate boot log
-            self.bootloader_reset(usb_jtag_serial)
+            self.bootloader_reset(usb_jtag_serial, extra_delay)
 
             # Detect the ROM boot log and check actual boot mode (ESP32 and later only)
             waiting = self._port.inWaiting()
@@ -659,8 +656,8 @@ class ESPLoader(object):
         usb_jtag_serial = (mode == 'usb_reset') or (self._get_pid() == self.USB_JTAG_SERIAL_PID)
 
         try:
-            for _ in range(attempts) if attempts > 0 else itertools.count():
-                last_error = self._connect_attempt(mode=mode, usb_jtag_serial=usb_jtag_serial)
+            for _, extra_delay in zip(range(attempts) if attempts > 0 else itertools.count(), itertools.cycle((False, True))):
+                last_error = self._connect_attempt(mode=mode, usb_jtag_serial=usb_jtag_serial, extra_delay=extra_delay)
                 if last_error is None:
                     break
         finally:
