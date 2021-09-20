@@ -2909,11 +2909,6 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             f.write(struct.pack(b'<I', crc))
 
 
-# Backwards compatibility for previous API, remove in esptool.py V3
-ESPFirmwareImage = ESP8266ROMFirmwareImage
-OTAFirmwareImage = ESP8266V2FirmwareImage
-
-
 def esp8266_crc32(data):
     """
     CRC32 algorithm used by 8266 SDK bootloader (and gen_appbin.py).
@@ -3163,6 +3158,100 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
         packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *fields)
         save_file.write(packed)
+
+
+class ESP8266V3FirmwareImage(ESP32FirmwareImage):
+    """ ESP8266 V3 firmware image is very similar to ESP32 image
+    """
+
+    EXTENDED_HEADER_STRUCT_FMT = "B" * 16
+
+    def is_flash_addr(self, addr):
+        return (addr > ESP8266ROM.IROM_MAP_START)
+
+    def save(self, filename):
+        total_segments = 0
+        with io.BytesIO() as f:  # write file to memory first
+            self.write_common_header(f, self.segments)
+
+            checksum = ESPLoader.ESP_CHECKSUM_MAGIC
+
+            # split segments into flash-mapped vs ram-loaded, and take copies so we can mutate them
+            flash_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if self.is_flash_addr(s.addr) and len(s.data)]
+            ram_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if not self.is_flash_addr(s.addr) and len(s.data)]
+
+            # check for multiple ELF sections that are mapped in the same flash mapping region.
+            # this is usually a sign of a broken linker script, but if you have a legitimate
+            # use case then let us know
+            if len(flash_segments) > 0:
+                last_addr = flash_segments[0].addr
+                for segment in flash_segments[1:]:
+                    if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
+                        raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. "
+                                          "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
+                                         (segment.addr, last_addr))
+                    last_addr = segment.addr
+
+            # try to fit each flash segment on a 64kB aligned boundary
+            # by padding with parts of the non-flash segments...
+            while len(flash_segments) > 0:
+                segment = flash_segments[0]
+                # remove 8 bytes empty data for insert segment header
+                if segment.name == '.flash.rodata':
+                    segment.data = segment.data[8:]
+                # write the flash segment
+                checksum = self.save_segment(f, segment, checksum)
+                flash_segments.pop(0)
+                total_segments += 1
+
+            # flash segments all written, so write any remaining RAM segments
+            for segment in ram_segments:
+                checksum = self.save_segment(f, segment, checksum)
+                total_segments += 1
+
+            # done writing segments
+            self.append_checksum(f, checksum)
+            image_length = f.tell()
+
+            # kinda hacky: go back to the initial header and write the new segment count
+            # that includes padding segments. This header is not checksummed
+            f.seek(1)
+            try:
+                f.write(chr(total_segments))
+            except TypeError:  # Python 3
+                f.write(bytes([total_segments]))
+
+            if self.append_digest:
+                # calculate the SHA256 of the whole file and append it
+                f.seek(0)
+                digest = hashlib.sha256()
+                digest.update(f.read(image_length))
+                f.write(digest.digest())
+
+            with open(filename, 'wb') as real_file:
+                real_file.write(f.getvalue())
+
+    def load_extended_header(self, load_file):
+        def split_byte(n):
+            return (n & 0x0F, (n >> 4) & 0x0F)
+
+        fields = list(struct.unpack(self.EXTENDED_HEADER_STRUCT_FMT, load_file.read(16)))
+
+        self.wp_pin = fields[0]
+
+        # SPI pin drive stengths are two per byte
+        self.clk_drv, self.q_drv = split_byte(fields[1])
+        self.d_drv, self.cs_drv = split_byte(fields[2])
+        self.hd_drv, self.wp_drv = split_byte(fields[3])
+
+        if fields[15] in [0, 1]:
+            self.append_digest = (fields[15] == 1)
+        else:
+            raise RuntimeError("Invalid value for append_digest field (0x%02x). Should be 0 or 1.", fields[15])
+
+        # remaining fields in the middle should all be zero
+        if any(f for f in fields[4:15] if f != 0):
+            print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
 
 
 ESP32ROM.BOOTLOADER_IMAGE = ESP32FirmwareImage
@@ -3938,8 +4027,10 @@ def elf2image(args):
             image.secure_pad = '2'
     elif args.version == '1':  # ESP8266
         image = ESP8266ROMFirmwareImage()
-    else:
+    elif args.version == '2':
         image = ESP8266V2FirmwareImage()
+    else:
+        image = ESP8266V3FirmwareImage()
     image.entrypoint = e.entrypoint
     image.flash_mode = {'qio': 0, 'qout': 1, 'dio': 2, 'dout': 3}[args.flash_mode]
 
@@ -4311,7 +4402,7 @@ def main(argv=None, esp=None):
         help='Create an application image from ELF file')
     parser_elf2image.add_argument('input', help='Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
-    parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1', '2'], default='1')
+    parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1', '2', '3'], default='1')
     parser_elf2image.add_argument('--min-rev', '-r', help='Minimum chip revision', choices=['0', '1', '2', '3'], default='0')
     parser_elf2image.add_argument('--secure-pad', action='store_true',
                                   help='Pad image so once signed it will end on a 64KB boundary. For Secure Boot v1 images only.')
