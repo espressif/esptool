@@ -30,7 +30,7 @@ After installing, you will have `esptool.py` installed into the default Python e
 
 Development mode allows you to run the latest development version from this repository.
 
-```
+```sh
 $ git clone https://github.com/espressif/esptool.git
 $ cd esptool
 $ pip install --user -e .
@@ -164,7 +164,7 @@ Device: 4016
 Detected flash size: 4MB
 ```
 
-Refer to [flashrom source code](https://review.coreboot.org/cgit/flashrom.git/tree/flashchips.h) for flash chip manufacturer name and part number.
+Refer to [flashrom source code](https://review.coreboot.org/plugins/gitiles/flashrom/+/refs/heads/master/flashchips.h) for flash chip manufacturer name and part number.
 
 ### Convert ELF to Binary: elf2image
 
@@ -361,6 +361,12 @@ Note: Because gaps between the input files are padded with 0xFF bytes, when the 
 * The `merge_bin` command supports the same `--flash_mode`, `--flash_size` and `--flash_speed` options as the `write_flash` command to override the bootloader flash header (see above for details). These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the `--chip` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
 * The `--target-offset 0xNNN` option will create a merged binary that should be flashed at the specified offset, instead of at offset 0x0.
 * The `--fill-flash-size SIZE` option will pad the merged binary with 0xFF bytes to the full flash specified size, for example `--fill-flash-size 4MB` will create a 4MB binary file.
+* It is possible to append options from a text file with `@filename`. As an example, this can be conveniently used with the ESP-IDF build system, which produces a `flash_args` file in the build directory of a project:
+
+```sh
+cd build    # The build directory of an ESP-IDF project
+esptool.py --chip esp32 merge_bin -o merged-flash.bin @flash_args
+```
 
 ## Advanced Options
 

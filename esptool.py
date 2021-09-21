@@ -86,6 +86,8 @@ MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, a
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
 
+SUPPORTED_CHIPS = ['esp8266', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3', 'esp32c3', 'esp32c6beta', 'esp32h2']
+
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
     """ Scales timeouts which are size-specific """
@@ -4020,7 +4022,12 @@ def get_security_info(esp, args):
 
 
 def merge_bin(args):
-    chip_class = _chip_to_rom_loader(args.chip)
+    try:
+        chip_class = _chip_to_rom_loader(args.chip)
+    except KeyError:
+        msg = "Please specify the chip argument" if args.chip == "auto" else "Invalid chip choice: '{}'".format(args.chip)
+        msg = msg + " (choose from {})".format(', '.join(SUPPORTED_CHIPS))
+        raise FatalError(msg)
 
     # sort the files by offset. The AddrFilenamePairAction has already checked for overlap
     input_files = sorted(args.addr_filename, key=lambda x: x[0])
@@ -4073,7 +4080,7 @@ def main(argv=None, esp=None):
     parser.add_argument('--chip', '-c',
                         help='Target chip type',
                         type=lambda c: c.lower().replace('-', ''),  # support ESP32-S2, etc.
-                        choices=['auto', 'esp8266', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3', 'esp32c3', 'esp32c6beta', 'esp32h2'],
+                        choices=['auto'] + SUPPORTED_CHIPS,
                         default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
     parser.add_argument(
