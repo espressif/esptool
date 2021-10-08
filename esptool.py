@@ -513,6 +513,7 @@ class ESPLoader(object):
         self._slip_reader = slip_reader(self._port, self.trace)
 
     def sync(self):
+        self._setRTS(True)
         val, _ = self.command(self.ESP_SYNC, b'\x07\x07\x12\x20' + 32 * b'\x55',
                               timeout=SYNC_TIMEOUT)
 
