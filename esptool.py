@@ -4476,6 +4476,15 @@ def main(argv=None, esp=None):
             # ROM loader doesn't enable flash unless we explicitly do it
             esp.flash_spi_attach(0)
 
+        # Check flash chip connection
+        try:
+            flash_id = esp.flash_id()
+            if flash_id in (0xffffff, 0x000000):
+                print('WARNING: Failed to communicate with the flash chip, read/write operations will fail. '
+                      'Try checking the chip connections or removing any other hardware connected to IOs.')
+        except Exception as e:
+            esp.trace('Unable to verify flash chip connection ({}).'.format(e))
+
         if hasattr(args, "flash_size"):
             print("Configuring flash size...")
             detect_flash_size(esp, args)
