@@ -3488,9 +3488,25 @@ class FatalError(RuntimeError):
     def WithResult(message, result):
         """
         Return a fatal error object that appends the hex values of
-        'result' as a string formatted argument.
+        'result' and its meaning as a string formatted argument.
         """
-        message += " (result was %s)" % hexify(result)
+
+        err_defs = {
+            0x101: 'Out of memory',
+            0x102: 'Invalid argument',
+            0x103: 'Invalid state',
+            0x104: 'Invalid size',
+            0x105: 'Requested resource not found',
+            0x106: 'Operation or feature not supported',
+            0x107: 'Operation timed out',
+            0x108: 'Received response was invalid',
+            0x109: 'CRC or checksum was invalid',
+            0x10A: 'Version was invalid',
+            0x10B: 'MAC address was invalid',
+        }
+
+        err_code = struct.unpack(">H", result[:2])
+        message += " (result was {}: {})".format(hexify(result), err_defs.get(err_code[0], 'Unknown result'))
         return FatalError(message)
 
 
