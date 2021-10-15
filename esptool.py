@@ -4591,8 +4591,8 @@ class FlashSizeAction(argparse.Action):
                 '64m': '8MB',
                 '128m': '16MB',
                 '256m': '32MB',
-                '512m':  '64MB',
-                '1024m': '128MB',                
+                '512m': '64MB',
+                '1024m': '128MB',
                 '16m-c1': '2MB-c1',
                 '32m-c1': '4MB-c1',
             }[values[0]]
