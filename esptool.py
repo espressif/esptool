@@ -1461,7 +1461,7 @@ class ESP32ROM(ESPLoader):
         '16MB': 0x40,
         '32MB': 0x50,
         '64MB': 0x60,
-        '128MB': 0x70       
+        '128MB': 0x70
     }
 
     BOOTLOADER_FLASH_OFFSET = 0x1000
