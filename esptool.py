@@ -105,7 +105,7 @@ def get_default_connected_device(serial_list, port, connect_attempts, initial_ba
     for each_port in reversed(serial_list):
         print("Serial port %s" % each_port)
         try:
-            if chip == 'auto':
+            if chip == 'auto' or chip == 'esp32h2':
                 _esp = ESPLoader.detect_chip(each_port, initial_baud, before, trace,
                                              connect_attempts)
             else:
@@ -365,7 +365,7 @@ class ESPLoader(object):
             res = struct.unpack("<IBBBBBBBBI", res[:16])  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
             chip_id = res[9]  # 2/4 status bytes invariant
 
-            for cls in [ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM, ESP8684ROM]:
+            for cls in [ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM, ESP8684ROM, ESP32H2BETA2ROM]:
                 if chip_id == cls.IMAGE_CHIP_ID:
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
@@ -2332,6 +2332,9 @@ class ESP32H2ROM(ESP32ROM):
 
         return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
 
+
+class ESP32H2BETA2ROM(ESP32H2ROM):
+    IMAGE_CHIP_ID = 14
 
 class ESP8684ROM(ESP32C3ROM):
     CHIP_NAME = "ESP8684"
@@ -5095,6 +5098,39 @@ zroovk81xpQzqEg7hkjbCpezqqaUMLyOx62qQo4Q/iWh9UJ4VGobX14zgmjuVOcusthIUbMtoZC/Ud2/
 hV0dPEWX8jGLyCL/BYZYH/cO5GUWhlOR/iEVqnC4NpSsfvrCwYjky7Tpofeix/65LfkFVWgaPihPG3Csp/0igap6pwgTdC5KxZueuqRyaG06b2L4GLWI+uQlBnonhWim5AjVZHIAoJbC/7onDRSnrik5B0UWogtq\
 v+pBQh6Pfkw+DymLPkohuye1vRKdPmmWJyv4ZHc9bzlSlwJ+LfvEAKA0vCGEUEwqPiOAMckX+clAW/yJ9KGoPn7ZvgJeX+2HOFBlZ1tvENbeAD7/wOXjFrV89nz/BJdPJtNOD58owWx/s0bve/7rw7S8wluf1uR5\
 Ym2RmHCluZhefZoP9vu9IgzW5bTU10MBquBM2zLcncXYLHEmmf0PTRUSUg==\
+""")))
+ESP32H2BETA2ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
+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\
 """)))
 ESP8684ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
 eNrFWmtXG8kR/SssYLPrPE635tl2jCVWQgiMY++xl9hHxDvTM0O82SUBCxsn0X9P33poRgLJm0/5IJBmerqrq27devT8e29W3872Hm+Ve9NbY6e3NnzKLHzHx/x0PL31efgWTW8LN73N6erDcLF4Ef6kP4Q/cbiU\
