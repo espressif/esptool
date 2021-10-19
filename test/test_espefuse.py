@@ -14,11 +14,11 @@
 #
 from __future__ import division, print_function
 
-import StringIO
 import struct
 import sys
 import time
 import unittest
+from io import StringIO
 
 sys.path.append('..')
 import espefuse
@@ -269,14 +269,16 @@ class TestBurnBit(EfuseTestCase):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: %s <serial port> [optional tests]" % sys.argv[0])
+    if len(sys.argv) < 3:
+        print("Usage: %s --i-use-fpga <serial port> [optional tests]" % sys.argv[0])
         sys.exit(1)
-    serialport = serial.Serial(sys.argv[1], 115200)
+    if sys.argv[1] != "--i-use-fpga":
+        raise esptool.FatalError("You need to use --i-use-fpga to confirm these tests are not being run on a real ESP chip!")
+    serialport = serial.Serial(sys.argv[2], 115200)
     serialport.dtr = False
     serialport.rts = False
 
     # unittest also uses argv, so trim the args we used
-    sys.argv = [sys.argv[0]] + sys.argv[2:]
+    sys.argv = [sys.argv[0]] + sys.argv[3:]
     print("Running espefuse.py tests...")
     unittest.main(buffer=True)
