@@ -135,6 +135,9 @@ def main(custom_commandline=None):
     # each 'operation' is a module-level function of the same name
     operation_func(esp, efuses, args)
 
+    if args1.virt is False:
+        esp._port.close()
+
 
 def _main():
     try:
