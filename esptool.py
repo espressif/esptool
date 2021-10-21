@@ -135,7 +135,7 @@ def get_default_connected_device(serial_list, port, connect_attempts, initial_ba
 
 DETECTED_FLASH_SIZES = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB',
                         0x15: '2MB', 0x16: '4MB', 0x17: '8MB',
-                        0x18: '16MB', 0x19: '32MB', 0x1a: '64MB'}
+                        0x18: '16MB', 0x19: '32MB', 0x1a: '64MB', 0x21: '128MB'}
 
 
 def check_supported_function(func, check_func):
@@ -1458,7 +1458,10 @@ class ESP32ROM(ESPLoader):
         '2MB': 0x10,
         '4MB': 0x20,
         '8MB': 0x30,
-        '16MB': 0x40
+        '16MB': 0x40,
+        '32MB': 0x50,
+        '64MB': 0x60,
+        '128MB': 0x70
     }
 
     BOOTLOADER_FLASH_OFFSET = 0x1000
@@ -3782,7 +3785,7 @@ def write_flash(esp, args):
             argfile.seek(0, os.SEEK_END)
             if address + argfile.tell() > flash_end:
                 raise FatalError(("File %s (length %d) at offset %d will not fit in %d bytes of flash. "
-                                  "Use --flash-size argument, or change flashing address.")
+                                  "Use --flash_size argument, or change flashing address.")
                                  % (argfile.name, argfile.tell(), address, flash_end))
             argfile.seek(0)
 
@@ -4345,7 +4348,7 @@ def main(argv=None, esp=None):
         parent.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
                             choices=extra_keep_args + ['qio', 'qout', 'dio', 'dout'],
                             default=os.environ.get('ESPTOOL_FM', 'keep' if allow_keep else 'qio'))
-        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M)'
+        parent.add_argument('--flash_size', '-fs', help='SPI Flash size in MegaBytes (1MB, 2MB, 4MB, 8MB, 16M, 32MB, 64MB, 128MB)'
                             ' plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1)' + extra_fs_message,
                             action=FlashSizeAction, auto_detect=auto_detect,
                             default=os.environ.get('ESPTOOL_FS', 'keep' if allow_keep else '1MB'))
@@ -4676,6 +4679,11 @@ class FlashSizeAction(argparse.Action):
                 '8m': '1MB',
                 '16m': '2MB',
                 '32m': '4MB',
+                '64m': '8MB',
+                '128m': '16MB',
+                '256m': '32MB',
+                '512m': '64MB',
+                '1024m': '128MB',
                 '16m-c1': '2MB-c1',
                 '32m-c1': '4MB-c1',
             }[values[0]]
