@@ -358,7 +358,7 @@ Note: Because gaps between the input files are padded with 0xFF bytes, when the 
 
 ### Options
 
-* The `merge_bin` command supports the same `--flash_mode`, `--flash_size` and `--flash_speed` options as the `write_flash` command to override the bootloader flash header (see above for details). These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the `--chip` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
+* The `merge_bin` command supports the same `--flash_mode`, `--flash_size` and `--flash_freq` options as the `write_flash` command to override the bootloader flash header (see above for details). These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the `--chip` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
 * The `--target-offset 0xNNN` option will create a merged binary that should be flashed at the specified offset, instead of at offset 0x0.
 * The `--fill-flash-size SIZE` option will pad the merged binary with 0xFF bytes to the full flash specified size, for example `--fill-flash-size 4MB` will create a 4MB binary file.
 * It is possible to append options from a text file with `@filename`. As an example, this can be conveniently used with the ESP-IDF build system, which produces a `flash_args` file in the build directory of a project:
