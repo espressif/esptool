@@ -57,6 +57,8 @@ host_tests:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c3
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32h2
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_modules.py
+    # some .coverage files in sub-directories are not collected on some runners, move them first
+    - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
 
 check_python_style:
   <<: *test_template
@@ -218,7 +220,7 @@ target_esptool_test_esp32s3:
   script:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S3 esp32s3 115200
 
-target_rfc2217_test_esp32s2:
+target_rfc2217_test_esp32s3:
   extends: .target_esptool_test
   stage: rfc2217_test
   allow_failure: true
@@ -229,8 +231,7 @@ target_rfc2217_test_esp32s2:
 
 combine_reports:
   stage: report
-  before_script:
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python -m pip install -e .
+  image: $CI_DOCKER_REGISTRY/esp32-ci-env$BOT_DOCKER_IMAGE_TAG
   artifacts:
     reports:
       cobertura: cobertura_report.xml
