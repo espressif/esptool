@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2016 Espressif Systems (Shanghai) PTE LTD
+# SPDX-FileCopyrightText: 2016-2021 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-#
-# ESP32 secure boot utility
-# https://github.com/themadinventor/esptool
 
 from __future__ import division, print_function
 

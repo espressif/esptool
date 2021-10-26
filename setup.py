@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2014-2021 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import division, print_function
 
 import io
@@ -89,8 +93,8 @@ setup(
     description='A serial utility to communicate & flash code to Espressif ESP8266 & ESP32 chips.',
     long_description=long_description,
     url='https://github.com/espressif/esptool',
-    author='Fredrik Ahlberg (themadinventor) & Angus Gratton (projectgus)',
-    author_email='angus@espressif.com',
+    author='Fredrik Ahlberg (themadinventor) & Angus Gratton (projectgus) & Espressif Systems',
+    author_email='',
     license='GPLv2+',
     classifiers=[
         'Development Status :: 5 - Production/Stable',

@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2014-2016 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) PTE LTD, other contributors as noted.
+# SPDX-FileCopyrightText: 2014-2021 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-#
-# ESP8266 & ESP32 family ROM Bootloader Utility
-# ESP8266 & ESP32 family & ESP8684 ROM Bootloader Utility
-# https://github.com/espressif/esptool
 
 from __future__ import division, print_function
 
