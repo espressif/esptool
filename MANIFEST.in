@@ -5,6 +5,7 @@ include LICENSE
 prune test
 prune flasher_stub
 prune .github
+prune docs
 exclude .git*
 exclude MANIFEST*
 

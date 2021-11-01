@@ -12,3 +12,5 @@ local.mk
 
 .envrc
 report.xml
+
+docs/_build/
