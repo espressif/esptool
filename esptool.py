@@ -369,11 +369,13 @@ class ESPLoader(object):
                 if chip_id == cls.IMAGE_CHIP_ID:
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
-        except (UnsupportedCommandError, struct.error, FatalError):
-            # UnsupportedCmdErr: ESP8266, ESP32 ROM | struct.err: ESP32S2 | FatalErr: ESP8266, ESP32 STUB
+        except (UnsupportedCommandError, struct.error, FatalError) as e:
+            # UnsupportedCmdErr: ESP8266/ESP32 ROM | struct.err: ESP32-S2 | FatalErr: ESP8266/ESP32 STUB
             print(" Unsupported detection protocol, switching and trying again...")
             try:
-                detect_port.connect(connect_mode, connect_attempts, detecting=True, warnings=False)  # Need to connect again
+                # ESP32/ESP8266 are reset after an unsupported command, need to connect again (not needed on ESP32-S2)
+                if not isinstance(e, struct.error):
+                    detect_port.connect(connect_mode, connect_attempts, detecting=True, warnings=False)
                 print('Detecting chip type...', end='')
                 sys.stdout.flush()
                 chip_magic_value = detect_port.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
