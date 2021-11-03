@@ -1865,7 +1865,9 @@ class ESP32S2ROM(ESP32ROM):
         return any(p == self.PURPOSE_VAL_XTS_AES256_KEY_1 for p in purposes) \
             and any(p == self.PURPOSE_VAL_XTS_AES256_KEY_2 for p in purposes)
 
-    def uses_usb(self, _cache=[]):
+    def uses_usb(self, _cache=None):
+        if not _cache:
+            _cache = []
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
         if not _cache:
@@ -2033,7 +2035,9 @@ class ESP32S3ROM(ESP32ROM):
         except TypeError:  # Python 3, bitstring elements are already bytes
             return tuple(bitstring)
 
-    def uses_usb(self, _cache=[]):
+    def uses_usb(self, _cache=None):
+        if not _cache:
+            _cache = []
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
         if not _cache:
