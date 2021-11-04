@@ -29,4 +29,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "rom_32h2.ld"
+INCLUDE "rom_32h2_beta_1.ld"

@@ -74,7 +74,7 @@ MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, a
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
 
-SUPPORTED_CHIPS = ['esp8266', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3', 'esp32c3', 'esp32c6beta', 'esp32h2', 'esp8684']
+SUPPORTED_CHIPS = ['esp8266', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3', 'esp32c3', 'esp32c6beta', 'esp32h2beta1', 'esp32h2beta2', 'esp8684']
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
@@ -94,7 +94,8 @@ def _chip_to_rom_loader(chip):
         'esp32s3': ESP32S3ROM,
         'esp32c3': ESP32C3ROM,
         'esp32c6beta': ESP32C6BETAROM,
-        'esp32h2': ESP32H2ROM,
+        'esp32h2beta1': ESP32H2BETA1ROM,
+        'esp32h2beta2': ESP32H2BETA2ROM,
         'esp8684': ESP8684ROM,
     }[chip]
 
@@ -105,7 +106,7 @@ def get_default_connected_device(serial_list, port, connect_attempts, initial_ba
     for each_port in reversed(serial_list):
         print("Serial port %s" % each_port)
         try:
-            if chip == 'auto' or chip == 'esp32h2':
+            if chip == 'auto':
                 _esp = ESPLoader.detect_chip(each_port, initial_baud, before, trace,
                                              connect_attempts)
             else:
@@ -365,7 +366,7 @@ class ESPLoader(object):
             res = struct.unpack("<IBBBBBBBBI", res[:16])  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
             chip_id = res[9]  # 2/4 status bytes invariant
 
-            for cls in [ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM, ESP8684ROM, ESP32H2BETA2ROM]:
+            for cls in [ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM]:
                 if chip_id == cls.IMAGE_CHIP_ID:
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
@@ -380,7 +381,8 @@ class ESPLoader(object):
                 sys.stdout.flush()
                 chip_magic_value = detect_port.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
 
-                for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM, ESP8684ROM]:
+                for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM,
+                            ESP32C3ROM, ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM]:
                     if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                         inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                         inst._post_connect()
@@ -666,7 +668,7 @@ class ESPLoader(object):
                 chip_magic_value = self.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
                 if chip_magic_value not in self.CHIP_DETECT_MAGIC_VALUE:
                     actually = None
-                    for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32H2ROM, ESP8684ROM]:
+                    for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM]:
                         if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                             actually = cls
                             break
@@ -774,7 +776,8 @@ class ESPLoader(object):
             timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)  # ROM performs the erase up front
 
         params = struct.pack('<IIII', erase_size, num_blocks, self.FLASH_WRITE_SIZE, offset)
-        if isinstance(self, (ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM, ESP8684ROM)) and not self.IS_STUB:
+        if isinstance(self, (ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM,
+                             ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
             params += struct.pack('<I', 1 if begin_rom_encrypted else 0)
         self.check_command("enter Flash download mode", self.ESP_FLASH_BEGIN,
                            params, timeout=timeout)
@@ -792,7 +795,7 @@ class ESPLoader(object):
 
     """ Encrypt before writing to flash """
     def flash_encrypt_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        if isinstance(self, (ESP32S2ROM, ESP32C3ROM, ESP32S3ROM, ESP32H2ROM, ESP8684ROM)) and not self.IS_STUB:
+        if isinstance(self, (ESP32S2ROM, ESP32C3ROM, ESP32S3ROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
             # ROM support performs the encrypted writes via the normal write command,
             # triggered by flash_begin(begin_rom_encrypted=True)
             return self.flash_block(data, seq, timeout)
@@ -894,7 +897,8 @@ class ESPLoader(object):
             timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, write_size)  # ROM performs the erase up front
         print("Compressed %d bytes to %d..." % (size, compsize))
         params = struct.pack('<IIII', write_size, num_blocks, self.FLASH_WRITE_SIZE, offset)
-        if isinstance(self, (ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2ROM, ESP8684ROM)) and not self.IS_STUB:
+        if isinstance(self, (ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM,
+                             ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
             params += struct.pack('<I', 0)  # extra param is to enter encrypted flash mode via ROM (not supported currently)
         self.check_command("enter compressed flash mode", self.ESP_FLASH_DEFL_BEGIN, params, timeout=timeout)
         if size != 0 and not self.IS_STUB:
@@ -2219,8 +2223,8 @@ class ESP32C3ROM(ESP32ROM):
         return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
 
 
-class ESP32H2ROM(ESP32ROM):
-    CHIP_NAME = "ESP32-H2"
+class ESP32H2BETA1ROM(ESP32ROM):
+    CHIP_NAME = "ESP32-H2(beta1)"
     IMAGE_CHIP_ID = 10
 
     IROM_MAP_START = 0x42000000
@@ -2297,7 +2301,7 @@ class ESP32H2ROM(ESP32ROM):
         return ["BLE/802.15.4"]
 
     def get_crystal_freq(self):
-        return 40
+        return 32
 
     def override_vddsdio(self, new_voltage):
         raise NotImplementedInROMError("VDD_SDIO overrides are not supported for ESP32-H2")
@@ -2333,8 +2337,10 @@ class ESP32H2ROM(ESP32ROM):
         return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
 
 
-class ESP32H2BETA2ROM(ESP32H2ROM):
+class ESP32H2BETA2ROM(ESP32H2BETA1ROM):
+    CHIP_NAME = "ESP32-H2(beta2)"
     IMAGE_CHIP_ID = 14
+
 
 class ESP8684ROM(ESP32C3ROM):
     CHIP_NAME = "ESP8684"
@@ -2480,8 +2486,8 @@ class ESP32C3StubLoader(ESP32C3ROM):
 ESP32C3ROM.STUB_CLASS = ESP32C3StubLoader
 
 
-class ESP32H2StubLoader(ESP32H2ROM):
-    """ Access class for ESP32H2 stub loader, runs on top of ROM.
+class ESP32H2BETA1StubLoader(ESP32H2BETA1ROM):
+    """ Access class for ESP32H2BETA1 stub loader, runs on top of ROM.
 
     (Basically the same as ESP32StubLoader, but different base class.
     Can possibly be made into a mixin.)
@@ -2497,7 +2503,27 @@ class ESP32H2StubLoader(ESP32H2ROM):
         self.flush_input()  # resets _slip_reader
 
 
-ESP32H2ROM.STUB_CLASS = ESP32H2StubLoader
+ESP32H2BETA1ROM.STUB_CLASS = ESP32H2BETA1StubLoader
+
+
+class ESP32H2BETA2StubLoader(ESP32H2BETA2ROM):
+    """ Access class for ESP32H2BETA2 stub loader, runs on top of ROM.
+
+    (Basically the same as ESP32StubLoader, but different base class.
+    Can possibly be made into a mixin.)
+    """
+    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
+    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
+    IS_STUB = True
+
+    def __init__(self, rom_loader):
+        self.secure_download_mode = rom_loader.secure_download_mode
+        self._port = rom_loader._port
+        self._trace_enabled = rom_loader._trace_enabled
+        self.flush_input()  # resets _slip_reader
+
+
+ESP32H2BETA2ROM.STUB_CLASS = ESP32H2BETA2StubLoader
 
 
 class ESP8684StubLoader(ESP8684ROM):
@@ -2552,8 +2578,10 @@ def LoadFirmwareImage(chip, filename):
             return ESP32C3FirmwareImage(f)
         elif chip == 'esp32c6beta':
             return ESP32C6BETAFirmwareImage(f)
-        elif chip == 'esp32h2':
-            return ESP32H2FirmwareImage(f)
+        elif chip == 'esp32h2beta1':
+            return ESP32H2BETA1FirmwareImage(f)
+        elif chip == 'esp32h2beta2':
+            return ESP32H2BETA2FirmwareImage(f)
         elif chip == 'esp8684':
             return ESP8684FirmwareImage(f)
         else:  # Otherwise, ESP8266 so look at magic to determine the image type
@@ -3293,12 +3321,20 @@ class ESP32C6BETAFirmwareImage(ESP32FirmwareImage):
 ESP32C6BETAROM.BOOTLOADER_IMAGE = ESP32C6BETAFirmwareImage
 
 
-class ESP32H2FirmwareImage(ESP32FirmwareImage):
+class ESP32H2BETA1FirmwareImage(ESP32FirmwareImage):
     """ ESP32H2 Firmware Image almost exactly the same as ESP32FirmwareImage """
-    ROM_LOADER = ESP32H2ROM
+    ROM_LOADER = ESP32H2BETA1ROM
 
 
-ESP32H2ROM.BOOTLOADER_IMAGE = ESP32H2FirmwareImage
+ESP32H2BETA1ROM.BOOTLOADER_IMAGE = ESP32H2BETA1FirmwareImage
+
+
+class ESP32H2BETA2FirmwareImage(ESP32FirmwareImage):
+    """ ESP32H2 Firmware Image almost exactly the same as ESP32FirmwareImage """
+    ROM_LOADER = ESP32H2BETA2ROM
+
+
+ESP32H2BETA2ROM.BOOTLOADER_IMAGE = ESP32H2BETA2FirmwareImage
 
 
 class ESP8684FirmwareImage(ESP32FirmwareImage):
@@ -4013,8 +4049,12 @@ def elf2image(args):
         image = ESP32C6BETAFirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = '2'
-    elif args.chip == 'esp32h2':
-        image = ESP32H2FirmwareImage()
+    elif args.chip == 'esp32h2beta1':
+        image = ESP32H2BETA1FirmwareImage()
+        if args.secure_pad_v2:
+            image.secure_pad = '2'
+    elif args.chip == 'esp32h2beta2':
+        image = ESP32H2BETA2FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = '2'
     elif args.chip == 'esp8684':
@@ -5065,7 +5105,7 @@ lw9azsIujh6hTXmfRWSR/wJDbI97R/I6C8OpSP+QIlU4XHtKVj994WBE8nXa9NB70WP/3Jf8goo0DR+U
 C9EF9V/1LCGPpz8mX4SUZR+lkN2T8l6JTp8065MVfLLrnrceqWsBv5V9ZgBQGt4QQigmFbcIYEzyRX4y0AZ/Iq0oKpFftq+A11dPQhyosrO9NwhrbwCff+DysxblfPb8yQkun0xmnSY+UYLZ/2aL3vj818dZeYH3\
 Pq3J88TaIjHhSjOdXXxeDPb7vSIM1uWs1BdEAargTPsy3J3F2CxxJpn/D+2ZEsk=\
 """)))
-ESP32H2ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
+ESP32H2BETA1ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
 eNrFWmtbG8cV/isYMCRunnZG2ts4MUi2QFyM66SOKa7cend2lzoXnoBFjNvov3fec9GsAMn+1g8CaXZ35sw573nPZfa/29PmZrr9eK3antwYO7mx4VPl4Ts+5t3R5MYX4Vt/clO6yU1Bo1thsHwR/mQ/hD9JGMrC\
 /2Y9/PHydEJPT27a+iynOXbDH/M8zN+fhlFcbidXk5vGhF+9QTXaCAsUmyxD1Tuc3NS90dPD9fCsScuwcC98wr1FMQh/+pPtyQVWwHzXYYaU5qO7XD4Lo2GBJshsXfjShis+CF+1+WSb5PrjONxXh/srfrZt83zJ\
 BV16yKqhnYZPXee0U54Pwmeis95ceeETVOfCx/fx/9lMZClOsccBhN+L65jwv3BDVsH9i7rdmSzNKww6MuhK8bf1z2AAnj2sd3dqWCzJR1BPsI/r87zBosFGzh/ryrB3eKgMD/v2bW5ZnbbPdubbbXEQFqnHYW47\
@@ -5100,37 +5140,37 @@ v+pBQh6Pfkw+DymLPkohuye1vRKdPmmWJyv4ZHc9bzlSlwJ+LfvEAKA0vCGEUEwqPiOAMckX+clAW/yJ
 Ym2RmHCluZhefZoP9vu9IgzW5bTU10MBquBM2zLcncXYLHEmmf0PTRUSUg==\
 """)))
 ESP32H2BETA2ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
-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\
+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\
 """)))
 ESP8684ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
 eNrFWmtXG8kR/SssYLPrPE635tl2jCVWQgiMY++xl9hHxDvTM0O82SUBCxsn0X9P33poRgLJm0/5IJBmerqrq27devT8e29W3872Hm+Ve9NbY6e3NnzKLHzHx/x0PL31efgWTW8LN73N6erDcLF4Ef6kP4Q/cbiU\

@@ -70,8 +70,8 @@ class EspEfuses(base_fields.EspEfusesBase):
         self._esp = esp
         self.debug = debug
         self.do_not_confirm = do_not_confirm
-        if esp.CHIP_NAME != "ESP32-H2":
-            raise esptool.FatalError("Expected the 'esp' param for ESP32-H2 chip but got for '%s'." % (esp.CHIP_NAME))
+        if esp.CHIP_NAME != "ESP32-H2(beta1)":
+            raise esptool.FatalError("Expected the 'esp' param for ESP32-H2(beta1) chip but got for '%s'." % (esp.CHIP_NAME))
         self.blocks = [EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect) for block in self.Blocks.BLOCKS]
         if not skip_connect:
             self.get_coding_scheme_warnings()
@@ -158,8 +158,8 @@ class EspEfuses(base_fields.EspEfusesBase):
         """ Set timing registers for burning efuses """
         # Configure clock
         apb_freq = self.get_crystal_freq()
-        if apb_freq != 40:
-            raise esptool.FatalError("The eFuse supports only xtal=40M (xtal was %d)" % apb_freq)
+        if apb_freq != 32:
+            raise esptool.FatalError("The eFuse supports only xtal=32M (xtal was %d)" % apb_freq)
 
         self.update_reg(self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x190)
 

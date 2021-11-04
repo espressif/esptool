@@ -24,13 +24,9 @@
 #define REG_SET_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)|(mask)))
 #define REG_CLR_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)&(~(mask))))
 
-#define ESP32_OR_LATER (ESP32 || ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
-#define ESP32S2_OR_LATER (ESP32S2 || ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
-#define ESP32S3_OR_LATER (ESP32S3 || ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
-#define ESP32C3_OR_LATER (ESP32C3 || ESP32C6 || ESP32H2 || ESP8684)
-#define ESP32C6_OR_LATER (ESP32C6 || ESP32H2 || ESP8684)
-#define ESP32H2_OR_LATER (ESP32H2 || ESP8684)
-#define ESP8684_OR_LATER (ESP8684)
+#define ESP32_OR_LATER   !(ESP8266)
+#define ESP32S2_OR_LATER !(ESP8266 || ESP32)
+#define ESP32S3_OR_LATER !(ESP8266 || ESP32 || ESP32S2)
 
 /**********************************************************
  * Per-SOC capabilities

@@ -194,7 +194,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
          {0: "(revision 0)", 1: "(revision 1)"}),
         ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Package version",
-         {0: "ESP32-H2"}),
+         {0: "ESP32-H2(beta1)"}),
         ("BLOCK1_VERSION",             "identity",   1,  3, 24,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
         ("MAC_EXT",                    "identity",   1,  3, 27,  "bytes:2",  20,   None, "mac",        "MAC extension", None),
         ("OPTIONAL_UNIQUE_ID",         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),

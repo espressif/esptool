@@ -37,7 +37,8 @@ if __name__ == "__main__":
     old_32s3_stub = esptool.ESP32S3ROM.STUB_CODE
     old_32c3_stub = esptool.ESP32C3ROM.STUB_CODE
     old_32c6_beta_stub = esptool.ESP32C6BETAROM.STUB_CODE
-    old_32h2_stub = esptool.ESP32H2ROM.STUB_CODE
+    old_32h2_beta1_stub = esptool.ESP32H2BETA1ROM.STUB_CODE
+    old_32h2_beta2_stub = esptool.ESP32H2BETA2ROM.STUB_CODE
     old_8684_stub = esptool.ESP8684ROM.STUB_CODE
 
     # hackiness: importing this module updates the loaded esptool module with the new stubs
@@ -71,9 +72,13 @@ if __name__ == "__main__":
         print("ESP32C6 stub code in esptool.py is different to just-built stub.")
         verbose_diff(esptool.ESP32C6BETAROM.STUB_CODE, old_32c6_beta_stub)
         same = False
-    if esptool.ESP32H2ROM.STUB_CODE != old_32h2_stub:
-        print("ESP32H2 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32H2ROM.STUB_CODE, old_32h2_stub)
+    if esptool.ESP32H2BETA1ROM.STUB_CODE != old_32h2_beta1_stub:
+        print("ESP32H2BETA1 stub code in esptool.py is different to just-built stub.")
+        verbose_diff(esptool.ESP32H2BETA1ROM.STUB_CODE, old_32h2_beta1_stub)
+        same = False
+    if esptool.ESP32H2BETA2ROM.STUB_CODE != old_32h2_beta2_stub:
+        print("ESP32H2BETA2 stub code in esptool.py is different to just-built stub.")
+        verbose_diff(esptool.ESP32H2BETA2ROM.STUB_CODE, old_32h2_beta2_stub)
         same = False
     if esptool.ESP8684ROM.STUB_CODE != old_8684_stub:
         print("ESP8684 stub code in esptool.py is different to just-built stub.")

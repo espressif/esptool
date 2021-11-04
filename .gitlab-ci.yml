@@ -57,7 +57,7 @@ host_tests:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3beta2
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32s3
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c3
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32h2
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32h2beta1
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_modules.py
     # some .coverage files in sub-directories are not collected on some runners, move them first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;

@@ -16,7 +16,7 @@ from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalErr
 class EmulateEfuseController(EmulateEfuseControllerBase):
     """ The class for virtual ESP32 operation. Using for HOST_TEST.
     """
-    CHIP_NAME = "ESP32-H2"
+    CHIP_NAME = "ESP32-H2(beta1)"
     mem = None
     debug = False
     Blocks  = EfuseDefineBlocks
@@ -33,7 +33,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
         return ""
 
     def get_crystal_freq(self):
-        return 40  # MHz (common for all chips)
+        return 32  # MHz (common for all chips)
 
     """ << esptool method end """
 
