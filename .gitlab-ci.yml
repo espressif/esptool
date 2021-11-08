@@ -293,6 +293,9 @@ build_docs:
 deploy_docs_preview:
   extends:
     - .deploy_docs_template
+  except:
+    refs:
+      - master
   variables:
     TYPE: "preview"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
