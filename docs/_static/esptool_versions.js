@@ -2,9 +2,7 @@ var DOCUMENTATION_VERSIONS = {
     DEFAULTS: { has_targets: false,
                 supported_targets: [ "esp32" ]
               },
-    VERSIONS: [
-      { name: "latest", has_targets: true, supported_targets: [ "esp8266", "esp32", "esp32s2", "esp32c3", "esp32s3" ] },
-    ],
+    VERSIONS: [ ],
     IDF_TARGETS: [
        { text: "ESP8266", value: "esp8266" },
        { text: "ESP32", value: "esp32" },

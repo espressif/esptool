@@ -10,7 +10,7 @@ Use actual documentation generated within about 20 minutes on each commit:
 
 * English: https://docs.espressif.com/projects/esptool/
 
-The above URL is for the master branch latest version. Click the drop-down in the bottom left to choose a particular version or to download a PDF.
+The above URL is for the master branch latest version. Click the drop-down in the bottom left to choose a particular version.
 
 # Building Documentation
 

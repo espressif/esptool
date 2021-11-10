@@ -659,8 +659,9 @@ class ESPLoader(object):
             print('')  # end 'Connecting...' line
 
         if last_error is not None:
-            raise FatalError('Failed to connect to %s: %s'
-                             '\nFor troubleshooting steps visit: https://github.com/espressif/esptool#troubleshooting' % (self.CHIP_NAME, last_error))
+            raise FatalError('Failed to connect to {}: {}'
+                             '\nFor troubleshooting steps visit: '
+                             'https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html'.format(self.CHIP_NAME, last_error))
 
         if not detecting:
             try:

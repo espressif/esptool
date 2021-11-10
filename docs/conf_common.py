@@ -15,4 +15,4 @@ html_static_path = ['../_static']
 # Extra options required by sphinx_idf_theme
 project_slug = 'esptool'
 
-versions_url = '_static/esptool_versions.js'
+versions_url = './_static/esptool_versions.js'

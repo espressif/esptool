@@ -271,7 +271,7 @@ build_docs:
   script:
     - cd docs
     - pip install -r requirements.txt
-    - build-docs -l en
+    - build-docs -l en -t {esp8266,esp32,esp32s2,esp32c3,esp32s3}
 
 .deploy_docs_template:
   stage: deploy_docs
