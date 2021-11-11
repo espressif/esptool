@@ -1,3 +1,5 @@
+.. _esptool:
+
 esptool.py
 ==========
 
@@ -16,6 +18,7 @@ To see all options for a particular command, append ``-h`` to the command name. 
    Entering the Bootloader <entering-bootloader>
    Serial Connection <serial-connection>
    Remote Serial Ports <remote-serial-ports>
+   Flashing Firmware <flashing-firmware>
    Scripting <scripting>
 
 Instructions for other tools bundled with esptool:

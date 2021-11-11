@@ -1,4 +1,6 @@
-Embedding into custom scripts
+.. _scripting:
+
+Embedding into Custom Scripts
 =============================
 
 ``esptool.py``, ``espefuse.py``, and ``espsecure.py`` can easily be integrated into Python applications or called from other Python scripts.
