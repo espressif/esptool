@@ -45,6 +45,10 @@ Size of the SPI flash, given in megabytes. Valid values vary by chip type:
 | ESP8266          | ``keep``, ``detect``, ``256KB``, ``512KB``, ``1MB``, ``2MB``, ``4MB``, ``2MB-c1``, ``4MB-c1``, ``8MB``, ``16MB``   |
 +------------------+--------------------------------------------------------------------------------------------------------------------+
 
+.. note::
+
+    Esptool uses power of two units, so in IEC units the size arguments are Mebibytes, although Espressif's technical documentation doesn't use the Mebi- prefix. This is due to compatibility reasons and to keep consistent with flash manufacturers.
+
 For ESP8266, some `additional sizes & layouts for OTA "firmware slots" are available <#esp8266-and-flash-size>`_.
 
 The default ``--flash_size`` parameter is ``keep``. This means that if no ``--flash_size`` argument is passed when flashing a bootloader, the value in the bootloader .bin file header is kept instead of detecting the actual flash size and updating the header.
