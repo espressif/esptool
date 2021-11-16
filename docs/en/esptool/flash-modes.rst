@@ -12,44 +12,63 @@ To override these values, the options ``--flash_mode``, ``--flash_size`` and/or 
 
     esptool.py --port /dev/ttyUSB1 write_flash --flash_mode dio --flash_size 4MB 0x0 bootloader.bin
 
-These options are only consulted when flashing a bootable image to an ESP8266 at offset 0x0, or an ESP32 at offset 0x1000. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
+.. only:: esp8266
 
-Flash Mode (--flash\_mode, -fm)
+    These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset 0x0. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
+
+.. only:: not esp8266
+
+    These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset 0x1000. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
+
+
+Flash Mode (--flash_mode, -fm)
 -------------------------------
 
 These set Quad Flash I/O or Dual Flash I/O modes. Valid values are ``keep``, ``qio``, ``qout``, ``dio``, ``dout``. The default is ``keep``, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable ``ESPTOOL_FM``.
 
-Most boards use ``qio`` mode. Some ESP8266 modules, including the ESP-12E modules on some (not all) NodeMCU boards, are dual I/O and the firmware will only boot when flashed with ``--flash_mode dio``. Most ESP32 modules are also dual I/O.
+.. only:: esp8266
+
+    Most boards use ``qio`` mode. Some ESP8266 modules, including the ESP-12E modules on some (not all) NodeMCU boards, are dual I/O and the firmware will only boot when flashed with ``--flash_mode dio``.
+
+.. only:: not esp8266
+
+    Most {IDF_TARGET_NAME} modules use ``qio``, but are also dual I/O.
 
 In ``qio`` mode, two additional GPIOs (9 and 10) are used for SPI flash communications. If flash mode is set to ``dio`` then these pins are available for other purposes.
 
 For a full explanation of these modes, see the :ref:`SPI Flash Modes page <spi-flash-modes>`.
 
-Flash Frequency (--flash\_freq, -ff)
+Flash Frequency (--flash_freq, -ff)
 ------------------------------------
 
 Clock frequency for SPI flash interactions. Valid values are ``keep``, ``40m``, ``26m``, ``20m``, ``80m`` (MHz). The default is ``keep``, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable ``ESPTOOL_FF``.
 
 The flash chip connected to most chips works with 40MHz clock speeds, but you can try lower values if the device won't boot. The highest 80MHz flash clock speed will give the best performance, but may cause crashing if the flash or board design is not capable of this speed.
 
-Flash Size (--flash\_size, -fs)
+Flash Size (--flash_size, -fs)
 -------------------------------
 
-Size of the SPI flash, given in megabytes. Valid values vary by chip type:
+Size of the SPI flash, given in megabytes.
 
-+------------------+--------------------------------------------------------------------------------------------------------------------+
-| Chip             | flash\_size values                                                                                                 |
-+==================+====================================================================================================================+
-| ESP32 and later  | ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``                                                 |
-+------------------+--------------------------------------------------------------------------------------------------------------------+
-| ESP8266          | ``keep``, ``detect``, ``256KB``, ``512KB``, ``1MB``, ``2MB``, ``4MB``, ``2MB-c1``, ``4MB-c1``, ``8MB``, ``16MB``   |
-+------------------+--------------------------------------------------------------------------------------------------------------------+
+.. only:: esp8266
+
+    Valid values are: ``keep``, ``detect``, ``256KB``, ``512KB``, ``1MB``, ``2MB``, ``4MB``, ``2MB-c1``, ``4MB-c1``, ``8MB``, ``16MB``
+
+.. only:: esp32 or esp32c3
+
+    Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``
+
+.. only:: esp32s2 or esp32s3
+
+    Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``, ``32MB``, ``64MB``
 
 .. note::
 
     Esptool uses power of two units, so in IEC units the size arguments are Mebibytes, although Espressif's technical documentation doesn't use the Mebi- prefix. This is due to compatibility reasons and to keep consistent with flash manufacturers.
 
-For ESP8266, some `additional sizes & layouts for OTA "firmware slots" are available <#esp8266-and-flash-size>`_.
+.. only:: esp8266
+
+    For ESP8266, some :ref:`additional sizes & layouts for OTA "firmware slots" are available <esp8266-and-flash-size>`.
 
 The default ``--flash_size`` parameter is ``keep``. This means that if no ``--flash_size`` argument is passed when flashing a bootloader, the value in the bootloader .bin file header is kept instead of detecting the actual flash size and updating the header.
 
@@ -60,40 +79,40 @@ Alternatively, read off the silkscreen labelling of the flash chip and search fo
 
 The default ``flash_size`` parameter can also be overridden using the environment variable ``ESPTOOL_FS``.
 
-ESP8266 and Flash Size
-^^^^^^^^^^^^^^^^^^^^^^
+.. only:: esp8266
 
-The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than this size.
+    The ESP8266 SDK stores WiFi configuration at the "end" of flash, and it finds the end using this size. However there is no downside to specifying a smaller flash size than you really have, as long as you don't need to write an image larger than this size.
 
-ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 4 megabyte / ``4MB`` (sometimes labelled 32 megabit) flash.
+    ESP-12, ESP-12E and ESP-12F modules (and boards that use them such as NodeMCU, HUZZAH, etc.) usually have at least 4 megabyte / ``4MB`` (sometimes labelled 32 megabit) flash.
 
-If using OTA, some additional sizes & layouts for OTA "firmware slots" are available. If not using OTA updates then you can ignore these extra sizes:
+    .. _esp8266-and-flash-size:
 
-+-------------------+-----------------------+-----------------+-----------------+
-| flash_size arg    | Number of OTA slots   | OTA Slot Size   | Non-OTA Space   |
-+===================+=======================+=================+=================+
-| 256KB             | 1 (no OTA)            | 256KB           | N/A             |
-+-------------------+-----------------------+-----------------+-----------------+
-| 512KB             | 1 (no OTA)            | 512KB           | N/A             |
-+-------------------+-----------------------+-----------------+-----------------+
-| 1MB               | 2                     | 512KB           | 0KB             |
-+-------------------+-----------------------+-----------------+-----------------+
-| 2MB               | 2                     | 512KB           | 1024KB          |
-+-------------------+-----------------------+-----------------+-----------------+
-| 4MB               | 2                     | 512KB           | 3072KB          |
-+-------------------+-----------------------+-----------------+-----------------+
-| 2MB-c1            | 2                     | 1024KB          | 0KB             |
-+-------------------+-----------------------+-----------------+-----------------+
-| 4MB-c1            | 2                     | 1024KB          | 2048KB          |
-+-------------------+-----------------------+-----------------+-----------------+
-| 8MB [^]           | 2                     | 1024KB          | 6144KB          |
-+-------------------+-----------------------+-----------------+-----------------+
-| 16MB [^]          | 2                     | 1024KB          | 14336KB         |
-+-------------------+-----------------------+-----------------+-----------------+
+    If using OTA, some additional sizes & layouts for OTA "firmware slots" are available. If not using OTA updates then you can ignore these extra sizes:
 
--  [^] Support for 8MB & 16MB flash size is not present in all ESP8266 SDKs. If your SDK doesn't support these flash sizes, use ``--flash_size 4MB``.
+    +-------------------+-----------------------+-----------------+-----------------+
+    | flash_size arg    | Number of OTA slots   | OTA Slot Size   | Non-OTA Space   |
+    +===================+=======================+=================+=================+
+    | 256KB             | 1 (no OTA)            | 256KB           | N/A             |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 512KB             | 1 (no OTA)            | 512KB           | N/A             |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 1MB               | 2                     | 512KB           | 0KB             |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 2MB               | 2                     | 512KB           | 1024KB          |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 4MB               | 2                     | 512KB           | 3072KB          |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 2MB-c1            | 2                     | 1024KB          | 0KB             |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 4MB-c1            | 2                     | 1024KB          | 2048KB          |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 8MB [^]           | 2                     | 1024KB          | 6144KB          |
+    +-------------------+-----------------------+-----------------+-----------------+
+    | 16MB [^]          | 2                     | 1024KB          | 14336KB         |
+    +-------------------+-----------------------+-----------------+-----------------+
 
-ESP32 and Flash Size
-^^^^^^^^^^^^^^^^^^^^
+    -  [^] Support for 8MB & 16MB flash size is not present in all ESP8266 SDKs. If your SDK doesn't support these flash sizes, use ``--flash_size 4MB``.
 
-The ESP-IDF flashes a partition table to the flash at offset 0x8000. All of the partitions in this table must fit inside the configured flash size, otherwise the ESP32 will not work correctly.
+.. only:: not esp8266
+
+    The ESP-IDF flashes a partition table to the flash at offset 0x8000. All of the partitions in this table must fit inside the configured flash size, otherwise the {IDF_TARGET_NAME} will not work correctly.

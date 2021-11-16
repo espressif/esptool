@@ -1,10 +1,6 @@
 Firmware Image Format
 =====================
 
-.. note::
-
-    Currently this document refers to ESP8266 only. ESP32 has some additional headers.
-
 This is technical documentation for the firmware image format used by the ROM bootloader. These are the images created by ``esptool.py elf2image``.
 
 The firmware file consists of a header, a variable number of data segments and a footer. Multi-byte fields are little-endian.

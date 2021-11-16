@@ -21,7 +21,9 @@ To see all options for a particular command, append ``-h`` to the command name. 
    Flashing Firmware <flashing-firmware>
    Scripting <scripting>
 
-Instructions for other tools bundled with esptool:
+.. only:: not esp8266
 
-* :ref:`espefuse`
-* :ref:`espsecure`
+   Instructions for other tools bundled with esptool:
+
+   * :ref:`espefuse`
+   * :ref:`espsecure`

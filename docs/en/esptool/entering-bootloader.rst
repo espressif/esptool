@@ -14,13 +14,16 @@ Boot Mode
 
 Espressif chips choose the boot mode each time they reset. A reset event can happen in one of several ways:
 
-*  Power applied to chip.
-*  The nRESET pin was low and is pulled high (on ESP8266 only).
-*  The CH_PD/EN pin ("enable") pin was low and is pulled high.
+.. list::
 
-On ESP8266, both the nRESET and CH_PD pins must be pulled high for the chip to start operating.
+    *  Power applied to chip.
+    :esp8266: *  The nRESET pin was low and is pulled high.
+    *  The CH_PD/EN pin ("enable") pin was low and is pulled high.
 
-For more details on selecting the boot mode, see the following Advanced Topics pages:
+.. only:: esp8266
 
-*  :ref:`ESP8266 Boot Mode Selection <boot-mode-esp8266>`
-*  :ref:`ESP32 Boot Mode Selection <boot-mode-esp32>`
+    On ESP8266, both the nRESET and CH_PD pins must be pulled high for the chip to start operating.
+
+.. only:: esp8266 or esp32
+
+    For more details on selecting the boot mode, see the related :ref:`Advanced Topics page<boot-mode>`.

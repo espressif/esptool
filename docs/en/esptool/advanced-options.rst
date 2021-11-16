@@ -17,20 +17,24 @@ Reset Before Operation
 
 The ``--before`` argument allows you to specify whether the chip needs resetting into bootloader mode before esptool talks to it.
 
-* ``--before default_reset`` is the default, which uses DTR & RTS serial control lines (see :ref:`entering-the-bootloader`) to try to reset the chip into bootloader mode.
-* ``--before no_reset`` will skip DTR/RTS control signal assignments and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
-* ``--before no_reset_no_sync`` will skip DTR/RTS control signal assignments and skip also the serial synchronization command. This is useful if your chip is already running the stub bootloader and you want to avoid resetting the chip and uploading the stub again.
-* ``--before usb_reset`` will use custom reset sequence for USB-JTAG-Serial (used for example for ESP32-C3 connected through the USB-JTAG-Serial peripheral). Usually, this option doesn't have to be used directly. Esptool should be able to detect connection through USB-JTAG-Serial.
+.. list::
+
+    * ``--before default_reset`` is the default, which uses DTR & RTS serial control lines (see :ref:`entering-the-bootloader`) to try to reset the chip into bootloader mode.
+    * ``--before no_reset`` will skip DTR/RTS control signal assignments and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
+    * ``--before no_reset_no_sync`` will skip DTR/RTS control signal assignments and skip also the serial synchronization command. This is useful if your chip is already running the stub bootloader and you want to avoid resetting the chip and uploading the stub again.
+    :esp32c3 or esp32s3: * ``--before usb_reset`` will use custom reset sequence for USB-JTAG-Serial (used for example for ESP chips connected through the USB-JTAG-Serial peripheral). Usually, this option doesn't have to be used directly. Esptool should be able to detect connection through USB-JTAG-Serial.
 
 Reset After Operation
 ^^^^^^^^^^^^^^^^^^^^^
 
 The ``--after`` argument allows you to specify whether the chip should be reset after the esptool operation completes:
 
-* ``--after hard_reset`` is the default. The DTR serial control line is used to reset the chip into a normal boot sequence.
-* ``--after soft_reset`` is currently only supported on ESP8266. This runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
-* ``--after no_reset`` leaves the chip in the serial bootloader, no reset is performed.
-* ``--after no_reset_stub`` leaves the chip in the stub bootloader, no reset is performed.
+.. list::
+
+    * ``--after hard_reset`` is the default. The DTR serial control line is used to reset the chip into a normal boot sequence.
+    :esp8266:* ``--after soft_reset`` This runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
+    * ``--after no_reset`` leaves the chip in the serial bootloader, no reset is performed.
+    * ``--after no_reset_stub`` leaves the chip in the stub bootloader, no reset is performed.
 
 Disabling the Stub Loader
 -------------------------
@@ -39,56 +43,58 @@ The ``--no-stub`` option disables uploading of a software "stub loader" that man
 
 Passing ``--no-stub`` will disable certain options, as not all options are implemented in every chip's ROM loader.
 
-Overriding SPI Flash Connections
---------------------------------
+.. only:: esp32
 
-The optional ``--spi-connection`` argument overrides the SPI flash connection configuration on ESP32. This means that the SPI flash can be connected to other pins, or esptool can be used to communicate with a different SPI flash chip to the default.
+    Overriding SPI Flash Connections
+    --------------------------------
 
-Supply the ``--spi-connection`` argument after the ``esptool.py`` command, ie ``esptool.py flash_id --spi-connection HSPI``.
+    The optional ``--spi-connection`` argument overrides the SPI flash connection configuration on ESP32. This means that the SPI flash can be connected to other pins, or esptool can be used to communicate with a different SPI flash chip to the default.
 
-Default Behavior
-^^^^^^^^^^^^^^^^
+    Supply the ``--spi-connection`` argument after the ``esptool.py`` command, ie ``esptool.py flash_id --spi-connection HSPI``.
 
-If the ``--spi-connection`` argument is not provided, the SPI flash is configured to use :ref:`pin numbers set in efuse <espefuse-spi-flash-pins>`. These are the same SPI flash pins that are used during a normal boot.
+    Default Behavior
+    ^^^^^^^^^^^^^^^^
 
-The only exception to this is if the ``--no-stub`` option is also provided. In this case, efuse values are ignored and ``--spi-connection`` will default to ``--spi-connection SPI`` unless set to a different value.
+    If the ``--spi-connection`` argument is not provided, the SPI flash is configured to use :ref:`pin numbers set in efuse <espefuse-spi-flash-pins>`. These are the same SPI flash pins that are used during a normal boot.
 
-SPI Mode
-^^^^^^^^
+    The only exception to this is if the ``--no-stub`` option is also provided. In this case, efuse values are ignored and ``--spi-connection`` will default to ``--spi-connection SPI`` unless set to a different value.
 
-``--spi-connection SPI`` uses the default SPI pins:
+    SPI Mode
+    ^^^^^^^^
 
-* CLK = GPIO 6
-* Q = GPIO 7
-* D = GPIO 8
-* HD = GPIO 9
-* CS = GPIO 11
+    ``--spi-connection SPI`` uses the default SPI pins:
 
-During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is not pulled low (default).
+    * CLK = GPIO 6
+    * Q = GPIO 7
+    * D = GPIO 8
+    * HD = GPIO 9
+    * CS = GPIO 11
 
-This is the normal pin configuration for ESP32 chips that do not contain embedded flash.
+    During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is not pulled low (default).
 
-HSPI Mode
-^^^^^^^^^
+    This is the normal pin configuration for ESP32 chips that do not contain embedded flash.
 
-``--spi-connection HSPI`` uses the HSPI peripheral instead of the SPI peripheral for SPI flash communications, via the following HSPI pins:
+    HSPI Mode
+    ^^^^^^^^^
 
-* CLK = GPIO 14
-* Q = GPIO 12
-* D = GPIO 13
-* HD = GPIO 4
-* CS = GPIO 15
+    ``--spi-connection HSPI`` uses the HSPI peripheral instead of the SPI peripheral for SPI flash communications, via the following HSPI pins:
 
-During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is pulled low on reset.
+    * CLK = GPIO 14
+    * Q = GPIO 12
+    * D = GPIO 13
+    * HD = GPIO 4
+    * CS = GPIO 15
 
-Custom SPI Pin Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is pulled low on reset.
 
-``--spi-connection <CLK>,<Q>,<D>,<HD>,<CS>`` allows a custom list of pins to be configured for the SPI flash connection. This can be used to emulate the flash configuration equivalent to a particular set of SPI pin efuses being burned. The values supplied are GPIO numbers.
+    Custom SPI Pin Configuration
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For example, ``--spi-connection 6,17,8,11,16`` sets an identical configuration to the factory efuse configuration for ESP32s with embedded flash.
+    ``--spi-connection <CLK>,<Q>,<D>,<HD>,<CS>`` allows a custom list of pins to be configured for the SPI flash connection. This can be used to emulate the flash configuration equivalent to a particular set of SPI pin efuses being burned. The values supplied are GPIO numbers.
 
-When setting a custom pin configuration, the SPI peripheral (not HSPI) will be used unless the ``CLK`` pin value is set to 14 (HSPI CLK), in which case the HSPI peripheral will be used.
+    For example, ``--spi-connection 6,17,8,11,16`` sets an identical configuration to the factory efuse configuration for ESP32s with embedded flash.
+
+    When setting a custom pin configuration, the SPI peripheral (not HSPI) will be used unless the ``CLK`` pin value is set to 14 (HSPI CLK), in which case the HSPI peripheral will be used.
 
 Specifying Arguments via File
 -----------------------------

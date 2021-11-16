@@ -11,6 +11,8 @@ esptool, espefuse and espsecure are a complete toolset for working with Espressi
 * Prepare binary executable images ready for flashing.
 * Analyze, assemble, and merge binary images.
 
+This document describes using esptool with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left.
+
 Quick Start
 -----------
 
@@ -43,8 +45,8 @@ More Information
 
    Installation <installation>
    Esptool <esptool/index>
-   Espefuse <espefuse/index>
-   Espsecure <espsecure/index>
+   :not esp8266:Espefuse <espefuse/index>
+   :not esp8266:Espsecure <espsecure/index>
    Advanced Topics <advanced-topics/index>
    Troubleshooting <troubleshooting>
    Contribute <contributing>

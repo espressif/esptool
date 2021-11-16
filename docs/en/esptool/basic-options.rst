@@ -20,7 +20,7 @@ Serial Port
     On macOS, you can also consult `System Information <https://support.apple.com/en-us/HT203001>`__'s list of USB devices to identify the manufacturer or device ID when the adapter is plugged in.
     On Windows, you can use `Windows Update or Device Manager <https://support.microsoft.com/en-us/help/15048/windows-7-update-driver-hardware-not-working-properly>`__ to find a driver.
 
-If using Cygwin or WSL on Windows, you have to convert the Windows-style name into a Unix-style path (``COM1`` -> ``/dev/ttyS0``, and so on). (This is not necessary if using ESP-IDF for ESP32 with the supplied Windows MSYS2 environment,
+If using Cygwin or WSL on Windows, you have to convert the Windows-style name into a Unix-style path (``COM1`` -> ``/dev/ttyS0``, and so on). (This is not necessary if using ESP-IDF with the supplied Windows MSYS2 environment,
 this environment uses a native Windows Python which accepts COM ports as-is.)
 
 In Linux, the current user may not have access to serial ports and a "Permission Denied" error will appear. On most Linux distributions, the solution is to add the user to the ``dialout`` group with a command like ``sudo usermod -a -G dialout <USERNAME>``.
@@ -35,4 +35,10 @@ The baud rate is limited to 115200 when esptool establishes the initial connecti
 
 Most hardware configurations will work with ``-b 230400``, some with ``-b 460800``, ``-b 921600`` and/or ``-b 1500000`` or higher.
 
-If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output :ref:`boot-log-esp8266` information.
+.. only:: esp8266
+
+    If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output :ref:`boot-log-esp8266` information.
+
+.. only:: not esp8266
+
+    If you have connectivity problems then you can also set baud rates below 115200.

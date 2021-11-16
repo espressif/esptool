@@ -62,11 +62,19 @@ The 3.3V output from FTDI FT232R chips/adapters or Arduino boards *do not* suppl
 
 Missing Bootloader
 ^^^^^^^^^^^^^^^^^^
+.. only:: esp8266
 
-`ESP-IDF <https://github.com/espressif/esp-idf>`_ and the `ESP8266 SDK <https://github.com/espressif/ESP8266_RTOS_SDK>`_ both use a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program.
-On ESP8266, firmware bootloader image (with a filename like ``boot_v1.x.bin``) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot. On ESP32 and later chips, the bootloader image should be flashed by ESP-IDF at offset 0x1000.
+   The `ESP8266 SDK <https://github.com/espressif/ESP8266_RTOS_SDK>`_ uses a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program.
+   On ESP8266, firmware bootloader image (with a filename like ``boot_v1.x.bin``) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot.
 
-Refer to ESP-IDF or ESP8266 SDK documentation for details regarding which binaries need to be flashed at which offsets.
+   Refer to ESP8266 SDK documentation for details regarding which binaries need to be flashed at which offsets.
+
+.. only:: not esp8266
+
+   `ESP-IDF <https://github.com/espressif/esp-idf>`_ and uses a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program.
+   On {IDF_TARGET_NAME}, the bootloader image should be flashed by ESP-IDF at offset 0x1000.
+
+   Refer to ESP-IDF documentation for details regarding which binaries need to be flashed at which offsets.
 
 SPI Pins Which Must Be Disconnected
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,14 +92,22 @@ In addition to these pins, GPIOs 6 & 11 are also used to access the SPI flash (i
 Early Stage Crash
 -----------------
 
-Use any of `Serial terminal programs`_ to view the boot log. (ESP8266 baud rate is 74880bps, ESP32 and later is 115200bps). See if the program is crashing during early startup or outputting an error message.
+.. only:: esp8266
+
+   Use any of `Serial terminal programs`_ to view the boot log. (ESP8266 baud rate is 74880bps). See if the program is crashing during early startup or outputting an error message.
+
+.. only:: not esp8266
+
+   Use any of `Serial terminal programs`_ to view the boot log. ({IDF_TARGET_NAME} baud rate is 115200bps). See if the program is crashing during early startup or outputting an error message.
 
 Serial Terminal Programs
 ------------------------
 
 There are many serial terminal programs suitable for debugging & serial interaction. The pyserial module (which is required for esptool) includes one such command line terminal program - miniterm.py. For more details `see this page <https://pyserial.readthedocs.io/en/latest/tools.html#module-serial.tools.miniterm>`_ or run ``miniterm -h``.
 
-Note that not every serial program supports the unusual ESP8266 74880bps "boot log" baud rate. Support is especially sparse on Linux. miniterm.py supports this baud rate on all platforms. ESP32 or later chips use the more common 115200bps.
+.. only:: esp8266
+
+   Note that not every serial program supports the unusual ESP8266 74880bps "boot log" baud rate. Support is especially sparse on Linux. miniterm.py supports this baud rate on all platforms.
 
 Tracing Esptool Interactions
 ----------------------------

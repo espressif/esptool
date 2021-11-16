@@ -7,7 +7,7 @@ espefuse.py
 
 .. warning::
 
-    IMPORTANT: Because efuse is one-time-programmable, it is possible to permanently damage or "brick" your ESP32 using this tool. Use it with great care.
+    Because efuse is one-time-programmable, it is possible to permanently damage or "brick" your {IDF_TARGET_NAME} using this tool. Use it with great care.
 
 For more details about Espressif chips efuse features, see the `Technical Reference Manual <http://espressif.com/en/support/download/documents>`__.
 
@@ -109,7 +109,7 @@ Burning an Efuse
 
 .. warning::
 
-    This command can brick your ESP32 if used incorrectly!
+    This command can brick your {IDF_TARGET_NAME} if used incorrectly!
 
 To burn an efuse to a new value, use the ``burn_efuse`` command:
 
@@ -128,19 +128,25 @@ By default, ``espefuse.py`` will ask you to type BURN before it permanently sets
 Setting Flash Voltage (VDD_SDIO)
 --------------------------------
 
-After reset, the default ESP32 behaviour is to enable and configure the flash voltage regulator (VDD_SDIO) based on the level of the MTDI pin (GPIO12).
+After reset, the default {IDF_TARGET_NAME} behaviour is to enable and configure the flash voltage regulator (VDD_SDIO) based on the level of the MTDI pin (GPIO12).
 
 The default behaviour on reset is:
 
 +----------------------+--------------------------------+
-| MTDI (GPIO12) Pin    | VDD\_SDIO Internal Regulator   |
+| MTDI (GPIO12) Pin    | VDD_SDIO Internal Regulator    |
 +======================+================================+
 | Low or unconnected   | Enabled at 3.3V                |
 +----------------------+--------------------------------+
 | High                 | Enabled at 1.8V                |
 +----------------------+--------------------------------+
 
-Consult ESP32 Technical Reference Manual chapter 4.8.1 "VDD_SDIO Power Domain" for details.
+.. only:: esp32
+
+    Consult ESP32 Technical Reference Manual chapter 4.8.1 "VDD_SDIO Power Domain" for details.
+
+.. only:: not esp32
+
+    Consult {IDF_TARGET_NAME} Technical Reference Manual for details.
 
 A combination of 3 efuses (``XPD_SDIO_FORCE``, ``XPD_SDIO_REG``, ``XPD_SDIO_TIEH``) can be burned in order to override this behaviour and disable VDD_SDIO regulator, or set it to a fixed voltage. These efuses can be burned with individual ``burn_efuse`` commands, but the ``set_flash_voltage`` command makes it easier:
 
@@ -155,7 +161,7 @@ Once set:
 
 * VDD_SDIO regulator always disabled.
 * MTDI pin (GPIO12) is ignored.
-* Flash must be powered externally and voltage supplied to VDD_SDIO pin of ESP32.
+* Flash must be powered externally and voltage supplied to VDD_SDIO pin of {IDF_TARGET_NAME}.
 * Efuse ``XPD_SDIO_FORCE`` is burned.
 
 Fixed 1.8V VDD_SDIO
@@ -199,7 +205,7 @@ Burning a Key
 
 .. warning::
 
-    This command can brick your ESP32 if used incorrectly!
+    This command can brick your {IDF_TARGET_NAME} if used incorrectly!
 
 The efuse key blocks BLK1, BLK2 and BLK3 can all hold encryption keys. The ``burn_key`` subcommand loads a key (stored as a raw binary file) and burns it to a key block.
 
@@ -207,13 +213,15 @@ The efuse key blocks BLK1, BLK2 and BLK3 can all hold encryption keys. The ``bur
 
 *  The ``burn_key`` command should only be used for hardware flash encryption or secure boot keys. See `Burning non-key data <#burning-non-key-data>`__ for a command that works for data read by software.
 
-Key Coding Scheme
-^^^^^^^^^^^^^^^^^
+.. only:: esp32
 
-When the "None" coding scheme is in use, keys are 256-bits (32 bytes) long. When 3/4 Coding Scheme is in use (``CODING_SCHEME`` efuse has value 1 not 0), keys are 192-bits (24 bytes) long and an additional 64 bits of error correction data are also written.
-``espefuse.py`` v2.6 or newer is required to burn keys with 3/4 Coding Scheme. The key file must be the appropriate length for the coding scheme currently in use.
+    Key Coding Scheme
+    ^^^^^^^^^^^^^^^^^
 
-When keys are stored in ESP32 Efuse blocks, they are stored in reverse byte order (last byte of the key is written to the first byte of efuse, etc.)
+    When the "None" coding scheme is in use, keys are 256-bits (32 bytes) long. When 3/4 Coding Scheme is in use (``CODING_SCHEME`` efuse has value 1 not 0), keys are 192-bits (24 bytes) long and an additional 64 bits of error correction data are also written.
+    ``espefuse.py`` v2.6 or newer supports the 3/4 Coding Scheme. The key file must be the appropriate length for the coding scheme currently in use.
+
+    When keys are stored in {IDF_TARGET_NAME} Efuse blocks, they are stored in reverse byte order (last byte of the key is written to the first byte of efuse, etc.)
 
 Unprotected Keys
 ^^^^^^^^^^^^^^^^
@@ -290,9 +298,9 @@ The following efuses configure the SPI flash pins which are used to boot:
     SPI_PAD_CONFIG_HD      Override SD_DATA_2 pad (GPIO9/SPIHD)              = 0 R/W (0x0)
     SPI_PAD_CONFIG_CS0     Override SD_CMD pad (GPIO11/SPICS0)               = 0 R/W (0x0)
 
-On ESP32 chips without integrated SPI flash, these efuses are set to zero in the factory. This causes the default GPIO pins (shown in the summary output above) to be used for the SPI flash.
+On {IDF_TARGET_NAME} chips without integrated SPI flash, these efuses are set to zero in the factory. This causes the default GPIO pins (shown in the summary output above) to be used for the SPI flash.
 
-On ESP32 chips with integrated internal SPI flash, these efuses are burned in the factory to the GPIO numbers where the flash is connected. These values override the defaults on boot.
+On {IDF_TARGET_NAME} chips with integrated internal SPI flash, these efuses are burned in the factory to the GPIO numbers where the flash is connected. These values override the defaults on boot.
 
 In order to change the SPI flash pin configuration, these efuses can be burned to the GPIO numbers where the flash is connected. If at least one of these efuses is burned, all of of them must be set to the correct values.
 
@@ -313,7 +321,7 @@ Read- and Write- Protecting Efuses
 
 .. warning::
 
-    This command can severely limit your ESP32 options.
+    This command can severely limit your {IDF_TARGET_NAME} options.
 
 Some efuses can be read- or write-protected, preventing further changes. ``burn_key`` subcommand read and write protects new keys by default, but other efuses can be protected iwth the ``read_protect_efuse`` and ``write_protect_efuse`` commands.
 

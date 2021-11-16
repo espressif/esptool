@@ -15,7 +15,7 @@ Summary
 In order of performance:
 
 +------------+---------------+----------------------------------+-----------------------------------+
-| Option     | Mode Name     | Pins Used                        | Speed (ESP8266 & ESP32)           |
+| Option     | Mode Name     | Pins Used                        | Speed (ESP device)                |
 +============+===============+==================================+===================================+
 | ``qio``    | Quad I/O      | 4 pins used for address & data   | Fastest.                          |
 +------------+---------------+----------------------------------+-----------------------------------+
@@ -85,7 +85,7 @@ It is usually one of the following reasons:
 * The WP and HOLD pins of the SPI flash chip are not wired to the correct GPIOs of the Espressif chip. These pins must be connected correctly for quad modes to work, and not all boards/modules connect them at all.
 * The SPI flash chip does not support quad modes. Look up the flash chip datasheet to see which modes it supports. You can identify the flash chip visually, or by using the :ref:`esptool.py flash_id <read-spi-flash-id>` command.
 * Quad mode is not enabled correctly for this chip model. SPI flash is not a standard, so every manufacturer implements their chip differently. Most flash chips require certain commands to be sent in order to enable Quad SPI modes, and these commands vary.
-  For Espressif chips, this often means that the chip first boots in a Dual SPI mode and then software (bootloader for ESP32 and later or SDK for ESP8266) detects the chip type and tries to enable Quad SPI mode.
+  For Espressif chips, this often means that the chip first boots in a Dual SPI mode and then software detects the chip type and tries to enable Quad SPI mode.
   If the particular chip model is not supported by the software then it won't be able to enter quad mode.
 
 Why does qout/dout mode work but qio/dio mode doesn't work?

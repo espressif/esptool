@@ -25,8 +25,11 @@ The ``--diff yes`` option specifies that if the files are different, the details
 
 .. note::
 
-    * If verifying a default boot image (offset 0 for ESP8266 or offset 0x1000 for ESP32) then any ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` arguments which were passed to `write_flash` must also be passed to ``verify_flash``. Otherwise, ``verify_flash`` will detect mismatches in the header of the image file.
-    * Another way to compare flash contents is to use the ``read_flash`` command, and then use binary diffing tools on the host.
+    .. list::
+
+        :esp8266: * If verifying a default boot image (offset 0 for ESP8266) then any ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` arguments which were passed to `write_flash` must also be passed to ``verify_flash``. Otherwise, ``verify_flash`` will detect mismatches in the header of the image file.
+        :not esp8266: * If verifying a default boot image (offset 0x1000 for {IDF_TARGET_NAME}) then any ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` arguments which were passed to `write_flash` must also be passed to ``verify_flash``. Otherwise, ``verify_flash`` will detect mismatches in the header of the image file.
+        * Another way to compare flash contents is to use the ``read_flash`` command, and then use binary diffing tools on the host.
 
 .. _dump-mem:
 
@@ -131,27 +134,28 @@ On ESP8266, output is the same as the ``system_get_chip_id()`` SDK function. The
 
 On ESP32, there is no ``system_get_chip_id()`` function and this command is the same as ``esptool.py read_mac``.
 
-.. _make-image:
+.. only:: esp8266
 
-Assemble a Firmware Image: make_image
--------------------------------------
+    .. _make-image:
 
-``make_image`` allows you to manually assemble a firmware image from binary segments (such as those extracted from objcopy). For example:
+    Assemble a Firmware Image: make_image
+    -------------------------------------
 
-::
+    ``make_image`` allows you to manually assemble a firmware image from binary segments (such as those extracted from objcopy). For example:
 
-    esptool.py --chip esp8266 make_image -f app.text.bin -a 0x40100000 -f app.data.bin -a 0x3ffe8000 -f app.rodata.bin -a 0x3ffe8c00 app.flash.bin
+    ::
 
-This command does not require a serial connection.
+        esptool.py --chip esp8266 make_image -f app.text.bin -a 0x40100000 -f app.data.bin -a 0x3ffe8000 -f app.rodata.bin -a 0x3ffe8c00 app.flash.bin
 
-.. note::
+    This command does not require a serial connection.
 
-    * ``make_image`` is currently only supported for ESP8266, not ESP32 or later.
-    * In general, it is better to create an ELF image (including any binary data as part of the ELF, by using objcopy or other tools) and then use ``elf2image`` to generate the ``.bin`` file.
+    .. note::
 
-.. _run:
+        In general, it is better to create an ELF image (including any binary data as part of the ELF, by using objcopy or other tools) and then use ``elf2image`` to generate the ``.bin`` file.
 
-Boot Application Code: run
---------------------------
+    .. _run:
 
-The ``run`` command immediately exits the bootloader and attempts to boot the normal application code. This command is of limited use, and only works as intended on ESP8266.
+    Boot Application Code: run
+    --------------------------
+
+    The ``run`` command immediately exits the bootloader and attempts to boot the normal application code.

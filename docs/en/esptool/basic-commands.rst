@@ -22,8 +22,14 @@ The ``--chip`` argument is optional when writing to flash, esptool will detect t
 
 The ``--port`` argument is documented under :ref:`serial-port`.
 
-The next arguments to ``write_flash`` are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by ``elf2image`` include the flash offsets as part of the file name.
-For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
+.. only:: esp8266
+
+    The next arguments to ``write_flash`` are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by ``elf2image`` include the flash offsets as part of the file name.
+    For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
+
+.. only:: not esp8266
+
+    The next arguments to ``write_flash`` are one or more pairs of offset (address) and file name. Consult your SDK documentation to determine the files to flash at which offsets.
 
 Numeric values passed to write_flash (and other commands) can be specified either in hex (ie 0x1000), or in decimal (ie 4096).
 
@@ -116,7 +122,7 @@ The ``elf2image`` command converts an ELF file (from compiler/linker output) int
 
 ::
 
-    esptool.py --chip esp8266 elf2image my_app.elf
+    esptool.py --chip {IDF_TARGET_NAME} elf2image my_app.elf
 
 This command does not require a serial connection.
 
@@ -125,27 +131,25 @@ These values can also be overwritten via the ``write_flash`` command, see the `w
 
 By default, ``elf2image`` uses the sections in the ELF file to generate each segment in the binary executable. To use segments (PHDRs) instead, pass the ``--use_segments`` option.
 
-elf2image for ESP8266
-^^^^^^^^^^^^^^^^^^^^^
+.. only:: esp8266
 
-The default command output is two binary files: ``my_app.elf-0x00000.bin`` and ``my_app.elf-0x40000.bin``. You can alter the firmware file name prefix using the ``--output/-o`` option.
+    The default command output for {IDF_TARGET_NAME} is two binary files: ``my_app.elf-0x00000.bin`` and ``my_app.elf-0x40000.bin``. You can alter the firmware file name prefix using the ``--output/-o`` option.
 
-``elf2image`` can also produce a "version 2" image file suitable for use with a software bootloader stub such as `rboot <https://github.com/raburton/rboot>`__ or the Espressif bootloader program. You can't flash a "version 2" image without also flashing a suitable bootloader.
+    ``elf2image`` can also produce a "version 2" image file suitable for use with a software bootloader stub such as `rboot <https://github.com/raburton/rboot>`__ or the Espressif bootloader program. You can't flash a "version 2" image without also flashing a suitable bootloader.
 
-::
+    ::
 
-    esptool.py --chip esp8266 elf2image --version=2 -o my_app-ota.bin my_app.elf
+        esptool.py --chip {IDF_TARGET_NAME} elf2image --version=2 -o my_app-ota.bin my_app.elf
 
-elf2image for ESP32
-^^^^^^^^^^^^^^^^^^^
+.. only:: not esp8266
 
-For ESP32, elf2image produces a single output binary "image file". By default this has the same name as the .elf file, with a .bin extension. For example:
+    For {IDF_TARGET_NAME}, elf2image produces a single output binary "image file". By default this has the same name as the .elf file, with a .bin extension. For example:
 
-::
+    ::
 
-    esptool.py --chip esp32 elf2image my_esp32_app.elf
+        esptool.py --chip {IDF_TARGET_NAME} elf2image my_esp_app.elf
 
-In the above example, the output image file would be called ``my_esp32_app.bin``.
+    In the above example, the output image file would be called ``my_esp_app.bin``.
 
 Output .bin Image Details: image_info
 -------------------------------------
@@ -154,9 +158,13 @@ The ``image_info`` command outputs some information (load addresses, sizes, etc)
 
 ::
 
-    esptool.py --chip esp32 image_info my_esp32_app.bin
+    esptool.py --chip {IDF_TARGET_NAME} image_info my_esp_app.bin
 
-Note that ``--chip esp32`` is required when reading ESP32 images. Otherwise the default is ``--chip esp8266`` and the image will be interpreted as an invalid ESP8266 image.
+.. only:: not esp8266
+
+    .. note::
+
+        Note that ``--chip {IDF_TARGET_NAME}`` is required when reading {IDF_TARGET_NAME} images. Otherwise the default is ``--chip esp8266`` and the image will be interpreted as an invalid ESP8266 image.
 
 .. _merge-bin:
 
@@ -169,7 +177,7 @@ For example:
 
 ::
 
-    esptool.py --chip esp32 merge_bin -o merged-flash.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
+    esptool.py --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
 
 Will create a file ``merged-flash.bin`` with the contents of the other 3 files. This file can be later be written to flash with ``esptool.py write_flash 0x0 merged-flash.bin``.
 
@@ -188,19 +196,21 @@ Will create a file ``merged-flash.bin`` with the contents of the other 3 files. 
 .. code:: sh
 
     cd build    # The build directory of an ESP-IDF project
-    esptool.py --chip esp32 merge_bin -o merged-flash.bin @flash_args
+    esptool.py --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin @flash_args
 
 Advanced Commands
 -----------------
 
 The following commands are less commonly used, or only of interest to advanced users. They are documented in the :ref:`advanced-commands` section:
 
-*  :ref:`verify-flash`
-*  :ref:`dump-mem`
-*  :ref:`load-ram`
-*  :ref:`read-mem-write-mem`
-*  :ref:`read-flash-status`
-*  :ref:`write-flash-status`
-*  :ref:`chip-id`
-*  :ref:`make-image`
-*  :ref:`run`
+.. list::
+
+    *  :ref:`verify-flash`
+    *  :ref:`dump-mem`
+    *  :ref:`load-ram`
+    *  :ref:`read-mem-write-mem`
+    *  :ref:`read-flash-status`
+    *  :ref:`write-flash-status`
+    *  :ref:`chip-id`
+    :esp8266: *  :ref:`make-image`
+    :esp8266: *  :ref:`run`

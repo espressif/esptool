@@ -12,6 +12,33 @@ html_context['github_repo'] = 'esptool'
 
 html_static_path = ['../_static']
 
+# Conditional content
+extensions += ['esp_docs.esp_extensions.dummy_build_system']
+
+ESP8266_DOCS = ['advanced-topics/firmware-image-format.rst',
+                'advanced-topics/boot-mode-selection.rst',
+                ]
+
+ESP32_DOCS = ['espefuse/index.rst',
+              'espsecure/index.rst',
+              'advanced-topics/boot-mode-selection.rst',
+              ]
+
+ESP32S2_DOCS = ['espefuse/index.rst',
+                'espsecure/index.rst',
+                ]
+
+ESP32C3_DOCS = ESP32S2_DOCS
+
+ESP32S3_DOCS = ESP32S2_DOCS
+
+conditional_include_dict = {'esp8266': ESP8266_DOCS,
+                            'esp32': ESP32_DOCS,
+                            'esp32s2': ESP32S2_DOCS,
+                            'esp32c3': ESP32C3_DOCS,
+                            'esp32s3': ESP32S3_DOCS,
+                            }
+
 # Extra options required by sphinx_idf_theme
 project_slug = 'esptool'
 
