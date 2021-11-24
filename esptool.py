@@ -2801,6 +2801,10 @@ class BaseFirmwareImage(object):
         # script will have produced any adjacent sections in linear order in the ELF, anyhow.
         self.segments = segments
 
+    def set_mmu_page_size(self, size):
+        """ If supported, this should be overridden by the chip-specific class. Gets called in elf2image. """
+        print('WARNING: Changing MMU page size is not supported on {}! Defaulting to 64KB.'.format(self.ROM_LOADER.CHIP_NAME))
+
 
 class ESP8266ROMFirmwareImage(BaseFirmwareImage):
     """ 'Version 1' firmware image, segments loaded directly by the ROM bootloader. """
@@ -3341,6 +3345,11 @@ ESP32H2BETA2ROM.BOOTLOADER_IMAGE = ESP32H2BETA2FirmwareImage
 class ESP8684FirmwareImage(ESP32FirmwareImage):
     """ ESP8684 Firmware Image almost exactly the same as ESP32FirmwareImage """
     ROM_LOADER = ESP8684ROM
+
+    def set_mmu_page_size(self, size):
+        if size not in [16384, 32768, 65536]:
+            raise FatalError("{} is not a valid page size.".format(size))
+        self.IROM_ALIGN = size
 
 
 ESP8684ROM.BOOTLOADER_IMAGE = ESP8684FirmwareImage
@@ -4021,8 +4030,9 @@ def make_image(args):
 def elf2image(args):
     e = ELFFile(args.input)
     if args.chip == 'auto':  # Default to ESP8266 for backwards compatibility
-        print("Creating image for ESP8266...")
         args.chip = 'esp8266'
+
+    print("Creating {} image...".format(args.chip))
 
     if args.chip == 'esp32':
         image = ESP32FirmwareImage()
@@ -4074,6 +4084,9 @@ def elf2image(args):
     if args.chip != 'esp8266':
         image.min_rev = int(args.min_rev)
 
+    if args.flash_mmu_page_size:
+        image.set_mmu_page_size(flash_size_bytes(args.flash_mmu_page_size))
+
     # ELFSection is a subclass of ImageSegment, so can use interchangeably
     image.segments = e.segments if args.use_segments else e.sections
 
@@ -4095,6 +4108,8 @@ def elf2image(args):
     if args.output is None:
         args.output = image.default_output_name(args.input)
     image.save(args.output)
+
+    print("Successfully created {} image.".format(args.chip))
 
 
 def read_mac(esp, args):
@@ -4450,6 +4465,7 @@ def main(argv=None, esp=None):
                                   type=arg_auto_int, default=None)
     parser_elf2image.add_argument('--use_segments', help='If set, ELF segments will be used instead of ELF sections to genereate the image.',
                                   action='store_true')
+    parser_elf2image.add_argument('--flash-mmu-page-size', help="Change flash MMU page size.", choices=['64KB', '32KB', '16KB'])
 
     add_spi_flash_subparsers(parser_elf2image, allow_keep=False, auto_detect=False)
 
@@ -4528,10 +4544,9 @@ def main(argv=None, esp=None):
                                   help='Address followed by binary filename, separated by space',
                                   action=AddrFilenamePairAction)
 
-    subparsers.add_parser(
-        'version', help='Print esptool version')
-
     subparsers.add_parser('get_security_info', help='Get some security-related data')
+
+    subparsers.add_parser('version', help='Print esptool version')
 
     # internal sanity check - every operation matches a module function of the same name
     for operation in subparsers.choices.keys():
