@@ -128,6 +128,7 @@ class SigningTests(EspSecureTestCase):
 
     GenerateKeyArgs = namedtuple('generate_key_args', [
         'version',
+        'scheme',
         'keyfile'])
 
     def _test_sign_v1_data(self, key_name):
@@ -156,15 +157,19 @@ class SigningTests(EspSecureTestCase):
         self._test_sign_v1_data('ecdsa_secure_boot_signing_key_pkcs8.pem')
 
     def test_sign_v2_data(self):
-        with tempfile.NamedTemporaryFile() as output_file:
-            args = self.SignArgs('2', [self._open('rsa_secure_boot_signing_key.pem')],
-                                 output_file.name, False,
-                                 self._open('bootloader_unsigned_v2.bin'))
-            espsecure.sign_data(args)
+        signing_keys = ['rsa_secure_boot_signing_key.pem',
+                        'ecdsa192_secure_boot_signing_key.pem',
+                        'ecdsa_secure_boot_signing_key.pem']
+        for key in signing_keys:
+            with tempfile.NamedTemporaryFile() as output_file:
+                args = self.SignArgs('2', [self._open(key)],
+                                     output_file.name, False,
+                                     self._open('bootloader_unsigned_v2.bin'))
+                espsecure.sign_data(args)
 
-            args = self.VerifyArgs('2', self._open('rsa_secure_boot_signing_key.pem'),
-                                   output_file)
-            espsecure.verify_signature(args)
+                args = self.VerifyArgs('2', self._open(key),
+                                       output_file)
+                espsecure.verify_signature(args)
 
     def test_sign_v2_multiple_keys(self):
         # 3 keys + Verify with 3rd key
@@ -251,6 +256,16 @@ class SigningTests(EspSecureTestCase):
                                self._open('bootloader_signed_v2.bin'))
         espsecure.verify_signature(args)
 
+        # correct key v2 (ecdsa256)
+        args = self.VerifyArgs('2', self._open('ecdsa_secure_boot_signing_key.pem'),
+                               self._open('bootloader_signed_v2_ecdsa256.bin'))
+        espsecure.verify_signature(args)
+
+        # correct key v2 (ecdsa192)
+        args = self.VerifyArgs('2', self._open('ecdsa192_secure_boot_signing_key.pem'),
+                               self._open('bootloader_signed_v2_ecdsa192.bin'))
+        espsecure.verify_signature(args)
+
         # wrong key v1
         args = self.VerifyArgs('1', self._open('ecdsa_secure_boot_signing_key2.pem'),
                                self._open('bootloader_signed.bin'))
@@ -261,6 +276,27 @@ class SigningTests(EspSecureTestCase):
         # wrong key v2
         args = self.VerifyArgs('2', self._open('rsa_secure_boot_signing_key2.pem'),
                                self._open('bootloader_signed_v2.bin'))
+        with self.assertRaises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        self.assertIn("Signature could not be verified with the provided key.", str(cm.exception))
+
+        # right key, wrong scheme (ecdsa256, v2)
+        args = self.VerifyArgs('2', self._open('ecdsa_secure_boot_signing_key.pem'),
+                               self._open('bootloader_signed.bin'))
+        with self.assertRaises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        self.assertIn("Invalid datafile", str(cm.exception))
+
+        # wrong key v2 (ecdsa256)
+        args = self.VerifyArgs('2', self._open('ecdsa_secure_boot_signing_key2.pem'),
+                               self._open('bootloader_signed_v2_ecdsa256.bin'))
+        with self.assertRaises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        self.assertIn("Signature could not be verified with the provided key.", str(cm.exception))
+
+        # wrong key v2 (ecdsa192)
+        args = self.VerifyArgs('2', self._open('ecdsa192_secure_boot_signing_key2.pem'),
+                               self._open('bootloader_signed_v2_ecdsa192.bin'))
         with self.assertRaises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
         self.assertIn("Signature could not be verified with the provided key.", str(cm.exception))
@@ -283,6 +319,16 @@ class SigningTests(EspSecureTestCase):
                                self._open('bootloader_signed_v2.bin'))
         espsecure.verify_signature(args)
 
+        # correct key v2 (ecdsa256)
+        args = self.VerifyArgs('2', self._open('ecdsa_secure_boot_signing_pubkey.pem'),
+                               self._open('bootloader_signed_v2_ecdsa256.bin'))
+        espsecure.verify_signature(args)
+
+        # correct key v2 (ecdsa192)
+        args = self.VerifyArgs('2', self._open('ecdsa192_secure_boot_signing_pubkey.pem'),
+                               self._open('bootloader_signed_v2_ecdsa192.bin'))
+        espsecure.verify_signature(args)
+
         # wrong key v1
         args = self.VerifyArgs('1', self._open('ecdsa_secure_boot_signing_pubkey2.pem'),
                                self._open('bootloader_signed.bin'))
@@ -293,6 +339,20 @@ class SigningTests(EspSecureTestCase):
         # wrong key v2
         args = self.VerifyArgs('2', self._open('rsa_secure_boot_signing_pubkey2.pem'),
                                self._open('bootloader_signed_v2.bin'))
+        with self.assertRaises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        self.assertIn("Signature could not be verified with the provided key.", str(cm.exception))
+
+        # wrong key v2 (ecdsa256)
+        args = self.VerifyArgs('2', self._open('ecdsa_secure_boot_signing_pubkey2.pem'),
+                               self._open('bootloader_signed_v2_ecdsa256.bin'))
+        with self.assertRaises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        self.assertIn("Signature could not be verified with the provided key.", str(cm.exception))
+
+        # wrong key v2 (ecdsa192)
+        args = self.VerifyArgs('2', self._open('ecdsa192_secure_boot_signing_pubkey2.pem'),
+                               self._open('bootloader_signed_v2_ecdsa192.bin'))
         with self.assertRaises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
         self.assertIn("Signature could not be verified with the provided key.", str(cm.exception))
@@ -334,14 +394,17 @@ class SigningTests(EspSecureTestCase):
 
         # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile() cannot be used for keyfile
         keyfile_name = os.path.join(keydir, 'key.pem')
-        self.addCleanup(os.remove, keyfile_name)
 
-        args = self.GenerateKeyArgs('2', keyfile_name)
-        espsecure.generate_signing_key(args)
+        # We need to manually delete the keyfile as we are iterating over different schemes with the same keyfile
+        # so instead of using addCleanup, we remove it using os.remove at the end of each pass
+        for scheme in ["rsa3072", "ecdsa192", "ecdsa256"]:
+            args = self.GenerateKeyArgs('2', scheme, keyfile_name)
+            espsecure.generate_signing_key(args)
 
-        with tempfile.NamedTemporaryFile() as pub_keyfile, open(keyfile_name, 'rb') as keyfile:
-            args = self.ExtractKeyArgs('2', keyfile, pub_keyfile)
-            espsecure.extract_public_key(args)
+            with tempfile.NamedTemporaryFile() as pub_keyfile, open(keyfile_name, 'rb') as keyfile:
+                args = self.ExtractKeyArgs('2', keyfile, pub_keyfile)
+                espsecure.extract_public_key(args)
+            os.remove(keyfile_name)
 
 
 class FlashEncryptionTests(EspSecureTestCase):

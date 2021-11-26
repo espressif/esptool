@@ -327,7 +327,7 @@ def burn_key_digest(esp, efuses, args):
         if efuse is None:
             raise esptool.FatalError("Unknown block name - %s" % (block_name))
         num_bytes = efuse.bit_len // 8
-        digest = espsecure._digest_rsa_public_key(datafile)
+        digest = espsecure._digest_sbv2_public_key(datafile)
         if len(digest) != num_bytes:
             raise esptool.FatalError("Incorrect digest size %d. Digest must be %d bytes (%d bits) of raw binary key data." %
                                      (len(digest), num_bytes, num_bytes * 8))
