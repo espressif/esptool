@@ -103,7 +103,8 @@ Early Stage Crash
 Serial Terminal Programs
 ------------------------
 
-There are many serial terminal programs suitable for debugging & serial interaction. The pyserial module (which is required for esptool) includes one such command line terminal program - miniterm.py. For more details `see this page <https://pyserial.readthedocs.io/en/latest/tools.html#module-serial.tools.miniterm>`_ or run ``miniterm -h``.
+There are many serial terminal programs suitable for debugging & serial interaction. The pyserial module (which is required for ``esptool``) includes one such command line terminal program - miniterm.py. For more details `see the related pyserial documentation <https://pyserial.readthedocs.io/en/latest/tools.html#module-serial.tools.miniterm>`_ or run ``miniterm -h``.
+For exact serial port configuration values, see :ref:`serial-port-settings`.
 
 .. only:: esp8266
 

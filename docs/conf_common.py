@@ -16,12 +16,10 @@ html_static_path = ['../_static']
 extensions += ['esp_docs.esp_extensions.dummy_build_system']
 
 ESP8266_DOCS = ['advanced-topics/firmware-image-format.rst',
-                'advanced-topics/boot-mode-selection.rst',
                 ]
 
 ESP32_DOCS = ['espefuse/index.rst',
               'espsecure/index.rst',
-              'advanced-topics/boot-mode-selection.rst',
               ]
 
 ESP32S2_DOCS = ['espefuse/index.rst',

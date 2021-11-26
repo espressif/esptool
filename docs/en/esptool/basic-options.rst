@@ -37,7 +37,7 @@ Most hardware configurations will work with ``-b 230400``, some with ``-b 460800
 
 .. only:: esp8266
 
-    If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the usual baud rate used by the ESP8266 to output :ref:`boot-log-esp8266` information.
+    If you have connectivity problems then you can also set baud rates below 115200. You can also choose 74880, which is the :ref:`usual baud rate used by the ESP8266 <serial-port-settings>` to output :ref:`boot-log-esp8266` information.
 
 .. only:: not esp8266
 

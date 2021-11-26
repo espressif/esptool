@@ -1,13 +1,15 @@
+{IDF_TARGET_STRAP_BOOT_GPIO:default="GPIO0", esp32="GPIO0", esp32s2="GPIO0", esp32s3="GPIO0", esp32c3="GPIO9"}
+
+{IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO2", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32c3="GPIO8"}
+
 .. _boot-mode:
 
 Boot Mode Selection
 ===================
 
-This guide explains how to select the boot mode correctly and describes the boot log messages of Espressif chips. Please select your target:
+This guide explains how to select the boot mode correctly and describes the boot log messages of {IDF_TARGET_NAME}.
 
 .. only:: esp8266
-
-   Guide to selecting boot mode correctly on ESP8266.
 
    On many development boards with built-in USB/Serial, this is done for you and ``esptool`` can automatically reset the board into bootloader mode. For other configurations, you will need to follow these steps:
 
@@ -43,33 +45,119 @@ This guide explains how to select the boot mode correctly and describes the boot
 
    Many configurations use a "Flash" button that pulls GPIO0 low when pressed.
 
-   Automatic Bootloader
-   --------------------
+.. only:: not esp8266
 
-   ``esptool`` can automatically enter the bootloader on many boards by using the RTS and DTR modem status lines to toggle GPIO0 and EN automatically.
+   .. warning::
 
-   Make the following connections for ``esptool`` to automatically enter the bootloader:
+      The {IDF_TARGET_NAME} has a 45k ohm internal pull-up/pull-down resistor at {IDF_TARGET_STRAP_BOOT_GPIO} (and other pins). If you want to connect a switch button to enter the boot mode, this has to be a strong pull-down. For example a 10k resistor to GND.
 
-   +---------------------------------+--------------+
-   | ESP8266 Pin                     | Serial Pin   |
-   +=================================+==============+
-   | CH_PD ("enable") *or* nRESET    | RTS          |
-   +---------------------------------+--------------+
-   | GPIO0                           | DTR          |
-   +---------------------------------+--------------+
+   Information about {IDF_TARGET_NAME} strapping pins can also be found in the `{IDF_TARGET_NAME} Datasheet <https://www.espressif.com/en/support/documents/technical-documents?keys={IDF_TARGET_NAME}+datasheet>`__, section "Strapping Pins".
 
-   Note that some serial terminal programs (not esptool) will assert both RTS and DTR when opening the serial port, pulling them low together and holding the ESP8266 in reset. If you've wired RTS to the ESP8266 then you should disable RTS/CTS "hardware flow control" in the program.
-   Development boards like NodeMCU use additional circuitry to avoid this problem - if both RTS and DTR are asserted together, this doesn't reset the chip.
+   On many development boards with built-in USB/Serial, ``esptool.py`` can automatically reset the board into bootloader mode. For other configurations or custom hardware, you will need to check the orientation of some "strapping pins" to get the correct boot mode:
 
-   In Linux serial ports by default will assert RTS when nothing is attached to them. This can hold the ESP8266 in a reset loop which may cause some serial adapters to subsequently reset loop. This functionality can be disabled by disabling ``HUPCL`` (ie ``sudo stty -F /dev/ttyUSB0 -hupcl``).
+   Select Bootloader Mode
+   ----------------------
 
+   {IDF_TARGET_STRAP_BOOT_GPIO}
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   The {IDF_TARGET_NAME} will enter the serial bootloader when {IDF_TARGET_STRAP_BOOT_GPIO} is held low on reset. Otherwise it will run the program in flash.
+
+   +---------------+----------------------------------------+
+   | {IDF_TARGET_STRAP_BOOT_GPIO} Input   | Mode                                   |
+   +===============+========================================+
+   | Low/GND       | ROM serial bootloader for esptool      |
+   +---------------+----------------------------------------+
+   | High/VCC      | Normal execution mode                  |
+   +---------------+----------------------------------------+
+
+   {IDF_TARGET_STRAP_BOOT_GPIO} has an internal pullup resistor, so if it is left unconnected then it will pull high.
+
+   Many boards use a button marked "Flash" (or "BOOT" on some Espressif development boards) that pulls {IDF_TARGET_STRAP_BOOT_GPIO} low when pressed.
+
+   {IDF_TARGET_STRAP_BOOT_2_GPIO}
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   .. only:: not esp32c3
+
+      {IDF_TARGET_STRAP_BOOT_2_GPIO} must also be either left unconnected/floating, or driven Low, in order to enter the serial bootloader.
+
+   .. only:: esp32c3
+
+      {IDF_TARGET_STRAP_BOOT_2_GPIO} must also be driven High, in order to enter the serial bootloader reliably. The strapping combination of {IDF_TARGET_STRAP_BOOT_2_GPIO} = 0 and {IDF_TARGET_STRAP_BOOT_GPIO} = 0 is invalid and will trigger unexpected behavior.
+
+   In normal boot mode ({IDF_TARGET_STRAP_BOOT_GPIO} high), {IDF_TARGET_STRAP_BOOT_2_GPIO} is ignored.
+
+
+   Other Pins
+   ^^^^^^^^^^
+
+   .. only:: not esp32
+
+      As well as the above mentioned pins, other ones influence the serial bootloader, please consult the `{IDF_TARGET_NAME} Datasheet <https://www.espressif.com/en/support/documents/technical-documents?keys={IDF_TARGET_NAME}+datasheet>`__, section "Strapping Pins".
+
+   .. only:: esp32
+
+      As well as {IDF_TARGET_STRAP_BOOT_GPIO} and {IDF_TARGET_STRAP_BOOT_2_GPIO}, the following pins influence the serial bootloader mode:
+
+      +-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | GPIO        | Meaning                                                                                                                                                                                                                                                                                    |
+      +=============+============================================================================================================================================================================================================================================================================================+
+      | 12 (MTDI)   | If driven High, flash voltage (VDD_SDIO) is 1.8V not default 3.3V. Has internal pull-down, so unconnected = Low = 3.3V. May prevent flashing and/or booting if 3.3V flash is used and this pin is pulled high, causing the flash to brownout. See the datasheet for more details.          |
+      +-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+      | 15 (MTDO)   | If driven Low, silences boot messages printed by the ROM bootloader. Has an internal pull-up, so unconnected = High = normal output.                                                                                                                                                       |
+      +-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+      For more information, consult the `{IDF_TARGET_NAME} Datasheet <https://www.espressif.com/en/support/documents/technical-documents?keys={IDF_TARGET_NAME}+datasheet>`__, section "Strapping Pins".
+
+.. _automatic-bootloader:
+
+Automatic Bootloader
+--------------------
+
+``esptool.py`` resets {IDF_TARGET_NAME} automatically by asserting DTR and RTS control lines of the USB to serial converter chip, i.e., FTDI, CP210x, or CH340x. The DTR and RTS control lines are in turn connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``CHIP_PU`` (``EN``) pins of {IDF_TARGET_NAME}, thus changes in the voltage levels of DTR and RTS will boot {IDF_TARGET_NAME} into Firmware Download mode. As an example, check the `schematic <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_ for the ESP32 DevKitC development board.
+
+Make the following connections for ``esptool`` to automatically enter the bootloader:
+
++-------------+--------------+
+| ESP Pin     | Serial Pin   |
++=============+==============+
+| EN          | RTS          |
++-------------+--------------+
+| {IDF_TARGET_STRAP_BOOT_GPIO}       | DTR          |
++-------------+--------------+
+
+.. note::
+
+   Some OS and/or drivers may activate RTS and or DTR automatically when opening the serial port (true only for some serial terminal programs, not ``esptool.py``), pulling them low together and holding the {IDF_TARGET_NAME} in reset. If RTS is wired directly to EN then RTS/CTS "hardware flow control" needs to be disabled in the serial program to avoid this.
+   Development boards (including all Espressif boards) usually use additional circuitry to avoid this problem - if both RTS and DTR are asserted together, this doesn't reset the chip. Consult Espressif development board schematics for the specific details.
+
+In Linux serial ports by default will assert RTS when nothing is attached to them. This can hold the {IDF_TARGET_NAME} in a reset loop which may cause some serial adapters to subsequently reset loop. This functionality can be disabled by disabling ``HUPCL`` (ie ``sudo stty -F /dev/ttyUSB0 -hupcl``).
+
+(Some third party {IDF_TARGET_NAME} development boards use an automatic reset circuit for EN & GPIO pins, but don't add a capacitor on the EN pin. This results in unreliable automatic reset, especially on Windows. Adding a 1uF (or higher) value capacitor between EN pin and GND may make automatic reset more reliable..)
+
+In general, you should have no problems with the official Espressif development boards. However, ``esptool.py`` is not able to reset your hardware automatically in the following cases:
+
+- Your hardware does not have the DTR and RTS lines connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``CHIP_PU`` (``EN``)
+- The DTR and RTS lines are configured differently
+- There are no such serial control lines at all
+
+Manual Bootloader
+-----------------
+
+Depending on the kind of hardware you have, it may also be possible to manually put your {IDF_TARGET_NAME} board into Firmware Download mode (reset).
+
+- For development boards produced by Espressif, this information can be found in the respective getting started guides or user guides. For example, to manually reset a development board, hold down the **Boot** button (``{IDF_TARGET_STRAP_BOOT_GPIO}``) and press the **EN** button (``CHIP_PU``).
+- For other types of hardware, try pulling ``{IDF_TARGET_STRAP_BOOT_GPIO}`` down.
+
+.. only:: esp8266
 
    .. _boot-log-esp8266:
 
    Boot Log
    --------
 
-   The ESP8266 boot rom writes a log to the UART when booting. The timing is a little bit unusual: ``74880 baud``
+   The ESP8266 boot rom writes a log to the UART when booting. The timing is a little bit unusual: ``74880 baud`` (see :ref:`serial-port-settings`).
 
    ::
 
@@ -121,77 +209,6 @@ This guide explains how to select the boot mode correctly and describes the boot
    The rest of boot messages are used internally by Espressif.
 
 .. only:: esp32
-
-   .. warning::
-
-      The ESP32 has a 45k ohm internal pull-up/pull-down resistor at GPIO00 (and other pins). If you want to connect a switch button to enter the boot mode, this has to be a strong pull-down. For example a 10k resistor to GND.
-
-   Guide to selecting boot mode correctly on ESP32.
-
-   Information about ESP32 strapping pins can also be found in the `ESP32 Datasheet <https://www.espressif.com/en/support/documents/technical-documents?keys=ESP32+datasheet>`__, section 2.4 "Strapping Pins".
-
-   On many development boards with built-in USB/Serial, this is all done for you and ``esptool.py`` can automatically reset the board into bootloader mode. For other configurations or custom hardware, you will need to check the orientation of some "strapping pins" to get the correct boot mode:
-
-   Select Bootloader Mode
-   ----------------------
-
-   GPIO0
-   ^^^^^
-
-   The ESP32 will enter the serial bootloader when GPIO0 is held low on reset. Otherwise it will run the program in flash.
-
-   +---------------+----------------------------------------+
-   | GPIO0 Input   | Mode                                   |
-   +===============+========================================+
-   | Low/GND       | ROM serial bootloader for esptool      |
-   +---------------+----------------------------------------+
-   | High/VCC      | Normal execution mode                  |
-   +---------------+----------------------------------------+
-
-   GPIO0 has an internal pullup resistor, so if it is left unconnected then it will pull high.
-
-   Many boards use a button marked "Flash" (or "BOOT" on some Espressif development boards) that pulls GPIO0 low when pressed.
-
-   GPIO2
-   ^^^^^
-
-   GPIO2 must also be either left unconnected/floating, or driven Low, in order to enter the serial bootloader.
-
-   In normal boot mode (GPIO0 high), GPIO2 is ignored.
-
-   Other Pins
-   ^^^^^^^^^^
-
-   As well as GPIO0 and GPIO2, the following pins influence the serial bootloader mode:
-
-   +-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-   | GPIO        | Meaning                                                                                                                                                                                                                                                                                    |
-   +=============+============================================================================================================================================================================================================================================================================================+
-   | 12 (MTDI)   | If driven High, flash voltage (VDD_SDIO) is 1.8V not default 3.3V. Has internal pull-down, so unconnected = Low = 3.3V. May prevent flashing and/or booting if 3.3V flash is used and this pin is pulled high, causing the flash to brownout. See the ESP32 datasheet for more details.    |
-   +-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-   | 15 (MTDO)   | If driven Low, silences boot messages printed by the ROM bootloader. Has an internal pull-up, so unconnected = High = normal output.                                                                                                                                                       |
-   +-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-
-   Automatic Bootloader
-   --------------------
-
-   ``esptool`` can automatically enter the bootloader on many boards by using the RTS and DTR modem status lines to toggle GPIO0 and EN automatically.
-
-   Make the following connections for ``esptool`` to automatically enter the bootloader:
-
-   +-------------+--------------+
-   | ESP32 Pin   | Serial Pin   |
-   +=============+==============+
-   | EN          | RTS          |
-   +-------------+--------------+
-   | GPIO0       | DTR          |
-   +-------------+--------------+
-
-   Note that some serial terminal programs (not esptool) will assert both RTS and DTR when opening the serial port, pulling them low together and holding the ESP32 in reset. If RTS is wired directly to EN then RTS/CTS "hardware flow control" needs to be disabled in the serial program to avoid this.
-
-   Development boards (including all Espressif boards) usually use additional circuitry to avoid this problem - if both RTS and DTR are both asserted together, this doesn't reset the chip. Consult Espressif development board schematics for the specific details.
-
-   (Some third party ESP32 development boards use an automatic reset circuit for EN & GPIO pins, but don't add a capacitor on the EN pin. This results in unreliable automatic reset, especially on Windows. Adding a 1uF (or higher) value capacitor between EN pin and GND may make automatic reset more reliable..)
 
    Boot Log
    --------
