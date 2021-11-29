@@ -16,6 +16,8 @@ Packet Description
 
 The host computer sends a SLIP encoded command request to the ESP chip. The ESP chip responds to the request with a SLIP encoded response packet, including status information and any data as a payload.
 
+.. _low-level-protocol:
+
 Low Level Protocol
 ^^^^^^^^^^^^^^^^^^
 

@@ -13,7 +13,7 @@ If you see errors like "Failed to connect" then your chip is probably not enteri
 *  Check you are passing the correct serial port on the command line.
 *  Check you have permissions to access the serial port, and other software (such as modem-manager on Linux) is not trying to interact with it. A common pitfall is leaving a serial terminal accessing this port open in another window and forgetting about it.
 *  Check the chip is receiving 3.3V from a stable power source (see `Insufficient Power`_ for more details.)
-*  Check that all pins are connected as described in :ref:`entering-the-bootloader`. Check the voltages at each pin with a multimeter, "high" pins should be close to 3.3V and "low" pins should be close to 0V.
+*  Check that all pins are connected as described in :ref:`boot-mode`. Check the voltages at each pin with a multimeter, "high" pins should be close to 3.3V and "low" pins should be close to 0V.
 *  If you have connected other devices to GPIO pins, try removing them and see if esptool starts working.
 *  Try using a slower baud rate (``-b 9600`` is a very slow value that you can use to verify it's not a baud rate problem).
 
@@ -94,11 +94,11 @@ Early Stage Crash
 
 .. only:: esp8266
 
-   Use any of `Serial terminal programs`_ to view the boot log. (ESP8266 baud rate is 74880bps). See if the program is crashing during early startup or outputting an error message.
+   Use any of `serial terminal programs`_ to view the boot log. (ESP8266 baud rate is 74880bps). See if the program is crashing during early startup or outputting an error message.
 
 .. only:: not esp8266
 
-   Use any of `Serial terminal programs`_ to view the boot log. ({IDF_TARGET_NAME} baud rate is 115200bps). See if the program is crashing during early startup or outputting an error message.
+   Use any of `serial terminal programs`_ to view the boot log. ({IDF_TARGET_NAME} baud rate is 115200bps). See if the program is crashing during early startup or outputting an error message.
 
 Serial Terminal Programs
 ------------------------
@@ -116,3 +116,57 @@ Tracing Esptool Interactions
 Running ``esptool.py --trace`` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
 
 See :ref:`the related Advanced Topics page <tracing-communications>` for more information.
+
+Common Errors
+-------------
+
+This is a non-exhaustive list of the most common esptool errors together with explanations of possible causes and fixes. Before reading any error-specific advice, it is highly recommended to go through all of the `Troubleshooting`_ section first.
+
+No serial data received.
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Esptool didn't receive any byte of data or a successful :ref:`slip packet <low-level-protocol>`. This error usually implies some kind of a hardware issue. This may be because the hardware is not working properly at all, the RX/TX serial lines are not connected, or because there is some problem with :ref:`resetting into the download mode <boot-mode>`.
+
+.. only:: esp8266
+
+   .. attention::
+
+      There is a known issue regarding ESP8266 with the CH340 USB-to-serial converter (this includes NodeMCU and Wemos D1 mini devkits) on Linux. The regression affects only certain kernel versions. See `#653 <https://github.com/espressif/esptool/issues/653>`_ for details.
+
+   On ESP8266, this error might be the result of a wrong boot mode. If your devkit supports this, try resetting into the download mode manually. See :ref:`manual-bootloader` for instructions.
+
+.. only:: not esp8266
+
+   Wrong boot mode detected (0xXX)! The chip needs to be in download mode.
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   Communication with the chip works (the ROM boot log is detected), but it is not being reset into the download mode automatically.
+
+   To resolve this, check the autoreset circuitry (if your board has it), or try resetting into the download mode manually. See :ref:`manual-bootloader` for instructions.
+
+   Download mode successfully detected, but getting no sync reply: The serial TX path seems to be down.
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   The chip successfully resets into the download mode and sends data to the host computer, but doesn't receive any response sent by ``esptool``. This implies a problem with the TX line running from the host to the ESP device. Double-check your board or breadboard circuit for any problems.
+
+Invalid head of packet (0xXX): Possible serial noise or corruption.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This error is usually caused by one of the following reasons:
+
+.. list::
+
+   :esp8266: * The chip is not resetting into the download mode. If the chip runs in a normal boot from flash mode, the ROM writes a log to UART when booting (see :ref:`ESP8266 boot log <boot-log-esp8266>` for more information). This data in the serial buffer result in "Invalid head of packet". You can verify this by connecting with any of `Serial Terminal Programs`_ and seeing what data is the chip sending. If this turns out to be true, check the autoreset circuitry (if your board has it), or try resetting into the download mode manually. See :ref:`manual-bootloader` for instructions.
+   * Using bad quality USB cable.
+   * Sometimes breadboards can short the SPI flash pins on the board and cause this kind of problem. Try removing your development board from the breadboard.
+   * The chip might be browning out during flashing. FTDI chips' internal 3.3V regulator is not enough to power an ESP, see `Insufficient Power`_.
+
+Other things to try:
+
+.. list::
+
+   * Try to sync and communicate at a much lower baud rate, e.g. ``esptool.py --baud 9600 ...``.
+   * Try `tracing the interactions <Tracing Esptool Interactions>`_ running ``esptool.py --trace ...`` and see if anything is received back at all.
+   * Try skipping chip autodetection by specifying the chip type, run ``esptool.py --chip {IDF_TARGET_NAME} ...``.
+
+If none of the above mentioned fixes help and your problem persists, please `open a new issue <https://github.com/espressif/esptool/issues/new/choose>`_.

@@ -142,6 +142,8 @@ In general, you should have no problems with the official Espressif development 
 - The DTR and RTS lines are configured differently
 - There are no such serial control lines at all
 
+.. _manual-bootloader:
+
 Manual Bootloader
 -----------------
 
