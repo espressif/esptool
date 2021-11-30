@@ -1,0 +1,65 @@
+name: Bug report - no ESP chip involved
+description: Report bugs or crashes which don't use any attached hardware
+labels: ["bug"]
+body:
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: On which OS does this issue occur?
+      placeholder: ex. macOS 12.1 and Xubuntu 20.04
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: What version of esptool are you running? If possible, consider updating esptool.
+      options:
+        - latest master
+        - v3.2
+        - v3.1
+        - v3.0
+        - v2.8
+        - other
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python Version
+      description: Which Python version are you using? Run `python -V` to check this.
+      placeholder: ex. Python 3.9.6
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Full Esptool Command Line that Was Run
+      description: Please input the full esptool command.
+      placeholder: ex. `esptool.py elf2image esp32-bootloader.elf`
+  - type: textarea
+    id: output
+    attributes:
+      label: Esptool Output
+      description: Provide the full output log.
+      placeholder: Copy and paste all lines of output here.
+      render: shell
+  - type: textarea
+    id: expected
+    attributes:
+      label: What is the Expected Behaviour?
+      description: Please provide a clear and concise description of the expected behaviour.
+      placeholder: ex. Print the version number.
+  - type: textarea
+    id: more-info
+    attributes:
+      label: More Information
+      description: Do you have any other information from investigating this?
+      placeholder: ex. I tried on my friend's Windows 10 PC and the command works there.
+  - type: textarea
+    id: other-remarks
+    attributes:
+      label: Other Steps to Reproduce
+      description: Is there any other information you can think of which will help us reproduce this problem?
+      placeholder: ex. Only crashes on first day of the month.
