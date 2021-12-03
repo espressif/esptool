@@ -1,11 +1,13 @@
 #!/usr/bin/env python
-# This file describes eFuses controller for ESP32-S3(beta2) chip
+# This file describes eFuses controller for ESP32-C2 chip
 #
-# SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from __future__ import division, print_function
+
+from bitstring import BitString
 
 import reedsolo
 
@@ -16,7 +18,7 @@ from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalErr
 class EmulateEfuseController(EmulateEfuseControllerBase):
     """ The class for virtual efuse operation. Using for HOST_TEST.
     """
-    CHIP_NAME = "ESP32-S3(beta2)"
+    CHIP_NAME = "ESP32-C2"
     mem = None
     debug = False
     Blocks  = EfuseDefineBlocks
@@ -81,3 +83,38 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
         if blk.len < 8:
             data = data[(8 - blk.len) * 32:]
         return data
+
+    def check_rd_protection_area(self):
+        # checks fields which have the read protection bits.
+        # if the read protection bit is set then we need to reset this field to 0.
+
+        def get_read_disable_mask(blk):
+            mask = 0
+            if isinstance(blk.read_disable_bit, list):
+                for i in blk.read_disable_bit:
+                    mask |= (1 << i)
+            else:
+                mask = (1 << blk.read_disable_bit)
+            return mask
+
+        read_disable_bit = self.read_field("RD_DIS", bitstring=False)
+        for b in self.Blocks.BLOCKS:
+            blk = self.Blocks.get(b)
+            block = self.read_block(blk.id)
+            if blk.read_disable_bit is not None and read_disable_bit & get_read_disable_mask(blk):
+                if isinstance(blk.read_disable_bit, list):
+                    if read_disable_bit & (1 << blk.read_disable_bit[0]):
+                        block.set(0, [i for i in range(blk.len * 32 // 2, blk.len * 32)])
+                    if read_disable_bit & (1 << blk.read_disable_bit[1]):
+                        block.set(0, [i for i in range(0, blk.len * 32 // 2)])
+                else:
+                    block.set(0)
+            else:
+                for e in self.Fields.EFUSES:
+                    field = self.Fields.get(e)
+                    if blk.id == field.block and field.read_disable_bit is not None and read_disable_bit & get_read_disable_mask(field):
+                        raw_data = self.read_field(field.name)
+                        raw_data.set(0)
+                        block.pos = block.length - (field.word * 32 + field.pos + raw_data.length)
+                        block.overwrite(BitString(raw_data.length))
+            self.overwrite_mem_from_block(blk, block)

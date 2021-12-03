@@ -14,7 +14,7 @@ from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalErr
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):
-    """ The class for virtual ESP32-S3 operation. Using for HOST_TEST.
+    """ The class for virtual efuse operation. Using for HOST_TEST.
     """
     CHIP_NAME = "ESP32-S3"
     mem = None

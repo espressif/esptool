@@ -247,7 +247,7 @@ class EfuseAdcPointCalibration(EfuseField):
 class EfuseMacField(EfuseField):
     def check_format(self, new_value_str):
         if new_value_str is None:
-            raise esptool.FatalError("Required MAC Address in AB:CD:EF:01:02:03 format!")
+            raise esptool.FatalError("Required MAC Address in AA:CD:EF:01:02:03 format!")
         if new_value_str.count(":") != 5:
             raise esptool.FatalError("MAC Address needs to be a 6-byte hexadecimal format separated by colons (:)!")
         hexad = new_value_str.replace(":", "")

@@ -66,12 +66,22 @@ class CheckArgValue(object):
 
 class EfuseProtectBase(object):
     # This class is used by EfuseBlockBase and EfuseFieldBase
+
+    def get_read_disable_mask(self):
+        mask = 0
+        if isinstance(self.read_disable_bit, list):
+            for i in self.read_disable_bit:
+                mask |= (1 << i)
+        else:
+            mask = (1 << self.read_disable_bit)
+        return mask
+
     def is_readable(self):
         """ Return true if the efuse is readable by software """
         num_bit = self.read_disable_bit
         if num_bit is None:
             return True  # read cannot be disabled
-        return (self.parent["RD_DIS"].get() & (1 << num_bit)) == 0
+        return (self.parent["RD_DIS"].get() & (self.get_read_disable_mask())) == 0
 
     def disable_read(self):
         num_bit = self.read_disable_bit
@@ -79,7 +89,7 @@ class EfuseProtectBase(object):
             raise esptool.FatalError("This efuse cannot be read-disabled")
         if not self.parent["RD_DIS"].is_writeable():
             raise esptool.FatalError("This efuse cannot be read-disabled due the to RD_DIS field is already write-disabled")
-        self.parent["RD_DIS"].save(1 << num_bit)
+        self.parent["RD_DIS"].save(self.get_read_disable_mask())
 
     def is_writeable(self):
         num_bit = self.write_disable_bit

@@ -1,9 +1,11 @@
 #!/usr/bin/env python
-# This file describes eFuses for ESP32S2 chip
 #
-# SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
+# This file describes eFuses for ESP32-C2 chip
+#
+# SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 
 from __future__ import division, print_function
 
@@ -70,8 +72,8 @@ class EspEfuses(base_fields.EspEfusesBase):
         self._esp = esp
         self.debug = debug
         self.do_not_confirm = do_not_confirm
-        if esp.CHIP_NAME != "ESP32-S2":
-            raise esptool.FatalError("Expected the 'esp' param for ESP32-S2 chip but got for '%s'." % (esp.CHIP_NAME))
+        if esp.CHIP_NAME != "ESP32-C2":
+            raise esptool.FatalError("Expected the 'esp' param for ESP32-C2 chip but got for '%s'." % (esp.CHIP_NAME))
         self.blocks = [EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect) for block in self.Blocks.BLOCKS]
         if not skip_connect:
             self.get_coding_scheme_warnings()
@@ -109,8 +111,7 @@ class EspEfuses(base_fields.EspEfusesBase):
     def print_status_regs(self):
         print("")
         self.blocks[0].print_block(self.blocks[0].err_bitarray, "err__regs", debug=True)
-        print('{:27} 0x{:08x}'.format('EFUSE_RD_RS_ERR0_REG', self.read_reg(self.REGS.EFUSE_RD_RS_ERR0_REG)))
-        print('{:27} 0x{:08x}'.format('EFUSE_RD_RS_ERR1_REG', self.read_reg(self.REGS.EFUSE_RD_RS_ERR1_REG)))
+        print('{:27} 0x{:08x}'.format('EFUSE_RD_RS_ERR_REG', self.read_reg(self.REGS.EFUSE_RD_RS_ERR_REG)))
 
     def get_block_errors(self, block_num):
         """ Returns (error count, failure boolean flag) """
@@ -133,7 +134,7 @@ class EspEfuses(base_fields.EspEfusesBase):
     def wait_efuse_idle(self):
         deadline = time.time() + self.REGS.EFUSE_BURN_TIMEOUT
         while time.time() < deadline:
-            # if self.read_reg(self.EFUSE_CMD_REG) == 0:
+            # if self.read_reg(self.REGS.EFUSE_CMD_REG) == 0:
             if self.read_reg(self.REGS.EFUSE_STATUS_REG) & 0x7 == 1:
                 return
         raise esptool.FatalError("Timed out waiting for Efuse controller command to complete")
@@ -158,21 +159,10 @@ class EspEfuses(base_fields.EspEfusesBase):
         """ Set timing registers for burning efuses """
         # Configure clock
         apb_freq = self.get_crystal_freq()
-        EFUSE_TSUP_A, EFUSE_TPGM, EFUSE_THP_A, EFUSE_TPGM_INACTIVE = self.REGS.EFUSE_PROGRAMMING_TIMING_PARAMETERS[apb_freq]
-        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF1_REG, self.REGS.EFUSE_TSUP_A_M,        EFUSE_TSUP_A)
-        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF0_REG, self.REGS.EFUSE_TPGM_M,          EFUSE_TPGM)
-        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF0_REG, self.REGS.EFUSE_THP_A_M,         EFUSE_THP_A)
-        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF0_REG, self.REGS.EFUSE_TPGM_INACTIVE_M, EFUSE_TPGM_INACTIVE)
+        if apb_freq != 40:
+            raise esptool.FatalError("The eFuse supports only xtal=40M (xtal was %d)" % apb_freq)
 
-        EFUSE_DAC_CLK_DIV, EFUSE_PWR_ON_NUM, EFUSE_PWR_OFF_NUM = self.REGS.VDDQ_TIMING_PARAMETERS[apb_freq]
-        self.update_reg(self.REGS.EFUSE_DAC_CONF_REG,     self.REGS.EFUSE_DAC_CLK_DIV_M,   EFUSE_DAC_CLK_DIV)
-        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF1_REG, self.REGS.EFUSE_PWR_ON_NUM_M,    EFUSE_PWR_ON_NUM)
-        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M,   EFUSE_PWR_OFF_NUM)
-
-        EFUSE_TSUR_A, EFUSE_TRD, EFUSE_THR_A = self.REGS.EFUSE_READING_PARAMETERS[apb_freq]
-        #  self.update_reg(self.REGS.EFUSE_RD_TIM_CONF_REG,  self.REGS.EFUSE_TSUR_A_M,        EFUSE_TSUR_A)
-        self.update_reg(self.REGS.EFUSE_RD_TIM_CONF_REG,  self.REGS.EFUSE_TRD_M,           EFUSE_TRD)
-        self.update_reg(self.REGS.EFUSE_RD_TIM_CONF_REG,  self.REGS.EFUSE_THR_A_M,         EFUSE_THR_A)
+        self.update_reg(self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x190)
 
     def get_coding_scheme_warnings(self, silent=False):
         """ Check if the coding scheme has detected any errors. """
@@ -181,7 +171,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         ret_fail = False
         for block in self.blocks:
             if block.id == 0:
-                words = [self.read_reg(self.REGS.EFUSE_RD_REPEAT_ERR0_REG + offs * 4) for offs in range(5)]
+                words = [self.read_reg(self.REGS.EFUSE_RD_REPEAT_ERR_REG + offs * 4) for offs in range(1)]
                 data = BitArray()
                 for word in reversed(words):
                     data.append("uint:32=%d" % word)
@@ -206,16 +196,8 @@ class EspEfuses(base_fields.EspEfusesBase):
         return ret_fail
 
     def summary(self):
-        if self["VDD_SPI_FORCE"].get() == 0:
-            output = "Flash voltage (VDD_SPI) determined by GPIO45 on reset (GPIO45=High: VDD_SPI pin is powered from internal 1.8V LDO\n"
-            output += "GPIO45=Low or NC: VDD_SPI pin is powered directly from VDD3P3_RTC_IO via resistor Rspi. Typically this voltage is 3.3 V)."
-        elif self["VDD_SPI_XPD"].get() == 0:
-            output = "Flash voltage (VDD_SPI) internal regulator disabled by efuse."
-        elif self["VDD_SPI_TIEH"].get() == 0:
-            output = "Flash voltage (VDD_SPI) set to 1.8V by efuse."
-        else:
-            output = "Flash voltage (VDD_SPI) set to 3.3V by efuse."
-        return output
+        # TODO add support set_flash_voltage - "Flash voltage (VDD_SPI)"
+        return ""
 
 
 class EfuseField(base_fields.EfuseFieldBase):
@@ -295,60 +277,16 @@ class EfuseMacField(EfuseField):
             print_field(self, bitarray_mac)
             super(EfuseMacField, self).save(new_value)
         else:
-            # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not sensible, as it's written in the factory.
             raise esptool.FatalError("Writing Factory MAC address is not supported")
 
 
 class EfuseKeyPurposeField(EfuseField):
     KEY_PURPOSES = [
-        ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
-        ("RESERVED",                     1,  None,       None,      "no_need_rd_protect"),   # Reserved
-        ("XTS_AES_256_KEY_1",            2,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_1 (flash/PSRAM encryption)
-        ("XTS_AES_256_KEY_2",            3,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_2 (flash/PSRAM encryption)
-        ("XTS_AES_128_KEY",              4,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_128_KEY (flash/PSRAM encryption)
-        ("HMAC_DOWN_ALL",                5,  None,       None,      "need_rd_protect"),      # HMAC Downstream mode
-        ("HMAC_DOWN_JTAG",               6,  None,       None,      "need_rd_protect"),      # JTAG soft enable key (uses HMAC Downstream mode)
-        ("HMAC_DOWN_DIGITAL_SIGNATURE",  7,  None,       None,      "need_rd_protect"),      # Digital Signature peripheral key (uses HMAC Downstream mode)
-        ("HMAC_UP",                      8,  None,       None,      "need_rd_protect"),      # HMAC Upstream mode
-        ("SECURE_BOOT_DIGEST0",          9,  "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST0 (Secure Boot key digest)
-        ("SECURE_BOOT_DIGEST1",          10, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST1 (Secure Boot key digest)
-        ("SECURE_BOOT_DIGEST2",          11, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST2 (Secure Boot key digest)
-        ("XTS_AES_256_KEY",              -1, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
+        ("USER",                                        0,  None),       # User purposes (software-only use)
+        ("XTS_AES_128_KEY",                             1,  None),       # (whole 256bits) XTS_AES_128_KEY (flash/PSRAM encryption)
+        ("XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS", 2,  None),       # (lo 128bits) XTS_AES_128_KEY (flash/PSRAM encryption)
+        ("SECURE_BOOT_DIGEST",                          3,  "DIGEST"),   # (hi 128bits)SECURE_BOOT_DIGEST (Secure Boot key digest)
     ]
 
     KEY_PURPOSES_NAME = [name[0] for name in KEY_PURPOSES]
     DIGEST_KEY_PURPOSES = [name[0] for name in KEY_PURPOSES if name[2] == "DIGEST"]
-
-    def check_format(self, new_value_str):
-        # str convert to int: "XTS_AES_128_KEY" - > str(4)
-        # if int: 4 -> str(4)
-        raw_val = new_value_str
-        for purpose_name in self.KEY_PURPOSES:
-            if purpose_name[0] == new_value_str:
-                raw_val = str(purpose_name[1])
-                break
-        return raw_val
-
-    def need_reverse(self, new_key_purpose):
-        for key in self.KEY_PURPOSES:
-            if key[0] == new_key_purpose:
-                return key[3] == "Reverse"
-
-    def need_rd_protect(self, new_key_purpose):
-        for key in self.KEY_PURPOSES:
-            if key[0] == new_key_purpose:
-                return key[4] == "need_rd_protect"
-
-    def get(self, from_read=True):
-        try:
-            return self.KEY_PURPOSES[self.get_raw(from_read)][0]
-        except IndexError:
-            return " "
-
-    def save(self, new_value):
-        raw_val = new_value
-        for purpose_name in self.KEY_PURPOSES:
-            if purpose_name[0] == new_value:
-                raw_val = purpose_name[1]
-                break
-        return super(EfuseKeyPurposeField, self).save(raw_val)

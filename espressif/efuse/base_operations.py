@@ -260,6 +260,11 @@ def read_protect_efuse(esp, efuses, args):
                         raise esptool.FatalError("Secure Boot V2 is on (ABS_DONE_1 = True), BLOCK2 must be readable, stop this operation!")
                     else:
                         print("In case using Secure Boot V2, the BLOCK2 must be readable, please stop this operation!")
+            elif esp.CHIP_NAME == "ESP32-C2":
+                error = not efuses['XTS_KEY_LENGTH_256'].get() and efuse_name == 'BLOCK_KEY0'
+                error |= efuses['SECURE_BOOT_EN'].get() and efuse_name in ['BLOCK_KEY0', 'BLOCK_KEY0_HI_128']
+                if error:
+                    raise esptool.FatalError("%s must be readable, stop this operation!" % efuse_name)
             else:
                 for block in efuses.Blocks.BLOCKS:
                     block = efuses.Blocks.get(block)
