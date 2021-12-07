@@ -224,6 +224,8 @@ class ESPLoader(object):
 
     DEFAULT_PORT = "/dev/ttyUSB0"
 
+    USES_RFC2217 = False
+
     # Commands supported by ESP8266 ROM bootloader
     ESP_FLASH_BEGIN = 0x02
     ESP_FLASH_DATA  = 0x03
@@ -359,6 +361,8 @@ class ESPLoader(object):
         """
         inst = None
         detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
+        if detect_port.serial_port.startswith("rfc2217:"):
+            detect_port.USES_RFC2217 = True
         detect_port.connect(connect_mode, connect_attempts, detecting=True)
         try:
             print('Detecting chip type...', end='')
@@ -601,7 +605,8 @@ class ESPLoader(object):
             return last_error
 
         if mode != 'no_reset':
-            self._port.flushInput()  # Empty serial buffer to isolate boot log
+            if not self.USES_RFC2217:  # Might block on rfc2217 ports
+                self._port.reset_input_buffer()  # Empty serial buffer to isolate boot log
             self.bootloader_reset(usb_jtag_serial, extra_delay)
 
             # Detect the ROM boot log and check actual boot mode (ESP32 and later only)
