@@ -3363,6 +3363,10 @@ ESP8684ROM.BOOTLOADER_IMAGE = ESP8684FirmwareImage
 class ELFFile(object):
     SEC_TYPE_PROGBITS = 0x01
     SEC_TYPE_STRTAB = 0x03
+    SEC_TYPE_INITARRAY = 0x0e
+    SEC_TYPE_FINIARRAY = 0x0f
+
+    PROG_SEC_TYPES = (SEC_TYPE_PROGBITS, SEC_TYPE_INITARRAY, SEC_TYPE_FINIARRAY)
 
     LEN_SEC_HEADER = 0x28
 
@@ -3419,7 +3423,7 @@ class ELFFile(object):
             name_offs, sec_type, _flags, lma, sec_offs, size = struct.unpack_from("<LLLLLL", section_header[offs:])
             return (name_offs, sec_type, lma, size, sec_offs)
         all_sections = [read_section_header(offs) for offs in section_header_offsets]
-        prog_sections = [s for s in all_sections if s[1] == ELFFile.SEC_TYPE_PROGBITS]
+        prog_sections = [s for s in all_sections if s[1] in ELFFile.PROG_SEC_TYPES]
 
         # search for the string table section
         if not (shstrndx * self.LEN_SEC_HEADER) in section_header_offsets:
