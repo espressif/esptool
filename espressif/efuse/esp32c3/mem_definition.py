@@ -109,10 +109,6 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("DIS_FORCE_DOWNLOAD",           "config",   0,  1,  12, "bool",     2,    None, None,         "Disables forcing chip into Download mode", None),
         ("DIS_USB",                  "usb config",   0,  1,  13, "bool",     2,    None, None,         "Disables the USB OTG hardware", None),
         ("DIS_CAN",                      "config",   0,  1,  14, "bool",     2,    None, None,         "Disables the TWAI Controller hardware", None),
-        ("JTAG_SEL_ENABLE",         "jtag config",   0,  1,  15, "bool",     2,    None, None,         "Set this bit to enable selection between "
-                                                                                                       "usb_to_jtag and pad_to_jtag through strapping "
-                                                                                                       "gpio10 when both reg_dis_usb_jtag and "
-                                                                                                       "reg_dis_pad_jtag are equal to 0.", None),
         ("SOFT_DIS_JTAG",           "jtag config",   0,  1,  16, "uint:3",   2,    None, None,         "Software disables JTAG. When software disabled, "
                                                                                                        "JTAG can be activated temporarily by HMAC peripheral",
                                                                                                        None),
