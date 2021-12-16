@@ -114,7 +114,6 @@ def main(custom_commandline=None):
 
     args = parser.parse_args(remaining_args)
     vars(args).update(vars(args1))
-    args.only_burn_at_end = False
     print('espefuse.py v%s' % esptool.__version__)
     if args.operation is None:
         parser.print_help()

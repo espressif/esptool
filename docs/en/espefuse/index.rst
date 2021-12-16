@@ -390,12 +390,16 @@ Execute Efuse Python Script
 This command allows burning all needed efuses at one time based on your own python script and control issues during the burn process if so it will abort the burn process. This command has a few arguments:
 
 *  ``scripts`` is a list of scripts. The special format of python scripts can be executed inside ``espefuse.py``.
+*  ``--index`` integer index (it means the number of chip in the batch in the range 1 - the max number of chips in the batch). It allows to retrieve unique data per chip from configfiles and then burn them (ex. CUSTOM_MAC, UNIQUE_ID).
+*  ``--configfiles`` List of configfiles with data.
 
 Below you can see some examples of the script. This script file is run from ``espefuse.py`` as ``exec(open(file.name).read())`` it means that some functions and imported libs are available for using like ``os``. Please use only provided functions.
 If you want to use other libs in the script you can add them manually.
 
 Inside this script, you can call all commands which are available in CLI, see ``espefuse.py --help``. To run a efuse command you need to call ``espefuse(esp, efuses, args, 'burn_efuse DISABLE_DL_DECRYPT 1')``. This command will not burn eFuses immediately, the burn occurs at the end of all scripts.
 If necessary, you can call ``efuses.burn_all()`` which prompts ``Type 'BURN' (all capitals) to continue.``. To skip this check and go without confirmation just add the ``--do-not-confirm`` flag to the ``execute_scripts`` command.
+
+This command supports nesting. This means that one script can be called from another script (see the test case ``test_execute_scripts_nesting`` in ``esptool/test/test_espefuse_host.py``).
 
 ::
 
@@ -436,3 +440,49 @@ After ``efuses.burn_all()``, all needed efuses will be burnt to chip in order ``
 Upon completion, the new eFuses will be read back, and will be done some checks of written eFuses by ``espefuse.py``. In production, you might need to check that all written efuses are set properly, see the example below.
 
 The script `test_efuse_script.py <https://github.com/espressif/esptool/blob/master/test/efuse_scripts/esp32xx/test_efuse_script.py>`__ burns some efuses and checks them after reading back. To check read and write protection, ``is_readable()`` and ``is_writeable()`` are called.
+
+Burn Unique Data Per Chip
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In case you are running the ``execute_scripts`` command from your production script, you may need to pass ``index`` to get the unique data for each chip from the ``configfiles`` (* .txt, * .json, etc.). The espefuse command will be like this, where ``{index}`` means the number of chip in the batch, you increment it by your own script in the range 1 - the max number of chips in the batch:
+
+::
+
+    espefuse.py execute_scripts efuse_script2.py --do-not-confirm --index {index} --configfiles mac_addresses.json  unique_id.json
+
+The example of a script to burn custom_mac address and unique_id getting them from configfiles.
+
+.. code:: python
+
+    # efuse_script2.py
+
+    mac_addresses = json.load(args.configfiles[0])
+    unique_id = json.load(args.configfiles[1])
+
+    mac_val = mac_addresses[str(args.index)]
+    cmd = 'burn_custom_mac {}'.format(mac_val)
+    print(cmd)
+    espefuse(esp, efuses, args, cmd)
+
+    unique_id_val = unique_id[str(args.index)]
+    cmd = 'burn_efuse UNIQUE_ID {}'.format(unique_id_val)
+    print(cmd)
+    espefuse(esp, efuses, args, cmd)
+
+The example of a script to burn custom_mac address that generated right in the script.
+
+.. code:: python
+
+    # efuse_script2.py 
+
+    step = 4
+    base_mac = '0xAABBCCDD0000'
+    mac = ''
+    for index in range(100):
+        mac = "{:012X}".format(int(base_mac, 16) + (args.index - 1) * step)
+        mac = ':'.join(mac[k] + mac [k + 1] for k in range(0, len(mac), 2))
+        break
+
+    cmd = 'burn_custom_mac mac'
+    print(cmd)
+    espefuse(esp, efuses, args, cmd)

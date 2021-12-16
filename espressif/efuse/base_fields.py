@@ -328,6 +328,7 @@ class EspEfusesBase(object):
     efuses  = []
     coding_scheme = None
     force_write_always = None
+    batch_mode_cnt = 0
 
     def __iter__(self):
         return self.efuses.__iter__()
@@ -365,7 +366,11 @@ class EspEfusesBase(object):
         for efuse in self.efuses:
             efuse.update(self.blocks[efuse.block].bitarray)
 
-    def burn_all(self):
+    def burn_all(self, check_batch_mode=False):
+        if check_batch_mode:
+            if self.batch_mode_cnt != 0:
+                print("\nBatch mode is enabled, the burn will be done at the end of the command.")
+                return False
         print("\nCheck all blocks for burn...")
         print("idx, BLOCK_NAME,          Conclusion")
         have_wr_data_for_burn = False
@@ -389,6 +394,7 @@ class EspEfusesBase(object):
         self.read_coding_scheme()
         self.read_blocks()
         self.update_efuses()
+        return True
 
     @staticmethod
     def confirm(action, do_not_confirm):

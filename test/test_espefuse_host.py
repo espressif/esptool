@@ -822,6 +822,32 @@ class TestExecuteScriptsCommands(EfuseTestCase):
         self.espefuse_py("execute_scripts test_efuse_script.py")
         os.chdir(TEST_DIR)
 
+    def test_execute_scripts_with_index_and_config(self):
+        if chip_target == "esp32":
+            cmd = "execute_scripts efuse_scripts/efuse_burn1.py --index 10 --configfiles efuse_scripts/esp32/config1.json"
+        else:
+            cmd = "execute_scripts efuse_scripts/efuse_burn1.py --index 10 --configfiles efuse_scripts/esp32xx/config1.json"
+        self.espefuse_py(cmd)
+        output = self.espefuse_py('summary -d')
+        if chip_target == "esp32":
+            self.assertIn('[3 ] read_regs: e00007ff 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+        else:
+            self.assertIn('[8 ] read_regs: e00007ff 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+
+    def test_execute_scripts_nesting(self):
+        if chip_target == "esp32":
+            cmd = "execute_scripts efuse_scripts/efuse_burn2.py --index 28 --configfiles efuse_scripts/esp32/config2.json"
+        else:
+            cmd = "execute_scripts efuse_scripts/efuse_burn2.py --index 28 --configfiles efuse_scripts/esp32xx/config2.json"
+        self.espefuse_py(cmd)
+        output = self.espefuse_py('summary -d')
+        if chip_target == "esp32":
+            self.assertIn('[2 ] read_regs: 10000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+            self.assertIn('[3 ] read_regs: ffffffff 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+        else:
+            self.assertIn('[7 ] read_regs: 10000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+            self.assertIn('[8 ] read_regs: ffffffff 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
+
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:

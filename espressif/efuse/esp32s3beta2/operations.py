@@ -72,10 +72,10 @@ def add_commands(subparsers, efuses):
 
 def burn_custom_mac(esp, efuses, args):
     efuses["CUSTOM_MAC"].save(args.mac)
-    if args.only_burn_at_end:
+    if not efuses.burn_all(check_batch_mode=True):
         return
-    efuses.burn_all()
     get_custom_mac(esp, efuses, args)
+    print("Successful")
 
 
 def get_custom_mac(esp, efuses, args):
@@ -119,9 +119,9 @@ The following efuses are burned: VDD_SPI_FORCE, VDD_SPI_XPD, VDD_SPI_TIEH.
     if args.voltage == '3.3V':
         sdio_tieh.save(1)
     print("VDD_SPI setting complete.")
-    if args.only_burn_at_end:
+    if not efuses.burn_all(check_batch_mode=True):
         return
-    efuses.burn_all()
+    print("Successful")
 
 
 def adc_info(esp, efuses, args):
@@ -245,9 +245,8 @@ def burn_key(esp, efuses, args, digest=None):
     if args.no_read_protect:
         print("Keys will remain readable (due to --no-read-protect)")
 
-    if args.only_burn_at_end:
+    if not efuses.burn_all(check_batch_mode=True):
         return
-    efuses.burn_all()
     print("Successful")
 
 
@@ -276,8 +275,14 @@ def espefuse(esp, efuses, args, command):
     subparsers = parser.add_subparsers(dest='operation')
     add_commands(subparsers, efuses)
     cmd_line_args = parser.parse_args(command.split())
+    if cmd_line_args.operation == 'execute_scripts':
+        configfiles = cmd_line_args.configfiles
+        index = cmd_line_args.index
     # copy arguments from args to cmd_line_args
     vars(cmd_line_args).update(vars(args))
+    if cmd_line_args.operation == 'execute_scripts':
+        cmd_line_args.configfiles = configfiles
+        cmd_line_args.index = index
     if cmd_line_args.operation is None:
         parser.print_help()
         parser.exit(1)
@@ -287,10 +292,10 @@ def espefuse(esp, efuses, args, command):
 
 
 def execute_scripts(esp, efuses, args):
+    efuses.batch_mode_cnt += 1
     del args.operation
     scripts = args.scripts
     del args.scripts
-    args.only_burn_at_end = True
 
     for file in scripts:
         with open(file.name, 'r') as file:
@@ -301,4 +306,7 @@ def execute_scripts(esp, efuses, args):
             data = block.get_bitstring(from_read=False)
             block.print_block(data, "regs_for_burn", args.debug)
 
-    efuses.burn_all()
+    efuses.batch_mode_cnt -= 1
+    if not efuses.burn_all(check_batch_mode=True):
+        return
+    print("Successful")
