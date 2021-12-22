@@ -1,7 +1,7 @@
 Serial Protocol
 ===============
 
-This is technical documentation for the serial protocol used by the UART bootloader in the ESP chip ROM and the esptool software "stub loader" program.
+This is technical documentation for the serial protocol used by the UART bootloader in the ESP chip ROM and the esptool software :ref:`stub loader <stub>` program.
 
 The UART bootloader runs on chip reset if certain strapping pins are set. See :ref:`entering-the-bootloader` for details of this process.
 
@@ -9,7 +9,7 @@ The UART bootloader runs on chip reset if certain strapping pins are set. See :r
 
     The {IDF_TARGET_NAME} ROM loader serial protocol is similar to ESP8266, although {IDF_TARGET_NAME} adds some additional commands and some slightly different behaviour.
 
-By default, esptool uploads a stub "software loader" to the IRAM of the chip. The software loader then replaces the ROM loader for all future interactions. This standardizes much of the behaviour. Pass ``--no-stub`` to esptool in order to disable the software stub loader.
+By default, esptool uploads a stub "software loader" to the IRAM of the chip. The software loader then replaces the ROM loader for all future interactions. This standardizes much of the behaviour. Pass ``--no-stub`` to esptool in order to disable the software stub loader. See :ref:`stub` for more information.
 
 Packet Description
 ------------------
@@ -247,7 +247,7 @@ Initial Synchronisation
     :esp8266: *  The ESP chip is reset into UART bootloader mode. The host starts by sending SYNC commands. These commands have a large data payload which is also used by the ESP chip to detect the configured baud rate. The ESP8266 will initialise at 74800bps with a 26MHz crystal and 115200bps with a 40MHz crystal. However the sync packets can be sent at any baud rate, and the UART peripheral will detect this.
     :not esp8266: *  The ESP chip is reset into UART bootloader mode. The host starts by sending SYNC commands. These commands have a large data payload which is also used by the ESP chip to detect the configured baud rate. {IDF_TARGET_NAME} always initialises at 115200bps. However the sync packets can be sent at any baud rate, and the UART peripheral will detect this.
     *  The host should wait until it sees a valid response to a SYNC command, indicating the ESP chip is correctly communicating.
-    *  esptool then (by default) uses the "RAM Download" sequence to upload software stub loader code to IRAM of the chip. The MEM_END command contains the entry-point address to run the software loader.
+    *  esptool then (by default) uses the "RAM Download" sequence to upload software :ref:`stub loader <stub>` code to IRAM of the chip. The MEM_END command contains the entry-point address to run the software loader.
        The software loader then sends a custom SLIP packet of the sequence OHAI (``0xC0 0x4F 0x48 0x41 0x49 0xC0``), indicating that it is now running. This is the only unsolicited packet ever sent by the ESP.
        If the ``--no-stub`` argument is supplied to esptool, this entire step is skipped.
     *  esptool then uses READ_REG commands to read various addresses on the chip, to identify chip subtype, revision, etc.

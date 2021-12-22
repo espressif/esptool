@@ -72,6 +72,8 @@ The read_flash command allows reading back the contents of flash. The arguments 
 
     If ``write_flash`` updated the boot image's :ref:`flash mode and flash size <flash-modes>` during flashing then these bytes may be different when read back.
 
+.. _erase_flash:
+
 Erase Flash: erase_flash & erase_region
 ---------------------------------------
 

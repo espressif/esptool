@@ -2,9 +2,9 @@ This is the source of the software flasher stub.
 
 esptool.py loads the flasher stub into memory and executes it to:
 
-* Add features that the ESP8266 & ESP32 bootloader ROMs do not have.
+* Add features that the Espressif chips bootloader ROMs do not have.
 
-* Add features to the ESP8266 bootloader ROM which are only in the ESP32 ROM.
+* Add features to the ESP8266 bootloader ROM which are only in the ROM of newer chips.
 
 * Improve flashing performance over the ROM bootloaders.
 
@@ -20,7 +20,7 @@ The stub loader is already automatically integrated into esptool.py. You don't n
 
 If you want to build the stub to test modifications or updates, here's how:
 
-* You will need both an ESP8266 gcc toolchain (xtensa-lx106-elf-) and an ESP32 toolchain (xtensa-esp32-elf-) on your PATH.
+* You will need an ESP8266 gcc toolchain (xtensa-lx106-elf-) and toolchains for ESP32 and later chips (xtensa-esp32-elf-, riscv32-esp-elf-) on your PATH.
 
 * Set the environment variables SDK_PATH to the path to an ESP8266 IoT NON-OS SDK directory (last stub was built with SDK v1.5.1).
 
@@ -29,6 +29,8 @@ If you want to build the stub to test modifications or updates, here's how:
 * Set any other environment variables you'd like to override in the Makefile.
 
 * To build type `make`
+
+Activating an ESP-IDF environment takes care of most of these steps (only the ESP8266 gcc toolchain has to be manually added to PATH).
 
 # To Test
 

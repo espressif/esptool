@@ -21,7 +21,7 @@ The ``--before`` argument allows you to specify whether the chip needs resetting
 
     * ``--before default_reset`` is the default, which uses DTR & RTS serial control lines (see :ref:`entering-the-bootloader`) to try to reset the chip into bootloader mode.
     * ``--before no_reset`` will skip DTR/RTS control signal assignments and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
-    * ``--before no_reset_no_sync`` will skip DTR/RTS control signal assignments and skip also the serial synchronization command. This is useful if your chip is already running the stub bootloader and you want to avoid resetting the chip and uploading the stub again.
+    * ``--before no_reset_no_sync`` will skip DTR/RTS control signal assignments and skip also the serial synchronization command. This is useful if your chip is already running the :ref:`stub bootloader <stub>` and you want to avoid resetting the chip and uploading the stub again.
     :esp32c3 or esp32s3: * ``--before usb_reset`` will use custom reset sequence for USB-JTAG-Serial (used for example for ESP chips connected through the USB-JTAG-Serial peripheral). Usually, this option doesn't have to be used directly. Esptool should be able to detect connection through USB-JTAG-Serial.
 
 Reset After Operation
@@ -35,6 +35,8 @@ The ``--after`` argument allows you to specify whether the chip should be reset 
     :esp8266:* ``--after soft_reset`` This runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
     * ``--after no_reset`` leaves the chip in the serial bootloader, no reset is performed.
     * ``--after no_reset_stub`` leaves the chip in the stub bootloader, no reset is performed.
+
+.. _disable_stub:
 
 Disabling the Stub Loader
 -------------------------

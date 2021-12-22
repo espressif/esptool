@@ -14,6 +14,7 @@ To see all options for a particular command, append ``-h`` to the command name. 
    Basic Commands <basic-commands>
    Advanced Options <advanced-options>
    Advanced Commands <advanced-commands>
+   Flasher Stub <flasher-stub>
    Flash Modes <flash-modes>
    Entering the Bootloader <entering-bootloader>
    Serial Connection <serial-connection>
