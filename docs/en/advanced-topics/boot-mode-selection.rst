@@ -115,9 +115,17 @@ This guide explains how to select the boot mode correctly and describes the boot
 Automatic Bootloader
 --------------------
 
-``esptool.py`` resets {IDF_TARGET_NAME} automatically by asserting DTR and RTS control lines of the USB to serial converter chip, i.e., FTDI, CP210x, or CH340x. The DTR and RTS control lines are in turn connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``CHIP_PU`` (``EN``) pins of {IDF_TARGET_NAME}, thus changes in the voltage levels of DTR and RTS will boot {IDF_TARGET_NAME} into Firmware Download mode. As an example, check the `schematic <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_ for the ESP32 DevKitC development board.
+``esptool.py`` resets {IDF_TARGET_NAME} automatically by asserting ``DTR`` and ``RTS`` control lines of the USB to serial converter chip, i.e., FTDI, CP210x, or CH340x. The ``DTR`` and ``RTS`` control lines are in turn connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` (``CHIP_PU``) pins of {IDF_TARGET_NAME}, thus changes in the voltage levels of ``DTR`` and ``RTS`` will boot the {IDF_TARGET_NAME} into Firmware Download mode.
 
-Make the following connections for ``esptool`` to automatically enter the bootloader:
+As an example of auto-reset curcuitry implementation, check the `schematic <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_ of the ESP32 DevKitC development board:
+
+-  The **Micro USB 5V & USB-UART** section shows the ``DTR`` and ``RTS`` control lines of the USB to serial converter chip connected to ``GPIO0`` and ``EN`` pins of the ESP module.
+-  Some OS and/or drivers may activate ``RTS`` and or ``DTR`` automatically when opening the serial port (true only for some serial terminal programs, not ``esptool.py``), pulling them low together and holding the ESP in reset. If ``RTS`` is wired directly to ``EN`` then RTS/CTS "hardware flow control" needs to be disabled in the serial program to avoid this.
+   An additional circuitry is implemented in order to avoid this problem - if both ``RTS`` and ``DTR`` are asserted together, this doesn't reset the chip. The schematic shows this specific circuit with two transistors and its truth table.
+-  If this circuitry is implemented (all Espressif boards have it), adding a capacitor between the ``EN`` pin and ``GND`` (in the 1uF-10uF range) is necessary for the reset circuitry to work reliably. This is shown in the **ESP32 Module** section of the schematic.
+-  The **Switch Button** section shows buttons needed for :ref:`manually switching to bootloader <manual-bootloader>`.
+
+Make the following connections for ``esptool`` to automatically enter the bootloader of an {IDF_TARGET_NAME} chip:
 
 +-------------+--------------+
 | ESP Pin     | Serial Pin   |
@@ -127,19 +135,14 @@ Make the following connections for ``esptool`` to automatically enter the bootlo
 | {IDF_TARGET_STRAP_BOOT_GPIO}       | DTR          |
 +-------------+--------------+
 
-.. note::
-
-   Some OS and/or drivers may activate RTS and or DTR automatically when opening the serial port (true only for some serial terminal programs, not ``esptool.py``), pulling them low together and holding the {IDF_TARGET_NAME} in reset. If RTS is wired directly to EN then RTS/CTS "hardware flow control" needs to be disabled in the serial program to avoid this.
-   Development boards (including all Espressif boards) usually use additional circuitry to avoid this problem - if both RTS and DTR are asserted together, this doesn't reset the chip. Consult Espressif development board schematics for the specific details.
-
 In Linux serial ports by default will assert RTS when nothing is attached to them. This can hold the {IDF_TARGET_NAME} in a reset loop which may cause some serial adapters to subsequently reset loop. This functionality can be disabled by disabling ``HUPCL`` (ie ``sudo stty -F /dev/ttyUSB0 -hupcl``).
 
-(Some third party {IDF_TARGET_NAME} development boards use an automatic reset circuit for EN & GPIO pins, but don't add a capacitor on the EN pin. This results in unreliable automatic reset, especially on Windows. Adding a 1uF (or higher) value capacitor between EN pin and GND may make automatic reset more reliable..)
+(Some third party {IDF_TARGET_NAME} development boards use an automatic reset circuit for ``EN`` & ``{IDF_TARGET_STRAP_BOOT_GPIO}`` pins, but don't add a capacitor on the ``EN`` pin. This results in unreliable automatic reset, especially on Windows. Adding a 1uF (or higher) value capacitor between ``EN`` pin and ``GND`` may make automatic reset more reliable.)
 
 In general, you should have no problems with the official Espressif development boards. However, ``esptool.py`` is not able to reset your hardware automatically in the following cases:
 
-- Your hardware does not have the DTR and RTS lines connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``CHIP_PU`` (``EN``)
-- The DTR and RTS lines are configured differently
+- Your hardware does not have the ``DTR`` and ``RTS`` lines connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` (``CHIP_PU``)
+- The ``DTR`` and ``RTS`` lines are configured differently
 - There are no such serial control lines at all
 
 .. _manual-bootloader:
@@ -149,7 +152,7 @@ Manual Bootloader
 
 Depending on the kind of hardware you have, it may also be possible to manually put your {IDF_TARGET_NAME} board into Firmware Download mode (reset).
 
-- For development boards produced by Espressif, this information can be found in the respective getting started guides or user guides. For example, to manually reset a development board, hold down the **Boot** button (``{IDF_TARGET_STRAP_BOOT_GPIO}``) and press the **EN** button (``CHIP_PU``).
+- For development boards produced by Espressif, this information can be found in the respective getting started guides or user guides. For example, to manually reset a development board, hold down the **Boot** button (``{IDF_TARGET_STRAP_BOOT_GPIO}``) and press the **EN** button (``EN`` (``CHIP_PU``)).
 - For other types of hardware, try pulling ``{IDF_TARGET_STRAP_BOOT_GPIO}`` down.
 
 .. only:: esp8266
