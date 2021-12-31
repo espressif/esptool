@@ -861,6 +861,14 @@ class ESPLoader(object):
             raise FatalError("Flash size '%s' is not supported by this chip type. Supported sizes: %s"
                              % (arg, ", ".join(cls.FLASH_SIZES.keys())))
 
+    @classmethod
+    def parse_flash_freq_arg(cls, arg):
+        try:
+            return cls.FLASH_FREQUENCY[arg]
+        except KeyError:
+            raise FatalError("Flash frequency '%s' is not supported by this chip type. Supported frequencies: %s"
+                             % (arg, ", ".join(cls.FLASH_FREQUENCY.keys())))
+
     def run_stub(self, stub=None):
         if stub is None:
             stub = self.STUB_CODE
@@ -1312,6 +1320,13 @@ class ESP8266ROM(ESPLoader):
         '16MB': 0x90,
     }
 
+    FLASH_FREQUENCY = {
+        '80m': 0xf,
+        '40m': 0x0,
+        '26m': 0x1,
+        '20m': 0x2,
+    }
+
     BOOTLOADER_FLASH_OFFSET = 0
 
     MEMORY_MAP = [[0x3FF00000, 0x3FF00010, "DPORT"],
@@ -1490,6 +1505,13 @@ class ESP32ROM(ESPLoader):
         '32MB': 0x50,
         '64MB': 0x60,
         '128MB': 0x70
+    }
+
+    FLASH_FREQUENCY = {
+        '80m': 0xf,
+        '40m': 0x0,
+        '26m': 0x1,
+        '20m': 0x2,
     }
 
     BOOTLOADER_FLASH_OFFSET = 0x1000
@@ -2311,6 +2333,13 @@ class ESP32H2BETA1ROM(ESP32ROM):
 
     MEMORY_MAP = []
 
+    FLASH_FREQUENCY = {
+        '48m': 0xf,
+        '24m': 0x0,
+        '16m': 0x1,
+        '12m': 0x2,
+    }
+
     def get_pkg_version(self):
         num_word = 3
         block1_addr = self.EFUSE_BASE + 0x044
@@ -2391,6 +2420,13 @@ class ESP32C2ROM(ESP32C3ROM):
 
     EFUSE_BASE = 0x60008800
     MAC_EFUSE_REG  = EFUSE_BASE + 0x040
+
+    FLASH_FREQUENCY = {
+        '60m': 0xf,
+        '30m': 0x0,
+        '20m': 0x1,
+        '15m': 0x2,
+    }
 
     def get_pkg_version(self):
         num_word = 3
@@ -3820,7 +3856,7 @@ def _update_image_flash_params(esp, address, args, image):
 
     flash_freq = flash_size_freq & 0x0F
     if args.flash_freq != 'keep':
-        flash_freq = {'40m': 0, '26m': 1, '20m': 2, '80m': 0xf}[args.flash_freq]
+        flash_freq = esp.parse_flash_freq_arg(args.flash_freq)
 
     flash_size = flash_size_freq & 0xF0
     if args.flash_size != 'keep':
@@ -4148,8 +4184,8 @@ def elf2image(args):
     # ELFSection is a subclass of ImageSegment, so can use interchangeably
     image.segments = e.segments if args.use_segments else e.sections
 
-    image.flash_size_freq = image.ROM_LOADER.FLASH_SIZES[args.flash_size]
-    image.flash_size_freq += {'40m': 0, '26m': 1, '20m': 2, '80m': 0xf}[args.flash_freq]
+    image.flash_size_freq = image.ROM_LOADER.parse_flash_size_arg(args.flash_size)
+    image.flash_size_freq += image.ROM_LOADER.parse_flash_freq_arg(args.flash_freq)
 
     if args.elf_sha256_offset:
         image.elf_sha256 = e.sha256()
@@ -4450,7 +4486,7 @@ def main(argv=None, esp=None):
             extra_fs_message = ""
 
         parent.add_argument('--flash_freq', '-ff', help='SPI Flash frequency',
-                            choices=extra_keep_args + ['40m', '26m', '20m', '80m'],
+                            choices=extra_keep_args + ['80m', '60m', '48m', '40m', '30m', '26m', '24m', '20m', '16m', '15m', '12m'],
                             default=os.environ.get('ESPTOOL_FF', 'keep' if allow_keep else '40m'))
         parent.add_argument('--flash_mode', '-fm', help='SPI Flash mode',
                             choices=extra_keep_args + ['qio', 'qout', 'dio', 'dout'],
