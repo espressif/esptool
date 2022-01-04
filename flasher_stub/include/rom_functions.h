@@ -55,15 +55,31 @@ void ets_set_user_start(void (*user_start_fn)());
 void software_reset();
 void software_reset_cpu(int cpu_no);
 
+#ifdef ESP8684  // ESP8684 ROM uses mbedtls_md5
+struct MD5Context {  // Called mbedtls_md5_context in ROM
+    uint32_t total[2];        // number of bytes processed
+    uint32_t state[4];        // intermediate digest state
+    unsigned char buffer[64]; // data block being processed
+};
+
+int mbedtls_md5_starts_ret(struct MD5Context *ctx);
+int mbedtls_md5_update_ret(struct MD5Context *ctx, const unsigned char *input, size_t ilen);
+int mbedtls_md5_finish_ret(struct MD5Context *ctx, unsigned char digest[16]);
+
+#define MD5Init(ctx) mbedtls_md5_starts_ret(ctx)
+#define MD5Update(ctx, buf, n) mbedtls_md5_update_ret(ctx, buf, n)
+#define MD5Final(digest, ctx) mbedtls_md5_finish_ret(ctx, digest)
+#else  // not ESP8684
 struct MD5Context {
-  uint32_t buf[4];
-  uint32_t bits[2];
-  uint8_t in[64];
+    uint32_t buf[4];
+    uint32_t bits[2];
+    uint8_t in[64];
 };
 
 void MD5Init(struct MD5Context *ctx);
 void MD5Update(struct MD5Context *ctx, void *buf, uint32_t len);
 void MD5Final(uint8_t digest[16], struct MD5Context *ctx);
+#endif // not ESP8684
 
 typedef struct {
     uint32_t device_id;

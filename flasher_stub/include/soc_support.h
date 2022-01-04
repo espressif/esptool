@@ -204,7 +204,7 @@
 /**********************************************************
  * GPIO peripheral
  *
- * We only need to read the strapping register on ESP32 & ESP32S2 & ESP32S3
+ * We only need to read the strapping register on ESP32 or later
  */
 #define GPIO_STRAP_REG    (GPIO_BASE_REG + 0x38)
 
