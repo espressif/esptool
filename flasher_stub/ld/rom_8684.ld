@@ -62,6 +62,7 @@ disable_default_watchdog = 0x4000009c;
 send_packet = 0x400000a0;
 recv_packet = 0x400000a4;
 GetUartDevice = 0x400000a8;
+GetSecurityInfoProc = 0x40059d0e;
 UartDwnLdProc = 0x400000ac;
 Uart_Init = 0x400000b0;
 ets_set_user_start = 0x400000b4;
