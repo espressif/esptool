@@ -1157,8 +1157,8 @@ class ESPLoader(object):
         return status
 
     def read_spiflash_sfdp(self, addr, read_bits):
-            CMD_RDSFDP = 0x5A
-            return self.run_spiflash_command(CMD_RDSFDP, read_bits=read_bits, addr=addr, addr_len=24, dummy_len=8)
+        CMD_RDSFDP = 0x5A
+        return self.run_spiflash_command(CMD_RDSFDP, read_bits=read_bits, addr=addr, addr_len=24, dummy_len=8)
 
     def read_status(self, num_bytes=2):
         """Read up to 24 bits (num_bytes) of SPI flash status register contents
@@ -4679,6 +4679,55 @@ def main(argv=None, esp=None):
             # ROM loader doesn't enable flash unless we explicitly do it
             esp.flash_spi_attach(0)
 
+        # XMC chip startup sequence
+        XMC_VENDOR_ID = 0x20
+
+        def is_xmc_chip_strict():
+            id = esp.flash_id()
+            rdid = ((id & 0xff) << 16) | ((id >> 16) & 0xff) | (id & 0xff00)
+
+            vendor_id = ((rdid >> 16) & 0xFF)
+            mfid = ((rdid >> 8) & 0xFF)
+            cpid = (rdid & 0xFF)
+
+            if vendor_id != XMC_VENDOR_ID:
+                return False
+
+            matched = False
+            if mfid == 0x40:
+                if cpid >= 0x13 and cpid <= 0x20:
+                    matched = True
+            elif mfid == 0x41:
+                if cpid >= 0x17 and cpid <= 0x20:
+                    matched = True
+            elif mfid == 0x50:
+                if cpid >= 0x15 and cpid <= 0x16:
+                    matched = True
+            return matched
+
+        def flash_xmc_startup():
+            # If the RDID value is a valid XMC one, may skip the flow
+            fast_check = True
+            if fast_check and is_xmc_chip_strict():
+                return  # Successful XMC flash chip boot-up detected by RDID, skipping.
+
+            sfdp_mfid_addr = 0x10
+            mf_id = esp.read_spiflash_sfdp(sfdp_mfid_addr, 8)
+            if mf_id != XMC_VENDOR_ID:  # Non-XMC chip detected by SFDP Read, skipping.
+                return
+
+            print("WARNING: XMC flash chip boot-up failure detected! Running XMC25QHxxC startup flow")
+            esp.run_spiflash_command(0xB9)  # Enter DPD
+            esp.run_spiflash_command(0x79)  # Enter UDPD
+            esp.run_spiflash_command(0xFF)  # Exit UDPD
+            time.sleep(0.002)               # Delay tXUDPD
+            esp.run_spiflash_command(0xAB)  # Release Power-Down
+            time.sleep(0.00002)
+            # Check for success
+            if not is_xmc_chip_strict():
+                print("WARNING: XMC flash boot-up fix failed.")
+            print("XMC flash chip boot-up fix successful!")
+
         # Check flash chip connection
         try:
             flash_id = esp.flash_id()
@@ -4687,6 +4736,9 @@ def main(argv=None, esp=None):
                       'Try checking the chip connections or removing any other hardware connected to IOs.')
         except Exception as e:
             esp.trace('Unable to verify flash chip connection ({}).'.format(e))
+
+        # Check if XMC SPI flash chip booted-up successfully, fix if not
+        flash_xmc_startup()
 
         if hasattr(args, "flash_size"):
             print("Configuring flash size...")
