@@ -132,7 +132,7 @@
 #define UART_INT_CLR(X)    (UART_BASE_REG + 0x10)
 #define UART_STATUS(X)     (UART_BASE_REG + 0x1C)
 
-#if defined(ESP32S2) || defined(ESP32S3)
+#if ESP32S2_OR_LATER
 #define UART_RXFIFO_CNT_M 0x3FF
 #else
 #define UART_RXFIFO_CNT_M 0xFF
