@@ -2354,6 +2354,9 @@ class ESP8684ROM(ESP32C3ROM):
 
     CHIP_DETECT_MAGIC_VALUE = [0x6f51306f]
 
+    EFUSE_BASE = 0x60008800
+    MAC_EFUSE_REG  = EFUSE_BASE + 0x040
+
     def get_pkg_version(self):
         num_word = 3
         block1_addr = self.EFUSE_BASE + 0x044
