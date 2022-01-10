@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # SPDX-FileCopyrightText: 2009-2015 Chris Liechti
-# SPDX-FileContributor: 2020-2021 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileContributor: 2020-2022 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # Redirect data from a TCP/IP connection to a serial port and vice versa using RFC 2217.

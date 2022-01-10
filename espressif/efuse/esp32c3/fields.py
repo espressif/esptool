@@ -2,7 +2,7 @@
 #
 # This file describes eFuses for ESP32-C3 chip
 #
-# SPDX-FileCopyrightText: 2020-2021 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 

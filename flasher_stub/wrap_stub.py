@@ -6,7 +6,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 #
-# SPDX-FileContributor: 2016-2021 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
 
 from __future__ import division, print_function
 
