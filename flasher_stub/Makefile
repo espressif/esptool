@@ -39,7 +39,7 @@ CROSS_32S3 ?= xtensa-esp32s3-elf-
 CROSS_32C3 ?= riscv32-esp-elf-
 CROSS_32C6BETA ?= riscv32-esp-elf-
 CROSS_32H2 ?= riscv32-esp-elf-
-CROSS_8684 ?= riscv32-esp-elf-
+CROSS_32C2 ?= riscv32-esp-elf-
 
 # Python command to invoke wrap_stub.py
 WRAP_STUB ?= ./wrap_stub.py
@@ -64,7 +64,7 @@ STUB_ELF_32C3 = $(BUILD_DIR)/$(STUB)_32c3.elf
 STUB_ELF_32C6BETA = $(BUILD_DIR)/$(STUB)_32c6beta.elf
 STUB_ELF_32H2_BETA_1 = $(BUILD_DIR)/$(STUB)_32h2beta1.elf
 STUB_ELF_32H2_BETA_2 = $(BUILD_DIR)/$(STUB)_32h2beta2.elf
-STUB_ELF_8684 = $(BUILD_DIR)/$(STUB)_8684.elf
+STUB_ELF_32C2 = $(BUILD_DIR)/$(STUB)_32c2.elf
 STUB_PY = $(BUILD_DIR)/$(STUB)_snippet.py
 
 .PHONY: all clean embed
@@ -119,15 +119,15 @@ $(STUB_ELF_32H2_BETA_2): $(SRCS) $(BUILD_DIR) ld/stub_32h2_beta_2.ld
 	@echo "  CC(32H2)   $^ -> $@"
 	$(Q) $(CROSS_32H2)gcc $(CFLAGS_ESPRISCV32) -DESP32H2=1 -DESP32H2BETA2=1 -Tstub_32h2_beta_2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
-$(STUB_ELF_8684): $(SRCS) $(BUILD_DIR) ld/stub_8684.ld
-	@echo "  CC(8684)   $^ -> $@"
-	$(Q) $(CROSS_8684)gcc $(CFLAGS_ESPRISCV32) -DESP8684=1 -Tstub_8684.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+$(STUB_ELF_32C2): $(SRCS) $(BUILD_DIR) ld/stub_32c2.ld
+	@echo "  CC(32C2)   $^ -> $@"
+	$(Q) $(CROSS_32C2)gcc $(CFLAGS_ESPRISCV32) -DESP32C2=1 -Tstub_32c2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
-$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_8684) wrap_stub.py
+$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_32C2) wrap_stub.py
 	@echo "  WRAP $^ -> $@"
 	$(Q) $(WRAP_STUB) --out-file $@ $(filter %.elf,$^)
 
-embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_8684) wrap_stub.py
+embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_32C2) wrap_stub.py
 	@echo "  WRAP $^ -> esptool.py"
 	$(Q) $(WRAP_STUB) $(filter %.elf,$^)
 

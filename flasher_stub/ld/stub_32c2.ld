@@ -23,4 +23,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "rom_8684.ld"
+INCLUDE "rom_32c2.ld"

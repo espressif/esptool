@@ -74,7 +74,7 @@ MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, a
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
 
-SUPPORTED_CHIPS = ['esp8266', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3', 'esp32c3', 'esp32c6beta', 'esp32h2beta1', 'esp32h2beta2', 'esp8684']
+SUPPORTED_CHIPS = ['esp8266', 'esp32', 'esp32s2', 'esp32s3beta2', 'esp32s3', 'esp32c3', 'esp32c6beta', 'esp32h2beta1', 'esp32h2beta2', 'esp32c2']
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
@@ -96,7 +96,7 @@ def _chip_to_rom_loader(chip):
         'esp32c6beta': ESP32C6BETAROM,
         'esp32h2beta1': ESP32H2BETA1ROM,
         'esp32h2beta2': ESP32H2BETA2ROM,
-        'esp8684': ESP8684ROM,
+        'esp32c2': ESP32C2ROM,
     }[chip]
 
 
@@ -133,8 +133,8 @@ def check_supported_function(func, check_func):
     bootloader function to check if it's supported.
 
     This is used to capture the multidimensional differences in
-    functionality between the ESP8266 & ESP32/32S2/32S3/32C3 & ESP8684 ROM loaders, and the
-    software stub that runs on both. Not possible to do this cleanly
+    functionality between the ESP8266 & ESP32 (and later chips) ROM loaders, and the
+    software stub that runs on these. Not possible to do this cleanly
     via inheritance alone.
     """
     def inner(*args, **kwargs):
@@ -146,18 +146,23 @@ def check_supported_function(func, check_func):
     return inner
 
 
+def esp8266_function_only(func):
+    """ Attribute for a function only supported on ESP8266 """
+    return check_supported_function(func, lambda o: o.CHIP_NAME == "ESP8266")
+
+
 def stub_function_only(func):
     """ Attribute for a function only supported in the software stub loader """
     return check_supported_function(func, lambda o: o.IS_STUB)
 
 
 def stub_and_esp32_function_only(func):
-    """ Attribute for a function only supported by software stubs or ESP32/32S2/32S3/32C3 ROM """
+    """ Attribute for a function only supported by software stubs or ESP32 and later chips ROM """
     return check_supported_function(func, lambda o: o.IS_STUB or isinstance(o, ESP32ROM))
 
 
 def esp32s3_or_newer_function_only(func):
-    """ Attribute for a function only supported by ESP32S3/32C3 & ESP8684 ROM """
+    """ Attribute for a function only supported by ESP32S3 and later chips ROM """
     return check_supported_function(func, lambda o: isinstance(o, ESP32S3ROM) or isinstance(o, ESP32C3ROM))
 
 
@@ -203,14 +208,9 @@ def _mask_to_shift(mask):
     return shift
 
 
-def esp8266_function_only(func):
-    """ Attribute for a function only supported on ESP8266 """
-    return check_supported_function(func, lambda o: o.CHIP_NAME == "ESP8266")
-
-
 class ESPLoader(object):
     """ Base class providing access to ESP ROM & software stub bootloaders.
-    Subclasses provide ESP8266 & ESP32 Family & ESP8684 specific functionality.
+    Subclasses provide ESP8266 & ESP32 Family specific functionality.
 
     Don't instantiate this base class directly, either instantiate a subclass or
     call ESPLoader.detect_chip() which will interrogate the chip and return the
@@ -237,7 +237,7 @@ class ESPLoader(object):
     ESP_WRITE_REG   = 0x09
     ESP_READ_REG    = 0x0a
 
-    # Some comands supported by ESP32 & ESP8684 ROM bootloader (or -8266 w/ stub)
+    # Some comands supported by ESP32 and later chips ROM bootloader (or -8266 w/ stub)
     ESP_SPI_SET_PARAMS = 0x0B
     ESP_SPI_ATTACH     = 0x0D
     ESP_READ_FLASH_SLOW  = 0x0e  # ROM only, much slower than the stub flash read
@@ -247,7 +247,7 @@ class ESPLoader(object):
     ESP_FLASH_DEFL_END   = 0x12
     ESP_SPI_FLASH_MD5    = 0x13
 
-    # Commands supported by ESP32-S2/S3/C3/C6 & ESP8684 ROM bootloader only
+    # Commands supported by ESP32-S2 and later chips ROM bootloader only
     ESP_GET_SECURITY_INFO = 0x14
 
     # Some commands supported by stub only
@@ -370,7 +370,7 @@ class ESPLoader(object):
             res = struct.unpack("<IBBBBBBBBI", res[:16])  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
             chip_id = res[9]  # 2/4 status bytes invariant
 
-            for cls in [ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM]:
+            for cls in [ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32C6BETAROM, ESP32H2BETA1ROM, ESP32C2ROM, ESP32H2BETA2ROM]:
                 if chip_id == cls.IMAGE_CHIP_ID:
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
@@ -386,7 +386,7 @@ class ESPLoader(object):
                 chip_magic_value = detect_port.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
 
                 for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM,
-                            ESP32C3ROM, ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM]:
+                            ESP32C3ROM, ESP32C6BETAROM, ESP32H2BETA1ROM, ESP32C2ROM, ESP32H2BETA2ROM]:
                     if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                         inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                         inst._post_connect()
@@ -674,7 +674,7 @@ class ESPLoader(object):
                 chip_magic_value = self.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
                 if chip_magic_value not in self.CHIP_DETECT_MAGIC_VALUE:
                     actually = None
-                    for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM]:
+                    for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32H2BETA1ROM, ESP32C2ROM, ESP32H2BETA2ROM]:
                         if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                             actually = cls
                             break
@@ -783,7 +783,7 @@ class ESPLoader(object):
 
         params = struct.pack('<IIII', erase_size, num_blocks, self.FLASH_WRITE_SIZE, offset)
         if isinstance(self, (ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM,
-                             ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
+                             ESP32C6BETAROM, ESP32H2BETA1ROM, ESP32C2ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
             params += struct.pack('<I', 1 if begin_rom_encrypted else 0)
         self.check_command("enter Flash download mode", self.ESP_FLASH_BEGIN,
                            params, timeout=timeout)
@@ -801,7 +801,7 @@ class ESPLoader(object):
 
     """ Encrypt before writing to flash """
     def flash_encrypt_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        if isinstance(self, (ESP32S2ROM, ESP32C3ROM, ESP32S3ROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
+        if isinstance(self, (ESP32S2ROM, ESP32C3ROM, ESP32S3ROM, ESP32H2BETA1ROM, ESP32C2ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
             # ROM support performs the encrypted writes via the normal write command,
             # triggered by flash_begin(begin_rom_encrypted=True)
             return self.flash_block(data, seq, timeout)
@@ -904,7 +904,7 @@ class ESPLoader(object):
         print("Compressed %d bytes to %d..." % (size, compsize))
         params = struct.pack('<IIII', write_size, num_blocks, self.FLASH_WRITE_SIZE, offset)
         if isinstance(self, (ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM,
-                             ESP32C6BETAROM, ESP32H2BETA1ROM, ESP8684ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
+                             ESP32C6BETAROM, ESP32H2BETA1ROM, ESP32C2ROM, ESP32H2BETA2ROM)) and not self.IS_STUB:
             params += struct.pack('<I', 0)  # extra param is to enter encrypted flash mode via ROM (not supported currently)
         self.check_command("enter compressed flash mode", self.ESP_FLASH_DEFL_BEGIN, params, timeout=timeout)
         if size != 0 and not self.IS_STUB:
@@ -1068,9 +1068,9 @@ class ESPLoader(object):
         SPI_USR2_REG      = base + self.SPI_USR2_OFFS
         SPI_W0_REG        = base + self.SPI_W0_OFFS
 
-        # following two registers are ESP32 & 32S2/32C3 only
+        # following two registers are ESP32 and later chips only
         if self.SPI_MOSI_DLEN_OFFS is not None:
-            # ESP32/32S2/32C3 has a more sophisticated way to set up "user" commands
+            # ESP32 and later chips have a more sophisticated way to set up "user" commands
             def set_data_lengths(mosi_bits, miso_bits):
                 SPI_MOSI_DLEN_REG = base + self.SPI_MOSI_DLEN_OFFS
                 SPI_MISO_DLEN_REG = base + self.SPI_MISO_DLEN_OFFS
@@ -2348,8 +2348,8 @@ class ESP32H2BETA2ROM(ESP32H2BETA1ROM):
     IMAGE_CHIP_ID = 14
 
 
-class ESP8684ROM(ESP32C3ROM):
-    CHIP_NAME = "ESP8684"
+class ESP32C2ROM(ESP32C3ROM):
+    CHIP_NAME = "ESP32-C2"
     IMAGE_CHIP_ID = 12
 
     CHIP_DETECT_MAGIC_VALUE = [0x6f51306f]
@@ -2366,8 +2366,8 @@ class ESP8684ROM(ESP32C3ROM):
 
     def get_chip_description(self):
         chip_name = {
-            0: "ESP8684",
-        }.get(self.get_pkg_version(), "unknown ESP8684")
+            0: "ESP32-C2",
+        }.get(self.get_pkg_version(), "unknown ESP32-C2")
         chip_revision = self.get_chip_revision()
 
         return "%s (revision %d)" % (chip_name, chip_revision)
@@ -2535,8 +2535,8 @@ class ESP32H2BETA2StubLoader(ESP32H2BETA2ROM):
 ESP32H2BETA2ROM.STUB_CLASS = ESP32H2BETA2StubLoader
 
 
-class ESP8684StubLoader(ESP8684ROM):
-    """ Access class for ESP8684 stub loader, runs on top of ROM.
+class ESP32C2StubLoader(ESP32C2ROM):
+    """ Access class for ESP32C2 stub loader, runs on top of ROM.
 
     (Basically the same as ESP32StubLoader, but different base class.
     Can possibly be made into a mixin.)
@@ -2552,7 +2552,7 @@ class ESP8684StubLoader(ESP8684ROM):
         self.flush_input()  # resets _slip_reader
 
 
-ESP8684ROM.STUB_CLASS = ESP8684StubLoader
+ESP32C2ROM.STUB_CLASS = ESP32C2StubLoader
 
 
 class ESPBOOTLOADER(object):
@@ -2591,8 +2591,8 @@ def LoadFirmwareImage(chip, filename):
             return ESP32H2BETA1FirmwareImage(f)
         elif chip == 'esp32h2beta2':
             return ESP32H2BETA2FirmwareImage(f)
-        elif chip == 'esp8684':
-            return ESP8684FirmwareImage(f)
+        elif chip == 'esp32c2':
+            return ESP32C2FirmwareImage(f)
         else:  # Otherwise, ESP8266 so look at magic to determine the image type
             magic = ord(f.read(1))
             f.seek(0)
@@ -3350,9 +3350,9 @@ class ESP32H2BETA2FirmwareImage(ESP32FirmwareImage):
 ESP32H2BETA2ROM.BOOTLOADER_IMAGE = ESP32H2BETA2FirmwareImage
 
 
-class ESP8684FirmwareImage(ESP32FirmwareImage):
-    """ ESP8684 Firmware Image almost exactly the same as ESP32FirmwareImage """
-    ROM_LOADER = ESP8684ROM
+class ESP32C2FirmwareImage(ESP32FirmwareImage):
+    """ ESP32C2 Firmware Image almost exactly the same as ESP32FirmwareImage """
+    ROM_LOADER = ESP32C2ROM
 
     def set_mmu_page_size(self, size):
         if size not in [16384, 32768, 65536]:
@@ -3360,7 +3360,7 @@ class ESP8684FirmwareImage(ESP32FirmwareImage):
         self.IROM_ALIGN = size
 
 
-ESP8684ROM.BOOTLOADER_IMAGE = ESP8684FirmwareImage
+ESP32C2ROM.BOOTLOADER_IMAGE = ESP32C2FirmwareImage
 
 
 class ELFFile(object):
@@ -3622,7 +3622,7 @@ def pad_to(data, alignment, pad_character=b'\xFF'):
 class FatalError(RuntimeError):
     """
     Wrapper class for runtime errors that aren't caused by internal bugs, but by
-    ESP8266 responses or input content.
+    ESP ROM responses or input content.
     """
     def __init__(self, message):
         RuntimeError.__init__(self, message)
@@ -4080,8 +4080,8 @@ def elf2image(args):
         image = ESP32H2BETA2FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = '2'
-    elif args.chip == 'esp8684':
-        image = ESP8684FirmwareImage()
+    elif args.chip == 'esp32c2':
+        image = ESP32C2FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = '2'
     elif args.version == '1':  # ESP8266
@@ -4303,7 +4303,7 @@ def main(argv=None, esp=None):
 
     external_esp = esp is not None
 
-    parser = argparse.ArgumentParser(description='esptool.py v%s - ESP8266 ROM Bootloader Utility' % __version__, prog='esptool')
+    parser = argparse.ArgumentParser(description='esptool.py v%s - Espressif chips ROM Bootloader Utility' % __version__, prog='esptool')
 
     parser.add_argument('--chip', '-c',
                         help='Target chip type',
@@ -5200,7 +5200,7 @@ aRigVPiH0389bOppmJxf29HBvOaGXWb1VY3f9GGrYidh197QQZNXauoDbgw2qKOgilI7CLxqHiHe0Gnp
 9yXnAGT8QA4RIZyyvlJ2S/3h3hniAeUBVEDpg49YnhybzusQopSTQllfJqAXQzR2IShVibTh9Zzwv4ykleHUH0vONCiEEEdQVNR2fsrdI11cYseyV9JLHD0psZXa9E6zPkUZZPd9bQ02o03EQY2YXFyvInBQ/Mk3\
 ro758Wd5BnYp7TYXfRQkJ6/30EJPUMkkaKIn0xpN9OTkCO6enO6hnE5e4DLa6L2LqtNGJxow+3/cohcuf3w/z2/w2qU1aRpZm0UmXKmu5jcfm8F+v5eFwTKf5/p+JjAVPGlfhrtSjE0iZ6LF/wCAbuTq\
 """)))
-ESP8684ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
+ESP32C2ROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b"""
 eNq1Wmt7E8cV/iuObXBC8/SZ0V4HgpFARrbBFFKCCxUNuzO7LklwYyMH00b/vfOei3YlWyb90A+ypdmZM2fO5T2X2f/szJrL2c7djXpnemns9NLGT13E7/iYd4fTS1/Gb8n0snLTy5JGb8fB6ln8k38f/6RxKI//\
 m834x8vqlFZPL9vwugCN6kH8Y55G+sksjqYPpufTy8bEr4NhPd6K1MttZqAeHEwvw2D88GAzLjRZFXcdxE+cW5bD+CeZ7kxPQR7ELiKFLP5oeZYr5nE0bt5Ehq2LX9r4xEfO67aY7hBTvz+J80KcX/Pati2KNQ90\
 6xHLhY4ZPyEUdEymB+ZzEdhgIbn4iXJz8eMT/H80F17KY5xxCOb3un1M/F+6EYvg+k3dg7lszTsMezzoTt1v6x9B+kw97neVNNSVFuP4t47KcQnTjeqMCnL+ie4MZcdFVVzs27eFZXHahJXM0225HzcJk0jbjqMJ\

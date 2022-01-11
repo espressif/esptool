@@ -104,7 +104,7 @@
 #define RTCCNTL_BASE_REG    0x60008000
 #endif
 
-#ifdef ESP8684
+#ifdef ESP32C2
 #define UART_BASE_REG      0x60000000 /* UART0 */
 #define SPI_BASE_REG       0x60002000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG      0x60003000 /* SPI peripheral 0, inner state machine */

@@ -1,4 +1,4 @@
-/* ROM function interface esp8684.rom.ld for esp8684
+/* ROM function interface esp32c2.rom.ld for esp32c2
  *
  *
  * Generated from ./interface-esp8684.yml md5sum 6c4d0f3a9f2d0c93477024a1a8f13746
