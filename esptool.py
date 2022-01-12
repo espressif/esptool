@@ -3542,6 +3542,15 @@ def arg_auto_int(x):
     return int(x, 0)
 
 
+def format_chip_name(c):
+    """ Normalize chip name from user input """
+    c = c.lower().replace('-', '')
+    if c == 'esp8684':  # TODO: Delete alias, ESPTOOL-389
+        print('WARNING: Chip name ESP8684 is deprecated in favor of ESP32-C2 and will be removed in a future release. Using ESP32-C2 instead.')
+        return 'esp32c2'
+    return c
+
+
 def div_roundup(a, b):
     """ Return a/b rounded up to nearest integer,
     equivalent result to int(math.ceil(float(int(a)) / float(int(b))), only
@@ -4307,7 +4316,7 @@ def main(argv=None, esp=None):
 
     parser.add_argument('--chip', '-c',
                         help='Target chip type',
-                        type=lambda c: c.lower().replace('-', ''),  # support ESP32-S2, etc.
+                        type=format_chip_name,  # support ESP32-S2, etc.
                         choices=['auto'] + SUPPORTED_CHIPS,
                         default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
