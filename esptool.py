@@ -674,7 +674,8 @@ class ESPLoader(object):
                 chip_magic_value = self.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
                 if chip_magic_value not in self.CHIP_DETECT_MAGIC_VALUE:
                     actually = None
-                    for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM, ESP32C3ROM, ESP32H2BETA1ROM, ESP32C2ROM, ESP32H2BETA2ROM]:
+                    for cls in [ESP8266ROM, ESP32ROM, ESP32S2ROM, ESP32S3BETA2ROM, ESP32S3ROM,
+                                ESP32C3ROM, ESP32H2BETA1ROM, ESP32H2BETA2ROM, ESP32C2ROM, ESP32C6BETAROM]:
                         if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
                             actually = cls
                             break
