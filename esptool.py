@@ -541,7 +541,7 @@ class ESPLoader(object):
         active_port = self._port.port
 
         # Pyserial only identifies regular ports, URL handlers are not supported
-        if not active_port.startswith(("COM", "/dev/")):
+        if not active_port.lower().startswith(("com", "/dev/")):
             print("\nDevice PID identification is only supported on COM and /dev/ serial ports.")
             return
         # Return the real path if the active port is a symlink
