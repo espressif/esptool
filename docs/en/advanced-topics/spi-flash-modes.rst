@@ -105,7 +105,7 @@ How is flash mode communicated to the Espressif chip?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The bootloader .bin file, flashed to the SPI flash, contains a header which has flash speed, flash mode, and some other metadata. The initial host mode is determined by ROM code when it reads this header after reset.
-Passing the  ``-flash_mode`` argument to esptool will update this header when the file is being written to flash.
+Passing the  ``--flash_mode`` argument to esptool will update this header when the file is being written to flash.
 
 This only determines the mode which is used for the initial boot from reset. Software may then configure the flash mode differently as part of the boot process.
 

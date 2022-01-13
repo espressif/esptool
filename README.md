@@ -10,7 +10,7 @@ Visit the [documentation](https://docs.espressif.com/projects/esptool/) or run `
 
 ## Contribute
 
-If you're interested in contributing to esptool.py, please check the [Contributions Guide](https://docs.espressif.com/projects/esptool/en/latest/contributing.html).
+If you're interested in contributing to esptool.py, please check the [contributions guide](https://docs.espressif.com/projects/esptool/en/latest/contributing.html).
 
 ## About
 
