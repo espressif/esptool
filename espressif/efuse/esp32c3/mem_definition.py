@@ -107,7 +107,6 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("DIS_DOWNLOAD_ICACHE",          "config",   0,  1,  10, "bool",     2,    None, None,         "Disables Icache when SoC is in Download mode", None),
         ("DIS_USB_DEVICE",           "usb config",   0,  1,  11, "bool",     2,    None, None,         "Disables USB DEVICE", None),
         ("DIS_FORCE_DOWNLOAD",           "config",   0,  1,  12, "bool",     2,    None, None,         "Disables forcing chip into Download mode", None),
-        ("DIS_USB",                  "usb config",   0,  1,  13, "bool",     2,    None, None,         "Disables the USB OTG hardware", None),
         ("DIS_CAN",                      "config",   0,  1,  14, "bool",     2,    None, None,         "Disables the TWAI Controller hardware", None),
         ("SOFT_DIS_JTAG",           "jtag config",   0,  1,  16, "uint:3",   2,    None, None,         "Software disables JTAG. When software disabled, "
                                                                                                        "JTAG can be activated temporarily by HMAC peripheral",
@@ -149,9 +148,6 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("UART_PRINT_CHANNEL",           "config",   0,  4, 2,   "bool",     18,   None, None,         "Selects the default UART for printing boot msg",
          {0: "UART0",
           1: "UART1"}),
-        ("FLASH_ECC_MODE",         "flash config",   0,  4, 3,   "bool",     18,   None, None,         "Set this bit to set flsah ecc mode.",
-         {0: "flash ecc 16to18 byte mode",
-          1: "flash ecc 16to17 byte mode"}),
         ("DIS_USB_DOWNLOAD_MODE",    "usb config",   0,  4, 4,   "bool",     18,   None, None,         "Disables use of USB in UART download boot mode", None),
         ("ENABLE_SECURITY_DOWNLOAD",   "security",   0,  4, 5,   "bool",     18,   None, None,         "Enables secure UART download mode "
                                                                                                        "(read/write flash only)", None),
@@ -160,14 +156,6 @@ class EfuseDefineFields(EfuseFieldsBase):
           1: "Enable when GPIO8 is low at reset",
           2: "Enable when GPIO8 is high at reset",
           3: "Disabled"}),
-        ("PIN_POWER_SELECTION",  "VDD_SPI config",   0,  4, 8,   "bool",     18,   None, None,         "GPIO33-GPIO37 power supply selection in ROM code",
-         {0: "VDD3P3_CPU",
-          1: "VDD_SPI"}),
-        ("FLASH_TYPE",             "flash config",   0,  4, 9,   "bool",     18,   None, None,         "Selects SPI flash type",
-         {0: "4 data lines",
-          1: "8 data lines"}),
-        ("FLASH_PAGE_SIZE",        "flash config",   0,  4, 10,  "uint:2",   18,   None, None,         "Flash page size", None),
-        ("FLASH_ECC_EN",           "flash config",   0,  4, 12,  "bool",     18,   None, None,         "Enable ECC for flash boot", None),
         ("FORCE_SEND_RESUME",            "config",   0,  4, 13,  "bool",     18,   None, None,         "Force ROM code to send a resume command during SPI boot"
                                                                                                        "during SPI boot", None),
         ("SECURE_VERSION",             "identity",   0,  4, 14,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
