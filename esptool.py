@@ -1043,7 +1043,7 @@ class ESPLoader(object):
         self.check_command("set SPI params", ESP32ROM.ESP_SPI_SET_PARAMS,
                            struct.pack('<IIIIII', fl_id, total_size, block_size, sector_size, page_size, status_mask))
 
-    def run_spiflash_command(self, spiflash_command, data=b"", read_bits=0):
+    def run_spiflash_command(self, spiflash_command, data=b"", read_bits=0, addr=None, addr_len=0, dummy_len=0):
         """Run an arbitrary SPI flash command.
 
         This function uses the "USR_COMMAND" functionality in the ESP
@@ -1057,12 +1057,15 @@ class ESPLoader(object):
 
         # SPI_USR register flags
         SPI_USR_COMMAND = (1 << 31)
+        SPI_USR_ADDR    = (1 << 30)
+        SPI_USR_DUMMY   = (1 << 29)
         SPI_USR_MISO    = (1 << 28)
         SPI_USR_MOSI    = (1 << 27)
 
         # SPI registers, base address differs ESP32* vs 8266
         base = self.SPI_REG_BASE
         SPI_CMD_REG       = base + 0x00
+        SPI_ADDR_REG      = base + 0x04
         SPI_USR_REG       = base + self.SPI_USR_OFFS
         SPI_USR1_REG      = base + self.SPI_USR1_OFFS
         SPI_USR2_REG      = base + self.SPI_USR2_OFFS
@@ -1078,23 +1081,33 @@ class ESPLoader(object):
                     self.write_reg(SPI_MOSI_DLEN_REG, mosi_bits - 1)
                 if miso_bits > 0:
                     self.write_reg(SPI_MISO_DLEN_REG, miso_bits - 1)
+                flags = 0
+                if dummy_len > 0:
+                    flags |= (dummy_len - 1)
+                if addr_len > 0:
+                    flags |= (addr_len - 1) << SPI_USR_ADDR_LEN_SHIFT
+                if flags:
+                    self.write_reg(SPI_USR1_REG, flags)
         else:
-
             def set_data_lengths(mosi_bits, miso_bits):
                 SPI_DATA_LEN_REG = SPI_USR1_REG
                 SPI_MOSI_BITLEN_S = 17
                 SPI_MISO_BITLEN_S = 8
                 mosi_mask = 0 if (mosi_bits == 0) else (mosi_bits - 1)
                 miso_mask = 0 if (miso_bits == 0) else (miso_bits - 1)
-                self.write_reg(SPI_DATA_LEN_REG,
-                               (miso_mask << SPI_MISO_BITLEN_S) | (
-                                   mosi_mask << SPI_MOSI_BITLEN_S))
+                flags = (miso_mask << SPI_MISO_BITLEN_S) | (mosi_mask << SPI_MOSI_BITLEN_S)
+                if dummy_len > 0:
+                    flags |= (dummy_len - 1)
+                if addr_len > 0:
+                    flags |= (addr_len - 1) << SPI_USR_ADDR_LEN_SHIFT
+                self.write_reg(SPI_DATA_LEN_REG, flags)
 
         # SPI peripheral "command" bitmasks for SPI_CMD_REG
         SPI_CMD_USR  = (1 << 18)
 
         # shift values
         SPI_USR2_COMMAND_LEN_SHIFT = 28
+        SPI_USR_ADDR_LEN_SHIFT = 26
 
         if read_bits > 32:
             raise FatalError("Reading more than 32 bits back from a SPI flash operation is unsupported")
@@ -1109,10 +1122,16 @@ class ESPLoader(object):
             flags |= SPI_USR_MISO
         if data_bits > 0:
             flags |= SPI_USR_MOSI
+        if addr_len > 0:
+            flags |= SPI_USR_ADDR
+        if dummy_len > 0:
+            flags |= SPI_USR_DUMMY
         set_data_lengths(data_bits, read_bits)
         self.write_reg(SPI_USR_REG, flags)
         self.write_reg(SPI_USR2_REG,
                        (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflash_command)
+        if addr and addr_len > 0:
+            self.write_reg(SPI_ADDR_REG, addr)
         if data_bits == 0:
             self.write_reg(SPI_W0_REG, 0)  # clear data register before we read it
         else:
@@ -1136,6 +1155,10 @@ class ESPLoader(object):
         self.write_reg(SPI_USR_REG, old_spi_usr)
         self.write_reg(SPI_USR2_REG, old_spi_usr2)
         return status
+
+    def read_spiflash_sfdp(self, addr, read_bits):
+            CMD_RDSFDP = 0x5A
+            return self.run_spiflash_command(CMD_RDSFDP, read_bits=read_bits, addr=addr, addr_len=24, dummy_len=8)
 
     def read_status(self, num_bytes=2):
         """Read up to 24 bits (num_bytes) of SPI flash status register contents
