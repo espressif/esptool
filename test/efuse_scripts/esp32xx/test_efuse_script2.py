@@ -1,5 +1,5 @@
 # flake8: noqa
-espefuse(esp, efuses, args, 'burn_efuse DIS_FORCE_DOWNLOAD 1 DIS_CAN 1 DIS_USB 1')
+espefuse(esp, efuses, args, 'burn_efuse DIS_FORCE_DOWNLOAD 1 DIS_CAN 1 DIS_USB_DOWNLOAD_MODE 1')
 if efuses["DIS_FORCE_DOWNLOAD"].get() != 0:
     raise esptool.FatalError("Burn should be at the end")
 
