@@ -117,6 +117,10 @@ Automatic Bootloader
 
 ``esptool.py`` resets {IDF_TARGET_NAME} automatically by asserting ``DTR`` and ``RTS`` control lines of the USB to serial converter chip, i.e., FTDI, CP210x, or CH340x. The ``DTR`` and ``RTS`` control lines are in turn connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` (``CHIP_PU``) pins of {IDF_TARGET_NAME}, thus changes in the voltage levels of ``DTR`` and ``RTS`` will boot the {IDF_TARGET_NAME} into Firmware Download mode.
 
+.. note::
+
+      When developing ``esptool.py``, keep in mind ``DTR`` and ``RTS`` are active low signals, i.e., ``True`` = pin @ 0V, ``False`` = pin @ VCC.
+
 As an example of auto-reset curcuitry implementation, check the `schematic <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_ of the ESP32 DevKitC development board:
 
 -  The **Micro USB 5V & USB-UART** section shows the ``DTR`` and ``RTS`` control lines of the USB to serial converter chip connected to ``GPIO0`` and ``EN`` pins of the ESP module.
