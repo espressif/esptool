@@ -65,15 +65,19 @@ def swap_word_order(source):
 
 
 def _load_hardware_key(keyfile):
-    """ Load a 256/512-bit key, similar to stored in efuse, from a file
+    """ Load a 128/256/512-bit key, similar to stored in efuse, from a file
 
+    128-bit keys will be extended to 256-bit using the SHA256 of the key
     192-bit keys will be extended to 256-bit using the same algorithm used
     by hardware if 3/4 Coding Scheme is set.
     """
     key = keyfile.read()
-    if len(key) not in [24, 32, 64]:
-        raise esptool.FatalError("Key file contains wrong length (%d bytes), 24, 32 or 64 expected." % len(key))
-    if len(key) == 24:
+    if len(key) not in [16, 24, 32, 64]:
+        raise esptool.FatalError("Key file contains wrong length (%d bytes), 16, 24, 32 or 64 expected." % len(key))
+    if len(key) == 16:
+        key = _sha256_digest(key)
+        print("Using 128-bit key (extended)")
+    elif len(key) == 24:
         key = key + key[8:16]
         assert len(key) == 32
         print("Using 192-bit key (extended)")
@@ -1089,12 +1093,12 @@ def main(custom_commandline=None):
 
     p = subparsers.add_parser('generate_flash_encryption_key', help='Generate a development-use flash encryption key with random data.')
     p.add_argument('--keylen', '-l', help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme requires 192 bit key.",
-                   choices=[192, 256, 512], default=256, type=int)
-    p.add_argument('key_file', help="File to write 24, 32 or 64 byte key into", type=OutFileType())
+                   choices=[128, 192, 256, 512], default=256, type=int)
+    p.add_argument('key_file', help="File to write 16, 24, 32 or 64 byte key into", type=OutFileType())
 
     p = subparsers.add_parser('decrypt_flash_data', help='Decrypt some data read from encrypted flash (using known key)')
     p.add_argument('encrypted_file', help="File with encrypted flash contents", type=argparse.FileType('rb'))
-    p.add_argument('--aes_xts', '-x', help="Decrypt data using AES-XTS as used on ESP32-S2 and ESP32-C3", action='store_true')
+    p.add_argument('--aes_xts', '-x', help="Decrypt data using AES-XTS as used on ESP32-S2, ESP32-C2 and ESP32-C3", action='store_true')
     p.add_argument('--keyfile', '-k', help="File with flash encryption key", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('--output', '-o', help="Output file for plaintext data.", type=OutFileType(),
@@ -1103,7 +1107,7 @@ def main(custom_commandline=None):
     p.add_argument('--flash_crypt_conf', help="Override FLASH_CRYPT_CONF efuse value (default is 0XF).", required=False, default=0xF, type=esptool.arg_auto_int)
 
     p = subparsers.add_parser('encrypt_flash_data', help='Encrypt some data suitable for encrypted flash (using known key)')
-    p.add_argument('--aes_xts', '-x', help="Encrypt data using AES-XTS as used on ESP32-S2 and ESP32-C3", action='store_true')
+    p.add_argument('--aes_xts', '-x', help="Encrypt data using AES-XTS as used on ESP32-S2, ESP32-C2 and ESP32-C3", action='store_true')
     p.add_argument('--keyfile', '-k', help="File with flash encryption key", type=argparse.FileType('rb'),
                    required=True)
     p.add_argument('--output', '-o', help="Output file for encrypted data.", type=OutFileType(),
