@@ -596,8 +596,6 @@ class ESPLoader(object):
             self._setDTRAndRTS(True, True)
             self._setDTRAndRTS(False, True) # IO0=HIGH & EN=LOW, chip in reset
             time.sleep(0.1)
-            if extra_delay:
-                time.sleep(1.2)
             self._setDTRAndRTS(True, False) # IO0=LOW & # EN=HIGH, chip out of reset
             time.sleep(delay)
             self._setDTRAndRTS(False, False) # IO0=HIGH, done
