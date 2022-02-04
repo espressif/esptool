@@ -22,6 +22,13 @@ import struct
 import sys
 import time
 import zlib
+import fcntl
+import termios
+
+TIOCMSET = getattr(termios, 'TIOCMSET', 0x5418)
+TIOCMGET = getattr(termios, 'TIOCMGET', 0x5415)
+TIOCM_DTR = getattr(termios, 'TIOCM_DTR', 0x002)
+TIOCM_RTS = getattr(termios, 'TIOCM_RTS', 0x004)
 
 try:
     import serial
@@ -585,15 +592,27 @@ class ESPLoader(object):
             fpga_delay = True if self.FPGA_SLOW_BOOT and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1" else False
             delay = 7 if fpga_delay else 0.5 if extra_delay else 0.05  # 0.5 needed for ESP32 rev0 and rev1
 
-            self._setDTR(False)  # IO0=HIGH
-            self._setRTS(True)   # EN=LOW, chip in reset
+            self._setDTRAndRTS(False, False)
+            self._setDTRAndRTS(True, True)
+            self._setDTRAndRTS(False, True) # IO0=HIGH & EN=LOW, chip in reset
             time.sleep(0.1)
             if extra_delay:
                 time.sleep(1.2)
-            self._setDTR(True)   # IO0=LOW
-            self._setRTS(False)  # EN=HIGH, chip out of reset
+            self._setDTRAndRTS(True, False) # IO0=LOW & # EN=HIGH, chip out of reset
             time.sleep(delay)
-            self._setDTR(False)  # IO0=HIGH, done
+            self._setDTRAndRTS(False, False) # IO0=HIGH, done
+
+    def _setDTRAndRTS(self, dtr = False, rts = False):
+        status = struct.unpack('I', fcntl.ioctl(self._port.fileno(), TIOCMGET, struct.pack('I', 0)))[0]
+        if dtr:
+            status |= TIOCM_DTR
+        else:
+            status &= ~TIOCM_DTR
+        if rts:
+            status |= TIOCM_RTS
+        else:
+            status &= ~TIOCM_RTS
+        fcntl.ioctl(self._port.fileno(), TIOCMSET, struct.pack('I', status))
 
     def _connect_attempt(self, mode='default_reset', usb_jtag_serial=False, extra_delay=False):
         """ A single connection attempt """
