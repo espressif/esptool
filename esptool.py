@@ -374,6 +374,10 @@ class ESPLoader(object):
                 if chip_id == cls.IMAGE_CHIP_ID:
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
+                    try:
+                        inst.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)  # Dummy read to check Secure Download mode
+                    except UnsupportedCommandError:
+                        inst.secure_download_mode = True
         except (UnsupportedCommandError, struct.error, FatalError) as e:
             # UnsupportedCmdErr: ESP8266/ESP32 ROM | struct.err: ESP32-S2 | FatalErr: ESP8266/ESP32 STUB
             print(" Unsupported detection protocol, switching and trying again...")
@@ -4730,16 +4734,21 @@ def main(argv=None, esp=None):
             print("XMC flash chip boot-up fix successful!")
 
         # Check flash chip connection
-        try:
-            flash_id = esp.flash_id()
-            if flash_id in (0xffffff, 0x000000):
-                print('WARNING: Failed to communicate with the flash chip, read/write operations will fail. '
-                      'Try checking the chip connections or removing any other hardware connected to IOs.')
-        except Exception as e:
-            esp.trace('Unable to verify flash chip connection ({}).'.format(e))
+        if not esp.secure_download_mode:
+            try:
+                flash_id = esp.flash_id()
+                if flash_id in (0xffffff, 0x000000):
+                    print('WARNING: Failed to communicate with the flash chip, read/write operations will fail. '
+                          'Try checking the chip connections or removing any other hardware connected to IOs.')
+            except Exception as e:
+                esp.trace('Unable to verify flash chip connection ({}).'.format(e))
 
         # Check if XMC SPI flash chip booted-up successfully, fix if not
-        flash_xmc_startup()
+        if not esp.secure_download_mode:
+            try:
+                flash_xmc_startup()
+            except Exception as e:
+                esp.trace('Unable to perform XMC flash chip startup sequence ({}).'.format(e))
 
         if hasattr(args, "flash_size"):
             print("Configuring flash size...")
