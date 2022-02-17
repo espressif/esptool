@@ -43,12 +43,10 @@ def add_commands(subparsers, efuses):
         burn_key.add_argument('keypurpose', help='Purpose to set.', nargs="?", action='append', metavar="KEYPURPOSE",
                               choices=fields.EfuseKeyPurposeField.KEY_PURPOSES_NAME)
 
-    burn_key_digest = subparsers.add_parser('burn_key_digest', help='Parse a RSA public key and burn the digest to key efuse block')
+    burn_key_digest = subparsers.add_parser('burn_key_digest', help='Parse an ECDSA public key and burn the digest to higher 128-bits of BLOCK_KEY0')
     protect_options(burn_key_digest)
     add_force_write_always(burn_key_digest)
-    burn_key_digest.add_argument('block', help='Key block to burn', action='append', choices=['BLOCK_KEY0'])
-    burn_key_digest.add_argument('keyfile', help='Key file to digest (PEM format)', action='append', type=argparse.FileType('rb'))
-    burn_key_digest.add_argument('keypurpose', help='Purpose to set.', action='append', choices=fields.EfuseKeyPurposeField.DIGEST_KEY_PURPOSES)
+    burn_key_digest.add_argument('keyfile', help='Key file to digest (PEM format)', type=argparse.FileType('rb'))
 
     p = subparsers.add_parser('set_flash_voltage',
                               help='Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF. '
@@ -123,21 +121,23 @@ def burn_key(esp, efuses, args, digest=None):
             raise esptool.FatalError('These keypurposes are incompatible %s' % (keypurpose_list))
 
     print("Burn keys to blocks:")
-    for block_name, datafile, keypurpose in zip(block_name_list, datafile_list, keypurpose_list):
-        efuse = None
+    for datafile, keypurpose in zip(datafile_list, keypurpose_list):
+        data = datafile if isinstance(datafile, bytes) else datafile.read()
+
         if keypurpose == 'XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS':
             efuse = efuses['BLOCK_KEY0_LOW_128']
         elif keypurpose == 'SECURE_BOOT_DIGEST':
             efuse = efuses['BLOCK_KEY0_HI_128']
+            if len(data) == 32:
+                print('\tProgramming only left-most 128-bits from SHA256 hash of public key to highest 128-bits of BLOCK KEY0')
+                data = data[:16]
+            elif len(data) != efuse.bit_len // 8:
+                raise esptool.FatalError('Wrong length of this file for SECURE_BOOT_DIGEST. Got %d (expected %d or %d)' % (len(data), 32, efuse.bit_len // 8))
+            assert len(data) == 16, 'Only 16 bytes expected'
         else:
             efuse = efuses['BLOCK_KEY0']
 
         num_bytes = efuse.bit_len // 8
-
-        if digest is None:
-            data = datafile.read()
-        else:
-            data = datafile
 
         print(" - %s" % (efuse.name), end=" ")
         revers_msg = None
@@ -187,24 +187,16 @@ def burn_key(esp, efuses, args, digest=None):
 
 
 def burn_key_digest(esp, efuses, args):
-    raise esptool.FatalError("burn_key_digest is not supported!")
-    digest_list = []
-    datafile_list = args.keyfile[0:len([name for name in args.keyfile if name is not None]):]
-    block_list = args.block[0:len([block for block in args.block if block is not None]):]
-    for block_name, datafile in zip(block_list, datafile_list):
-        efuse = None
-        for block in efuses.blocks:
-            if block_name == block.name or block_name in block.alias:
-                efuse = efuses[block.name]
-        if efuse is None:
-            raise esptool.FatalError("Unknown block name - %s" % (block_name))
-        num_bytes = efuse.bit_len // 8
-        digest = espsecure._digest_sbv2_public_key(datafile)
-        if len(digest) != num_bytes:
-            raise esptool.FatalError("Incorrect digest size %d. Digest must be %d bytes (%d bits) of raw binary key data." %
-                                     (len(digest), num_bytes, num_bytes * 8))
-        digest_list.append(digest)
-    burn_key(esp, efuses, args, digest=digest_list)
+    datafile = args.keyfile
+    args.keypurpose = ['SECURE_BOOT_DIGEST']
+    args.block = ['BLOCK_KEY0']
+    digest = espsecure._digest_sbv2_public_key(datafile)
+    digest = digest[:16]
+    num_bytes = efuses['BLOCK_KEY0_HI_128'].bit_len // 8
+    if len(digest) != num_bytes:
+        raise esptool.FatalError("Incorrect digest size %d. Digest must be %d bytes (%d bits) of raw binary key data." %
+                                 (len(digest), num_bytes, num_bytes * 8))
+    burn_key(esp, efuses, args, digest=[digest])
 
 
 def espefuse(esp, efuses, args, command):
