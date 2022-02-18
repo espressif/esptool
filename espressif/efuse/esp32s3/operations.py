@@ -10,6 +10,7 @@ from __future__ import division, print_function
 import argparse
 import io
 import os  # noqa: F401. It is used in IDF scripts
+import traceback
 
 import espsecure
 
@@ -339,7 +340,11 @@ def espefuse(esp, efuses, args, command):
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='operation')
     add_commands(subparsers, efuses)
-    cmd_line_args = parser.parse_args(command.split())
+    try:
+        cmd_line_args = parser.parse_args(command.split())
+    except SystemExit:
+        traceback.print_stack()
+        raise esptool.FatalError('"{}" - incorrect command'.format(command))
     if cmd_line_args.operation == 'execute_scripts':
         configfiles = cmd_line_args.configfiles
         index = cmd_line_args.index
@@ -364,7 +369,7 @@ def execute_scripts(esp, efuses, args):
 
     for file in scripts:
         with open(file.name, 'r') as file:
-            exec(file.read())
+            exec(compile(file.read(), file.name, 'exec'))
 
     if args.debug:
         for block in efuses.blocks:
