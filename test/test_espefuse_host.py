@@ -989,6 +989,46 @@ class TestExecuteScriptsCommands(EfuseTestCase):
             self.assertIn('[8 ] read_regs: ffffffff 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
 
 
+class TestMultipleCommands(EfuseTestCase):
+    @unittest.skipUnless(chip_target == "esp32c2", "For this chip, FE and SB keys go into one BLOCK")
+    def test_1_esp32c2(self):
+        self.espefuse_py('burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
+                          burn_key BLOCK_KEY0 images/efuse/128bit_key XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS --no-read-protect \
+                          summary')
+        output = self.espefuse_py('summary -d')
+        self.assertIn('[3 ] read_regs: 0c0d0e0f 08090a0b 04050607 00010203 f66a0fbf 8b6dd38b a9dab353 040af633', output)
+        self.assertIn(' = 0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00 R/-', output)
+        self.assertIn(' = bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-', output)
+
+    @unittest.skipUnless(chip_target == "esp32c2", "For this chip, FE and SB keys go into one BLOCK")
+    def test_2_esp32c2(self):
+        self.espefuse_py('burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
+                          burn_key BLOCK_KEY0 images/efuse/128bit_key XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS \
+                          summary')
+        output = self.espefuse_py('summary -d')
+        self.assertIn('[3 ] read_regs: 00000000 00000000 00000000 00000000 f66a0fbf 8b6dd38b a9dab353 040af633', output)
+        self.assertIn(' = ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? -/-', output)
+        self.assertIn(' = bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-', output)
+
+    def test_burn_bit(self):
+        if chip_target == "esp32":
+            self._set_34_coding_scheme()
+        self.espefuse_py('burn_bit BLOCK2 0 1 2 3 \
+                          burn_bit BLOCK2 4 5 6 7 \
+                          burn_bit BLOCK2 8 9 10 11 \
+                          burn_bit BLOCK2 12 13 14 15 \
+                          summary')
+        output = self.espefuse_py('summary -d')
+        self.assertIn('[2 ] read_regs: 0000ffff 00000000', output)
+
+    def test_not_burn_cmds(self):
+        self.espefuse_py('summary \
+                          dump \
+                          get_custom_mac \
+                          adc_info \
+                          check_error')
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         chip_target = sys.argv[1]

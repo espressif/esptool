@@ -24,6 +24,21 @@ import esptool
 
 DefChip = namedtuple('DefChip', ['chip_name', 'efuse_lib', 'chip_class'])
 
+SUPPORTED_BURN_COMMANDS = [
+    'read_protect_efuse', 'write_protect_efuse',
+    'burn_efuse', 'burn_block_data', 'burn_bit', 'burn_key', 'burn_key_digest',
+    'burn_custom_mac',
+    'set_flash_voltage',
+    'execute_scripts',
+]
+
+SUPPORTED_COMMANDS = [
+    'summary', 'dump',
+    'get_custom_mac',
+    'adc_info',
+    'check_error',
+] + SUPPORTED_BURN_COMMANDS
+
 SUPPORTED_CHIPS = {
     'esp32': DefChip('ESP32', esp32_efuse, esptool.ESP32ROM),
     'esp32c2': DefChip('ESP32-C2', esp32c2_efuse, esptool.ESP32C2ROM),
@@ -58,6 +73,34 @@ def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
             return (efuse.EspEfuses(esp, skip_connect, debug_mode, do_not_confirm), efuse.operations)
     else:
         raise esptool.FatalError("get_efuses: Unsupported chip (%s)" % esp.CHIP_NAME)
+
+
+def split_on_groups(all_args):
+    """
+    This function splits the all_args list into groups, where each item is a cmd with all its args.
+
+    Example:
+    all_args: ['burn_key_digest', 'secure_images/ecdsa256_secure_boot_signing_key_v2.pem',
+               'burn_key', 'BLOCK_KEY0', 'images/efuse/128bit_key', 'XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS']
+
+    used_cmds: ['burn_key_digest', 'burn_key']
+    groups: [['burn_key_digest', 'secure_images/ecdsa256_secure_boot_signing_key_v2.pem'],
+             ['burn_key', 'BLOCK_KEY0', 'images/efuse/128bit_key', 'XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS']]
+    """
+
+    groups = []
+    cmd = []
+    used_cmds = []
+    for item in all_args:
+        if item in SUPPORTED_COMMANDS:
+            used_cmds.append(item)
+            if cmd != []:
+                groups.append(cmd)
+            cmd = []
+        cmd.append(item)
+    if cmd:
+        groups.append(cmd)
+    return groups, used_cmds
 
 
 def main(custom_commandline=None):
@@ -95,29 +138,48 @@ def main(custom_commandline=None):
     init_parser.add_argument('--path-efuse-file', help='For host tests, saves efuse memory to file.', type=str, default=None)
     init_parser.add_argument('--do-not-confirm', help='Do not pause for confirmation before permanently writing efuses. Use with caution.', action='store_true')
 
-    args1, remaining_args = init_parser.parse_known_args(custom_commandline)
-    debug_mode = args1.debug or ("dump" in remaining_args)
+    common_args, remaining_args = init_parser.parse_known_args(custom_commandline)
+    debug_mode = common_args.debug or ("dump" in remaining_args)
     just_print_help = [True for arg in remaining_args if arg in ["--help", "-h"]] or remaining_args == []
-    esp = get_esp(args1.port, args1.baud, args1.before, args1.chip, just_print_help, args1.virt, args1.debug, args1.path_efuse_file)
-    efuses, efuse_operations = get_efuses(esp, just_print_help, debug_mode, args1.do_not_confirm)
+    esp = get_esp(common_args.port,
+                  common_args.baud,
+                  common_args.before,
+                  common_args.chip,
+                  just_print_help,
+                  common_args.virt,
+                  common_args.debug,
+                  common_args.path_efuse_file)
+    efuses, efuse_operations = get_efuses(esp, just_print_help, debug_mode, common_args.do_not_confirm)
 
     parser = argparse.ArgumentParser(parents=[init_parser])
     subparsers = parser.add_subparsers(dest='operation', help='Run espefuse.py {command} -h for additional help')
 
     efuse_operations.add_commands(subparsers, efuses)
 
-    args = parser.parse_args(remaining_args)
-    vars(args).update(vars(args1))
-    print('espefuse.py v%s' % esptool.__version__)
-    if args.operation is None:
-        parser.print_help()
-        parser.exit(1)
-    operation_func = vars(efuse_operations)[args.operation]
+    grouped_remaining_args, used_cmds = split_on_groups(remaining_args)
+    there_are_multiple_burn_commands_in_args = sum(cmd in SUPPORTED_BURN_COMMANDS for cmd in used_cmds) > 1
+    if there_are_multiple_burn_commands_in_args:
+        efuses.batch_mode_cnt += 1
 
-    # each 'operation' is a module-level function of the same name
-    operation_func(esp, efuses, args)
+    for rem_args in grouped_remaining_args:
+        args, unused_args = parser.parse_known_args(rem_args, namespace=common_args)
+        print('espefuse.py v%s' % esptool.__version__)
+        if args.operation is None:
+            parser.print_help()
+            parser.exit(1)
+        assert len(unused_args) == 0, 'Not all commands were recognized "{}"'.format(unused_args)
 
-    if args1.virt is False:
+        operation_func = vars(efuse_operations)[args.operation]
+        # each 'operation' is a module-level function of the same name
+        print('\n=== Run "{}" command ==='.format(args.operation))
+        operation_func(esp, efuses, args)
+
+    if there_are_multiple_burn_commands_in_args:
+        efuses.batch_mode_cnt -= 1
+        if not efuses.burn_all(check_batch_mode=True):
+            raise esptool.FatalError('BURN was not done')
+
+    if common_args.virt is False:
         esp._port.close()
 
 

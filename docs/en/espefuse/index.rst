@@ -486,3 +486,16 @@ The example of a script to burn custom_mac address that generated right in the s
     cmd = 'burn_custom_mac mac'
     print(cmd)
     espefuse(esp, efuses, args, cmd)
+
+Perform Multiple Operations In A Single Espefuse Run
+----------------------------------------------------
+
+Some eFuse blocks have an encoding scheme (Reed-Solomon or 3/4) that requires encoded data, making these blocks only writable once. If you need to write multiple keys/eFuses to one block using different commands, you can use this feature - multiple commands. This feature burns given data once at the end of all commands. All commands supported by version v3.2 or later are supported to be chained together.
+
+The example below shows how to use the two commands ``burn_key_digest`` and ``burn_key`` to write the Secure Boot key and Flash Encryption key into one BLOCK3 for the ``ESP32-C2`` chip. Using these commands individually will result in only one key being written correctly.
+
+::
+
+    espefuse.py -c esp32c2  \
+                           burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
+                           burn_key BLOCK_KEY0 images/efuse/128bit_key XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
