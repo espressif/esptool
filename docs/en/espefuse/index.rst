@@ -18,7 +18,7 @@ Display Efuse Summary
 
 ::
 
-    espefuse.py --port /dev/ttyUSB1 summary
+    espefuse --port /dev/ttyUSB1 summary
 
 The options ``--port`` and ``--before`` can be supplied, and are identical to the :ref:`equivalent esptool options <options>`.
 
@@ -79,7 +79,7 @@ Output from the summary command will look like this:
 
 On relatively new chip, most efuses are unburned (value 0).
 
-In espefuse.py v2.6 and newer, read-protected efuse values are displayed as question marks (??). On earlier versions, they are displayed as zeroes.
+In ``espefuse.py`` v2.6 and newer, read-protected efuse values are displayed as question marks (??). On earlier versions, they are displayed as zeroes.
 
 For details on the meaning of each efuse value, refer to the `Technical Reference Manual <http://espressif.com/en/support/download/documents>`__.
 
@@ -90,7 +90,7 @@ To display raw efuse register values, use the ``dump`` subcommand:
 
 ::
 
-    espefuse.py --port /dev/ttyUSB1 dump
+    espefuse --port /dev/ttyUSB1 dump
     espefuse.py v2.0-dev
     Connecting....
     EFUSE block 0:
@@ -115,7 +115,7 @@ To burn an efuse to a new value, use the ``burn_efuse`` command:
 
 ::
 
-    espefuse.py --port /dev/DONOTDOTHIS burn_efuse JTAG_DISABLE 1
+    espefuse --port /dev/ttyUSB0 burn_efuse JTAG_DISABLE 1
 
 The arguments to ``burn_efuse`` are the name of the efuse (as shown in summary output) and the new value.
 
@@ -155,7 +155,7 @@ Disable VDD_SDIO Regulator
 
 ::
 
-    espefuse.py set_flash_voltage OFF
+    espefuse set_flash_voltage OFF
 
 Once set:
 
@@ -169,7 +169,7 @@ Fixed 1.8V VDD_SDIO
 
 ::
 
-    espefuse.py set_flash_voltage 1.8V
+    espefuse set_flash_voltage 1.8V
 
 Once set:
 
@@ -183,7 +183,7 @@ Fixed 3.3V VDD_SDIO
 
 ::
 
-    espefuse.py set_flash_voltage 3.3V
+    espefuse set_flash_voltage 3.3V
 
 Once set:
 
@@ -234,7 +234,7 @@ By default, when an encryption key block is burned it is also read and write pro
 
 ::
 
-    espefuse.py --port /dev/DONOTDOTHIS burn_key secure_boot keyfile.bin
+    espefuse --port /dev/ttyUSB0 burn_key secure_boot keyfile.bin
 
 Note that the hardware flash encryption and secure boot features require the key to be written to the efuse block in reversed byte order, compared to the order used by the AES algorithm on the host. ``burn_key`` automatically reverses the bytes when writing.
 For this reason, an unprotected key will read back in the reverse order to the ``keyfile.bin`` on the host.
@@ -264,13 +264,13 @@ Burning non-Key Data
 
 The ``burn_block_data`` command allows writing arbitrary data from a file into an efuse block, for software use.
 
-This command is available in espefuse.py v2.6 and newer.
+This command is available in ``espefuse.py`` v2.6 and newer.
 
 **Example:** Write to Efuse BLK3 from binary file ``device_id.bin``, starting at efuse byte offset 6:
 
 ::
 
-    espefuse.py -p PORT burn_block_data --offset 6 BLK3 device_id.bin
+    espefuse -p PORT burn_block_data --offset 6 BLK3 device_id.bin
 
 -  Data is written to the Efuse block in normal byte order (treating the efuse block as if it was an array of bytes). It can be read back in firmware from the efuse read registers, but these reads must be always be complete register words (4-byte aligned).
 -  Part of the Efuse block can be written at a time. The ``--offset`` argument allows writing to a byte offset inside the Efuse block itself.
@@ -335,7 +335,7 @@ Example:
 
 ::
 
-    espefuse.py --port /dev/SOMEPORT read_protect_efuse KEY_STATUS
+    espefuse --port /dev/SOMEPORT read_protect_efuse KEY_STATUS
 
 The ``--do-not-confirm`` option can be used with ``burn_key``, otherwise a manual confirmation step is required.
 
@@ -385,7 +385,7 @@ Execute Efuse Python Script
 
 ::
 
-    espefuse.py execute_scripts efuse_script1.py efuse_script2.py ...
+    espefuse execute_scripts efuse_script1.py efuse_script2.py ...
 
 This command allows burning all needed efuses at one time based on your own python script and control issues during the burn process if so it will abort the burn process. This command has a few arguments:
 
@@ -396,14 +396,14 @@ This command allows burning all needed efuses at one time based on your own pyth
 Below you can see some examples of the script. This script file is run from ``espefuse.py`` as ``exec(open(file.name).read())`` it means that some functions and imported libs are available for using like ``os``. Please use only provided functions.
 If you want to use other libs in the script you can add them manually.
 
-Inside this script, you can call all commands which are available in CLI, see ``espefuse.py --help``. To run a efuse command you need to call ``espefuse(esp, efuses, args, 'burn_efuse DISABLE_DL_DECRYPT 1')``. This command will not burn eFuses immediately, the burn occurs at the end of all scripts.
+Inside this script, you can call all commands which are available in CLI, see ``espefuse --help``. To run a efuse command you need to call ``espefuse(esp, efuses, args, 'burn_efuse DISABLE_DL_DECRYPT 1')``. This command will not burn eFuses immediately, the burn occurs at the end of all scripts.
 If necessary, you can call ``efuses.burn_all()`` which prompts ``Type 'BURN' (all capitals) to continue.``. To skip this check and go without confirmation just add the ``--do-not-confirm`` flag to the ``execute_scripts`` command.
 
 This command supports nesting. This means that one script can be called from another script (see the test case ``test_execute_scripts_nesting`` in ``esptool/test/test_espefuse_host.py``).
 
 ::
 
-    espefuse.py execute_scripts efuse_script1.py --do-not-confirm
+    espefuse execute_scripts efuse_script1.py --do-not-confirm
 
 Additionally, you can implement some checks based on the value of efuses. To get value of an efuse use ``efuses['FLASH_CRYPT_CNT'].get()``. Some eFuses have a dictionary to convert from a value to a human-readable as it looks in the table is printed by the ``summary`` command.
 See how it is done for ``CODING_SCHEME`` when ``get_meaning()`` is called:
@@ -448,7 +448,7 @@ In case you are running the ``execute_scripts`` command from your production scr
 
 ::
 
-    espefuse.py execute_scripts efuse_script2.py --do-not-confirm --index {index} --configfiles mac_addresses.json  unique_id.json
+    espefuse execute_scripts efuse_script2.py --do-not-confirm --index {index} --configfiles mac_addresses.json  unique_id.json
 
 The example of a script to burn custom_mac address and unique_id getting them from configfiles.
 
@@ -473,7 +473,7 @@ The example of a script to burn custom_mac address that generated right in the s
 
 .. code:: python
 
-    # efuse_script2.py 
+    # efuse_script2.py
 
     step = 4
     base_mac = '0xAABBCCDD0000'
@@ -496,6 +496,6 @@ The example below shows how to use the two commands ``burn_key_digest`` and ``bu
 
 ::
 
-    espefuse.py -c esp32c2  \
-                           burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
-                           burn_key BLOCK_KEY0 images/efuse/128bit_key XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
+    espefuse -c esp32c2  \
+                        burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
+                        burn_key BLOCK_KEY0 images/efuse/128bit_key XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS

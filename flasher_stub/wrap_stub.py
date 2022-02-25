@@ -57,7 +57,7 @@ ESP%sROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b\"\"\"
 %s\"\"\")))
 """
 
-ESPTOOL_PY = "../esptool.py"
+ESPTOOL_PY = "../esptool/__init__.py"
 
 
 def write_python_snippet_to_file(stub_name, stub_data, out_file):

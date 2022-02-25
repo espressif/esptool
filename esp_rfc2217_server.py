@@ -12,11 +12,11 @@
 #
 # Run the following command on the server side to make connection between /dev/ttyUSB1 and TCP port 4000:
 #
-#   esp_rfc2217_server.py -p 4000 /dev/ttyUSB1
+#   python esp_rfc2217_server.py -p 4000 /dev/ttyUSB1
 #
 # Esptool can connect to the ESP device through that server as it is demonstrated in the following example:
 #
-#   esptool.py --port rfc2217://localhost:4000?ign_set_control flash_id
+#   esptool --port rfc2217://localhost:4000?ign_set_control flash_id
 #
 ###################################################################################
 # redirect data from a TCP/IP connection to a serial port and vice versa
@@ -75,7 +75,7 @@ class EspPortManager(serial.rfc2217.PortManager):
         self.serial.setDTR(self.serial.dtr)
 
     def _reset_thread(self):
-        """ The reset logic is used from esptool.py because the RTS and DTR signals cannot be retransmitted through
+        """ The reset logic is used from esptool because the RTS and DTR signals cannot be retransmitted through
         RFC 2217 with proper timing.
         """
         if self.logger:

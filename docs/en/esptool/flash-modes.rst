@@ -12,7 +12,7 @@ To override these values, the options ``--flash_mode``, ``--flash_size`` and/or 
 
 ::
 
-    esptool.py --port /dev/ttyUSB1 write_flash --flash_mode dio --flash_size 4MB 0x0 bootloader.bin
+    esptool --port /dev/ttyUSB1 write_flash --flash_mode dio --flash_size 4MB 0x0 bootloader.bin
 
 These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset {IDF_TARGET_BOOTLOADER_OFFSET}. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
 

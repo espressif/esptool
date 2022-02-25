@@ -1,9 +1,9 @@
-Esptool Documentation
-=====================
+Esptool.py Documentation
+========================
 
-This is the documentation for esptool - a Python-based, open source, platform independent utility to communicate with the ROM bootloader in `Espressif SoCs <https://www.espressif.com/en/products/hardware/socs>`_.
+This is the documentation for ``esptool.py`` - a Python-based, open source, platform independent utility to communicate with the ROM bootloader in `Espressif SoCs <https://www.espressif.com/en/products/hardware/socs>`_.
 
-esptool, espefuse and espsecure are a complete toolset for working with Espressif chips. They can do a number of things, for example:
+``esptool.py``, ``espefuse.py`` and ``espsecure.py`` are a complete toolset for working with Espressif chips. They can do a number of things, for example:
 
 * Read, write, erase, and verify binary data stored in flash.
 * Read chip features and other related data such as MAC address or flash chip ID.
@@ -11,14 +11,14 @@ esptool, espefuse and espsecure are a complete toolset for working with Espressi
 * Prepare binary executable images ready for flashing.
 * Analyze, assemble, and merge binary images.
 
-This document describes using esptool with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left.
+This document describes using ``esptool.py`` with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left.
 
 Quick Start
 -----------
 
 Getting started is easy:
 
-1) Install esptool:
+1) Install ``esptool.py``:
 
     ::
 
@@ -29,13 +29,19 @@ Getting started is easy:
 
 2) Connect an Espressif chip to your computer.
 
-3) Run esptool commands:
+3) Run ``esptool.py`` commands:
 
     ::
 
         $ esptool -p PORT flash_id
 
     Replace ``PORT`` with the name of used serial port. If connection fails, see :ref:`troubleshooting`.
+
+.. note::
+
+    Starting from v4.0, ``esptool.py`` is run simply as ``$ esptool -h``, on the command-line. The same applies to ``espefuse.py`` and ``espsecure.py``.
+
+    The ``.py`` extension is only used when reffering to the tools in a written documentation.
 
 More Information
 ----------------

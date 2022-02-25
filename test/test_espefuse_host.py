@@ -16,12 +16,10 @@
 # where  - ttyUSB0 - a port for espefuse.py operation
 #        - ttyUSB1 - a port to clear efuses (connect RTS or DTR ->- J14 pin 39)
 #
-# Note: For FPGA with ESP32 image, need to add a line into esptool.py
-#            time.sleep(7)  # FPGA delay
-#       after this line:
-#            self._setDTR(False)  # IO0=HIGH, done
-#       because the long delay (~6 seconds) after resetting the FPGA.
-#       For FPGA with ESP32-S2 image, it is not necessary
+# Note: For FPGA with ESP32 image, you need to set an env variable ESPTOOL_ENV_FPGA to 1
+#       to slow down the connection sequence
+#       because of a long delay (~6 seconds) after resetting the FPGA.
+#       This is not necessary when using other images than ESP32
 from __future__ import division, print_function
 
 import os
@@ -810,7 +808,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
 @unittest.skipUnless(chip_target == "esp32c2", "The test only for esp32c2, supports one key block")
 class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
     def test_burn_key_digest1(self):
-        # espsecure.py generate_signing_key --version 2 secure_images/ecdsa192_secure_boot_signing_key_v2.pem   --scheme ecdsa192
+        # python espsecure.py generate_signing_key --version 2 secure_images/ecdsa192_secure_boot_signing_key_v2.pem   --scheme ecdsa192
         self.espefuse_py("burn_key_digest -h")
         self.espefuse_py('burn_key_digest secure_images/ecdsa192_secure_boot_signing_key_v2.pem')
         output = self.espefuse_py('summary -d')
@@ -818,7 +816,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         self.assertIn(' = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-', output)
 
     def test_burn_key_digest2(self):
-        # espsecure.py generate_signing_key --version 2 secure_images/ecdsa256_secure_boot_signing_key_v2.pem   --scheme ecdsa256
+        # python espsecure.py generate_signing_key --version 2 secure_images/ecdsa256_secure_boot_signing_key_v2.pem   --scheme ecdsa256
         self.espefuse_py("burn_key_digest -h")
         self.espefuse_py('burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem')
         output = self.espefuse_py('summary -d')
@@ -826,14 +824,14 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         self.assertIn(' = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-', output)
 
     def test_burn_key_from_digest1(self):
-        # espsecure.py digest_sbv2_public_key --keyfile secure_images/ecdsa192_secure_boot_signing_key_v2.pem \
+        # python espsecure.py digest_sbv2_public_key --keyfile secure_images/ecdsa192_secure_boot_signing_key_v2.pem \
         #                                            -o secure_images/ecdsa192_public_key_digest_v2.bin
         self.espefuse_py('burn_key BLOCK_KEY0 secure_images/ecdsa192_public_key_digest_v2.bin SECURE_BOOT_DIGEST')
         output = self.espefuse_py('summary -d')
         self.assertIn(' = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-', output)
 
     def test_burn_key_from_digest2(self):
-        # espsecure.py digest_sbv2_public_key --keyfile secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
+        # python espsecure.py digest_sbv2_public_key --keyfile secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
         #                                            -o secure_images/ecdsa256_public_key_digest_v2.bin
         self.espefuse_py('burn_key BLOCK_KEY0 secure_images/ecdsa256_public_key_digest_v2.bin SECURE_BOOT_DIGEST')
         output = self.espefuse_py('summary -d')

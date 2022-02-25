@@ -29,7 +29,7 @@ To also install additional tools needed for actually developing and testing espt
 
 ::
 
-   $ pip install --user -e .[dev]
+   $ pip install --user -e ".[dev]"
 
 (This command uses the “extras” feature of setuptools.)
 
@@ -78,7 +78,7 @@ When you submit a Pull Request, the GitHub Actions automated build system will r
 Automated Integration Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The test directory contains an integration suite with some integration tests for ``esptool.py``:
+The test directory contains an integration suite with some integration tests for ``esptool``:
 
 *  ``test_imagegen.py`` tests the elf2image command and is run automatically by GitHub Actions for each Pull Request. You can run this command locally to check for regressions in the elf2image functionality.
 

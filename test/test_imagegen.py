@@ -16,7 +16,7 @@ os.chdir(TEST_DIR)
 try:
     ESPTOOL_PY = os.environ["ESPTOOL_PY"]
 except KeyError:
-    ESPTOOL_PY = os.path.join(TEST_DIR, "../..", "esptool.py")
+    ESPTOOL_PY = os.path.join(TEST_DIR, "../..", "esptool/__init__.py")
 
 # import the version of esptool we are testing with
 sys.path.append(os.path.dirname(ESPTOOL_PY))
@@ -100,7 +100,7 @@ class BaseTestCase(unittest.TestCase):
 
     def assertImageInfo(self, binpath, chip="esp8266"):
         """
-        Run esptool.py image_info on a binary file,
+        Run esptool image_info on a binary file,
         assert no red flags about contents.
         """
         cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "image_info", binpath]

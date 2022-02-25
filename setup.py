@@ -12,13 +12,13 @@ import sys
 try:
     from setuptools import find_packages, setup
 except ImportError:
-    print('Package setuptools is missing from your Python installation. Please see the installation section of '
-          'the README for instructions on how to install it.')
+    print('Package setuptools is missing from your Python installation. Please see the installation section '
+          'in the esptool documentation for instructions on how to install it.')
     exit(1)
 
 
-# Example code to pull version from esptool.py with regex, taken from
-# http://python-packaging-user-guide.readthedocs.org/en/latest/single_source_version/
+# Example code to pull version from esptool module with regex, taken from
+# https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
 def read(*names, **kwargs):
     with io.open(
             os.path.join(os.path.dirname(__file__), *names),
@@ -47,34 +47,17 @@ The esptool.py project is `hosted on github <https://github.com/espressif/esptoo
 Documentation
 -------------
 
-Visit online `esptool documentation <https://docs.espressif.com/projects/esptool/>`_ or run ``esptool.py -h``.
+Visit online `esptool documentation <https://docs.espressif.com/projects/esptool/>`_ or run ``esptool -h``.
 
 Contributing
 ------------
 Please see the `contributions guide <https://docs.espressif.com/projects/esptool/en/latest/contributing.html>`_.
 """
 
-# For Windows, we want to install esptool.py.exe, etc. so that normal Windows command line can run them
-# For Linux/macOS, we can't use console_scripts with extension .py as their names will clash with the modules' names.
-if os.name == "nt":
-    scripts = None
-    entry_points = {
-        'console_scripts': [
-            'esptool.py=esptool:_main',
-            'espsecure.py=espsecure:_main',
-            'espefuse.py=espefuse:_main',
-        ],
-    }
-else:
-    scripts = ['esptool.py',
-               'espsecure.py',
-               'espefuse.py']
-    entry_points = None
-
 setup(
     name='esptool',
-    py_modules=['esptool', 'espsecure', 'espefuse'],
-    version=find_version('esptool.py'),
+    py_modules=['espsecure', 'espefuse'],
+    version=find_version('esptool/__init__.py'),
     description='A serial utility to communicate & flash code to Espressif chips.',
     long_description=long_description,
     url='https://github.com/espressif/esptool/',
@@ -127,6 +110,12 @@ setup(
         'reedsolo>=1.5.3,<=1.5.4',
     ],
     packages=find_packages(),
-    scripts=scripts,
-    entry_points=entry_points,
+    scripts=None,
+    entry_points={
+        'console_scripts': [
+            'esptool=esptool.__init__:_main',
+            'espsecure=espsecure:_main',
+            'espefuse=espefuse:_main',
+        ],
+    }
 )

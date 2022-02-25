@@ -13,7 +13,7 @@ IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images")
 try:
     ESPTOOL_PY = os.environ["ESPTOOL_PY"]
 except KeyError:
-    ESPTOOL_PY = os.path.join(IMAGES_DIR, "../..", "esptool.py")
+    ESPTOOL_PY = os.path.join(IMAGES_DIR, "../..", "esptool/__init__.py")
 
 # import the version of esptool we are testing with
 sys.path.append(os.path.dirname(ESPTOOL_PY))

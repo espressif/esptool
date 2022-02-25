@@ -12,13 +12,13 @@ import sys
 from collections import namedtuple
 from io import StringIO
 
-import espressif.efuse.esp32 as esp32_efuse
-import espressif.efuse.esp32c2 as esp32c2_efuse
-import espressif.efuse.esp32c3 as esp32c3_efuse
-import espressif.efuse.esp32h2beta1 as esp32h2beta1_efuse
-import espressif.efuse.esp32s2 as esp32s2_efuse
-import espressif.efuse.esp32s3 as esp32s3_efuse
-import espressif.efuse.esp32s3beta2 as esp32s3beta2_efuse
+import efuse.esp32 as esp32_efuse
+import efuse.esp32c2 as esp32c2_efuse
+import efuse.esp32c3 as esp32c3_efuse
+import efuse.esp32h2beta1 as esp32h2beta1_efuse
+import efuse.esp32s2 as esp32s2_efuse
+import efuse.esp32s3 as esp32s3_efuse
+import efuse.esp32s3beta2 as esp32s3beta2_efuse
 
 import esptool
 
@@ -152,7 +152,7 @@ def main(custom_commandline=None):
     efuses, efuse_operations = get_efuses(esp, just_print_help, debug_mode, common_args.do_not_confirm)
 
     parser = argparse.ArgumentParser(parents=[init_parser])
-    subparsers = parser.add_subparsers(dest='operation', help='Run espefuse.py {command} -h for additional help')
+    subparsers = parser.add_subparsers(dest='operation', help='Run espefuse {command} -h for additional help')
 
     efuse_operations.add_commands(subparsers, efuses)
 

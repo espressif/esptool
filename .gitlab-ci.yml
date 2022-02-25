@@ -21,13 +21,15 @@ cache:
   tags:
     - host_test
   dependencies: []
+  before_script:
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh python -m pip install -e .
 
 version_check:
   <<: *test_template
   only:
     - tags
   script:
-        - VERSION=$(python esptool.py version | head -n 1)
+        - VERSION=$(esptool version | head -n 1)
         - |
           if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]]
           then
@@ -47,7 +49,6 @@ host_tests:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
   script:
-    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/setup.py build
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_imagegen.py
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espsecure.py
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_merge_bin.py
@@ -99,6 +100,9 @@ check_installation_can_run:
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode esptool.py --help
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode espefuse.py --help
     - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh coverage run --parallel-mode espsecure.py --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh esptool --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espefuse --help
+    - ${CI_PROJECT_DIR}/test/ci/multirun_with_pyenv.sh espsecure --help
 
 # Check the stub can build and that a stub built in CI has the same contents
 # as the one embedded in esptool

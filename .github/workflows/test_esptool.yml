@@ -33,9 +33,9 @@ jobs:
 
     - name: Check the installed versions can run
       run: |
-        esptool.py --help
-        espefuse.py --help
-        espsecure.py --help
+        esptool --help
+        espefuse --help
+        espsecure --help
 
     - name: Build stub (Python 3.7 only)
       if: matrix.python-version == 3.7

@@ -21,4 +21,4 @@ The main benefit is improved performance of flashing and some other operations (
 Disabling the Stub Loader
 -------------------------
 
-There might be cases where it is necessary to disable the stub loader (e.g. debugging). To do that, run ``esptool.py`` with the ``--no-stub`` argument. All operations will then be handled by the original ROM bootloader. See the related :ref:`advanced options page <disable_stub>`.
+There might be cases where it is necessary to disable the stub loader (e.g. debugging). To do that, run ``esptool`` with the ``--no-stub`` argument. All operations will then be handled by the original ROM bootloader. See the related :ref:`advanced options page <disable_stub>`.

@@ -39,7 +39,7 @@ os.chdir(os.path.dirname(__file__))
 try:
     ESPTOOL_PY = os.environ["ESPTOOL_PY"]
 except KeyError:
-    ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool.py")
+    ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool/__init__.py")
 ESPSECURE_PY = os.path.join(TEST_DIR, "..", "espsecure.py")
 ESPRFC2217SERVER_PY = os.path.join(TEST_DIR, "..", "esp_rfc2217_server.py")
 
