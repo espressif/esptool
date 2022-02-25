@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+#
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import division, print_function
 
 import sys
@@ -29,62 +34,23 @@ if __name__ == "__main__":
     same = True
     sys.path.append("..")
     import esptool
+    import esptool.stub_flasher  # old version in esptool module
+    sys.path.append("build")
+    import stub_flasher_snippet          # new version in build directory
 
-    old_8266_stub = esptool.ESP8266ROM.STUB_CODE
-    old_32_stub = esptool.ESP32ROM.STUB_CODE
-    old_32s2_stub = esptool.ESP32S2ROM.STUB_CODE
-    old_32s3_beta2_stub = esptool.ESP32S3BETA2ROM.STUB_CODE
-    old_32s3_stub = esptool.ESP32S3ROM.STUB_CODE
-    old_32c3_stub = esptool.ESP32C3ROM.STUB_CODE
-    old_32c6_beta_stub = esptool.ESP32C6BETAROM.STUB_CODE
-    old_32h2_beta1_stub = esptool.ESP32H2BETA1ROM.STUB_CODE
-    old_32h2_beta2_stub = esptool.ESP32H2BETA2ROM.STUB_CODE
-    old_32c2_stub = esptool.ESP32C2ROM.STUB_CODE
+    chip_list = [chip_name.upper() for chip_name in esptool.SUPPORTED_CHIPS]
 
-    # hackiness: importing this module updates the loaded esptool module with the new stubs
-    import esptool_test_stub  # noqa
+    for chip in chip_list:
+        key = "%sStubCode" % chip  # name of the binary variable in each module
+        old = esptool.stub_flasher.__dict__[key]
+        new = stub_flasher_snippet.__dict__[key]
 
-    if esptool.ESP8266ROM.STUB_CODE != old_8266_stub:
-        print("ESP8266 stub code in esptool.py is different to just-built stub")
-        verbose_diff(esptool.ESP8266ROM.STUB_CODE, old_8266_stub)
-        same = False
-    if esptool.ESP32ROM.STUB_CODE != old_32_stub:
-        print("ESP32 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32ROM.STUB_CODE, old_32_stub)
-        same = False
-    if esptool.ESP32S2ROM.STUB_CODE != old_32s2_stub:
-        print("ESP32S2 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32S2ROM.STUB_CODE, old_32s2_stub)
-        same = False
-    if esptool.ESP32S3BETA2ROM.STUB_CODE != old_32s3_beta2_stub:
-        print("ESP32S3 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32S3BETA2ROM.STUB_CODE, old_32s3_beta2_stub)
-        same = False
-    if esptool.ESP32S3ROM.STUB_CODE != old_32s3_stub:
-        print("ESP32S3 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32S3ROM.STUB_CODE, old_32s3_stub)
-        same = False
-    if esptool.ESP32C3ROM.STUB_CODE != old_32c3_stub:
-        print("ESP32C3 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32C3ROM.STUB_CODE, old_32c3_stub)
-        same = False
-    if esptool.ESP32C6BETAROM.STUB_CODE != old_32c6_beta_stub:
-        print("ESP32C6 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32C6BETAROM.STUB_CODE, old_32c6_beta_stub)
-        same = False
-    if esptool.ESP32H2BETA1ROM.STUB_CODE != old_32h2_beta1_stub:
-        print("ESP32H2BETA1 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32H2BETA1ROM.STUB_CODE, old_32h2_beta1_stub)
-        same = False
-    if esptool.ESP32H2BETA2ROM.STUB_CODE != old_32h2_beta2_stub:
-        print("ESP32H2BETA2 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32H2BETA2ROM.STUB_CODE, old_32h2_beta2_stub)
-        same = False
-    if esptool.ESP32C2ROM.STUB_CODE != old_32c2_stub:
-        print("ESP32C2 stub code in esptool.py is different to just-built stub.")
-        verbose_diff(esptool.ESP32C2ROM.STUB_CODE, old_32c2_stub)
-        same = False
+        if old != new:
+            print("{} stub code in esptool.stub_flasher is different to just-built stub.".format(chip))
+            verbose_diff(new, old)
+            same = False
+
     if same:
-        print("Stub code is the same")
+        print("Stub flasher codes are the same")
 
     sys.exit(0 if same else 1)

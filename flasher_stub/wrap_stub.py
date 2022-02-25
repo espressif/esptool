@@ -52,12 +52,18 @@ def wrap_stub(elf_file):
     return stub
 
 
+PYTHON_IMPORTS = """\
+import zlib
+import base64
+
+"""
+
 PYTHON_TEMPLATE = """\
-ESP%sROM.STUB_CODE = eval(zlib.decompress(base64.b64decode(b\"\"\"
+ESP%sStubCode = eval(zlib.decompress(base64.b64decode(b\"\"\"
 %s\"\"\")))
 """
 
-ESPTOOL_PY = "../esptool/__init__.py"
+STUB_FLASHER_PY = "../esptool/stub_flasher.py"
 
 
 def write_python_snippet_to_file(stub_name, stub_data, out_file):
@@ -72,6 +78,7 @@ def write_python_snippet_to_file(stub_name, stub_data, out_file):
 
 
 def write_python_snippets(stub_dict, out_file):
+    out_file.write(PYTHON_IMPORTS)
     for name, stub_data in stub_dict.items():
         m = re.match(r"stub_flasher_([a-z0-9_]+)", name)
         key = m.group(1).upper()
@@ -79,10 +86,10 @@ def write_python_snippets(stub_dict, out_file):
 
 
 def embed_python_snippets(stubs):
-    with open(ESPTOOL_PY, 'r') as f:
+    with open(STUB_FLASHER_PY, 'r') as f:
         lines = [line for line in f]
 
-    with open(ESPTOOL_PY, "w") as f:
+    with open(STUB_FLASHER_PY, "w") as f:
         skip_until = None
         for line in lines:
             if skip_until is not None:
@@ -90,7 +97,7 @@ def embed_python_snippets(stubs):
                     skip_until = None
                 continue
 
-            m = re.search(r"ESP([A-Z0-9]+)ROM.STUB_CODE = eval", line)
+            m = re.search(r"ESP([A-Z0-9]+)StubCode = eval", line)
             if not m:
                 f.write(line)
                 continue
