@@ -272,7 +272,7 @@ class EfuseMacField(EfuseField):
         # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
         bindata = binascii.unhexlify(hexad)
         # unicast address check according to https://tools.ietf.org/html/rfc7042#section-2.1
-        if esptool.byte(bindata, 0) & 0x01:
+        if esptool.src.byte(bindata, 0) & 0x01:
             raise esptool.FatalError("Custom MAC must be a unicast MAC!")
         return bindata
 

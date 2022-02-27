@@ -25,7 +25,7 @@ import esptool  # noqa: E402
 def wrap_stub(elf_file):
     """ Wrap an ELF file into a stub 'dict' """
     print('Wrapping ELF file %s...' % elf_file)
-    e = esptool.ELFFile(elf_file)
+    e = esptool.src.ELFFile(elf_file)
 
     text_section = e.get_section('.text')
     try:
