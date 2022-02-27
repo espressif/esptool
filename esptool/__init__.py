@@ -17,11 +17,32 @@ import shlex
 import sys
 import time
 
-from esptool.src import DEFAULT_CONNECT_ATTEMPTS, ESP32ROM, ESP8266ROM, ESPLoader, SUPPORTED_CHIPS, \
-    detect_flash_size, get_default_connected_device, list_ports
-from esptool.src import chip_id, dump_mem, elf2image, erase_flash, erase_region, flash_id, get_security_info, \
-    image_info, load_ram, make_image, merge_bin, read_flash, read_flash_status, read_mac, \
-    read_mem, run, verify_flash, version, write_flash, write_flash_status, write_mem
+from esptool.cmds import (
+    chip_id,
+    detect_flash_size,
+    dump_mem,
+    elf2image,
+    erase_flash,
+    erase_region,
+    flash_id,
+    get_security_info,
+    image_info,
+    load_ram,
+    make_image,
+    merge_bin,
+    read_flash,
+    read_flash_status,
+    read_mac,
+    read_mem,
+    run,
+    verify_flash,
+    version,
+    write_flash,
+    write_flash_status,
+    write_mem,
+)
+from esptool.src import DEFAULT_CONNECT_ATTEMPTS, SUPPORTED_CHIPS
+from esptool.src import ESP32ROM, ESP8266ROM, ESPLoader, get_default_connected_device, list_ports
 from esptool.util import FatalError, NotImplementedInROMError, PYTHON2, flash_size_bytes, format_chip_name
 
 
