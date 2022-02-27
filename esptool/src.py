@@ -22,6 +22,8 @@ import zlib
 from . import __version__
 from .stub_flasher import ESP32C2StubCode, ESP32C3StubCode, ESP32C6BETAStubCode, ESP32H2BETA1StubCode, ESP32H2BETA2StubCode, \
     ESP32S2StubCode, ESP32S3BETA2StubCode, ESP32S3StubCode, ESP32StubCode, ESP8266StubCode
+from .util import FatalError, NotImplementedInROMError, NotSupportedError, UnsupportedCommandError
+from .util import PYTHON2, byte, div_roundup, flash_size_bytes, hexify, mask_to_shift, pad_to, print_overwrite
 
 try:
     import serial
@@ -144,11 +146,6 @@ def check_supported_function(func, check_func):
     return inner
 
 
-def esp8266_function_only(func):
-    """ Attribute for a function only supported on ESP8266 """
-    return check_supported_function(func, lambda o: o.CHIP_NAME == "ESP8266")
-
-
 def stub_function_only(func):
     """ Attribute for a function only supported in the software stub loader """
     return check_supported_function(func, lambda o: o.IS_STUB)
@@ -164,46 +161,11 @@ def esp32s3_or_newer_function_only(func):
     return check_supported_function(func, lambda o: isinstance(o, ESP32S3ROM) or isinstance(o, ESP32C3ROM))
 
 
-PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
-
-# Function to return nth byte of a bitstring
-# Different behaviour on Python 2 vs 3
-if PYTHON2:
-    def byte(bitstr, index):
-        return ord(bitstr[index])
-else:
-    def byte(bitstr, index):
-        return bitstr[index]
-
 # Provide a 'basestring' class on Python 3
 try:
     basestring
 except NameError:
     basestring = str
-
-
-def print_overwrite(message, last_line=False):
-    """ Print a message, overwriting the currently printed line.
-
-    If last_line is False, don't append a newline at the end (expecting another subsequent call will overwrite this one.)
-
-    After a sequence of calls with last_line=False, call once with last_line=True.
-
-    If output is not a TTY (for example redirected a pipe), no overwriting happens and this function is the same as print().
-    """
-    if sys.stdout.isatty():
-        print("\r%s" % message, end='\n' if last_line else '')
-    else:
-        print(message)
-
-
-def _mask_to_shift(mask):
-    """ Return the index of the least significant bit in the mask """
-    shift = 0
-    while mask & 0x1 == 0:
-        shift += 1
-        mask >>= 1
-    return shift
 
 
 class ESPLoader(object):
@@ -726,7 +688,7 @@ class ESPLoader(object):
 
         Returns just-written value of register.
         """
-        shift = _mask_to_shift(mask)
+        shift = mask_to_shift(mask)
         val = self.read_reg(addr)
         val &= ~mask
         val |= (new_val << shift) & mask
@@ -3630,47 +3592,10 @@ def slip_reader(port, trace_function):
                 partial_packet += b
 
 
-def format_chip_name(c):
-    """ Normalize chip name from user input """
-    c = c.lower().replace('-', '')
-    if c == 'esp8684':  # TODO: Delete alias, ESPTOOL-389
-        print('WARNING: Chip name ESP8684 is deprecated in favor of ESP32-C2 and will be removed in a future release. Using ESP32-C2 instead.')
-        return 'esp32c2'
-    return c
-
-
-def div_roundup(a, b):
-    """ Return a/b rounded up to nearest integer,
-    equivalent result to int(math.ceil(float(int(a)) / float(int(b))), only
-    without possible floating point accuracy errors.
-    """
-    return (int(a) + int(b) - 1) // int(b)
-
-
 def align_file_position(f, size):
     """ Align the position in the file to the next block of specified size """
     align = (size - 1) - (f.tell() % size)
     f.seek(align, 1)
-
-
-def flash_size_bytes(size):
-    """ Given a flash size of the type passed in args.flash_size
-    (ie 512KB or 1MB) then return the size in bytes.
-    """
-    if "MB" in size:
-        return int(size[:size.index("MB")]) * 1024 * 1024
-    elif "KB" in size:
-        return int(size[:size.index("KB")]) * 1024
-    else:
-        raise FatalError("Unknown size %s" % size)
-
-
-def hexify(s, uppercase=True):
-    format_str = '%02X' if uppercase else '%02x'
-    if not PYTHON2:
-        return ''.join(format_str % c for c in s)
-    else:
-        return ''.join(format_str % ord(c) for c in s)
 
 
 class HexFormatter(object):
@@ -3708,80 +3633,10 @@ class HexFormatter(object):
             return hexify(self._s, False)
 
 
-def pad_to(data, alignment, pad_character=b'\xFF'):
-    """ Pad to the next alignment boundary """
-    pad_mod = len(data) % alignment
-    if pad_mod != 0:
-        data += pad_character * (alignment - pad_mod)
-    return data
-
-
-class FatalError(RuntimeError):
-    """
-    Wrapper class for runtime errors that aren't caused by internal bugs, but by
-    ESP ROM responses or input content.
-    """
-    def __init__(self, message):
-        RuntimeError.__init__(self, message)
-
-    @staticmethod
-    def WithResult(message, result):
-        """
-        Return a fatal error object that appends the hex values of
-        'result' and its meaning as a string formatted argument.
-        """
-
-        err_defs = {
-            0x101: 'Out of memory',
-            0x102: 'Invalid argument',
-            0x103: 'Invalid state',
-            0x104: 'Invalid size',
-            0x105: 'Requested resource not found',
-            0x106: 'Operation or feature not supported',
-            0x107: 'Operation timed out',
-            0x108: 'Received response was invalid',
-            0x109: 'CRC or checksum was invalid',
-            0x10A: 'Version was invalid',
-            0x10B: 'MAC address was invalid',
-        }
-
-        err_code = struct.unpack(">H", result[:2])
-        message += " (result was {}: {})".format(hexify(result), err_defs.get(err_code[0], 'Unknown result'))
-        return FatalError(message)
-
-
-class NotImplementedInROMError(FatalError):
-    """
-    Wrapper class for the error thrown when a particular ESP bootloader function
-    is not implemented in the ROM bootloader.
-    """
-    def __init__(self, bootloader, func):
-        FatalError.__init__(self, "%s ROM does not support function %s." % (bootloader.CHIP_NAME, func.__name__))
-
-
-class NotSupportedError(FatalError):
-    def __init__(self, esp, function_name):
-        FatalError.__init__(self, "Function %s is not supported for %s." % (function_name, esp.CHIP_NAME))
-
 # "Operation" commands, executable at command line. One function each
 #
 # Each function takes either two args (<ESPLoader instance>, <args>) or a single <args>
 # argument.
-
-
-class UnsupportedCommandError(RuntimeError):
-    """
-    Wrapper class for when ROM loader returns an invalid command response.
-
-    Usually this indicates the loader is running in Secure Download Mode.
-    """
-    def __init__(self, esp, op):
-        if esp.secure_download_mode:
-            msg = "This command (0x%x) is not supported in Secure Download Mode" % op
-        else:
-            msg = "Invalid (unsupported) command 0x%x" % op
-        RuntimeError.__init__(self, msg)
-
 
 def load_ram(esp, args):
     image = LoadFirmwareImage(esp.CHIP_NAME, args.filename)

@@ -19,7 +19,7 @@ except KeyError:
 sys.path.append(os.path.dirname(ESPTOOL_PY))
 
 
-from esptool.src import byte
+from esptool.util import byte
 
 
 def read_image(filename):
