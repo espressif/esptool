@@ -31,7 +31,7 @@ function FindSignTool {
     Exit 1
 }
 
-function SignInstaller {
+function SignEsptool {
     param(
         [Parameter()]
         [String]
@@ -52,7 +52,7 @@ function SignInstaller {
         Exit 1
     }
 
-    $SignParameters = @("sign", "/tr", 'http://timestamp.digicert.com', "/f", $CertificateFile)
+    $SignParameters = @("sign", "/tr", 'http://timestamp.digicert.com', "/td", "SHA256", "/f", $CertificateFile, "/fd", "SHA256")
     if ($env:CERTIFICATE_PASSWORD) {
         "CERTIFICATE_PASSWORD detected, using the password"
         $SignParameters += "/p"
@@ -75,4 +75,4 @@ function SignInstaller {
 
 }
 
-SignInstaller ${Path}
+SignEsptool ${Path}
