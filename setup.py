@@ -56,7 +56,6 @@ Please see the `contributions guide <https://docs.espressif.com/projects/esptool
 
 setup(
     name='esptool',
-    py_modules=['espsecure', 'espefuse'],
     version=find_version('esptool/__init__.py'),
     description='A serial utility to communicate & flash code to Espressif chips.',
     long_description=long_description,
@@ -110,12 +109,11 @@ setup(
         'reedsolo>=1.5.3,<=1.5.4',
     ],
     packages=find_packages(),
-    scripts=None,
     entry_points={
         'console_scripts': [
             'esptool=esptool.__init__:_main',
-            'espsecure=espsecure:_main',
-            'espefuse=espefuse:_main',
+            'espsecure=espsecure.__init__:_main',
+            'espefuse=espefuse.__init__:_main',
         ],
     }
 )

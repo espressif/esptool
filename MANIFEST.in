@@ -6,8 +6,10 @@ prune test
 prune flasher_stub
 prune .github
 prune docs
-# esptool.py is only compatibility for the older "run from source dir" approach
-# it is not used at all when installing with setup.py or pip
-exclude esptool.py
 exclude .git*
 exclude MANIFEST*
+# the following scripts are only compatibility for the older "run from source dir" approach
+# these are not used at all when installing with setup.py or pip
+exclude esptool.py
+exclude espefuse.py
+exclude espsecure.py

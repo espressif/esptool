@@ -8,7 +8,7 @@
 #    - `python test_espefuse_host.py esp32`
 #    - `python test_espefuse_host.py esp32s2`
 #
-# 2. Run as TEST on FPGA (connection to FPGA with an image ESP32 or ESP32-S2):
+# 2. Run as TEST on FPGA (connection to FPGA with a flashed image):
 #    required two COM ports
 #    - `python test_espefuse_host.py esp32   /dev/ttyUSB0 /dev/ttyUSB1`
 #    - `python test_espefuse_host.py esp32s2 /dev/ttyUSB0 /dev/ttyUSB1`
@@ -34,7 +34,7 @@ from bitstring import BitString
 import serial
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-ESPEFUSE_PY = os.path.abspath(os.path.join(TEST_DIR, '..', 'espefuse.py'))
+ESPEFUSE_PY = os.path.abspath(os.path.join(TEST_DIR, '..', 'espefuse/__init__.py'))
 ESPEFUSE_DIR = os.path.abspath(os.path.join(TEST_DIR, '..'))
 os.chdir(TEST_DIR)
 sys.path.insert(0, os.path.join(TEST_DIR, ".."))
@@ -130,11 +130,11 @@ class EfuseTestCase(unittest.TestCase):
 class TestReadCommands(EfuseTestCase):
 
     def test_help(self):
-        self.espefuse_not_virt_py("--help", check_msg='usage: espefuse.py [-h]')
+        self.espefuse_not_virt_py("--help", check_msg='usage: __init__.py [-h]')
         self.espefuse_not_virt_py("--chip %s --help" % (chip_target))
 
     def test_help2(self):
-        self.espefuse_not_virt_py('', check_msg='usage: espefuse.py [-h]', ret_code=1)
+        self.espefuse_not_virt_py('', check_msg='usage: __init__.py [-h]', ret_code=1)
 
     def test_dump(self):
         self.espefuse_py("dump -h")
@@ -1007,19 +1007,19 @@ class TestMultipleCommands(EfuseTestCase):
                           {cmd1} \
                           {cmd2} \
                           '.format(cmd1=command1, cmd2=command2),
-                         check_msg='usage: espefuse.py [-h]')
+                         check_msg='usage: __init__.py [-h]')
 
         self.espefuse_py(' \
                           {cmd1} -h \
                           {cmd2} \
                           '.format(cmd1=command1, cmd2=command2),
-                         check_msg='usage: espefuse.py burn_key_digest [-h]')
+                         check_msg='usage: __init__.py burn_key_digest [-h]')
 
         self.espefuse_py(' \
                           {cmd1} \
                           {cmd2} -h \
                           '.format(cmd1=command1, cmd2=command2),
-                         check_msg='usage: espefuse.py burn_key [-h]')
+                         check_msg='usage: __init__.py burn_key [-h]')
 
     @unittest.skipUnless(chip_target == "esp32c2", "For this chip, FE and SB keys go into one BLOCK")
     def test_1_esp32c2(self):
