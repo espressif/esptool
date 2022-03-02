@@ -150,7 +150,7 @@ class ESP8266V1ImageTests(BaseTestCase):
                              "IROM raw binary file should be same length as .irom0.text section")
 
     def test_loaded_sections(self):
-        image = esptool.src.LoadFirmwareImage("esp8266", self.BIN_LOAD)
+        image = esptool.bin_image.LoadFirmwareImage("esp8266", self.BIN_LOAD)
         # Adjacent sections are now merged, len(image.segments) should
         # equal 2 (instead of 3).
         self.assertEqual(2, len(image.segments))
@@ -170,7 +170,7 @@ class ESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
 
     def test_elf_section_header_not_at_end(self):
         self.run_elf2image("esp8266", self.ELF)
-        image = esptool.src.LoadFirmwareImage("esp8266", self.BIN_LOAD)
+        image = esptool.bin_image.LoadFirmwareImage("esp8266", self.BIN_LOAD)
         self.assertEqual(3, len(image.segments))
         self.assertImageContainsSection(image, self.ELF, ".data")
         self.assertImageContainsSection(image, self.ELF, ".text")
@@ -186,7 +186,7 @@ class ESP8266V2ImageTests(BaseTestCase):
     def _test_elf2image(self, elfpath, binpath, mergedsections=[]):
         try:
             self.run_elf2image("esp8266", elfpath, 2)
-            image = esptool.src.LoadFirmwareImage("esp8266", binpath)
+            image = esptool.bin_image.LoadFirmwareImage("esp8266", binpath)
             print("In test_elf2image", len(image.segments))
             self.assertEqual(4 - len(mergedsections), len(image.segments))
             sections = [".data", ".text", ".rodata"]
@@ -212,7 +212,7 @@ class ESP8266V2ImageTests(BaseTestCase):
                 image_len = f.tell()
                 crc_stored = struct.unpack("<I", f.read(4))[0]
                 f.seek(0)
-                crc_calc = esptool.src.esp8266_crc32(f.read(image_len))
+                crc_calc = esptool.bin_image.esp8266_crc32(f.read(image_len))
                 self.assertEqual(crc_stored, crc_calc)
 
             # test imageinfo doesn't fail
@@ -237,7 +237,7 @@ class ESP32ImageTests(BaseTestCase):
     def _test_elf2image(self, elfpath, binpath, extra_args=[]):
         try:
             self.run_elf2image("esp32", elfpath, extra_args=extra_args)
-            image = esptool.src.LoadFirmwareImage("esp32", binpath)
+            image = esptool.bin_image.LoadFirmwareImage("esp32", binpath)
             self.assertImageInfo(binpath, "esp32")
             return image
         finally:
@@ -373,7 +373,7 @@ class ELFSHA256Tests(BaseTestCase):
     def test_binary_patched(self):
         try:
             self.run_elf2image("esp32", self.ELF, extra_args=["--elf-sha256-offset", "0x%x" % self.SHA_OFFS])
-            image = esptool.src.LoadFirmwareImage("esp32", self.BIN)
+            image = esptool.bin_image.LoadFirmwareImage("esp32", self.BIN)
             rodata_segment = image.segments[0]
             bin_sha256 = rodata_segment.data[self.SHA_OFFS - 0x20: self.SHA_OFFS - 0x20 + 32]  # subtract 0x20 byte header here
 

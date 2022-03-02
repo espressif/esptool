@@ -105,7 +105,7 @@ def digest_secure_bootloader(args):
 
     # secure boot engine reads in 128 byte blocks (ie SHA512 block
     # size), but also doesn't look for any appended SHA-256 digest
-    fw_image = esptool.src.ESP32FirmwareImage(args.image)
+    fw_image = esptool.bin_image.ESP32FirmwareImage(args.image)
     if fw_image.append_digest:
         if len(plaintext_image) % 128 <= 32:
             # ROM bootloader will read to the end of the 128 byte block, but not

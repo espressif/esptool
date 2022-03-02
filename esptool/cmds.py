@@ -14,9 +14,8 @@ import sys
 import time
 import zlib
 
-from .src import DEFAULT_TIMEOUT, ERASE_WRITE_TIMEOUT_PER_MB, SUPPORTED_CHIPS
-from .src import ELFFile, ESPLoader, ImageSegment, LoadFirmwareImage, chip_to_rom_loader, timeout_per_mb
-from .src import (
+from .bin_image import ELFFile, ImageSegment, LoadFirmwareImage
+from .bin_image import (
     ESP32C2FirmwareImage,
     ESP32C3FirmwareImage,
     ESP32C6BETAFirmwareImage,
@@ -30,6 +29,8 @@ from .src import (
     ESP8266V2FirmwareImage,
     ESP8266V3FirmwareImage,
 )
+from .src import DEFAULT_TIMEOUT, ERASE_WRITE_TIMEOUT_PER_MB, SUPPORTED_CHIPS
+from .src import ESPLoader, chip_to_rom_loader, timeout_per_mb
 from .util import FatalError, NotImplementedInROMError, NotSupportedError, PYTHON2, div_roundup, flash_size_bytes, hexify, pad_to, print_overwrite
 
 DETECTED_FLASH_SIZES = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB',
