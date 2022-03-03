@@ -40,13 +40,13 @@ SUPPORTED_COMMANDS = [
 ] + SUPPORTED_BURN_COMMANDS
 
 SUPPORTED_CHIPS = {
-    'esp32': DefChip('ESP32', esp32_efuse, esptool.src.ESP32ROM),
-    'esp32c2': DefChip('ESP32-C2', esp32c2_efuse, esptool.src.ESP32C2ROM),
-    'esp32c3': DefChip('ESP32-C3', esp32c3_efuse, esptool.src.ESP32C3ROM),
-    'esp32h2beta1': DefChip('ESP32-H2(beta1)', esp32h2beta1_efuse, esptool.src.ESP32H2BETA1ROM),
-    'esp32s2': DefChip('ESP32-S2', esp32s2_efuse, esptool.src.ESP32S2ROM),
-    'esp32s3': DefChip('ESP32-S3', esp32s3_efuse, esptool.src.ESP32S3ROM),
-    'esp32s3beta2': DefChip('ESP32-S3(beta2)', esp32s3beta2_efuse, esptool.src.ESP32S3BETA2ROM),
+    'esp32': DefChip('ESP32', esp32_efuse, esptool.targets.ESP32ROM),
+    'esp32c2': DefChip('ESP32-C2', esp32c2_efuse, esptool.targets.ESP32C2ROM),
+    'esp32c3': DefChip('ESP32-C3', esp32c3_efuse, esptool.targets.ESP32C3ROM),
+    'esp32h2beta1': DefChip('ESP32-H2(beta1)', esp32h2beta1_efuse, esptool.targets.ESP32H2BETA1ROM),
+    'esp32s2': DefChip('ESP32-S2', esp32s2_efuse, esptool.targets.ESP32S2ROM),
+    'esp32s3': DefChip('ESP32-S3', esp32s3_efuse, esptool.targets.ESP32S3ROM),
+    'esp32s3beta2': DefChip('ESP32-S3(beta2)', esp32s3beta2_efuse, esptool.targets.ESP32S3BETA2ROM),
 }
 
 
@@ -58,7 +58,7 @@ def get_esp(port, baud, connect_mode, chip='auto', skip_connect=False, virt=Fals
         esp = efuse.EmulateEfuseController(virt_efuse_file, debug)
     else:
         if chip == 'auto' and not skip_connect:
-            esp = esptool.ESPLoader.detect_chip(port, baud, connect_mode)
+            esp = esptool.cmds.detect_chip(port, baud, connect_mode)
         else:
             esp = SUPPORTED_CHIPS.get(chip, SUPPORTED_CHIPS['esp32']).chip_class(port if not skip_connect else StringIO(), baud)
             if not skip_connect:
@@ -122,11 +122,11 @@ def main(custom_commandline=None):
     init_parser.add_argument('--baud', '-b',
                              help='Serial port baud rate used when flashing/reading',
                              type=esptool.arg_auto_int,
-                             default=os.environ.get('ESPTOOL_BAUD', esptool.ESPLoader.ESP_ROM_BAUD))
+                             default=os.environ.get('ESPTOOL_BAUD', esptool.loader.ESPLoader.ESP_ROM_BAUD))
 
     init_parser.add_argument('--port', '-p',
                              help='Serial port device',
-                             default=os.environ.get('ESPTOOL_PORT', esptool.ESPLoader.DEFAULT_PORT))
+                             default=os.environ.get('ESPTOOL_PORT', esptool.loader.ESPLoader.DEFAULT_PORT))
 
     init_parser.add_argument('--before',
                              help='What to do before connecting to the chip',

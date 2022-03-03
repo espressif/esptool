@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-__all__ = ['chip_id', 'dump_mem', 'elf2image', 'erase_flash', 'erase_region', 'flash_id', 'get_security_info',
+__all__ = ['chip_id', 'detect_chip', 'dump_mem', 'elf2image', 'erase_flash', 'erase_region', 'flash_id', 'get_security_info',
            'image_info', 'load_ram', 'make_image', 'merge_bin', 'read_flash', 'read_flash_status', 'read_mac',
            'read_mem', 'run', 'verify_flash', 'version', 'write_flash', 'write_flash_status', 'write_mem']
 
@@ -19,6 +19,7 @@ import time
 
 from esptool.cmds import (
     chip_id,
+    detect_chip,
     detect_flash_size,
     dump_mem,
     elf2image,
@@ -41,8 +42,8 @@ from esptool.cmds import (
     write_flash_status,
     write_mem,
 )
-from esptool.src import DEFAULT_CONNECT_ATTEMPTS, SUPPORTED_CHIPS
-from esptool.src import ESP32ROM, ESP8266ROM, ESPLoader, get_default_connected_device, list_ports
+from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, ESPLoader, list_ports
+from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM, ESP8266ROM
 from esptool.util import FatalError, NotImplementedInROMError, PYTHON2, flash_size_bytes, format_chip_name
 
 
@@ -64,7 +65,7 @@ def main(argv=None, esp=None):
     parser.add_argument('--chip', '-c',
                         help='Target chip type',
                         type=format_chip_name,  # support ESP32-S2, etc.
-                        choices=['auto'] + SUPPORTED_CHIPS,
+                        choices=['auto'] + CHIP_LIST,
                         default=os.environ.get('ESPTOOL_CHIP', 'auto'))
 
     parser.add_argument(
@@ -545,6 +546,27 @@ def expand_file_arguments(argv):
         print("esptool %s" % (" ".join(new_args[1:])))
         return new_args
     return argv
+
+
+def get_default_connected_device(serial_list, port, connect_attempts, initial_baud, chip='auto', trace=False,
+                                 before='default_reset'):
+    _esp = None
+    for each_port in reversed(serial_list):
+        print("Serial port %s" % each_port)
+        try:
+            if chip == 'auto':
+                _esp = detect_chip(each_port, initial_baud, before, trace, connect_attempts)
+            else:
+                chip_class = CHIP_DEFS[chip]
+                _esp = chip_class(each_port, initial_baud, trace)
+                _esp.connect(before, connect_attempts)
+            break
+        except (FatalError, OSError) as err:
+            if port is not None:
+                raise
+            print("%s failed to connect: %s" % (each_port, err))
+            _esp = None
+    return _esp
 
 
 class FlashSizeAction(argparse.Action):

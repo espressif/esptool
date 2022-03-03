@@ -80,7 +80,7 @@ class EfuseTestCase(unittest.TestCase):
     def get_esptool(self):
         if espefuse_port is not None:
             import esptool
-            esp = esptool.ESPLoader.detect_chip(port=espefuse_port)
+            esp = esptool.cmds.detect_chip(port=espefuse_port)
             del esptool
         else:
             import espefuse

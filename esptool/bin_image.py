@@ -14,7 +14,8 @@ import os
 import re
 import struct
 
-from .src import (
+from .loader import ESPLoader
+from .targets import (
     ESP32C2ROM,
     ESP32C3ROM,
     ESP32C6BETAROM,
@@ -26,7 +27,6 @@ from .src import (
     ESP32S3ROM,
     ESP8266ROM,
 )
-from .src import ESPLoader
 from .util import FatalError, byte, pad_to
 
 

@@ -38,7 +38,7 @@ if __name__ == "__main__":
     sys.path.append("build")
     import stub_flasher_snippet          # new version in build directory
 
-    chip_list = [chip_name.upper() for chip_name in esptool.SUPPORTED_CHIPS]
+    chip_list = [chip_name.upper() for chip_name in esptool.CHIP_LIST]
 
     for chip in chip_list:
         key = "%sStubCode" % chip  # name of the binary variable in each module

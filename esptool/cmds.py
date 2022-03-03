@@ -29,9 +29,10 @@ from .bin_image import (
     ESP8266V2FirmwareImage,
     ESP8266V3FirmwareImage,
 )
-from .src import DEFAULT_TIMEOUT, ERASE_WRITE_TIMEOUT_PER_MB, SUPPORTED_CHIPS
-from .src import ESPLoader, chip_to_rom_loader, timeout_per_mb
-from .util import FatalError, NotImplementedInROMError, NotSupportedError, PYTHON2, div_roundup, flash_size_bytes, hexify, pad_to, print_overwrite
+from .loader import DEFAULT_CONNECT_ATTEMPTS, DEFAULT_TIMEOUT, ERASE_WRITE_TIMEOUT_PER_MB, ESPLoader, timeout_per_mb
+from .targets import CHIP_DEFS, CHIP_LIST, ROM_LIST
+from .util import FatalError, NotImplementedInROMError, NotSupportedError, UnsupportedCommandError
+from .util import PYTHON2, div_roundup, flash_size_bytes, hexify, pad_to, print_overwrite
 
 DETECTED_FLASH_SIZES = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB',
                         0x15: '2MB', 0x16: '4MB', 0x17: '8MB',
@@ -40,11 +41,72 @@ DETECTED_FLASH_SIZES = {0x12: '256KB', 0x13: '512KB', 0x14: '1MB',
 FLASH_MODES = {'qio': 0, 'qout': 1, 'dio': 2, 'dout': 3}
 
 
+def detect_chip(port=ESPLoader.DEFAULT_PORT, baud=ESPLoader.ESP_ROM_BAUD, connect_mode='default_reset', trace_enabled=False,
+                connect_attempts=DEFAULT_CONNECT_ATTEMPTS):
+    """ Use serial access to detect the chip type.
+
+    First, get_security_info command is sent to detect the ID of the chip
+    (supported only by ESP32-C3 and later, works even in the Secure Download Mode).
+    If this fails, we reconnect and fall-back to reading the magic number.
+    It's mapped at a specific ROM address and has a different value on each chip model.
+    This way we can use one memory read and compare it to the magic number for each chip type.
+
+    This routine automatically performs ESPLoader.connect() (passing
+    connect_mode parameter) as part of querying the chip.
+    """
+    inst = None
+    detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
+    if detect_port.serial_port.startswith("rfc2217:"):
+        detect_port.USES_RFC2217 = True
+    detect_port.connect(connect_mode, connect_attempts, detecting=True)
+    try:
+        print('Detecting chip type...', end='')
+        res = detect_port.check_command('get security info', ESPLoader.ESP_GET_SECURITY_INFO, b'')
+        res = struct.unpack("<IBBBBBBBBI", res[:16])  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
+        chip_id = res[9]  # 2/4 status bytes invariant
+
+        for cls in ROM_LIST[3:]:  # command not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip_id
+            if chip_id == cls.IMAGE_CHIP_ID:
+                inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
+                inst._post_connect()
+                try:
+                    inst.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)  # Dummy read to check Secure Download mode
+                except UnsupportedCommandError:
+                    inst.secure_download_mode = True
+    except (UnsupportedCommandError, struct.error, FatalError) as e:
+        # UnsupportedCmdErr: ESP8266/ESP32 ROM | struct.err: ESP32-S2 | FatalErr: ESP8266/ESP32 STUB
+        print(" Unsupported detection protocol, switching and trying again...")
+        try:
+            # ESP32/ESP8266 are reset after an unsupported command, need to connect again (not needed on ESP32-S2)
+            if not isinstance(e, struct.error):
+                detect_port.connect(connect_mode, connect_attempts, detecting=True, warnings=False)
+            print('Detecting chip type...', end='')
+            sys.stdout.flush()
+            chip_magic_value = detect_port.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
+
+            for cls in ROM_LIST:
+                if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
+                    inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
+                    inst._post_connect()
+                    inst.check_chip_id()
+        except UnsupportedCommandError:
+            raise FatalError("Unsupported Command Error received. Probably this means Secure Download Mode is enabled, "
+                             "autodetection will not work. Need to manually specify the chip.")
+    finally:
+        if inst is not None:
+            print(' %s' % inst.CHIP_NAME, end='')
+            if detect_port.sync_stub_detected:
+                inst = inst.STUB_CLASS(inst)
+                inst.sync_stub_detected = True
+            print('')  # end line
+            return inst
+    raise FatalError("Unexpected CHIP magic value 0x%08x. Failed to autodetect chip type." % (chip_magic_value))
+
+
 # "Operation" commands, executable at command line. One function each
 #
 # Each function takes either two args (<ESPLoader instance>, <args>) or a single <args>
 # argument.
-
 
 def load_ram(esp, args):
     image = LoadFirmwareImage(esp.CHIP_NAME, args.filename)
@@ -613,10 +675,10 @@ def get_security_info(esp, args):
 
 def merge_bin(args):
     try:
-        chip_class = chip_to_rom_loader(args.chip)
+        chip_class = CHIP_DEFS[args.chip]
     except KeyError:
         msg = "Please specify the chip argument" if args.chip == "auto" else "Invalid chip choice: '{}'".format(args.chip)
-        msg = msg + " (choose from {})".format(', '.join(SUPPORTED_CHIPS))
+        msg = msg + " (choose from {})".format(', '.join(CHIP_LIST))
         raise FatalError(msg)
 
     # sort the files by offset. The AddrFilenamePairAction has already checked for overlap
