@@ -1,4 +1,5 @@
 # flake8: noqa
+# fmt: off
 espefuse(esp, efuses, args, "burn_efuse JTAG_DISABLE 1 DISABLE_SDIO_HOST 1 CONSOLE_DEBUG_DISABLE 1")
 if efuses["JTAG_DISABLE"].get() != 0:
     raise esptool.FatalError("Burn should be at the end")

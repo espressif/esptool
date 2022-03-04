@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses controller for ESP32-C2 chip
 #
 # SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
@@ -16,14 +17,14 @@ from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalErr
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):
-    """ The class for virtual efuse operation. Using for HOST_TEST.
-    """
+    """The class for virtual efuse operation. Using for HOST_TEST."""
+
     CHIP_NAME = "ESP32-C2"
     mem = None
     debug = False
-    Blocks  = EfuseDefineBlocks
-    Fields  = EfuseDefineFields
-    REGS    = EfuseDefineRegisters
+    Blocks = EfuseDefineBlocks
+    Fields = EfuseDefineFields
+    REGS = EfuseDefineRegisters
 
     def __init__(self, efuse_file=None, debug=False):
         super(EmulateEfuseController, self).__init__(efuse_file, debug)
@@ -79,18 +80,18 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             # CODING_SCHEME RS applied only for all blocks except BLK0.
             coded_bytes = 12
             data.pos = coded_bytes * 8
-            plain_data = data.readlist('32*uint:8')[::-1]
+            plain_data = data.readlist("32*uint:8")[::-1]
             # takes 32 bytes
             # apply RS encoding
             rs = reedsolo.RSCodec(coded_bytes)
             # 32 byte of data + 12 bytes RS
             calc_encoded_data = list(rs.encode([x for x in plain_data]))
             data.pos = 0
-            if calc_encoded_data != data.readlist('44*uint:8')[::-1]:
+            if calc_encoded_data != data.readlist("44*uint:8")[::-1]:
                 raise FatalError("Error in coding scheme data")
-            data = data[coded_bytes * 8:]
+            data = data[coded_bytes * 8 :]
         if blk.len < 8:
-            data = data[(8 - blk.len) * 32:]
+            data = data[(8 - blk.len) * 32 :]
         return data
 
     def check_rd_protection_area(self):
@@ -101,19 +102,24 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             mask = 0
             if isinstance(blk.read_disable_bit, list):
                 for i in blk.read_disable_bit:
-                    mask |= (1 << i)
+                    mask |= 1 << i
             else:
-                mask = (1 << blk.read_disable_bit)
+                mask = 1 << blk.read_disable_bit
             return mask
 
         read_disable_bit = self.read_field("RD_DIS", bitstring=False)
         for b in self.Blocks.BLOCKS:
             blk = self.Blocks.get(b)
             block = self.read_block(blk.id)
-            if blk.read_disable_bit is not None and read_disable_bit & get_read_disable_mask(blk):
+            if (
+                blk.read_disable_bit is not None
+                and read_disable_bit & get_read_disable_mask(blk)
+            ):
                 if isinstance(blk.read_disable_bit, list):
                     if read_disable_bit & (1 << blk.read_disable_bit[0]):
-                        block.set(0, [i for i in range(blk.len * 32 // 2, blk.len * 32)])
+                        block.set(
+                            0, [i for i in range(blk.len * 32 // 2, blk.len * 32)]
+                        )
                     if read_disable_bit & (1 << blk.read_disable_bit[1]):
                         block.set(0, [i for i in range(0, blk.len * 32 // 2)])
                 else:
@@ -121,9 +127,15 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             else:
                 for e in self.Fields.EFUSES:
                     field = self.Fields.get(e)
-                    if blk.id == field.block and field.read_disable_bit is not None and read_disable_bit & get_read_disable_mask(field):
+                    if (
+                        blk.id == field.block
+                        and field.read_disable_bit is not None
+                        and read_disable_bit & get_read_disable_mask(field)
+                    ):
                         raw_data = self.read_field(field.name)
                         raw_data.set(0)
-                        block.pos = block.length - (field.word * 32 + field.pos + raw_data.length)
+                        block.pos = block.length - (
+                            field.word * 32 + field.pos + raw_data.length
+                        )
                         block.overwrite(BitString(raw_data.length))
             self.overwrite_mem_from_block(blk, block)

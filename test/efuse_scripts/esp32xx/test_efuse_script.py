@@ -1,4 +1,5 @@
 # flake8: noqa
+# fmt: off
 espefuse(esp, efuses, args, 'burn_efuse DIS_FORCE_DOWNLOAD 1 DIS_CAN 1 DIS_USB_DOWNLOAD_MODE 1')
 espefuse(esp, efuses, args, 'burn_bit BLOCK_USR_DATA 64 66 69 72 78 82 83 90')
 espefuse(esp, efuses, args, 'read_protect_efuse BLOCK_SYS_DATA2')

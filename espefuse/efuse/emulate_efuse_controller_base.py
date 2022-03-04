@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses controller for ESP32 chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
@@ -13,36 +14,38 @@ from bitstring import BitString
 
 
 class EmulateEfuseControllerBase(object):
-    """ The class for virtual efuse operations. Using for HOST_TEST.
-    """
+    """The class for virtual efuse operations. Using for HOST_TEST."""
 
     CHIP_NAME = ""
     mem = None
     debug = False
-    Blocks  = None
-    Fields  = None
-    REGS    = None
+    Blocks = None
+    Fields = None
+    REGS = None
 
     def __init__(self, efuse_file=None, debug=False):
         self.debug = debug
         self.efuse_file = efuse_file
         if self.efuse_file:
             try:
-                self.mem = BitString(open(self.efuse_file, 'a+b'), length=self.REGS.EFUSE_MEM_SIZE * 8)
+                self.mem = BitString(
+                    open(self.efuse_file, "a+b"), length=self.REGS.EFUSE_MEM_SIZE * 8
+                )
             except ValueError:
                 # the file is empty or does not fit the length.
                 self.mem = BitString(length=self.REGS.EFUSE_MEM_SIZE * 8)
                 self.mem.set(0)
-                self.mem.tofile(open(self.efuse_file, 'a+b'))
+                self.mem.tofile(open(self.efuse_file, "a+b"))
         else:
-            # efuse_file is not provided it means we do not want to keep the result of efuse operations
+            # efuse_file is not provided
+            #  it means we do not want to keep the result of efuse operations
             self.mem = BitString(self.REGS.EFUSE_MEM_SIZE * 8)
             self.mem.set(0)
 
     """ esptool method start >> """
 
     def read_efuse(self, n, block=0):
-        """ Read the nth word of the ESP3x EFUSE region. """
+        """Read the nth word of the ESP3x EFUSE region."""
         blk = self.Blocks.get(self.Blocks.BLOCKS[block])
         return self.read_reg(blk.rd_addr + (4 * n))
 
@@ -63,7 +66,7 @@ class EmulateEfuseControllerBase(object):
         self.mem.overwrite("uint:32={}".format(cur_val | (new_val & mask)))
 
     def write_efuse(self, n, value, block=0):
-        """ Write the nth word of the ESP3x EFUSE region. """
+        """Write the nth word of the ESP3x EFUSE region."""
         blk = self.Blocks.get(self.Blocks.BLOCKS[block])
         self.write_reg(blk.wr_addr + (4 * n), value)
 
@@ -74,7 +77,7 @@ class EmulateEfuseControllerBase(object):
 
     def save_to_file(self):
         if self.efuse_file:
-            with open(self.efuse_file, 'wb') as f:
+            with open(self.efuse_file, "wb") as f:
                 self.mem.tofile(f)
 
     def handle_coding_scheme(self, blk, data):
@@ -109,7 +112,7 @@ class EmulateEfuseControllerBase(object):
                 if field.type.startswith("bool"):
                     field_len = 1
                 else:
-                    field_len = int(re.search(r'\d+', field.type).group())
+                    field_len = int(re.search(r"\d+", field.type).group())
                     if field.type.startswith("bytes"):
                         field_len *= 8
                 block.pos = block.length - (field.word * 32 + field.pos + field_len)
@@ -129,7 +132,9 @@ class EmulateEfuseControllerBase(object):
             if blk.id == idx:
                 blk_len_bits = self.get_bitlen_of_block(blk, wr=wr_regs)
                 addr = blk.wr_addr if wr_regs else blk.rd_addr
-                self.mem.pos = self.mem.length - ((addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + blk_len_bits)
+                self.mem.pos = self.mem.length - (
+                    (addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + blk_len_bits
+                )
                 block = self.mem.read(blk_len_bits)
                 break
         return block
@@ -139,26 +144,34 @@ class EmulateEfuseControllerBase(object):
         self.overwrite_mem_from_block(blk, wr_data)
 
     def overwrite_mem_from_block(self, blk, wr_data):
-        self.mem.pos = self.mem.length - ((blk.rd_addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + wr_data.len)
+        self.mem.pos = self.mem.length - (
+            (blk.rd_addr - self.REGS.DR_REG_EFUSE_BASE) * 8 + wr_data.len
+        )
         self.mem.overwrite(wr_data)
 
     def check_wr_protection_area(self, num_blk, wr_data):
         # checks fields which have the write protection bit.
-        # if the write protection bit is set then we need to protect that area from changes.
+        # if the write protection bit is set, we need to protect that area from changes.
         write_disable_bit = self.read_field("WR_DIS", bitstring=False)
         mask_wr_data = BitString(len(wr_data))
         mask_wr_data.set(0)
         blk = self.Blocks.get(self.Blocks.BLOCKS[num_blk])
-        if blk.write_disable_bit is not None and write_disable_bit & (1 << blk.write_disable_bit):
+        if blk.write_disable_bit is not None and write_disable_bit & (
+            1 << blk.write_disable_bit
+        ):
             mask_wr_data.set(1)
         else:
             for e in self.Fields.EFUSES:
                 field = self.Fields.get(e)
                 if blk.id == field.block and field.block == num_blk:
-                    if field.write_disable_bit is not None and write_disable_bit & (1 << field.write_disable_bit):
+                    if field.write_disable_bit is not None and write_disable_bit & (
+                        1 << field.write_disable_bit
+                    ):
                         data = self.read_field(field.name)
                         data.set(1)
-                        mask_wr_data.pos = mask_wr_data.length - (field.word * 32 + field.pos + data.len)
+                        mask_wr_data.pos = mask_wr_data.length - (
+                            field.word * 32 + field.pos + data.len
+                        )
                         mask_wr_data.overwrite(data)
         mask_wr_data.invert()
         return wr_data & mask_wr_data
@@ -170,22 +183,30 @@ class EmulateEfuseControllerBase(object):
         for b in self.Blocks.BLOCKS:
             blk = self.Blocks.get(b)
             block = self.read_block(blk.id)
-            if blk.read_disable_bit is not None and read_disable_bit & (1 << blk.read_disable_bit):
+            if blk.read_disable_bit is not None and read_disable_bit & (
+                1 << blk.read_disable_bit
+            ):
                 block.set(0)
             else:
                 for e in self.Fields.EFUSES:
                     field = self.Fields.get(e)
-                    if blk.id == field.block and field.read_disable_bit is not None and read_disable_bit & (1 << field.read_disable_bit):
+                    if (
+                        blk.id == field.block
+                        and field.read_disable_bit is not None
+                        and read_disable_bit & (1 << field.read_disable_bit)
+                    ):
                         raw_data = self.read_field(field.name)
                         raw_data.set(0)
-                        block.pos = block.length - (field.word * 32 + field.pos + raw_data.length)
+                        block.pos = block.length - (
+                            field.word * 32 + field.pos + raw_data.length
+                        )
                         block.overwrite(BitString(raw_data.length))
             self.overwrite_mem_from_block(blk, block)
 
     def clean_mem(self):
         self.mem.set(0)
         if self.efuse_file:
-            with open(self.efuse_file, 'wb') as f:
+            with open(self.efuse_file, "wb") as f:
                 self.mem.tofile(f)
 
 
@@ -193,6 +214,7 @@ class FatalError(RuntimeError):
     """
     Wrapper class for runtime errors that aren't caused by internal bugs
     """
+
     def __init__(self, message):
         RuntimeError.__init__(self, message)
 

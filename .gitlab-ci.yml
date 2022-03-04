@@ -79,12 +79,16 @@ host_tests_2:
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
 
 check_python_style:
-  <<: *test_template
+  stage: test
+  image: $CI_DOCKER_REGISTRY/esp-idf-doc-env:v4.4-1-v4  # Has Python 3.6 (Python >= 3.6 needed for Black)
+  tags:
+    - host_test
   script:
-    # this step installs any 'dev' dependencies (ie flake8) that might be missing in the CI image.
+    # this step installs any 'dev' dependencies (ie flake8, Black) that are be missing in the CI image.
     # The runner should cache the downloads, so still quite fast.
-    - ./test/ci/multirun_with_pyenv.sh pip install --user -e .[dev]
-    - ./test/ci/multirun_with_pyenv.sh python -m flake8
+    - pip install --user -e .[dev]
+    - python -m flake8
+    - python -m black --check --diff .
 
 # Check all the scripts can run when installed under all Python versions
 check_installation_can_run:

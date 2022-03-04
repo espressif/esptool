@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses controller for ESP32-S3 chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
@@ -14,14 +15,14 @@ from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalErr
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):
-    """ The class for virtual efuse operation. Using for HOST_TEST.
-    """
+    """The class for virtual efuse operation. Using for HOST_TEST."""
+
     CHIP_NAME = "ESP32-S3"
     mem = None
     debug = False
-    Blocks  = EfuseDefineBlocks
-    Fields  = EfuseDefineFields
-    REGS    = EfuseDefineRegisters
+    Blocks = EfuseDefineBlocks
+    Fields = EfuseDefineFields
+    REGS = EfuseDefineRegisters
 
     def __init__(self, efuse_file=None, debug=False):
         super(EmulateEfuseController, self).__init__(efuse_file, debug)
@@ -77,16 +78,16 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             # CODING_SCHEME RS applied only for all blocks except BLK0.
             coded_bytes = 12
             data.pos = coded_bytes * 8
-            plain_data = data.readlist('32*uint:8')[::-1]
+            plain_data = data.readlist("32*uint:8")[::-1]
             # takes 32 bytes
             # apply RS encoding
             rs = reedsolo.RSCodec(coded_bytes)
             # 32 byte of data + 12 bytes RS
             calc_encoded_data = list(rs.encode([x for x in plain_data]))
             data.pos = 0
-            if calc_encoded_data != data.readlist('44*uint:8')[::-1]:
+            if calc_encoded_data != data.readlist("44*uint:8")[::-1]:
                 raise FatalError("Error in coding scheme data")
-            data = data[coded_bytes * 8:]
+            data = data[coded_bytes * 8 :]
         if blk.len < 8:
-            data = data[(8 - blk.len) * 32:]
+            data = data[(8 - blk.len) * 32 :]
         return data

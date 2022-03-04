@@ -1,4 +1,5 @@
 # flake8: noqa
+# fmt: off
 espefuse(esp, efuses, args, "burn_efuse JTAG_DISABLE 1 DISABLE_SDIO_HOST 1 CONSOLE_DEBUG_DISABLE 1")
 espefuse(esp, efuses, args, "burn_key flash_encryption ../../images/efuse/256bit --no-protect-key")
 espefuse(esp, efuses, args, "burn_key_digest ../../secure_images/rsa_secure_boot_signing_key.pem")

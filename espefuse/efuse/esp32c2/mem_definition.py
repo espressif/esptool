@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses fields and registers for ESP32-C2 chip
 #
 # SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
@@ -10,6 +11,7 @@ from __future__ import division, print_function
 from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegistersBase
 
 
+# fmt: off
 class EfuseDefineRegisters(EfuseRegistersBase):
 
     EFUSE_MEM_SIZE = (0x01FC + 4)
@@ -152,3 +154,4 @@ class EfuseDefineFields(EfuseFieldsBase):
     BLOCK2_CALIBRATION_EFUSES = [
         # Name                      Category      Block Word Pos Type:len  WR_DIS RD_DIS Class         Description                Dictionary
     ]
+# fmt: on

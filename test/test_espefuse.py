@@ -20,7 +20,7 @@ import time
 import unittest
 from io import StringIO
 
-sys.path.append('..')
+sys.path.append("..")
 import espefuse
 
 import esptool
@@ -43,7 +43,6 @@ class EspEfuseArgs(object):
 
 
 class EfuseTestCase(unittest.TestCase):
-
     def setUp(self):
         # reset and zero efuses
         serialport.dtr = False
@@ -56,7 +55,9 @@ class EfuseTestCase(unittest.TestCase):
         # connect & verify efuses are really zero
         self.esp = espefuse.get_esp(serialport, 115200, "default_reset")
         # dict mapping register name to its efuse object
-        self.efuses, self.operations = espefuse.get_efuses(esp=self.esp, do_not_confirm=True)
+        self.efuses, self.operations = espefuse.get_efuses(
+            esp=self.esp, do_not_confirm=True
+        )
         if type(self.esp) is esptool.ESP32ROM:
             self.BLK1 = "BLOCK1"
             self.BLK2 = "BLOCK2"
@@ -72,17 +73,22 @@ class EfuseTestCase(unittest.TestCase):
             if efuse.name == "CLK8M_FREQ":
                 continue
             val = efuse.get_raw()
-            BAD_EFUSE_MSG = ("Efuse %s not all zeroes - either this is a real ESP32 chip (VERY BAD, read top of file), "
-                             "or the reset is not erasing all efuses correctly.") % efuse.name
+            BAD_EFUSE_MSG = (
+                "Efuse %s not all zeroes - either this is a real ESP32 chip "
+                "(VERY BAD, read top of file), "
+                "or the reset is not erasing all efuses correctly."
+            ) % efuse.name
             try:
-                self.assertEqual(b'\x00' * len(val), val, BAD_EFUSE_MSG)
+                self.assertEqual(b"\x00" * len(val), val, BAD_EFUSE_MSG)
             except TypeError:
                 self.assertEqual(0, val, BAD_EFUSE_MSG)
 
     def _set_34_coding_scheme(self):
         self.efuses["CODING_SCHEME"].burn(1)
         # EspEfuses constructor needs to re-load CODING_SCHEME
-        self.efuses, self.operations = espefuse.get_efuses(esp=self.esp, do_not_confirm=True)
+        self.efuses, self.operations = espefuse.get_efuses(
+            esp=self.esp, do_not_confirm=True
+        )
 
 
 class TestBurnKey(EfuseTestCase):
@@ -177,7 +183,6 @@ class TestBurnKey(EfuseTestCase):
 
 
 class TestBurnBlockData(EfuseTestCase):
-
     def test_burn_block_data_normal(self):
         word_a = 0x1234
         word_b = 0x789A
@@ -189,7 +194,9 @@ class TestBurnBlockData(EfuseTestCase):
         args.offset = 4
         self.operations.burn_block_data(self.esp, self.efuses, args)
 
-        words = self.efuses.blocks[self.efuses.get_index_block_by_name(self.BLK1)].get_words()
+        words = self.efuses.blocks[
+            self.efuses.get_index_block_by_name(self.BLK1)
+        ].get_words()
         self.assertEqual([0, word_a, word_b, 0, 0, 0, 0, 0], words)
 
         args.block = [self.BLK1]
@@ -198,7 +205,9 @@ class TestBurnBlockData(EfuseTestCase):
         args.force_write_always = True
         self.operations.burn_block_data(self.esp, self.efuses, args)
 
-        words = self.efuses.blocks[self.efuses.get_index_block_by_name(self.BLK1)].get_words()
+        words = self.efuses.blocks[
+            self.efuses.get_index_block_by_name(self.BLK1)
+        ].get_words()
         self.assertEqual([0, word_a, word_b, 0, 0, 0, word_a, word_b], words)
 
         self.assertEqual(0, self.efuses.get_coding_scheme_warnings())
@@ -215,25 +224,39 @@ class TestBurnBlockData(EfuseTestCase):
             args.offset = 6
             self.operations.burn_block_data(self.esp, self.efuses, args)
 
-            words = self.efuses.blocks[self.efuses.get_index_block_by_name(self.BLK3)].get_words()
-            self.assertEqual([0,
-                              struct.unpack("<H", "12")[0] << 16,
-                              struct.unpack("<I", "34EA")[0],
-                              0,
-                              0,
-                              0], words)
+            words = self.efuses.blocks[
+                self.efuses.get_index_block_by_name(self.BLK3)
+            ].get_words()
+            self.assertEqual(
+                [
+                    0,
+                    struct.unpack("<H", "12")[0] << 16,
+                    struct.unpack("<I", "34EA")[0],
+                    0,
+                    0,
+                    0,
+                ],
+                words,
+            )
 
             args.offset = 12
             args.block = [self.BLK3]
             args.datafile = [StringIO.StringIO(data)]
             self.operations.burn_block_data(self.esp, self.efuses, args)
-            words = self.efuses.blocks[self.efuses.get_index_block_by_name(self.BLK3)].get_words()
-            self.assertEqual([0,
-                              struct.unpack("<H", "12")[0] << 16,
-                              struct.unpack("<I", "34EA")[0],
-                              struct.unpack("<I", "1234")[0],
-                              struct.unpack("<H", "EA")[0],
-                              0], words)
+            words = self.efuses.blocks[
+                self.efuses.get_index_block_by_name(self.BLK3)
+            ].get_words()
+            self.assertEqual(
+                [
+                    0,
+                    struct.unpack("<H", "12")[0] << 16,
+                    struct.unpack("<I", "34EA")[0],
+                    struct.unpack("<I", "1234")[0],
+                    struct.unpack("<H", "EA")[0],
+                    0,
+                ],
+                words,
+            )
             self.assertEqual(0, self.efuses.get_coding_scheme_warnings())
 
 
@@ -252,7 +275,8 @@ class TestBurnEfuse(EfuseTestCase):
                 "SOFT_DIS_JTAG": "1",
                 "SPI_BOOT_CRYPT_CNT": "2",
                 "KEY_PURPOSE_0": "2",
-                # "KEY_PURPOSE_1": "XTS_AES_256_KEY_1", the string value is avalible from the command line interface.
+                # "KEY_PURPOSE_1": "XTS_AES_256_KEY_1",
+                # the string value is avalible from the command line interface.
                 "SECURE_VERSION": "7",
             }
         self.operations.burn_efuse(self.esp, self.efuses, args)
@@ -264,16 +288,23 @@ class TestBurnBit(EfuseTestCase):
         args.block = self.BLK3
         args.bit_number = [0, 1, 2, 4, 8, 16, 32, 64, 96, 128, 160, 192, 224, 255]
         self.operations.burn_bit(self.esp, self.efuses, args)
-        words = self.efuses.blocks[self.efuses.get_index_block_by_name(self.BLK3)].get_bitstring()
-        self.assertEqual("0x8000000100000001000000010000000100000001000000010000000100010117", words)
+        words = self.efuses.blocks[
+            self.efuses.get_index_block_by_name(self.BLK3)
+        ].get_bitstring()
+        self.assertEqual(
+            "0x8000000100000001000000010000000100000001000000010000000100010117", words
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: %s --i-use-fpga <serial port> [optional tests]" % sys.argv[0])
         sys.exit(1)
     if sys.argv[1] != "--i-use-fpga":
-        raise esptool.FatalError("You need to use --i-use-fpga to confirm these tests are not being run on a real ESP chip!")
+        raise esptool.FatalError(
+            "You need to use --i-use-fpga to confirm these tests "
+            "are not being run on a real ESP chip!"
+        )
     serialport = serial.Serial(sys.argv[2], 115200)
     serialport.dtr = False
     serialport.rts = False

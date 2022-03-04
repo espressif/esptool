@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-#
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -21,52 +20,63 @@ from .util import byte, hexify, mask_to_shift, pad_to
 try:
     import serial
 except ImportError:
-    print("Pyserial is not installed for %s. Check the README for installation instructions." % (sys.executable))
+    print(
+        "Pyserial is not installed for %s. "
+        "Check the README for installation instructions." % (sys.executable)
+    )
     raise
 
-# check 'serial' is 'pyserial' and not 'serial' https://github.com/espressif/esptool/issues/269
+# check 'serial' is 'pyserial' and not 'serial'
+# ref. https://github.com/espressif/esptool/issues/269
 try:
     if "serialization" in serial.__doc__ and "deserialization" in serial.__doc__:
-        raise ImportError("""
-esptool.py depends on pyserial, but there is a conflict with a currently installed package named 'serial'.
-
-You may be able to work around this by 'pip uninstall serial; pip install pyserial' \
-but this may break other installed Python software that depends on 'serial'.
-
-There is no good fix for this right now, apart from configuring virtualenvs. \
-See https://github.com/espressif/esptool/issues/269#issuecomment-385298196 for discussion of the underlying issue(s).""")
+        raise ImportError(
+            "esptool.py depends on pyserial, but there is a conflict with a currently "
+            "installed package named 'serial'.\n"
+            "You may work around this by 'pip uninstall serial; pip install pyserial' "
+            "but this may break other installed Python software "
+            "that depends on 'serial'.\n"
+            "There is no good fix for this right now, "
+            "apart from configuring virtualenvs. "
+            "See https://github.com/espressif/esptool/issues/269#issuecomment-385298196"
+            " for discussion of the underlying issue(s)."
+        )
 except TypeError:
     pass  # __doc__ returns None for pyserial
 
 try:
     import serial.tools.list_ports as list_ports
 except ImportError:
-    print("The installed version (%s) of pyserial appears to be too old for esptool.py (Python interpreter %s). "
-          "Check the README for installation instructions." % (sys.VERSION, sys.executable))
+    print(
+        "The installed version (%s) of pyserial appears to be too old for esptool.py "
+        "(Python interpreter %s). Check the README for installation instructions."
+        % (sys.VERSION, sys.executable)
+    )
     raise
 except Exception:
     if sys.platform == "darwin":
-        # swallow the exception, this is a known issue in pyserial+macOS Big Sur preview ref https://github.com/espressif/esptool/issues/540
+        # swallow the exception, this is a known issue in pyserial+macOS Big Sur preview
+        # ref https://github.com/espressif/esptool/issues/540
         list_ports = None
     else:
         raise
 
 
-DEFAULT_TIMEOUT = 3                   # timeout for most flash operations
-START_FLASH_TIMEOUT = 20              # timeout for starting flash (may perform erase)
-CHIP_ERASE_TIMEOUT = 120              # timeout for full chip erase
+DEFAULT_TIMEOUT = 3  # timeout for most flash operations
+START_FLASH_TIMEOUT = 20  # timeout for starting flash (may perform erase)
+CHIP_ERASE_TIMEOUT = 120  # timeout for full chip erase
 MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2  # longest any command can run
-SYNC_TIMEOUT = 0.1                    # timeout for syncing with bootloader
-MD5_TIMEOUT_PER_MB = 8                # timeout (per megabyte) for calculating md5sum
-ERASE_REGION_TIMEOUT_PER_MB = 30      # timeout (per megabyte) for erasing a region
-ERASE_WRITE_TIMEOUT_PER_MB = 40       # timeout (per megabyte) for erasing and writing data
-MEM_END_ROM_TIMEOUT = 0.05            # special short timeout for ESP_MEM_END, as it may never respond
-DEFAULT_SERIAL_WRITE_TIMEOUT = 10     # timeout for serial port write
-DEFAULT_CONNECT_ATTEMPTS = 7          # default number of times to try connection
+SYNC_TIMEOUT = 0.1  # timeout for syncing with bootloader
+MD5_TIMEOUT_PER_MB = 8  # timeout (per megabyte) for calculating md5sum
+ERASE_REGION_TIMEOUT_PER_MB = 30  # timeout (per megabyte) for erasing a region
+ERASE_WRITE_TIMEOUT_PER_MB = 40  # timeout (per megabyte) for erasing and writing data
+MEM_END_ROM_TIMEOUT = 0.05  # short timeout for ESP_MEM_END, as it may never respond
+DEFAULT_SERIAL_WRITE_TIMEOUT = 10  # timeout for serial port write
+DEFAULT_CONNECT_ATTEMPTS = 7  # default number of times to try connection
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
-    """ Scales timeouts which are size-specific """
+    """Scales timeouts which are size-specific"""
     result = seconds_per_mb * (size_bytes / 1e6)
     if result < DEFAULT_TIMEOUT:
         return DEFAULT_TIMEOUT
@@ -83,28 +93,34 @@ def check_supported_function(func, check_func):
     software stub that runs on these. Not possible to do this cleanly
     via inheritance alone.
     """
+
     def inner(*args, **kwargs):
         obj = args[0]
         if check_func(obj):
             return func(*args, **kwargs)
         else:
             raise NotImplementedInROMError(obj, func)
+
     return inner
 
 
 def stub_function_only(func):
-    """ Attribute for a function only supported in the software stub loader """
+    """Attribute for a function only supported in the software stub loader"""
     return check_supported_function(func, lambda o: o.IS_STUB)
 
 
 def stub_and_esp32_function_only(func):
-    """ Attribute for a function only supported by software stubs or ESP32 and later chips ROM """
-    return check_supported_function(func, lambda o: o.IS_STUB or o.CHIP_NAME not in ["ESP8266"])
+    """Attribute for a function only supported by stubs or ESP32 and later chips ROM"""
+    return check_supported_function(
+        func, lambda o: o.IS_STUB or o.CHIP_NAME not in ["ESP8266"]
+    )
 
 
 def esp32s3_or_newer_function_only(func):
-    """ Attribute for a function only supported by ESP32S3 and later chips ROM """
-    return check_supported_function(func, lambda o: o.CHIP_NAME not in ["ESP8266", "ESP32", "ESP32-S2"])
+    """Attribute for a function only supported by ESP32S3 and later chips ROM"""
+    return check_supported_function(
+        func, lambda o: o.CHIP_NAME not in ["ESP8266", "ESP32", "ESP32-S2"]
+    )
 
 
 # Provide a 'basestring' class on Python 3
@@ -115,7 +131,7 @@ except NameError:
 
 
 class ESPLoader(object):
-    """ Base class providing access to ESP ROM & software stub bootloaders.
+    """Base class providing access to ESP ROM & software stub bootloaders.
     Subclasses provide ESP8266 & ESP32 Family specific functionality.
 
     Don't instantiate this base class directly, either instantiate a subclass or
@@ -123,6 +139,7 @@ class ESPLoader(object):
     appropriate subclass instance.
 
     """
+
     CHIP_NAME = "Espressif device"
     IS_STUB = False
 
@@ -134,24 +151,24 @@ class ESPLoader(object):
 
     # Commands supported by ESP8266 ROM bootloader
     ESP_FLASH_BEGIN = 0x02
-    ESP_FLASH_DATA  = 0x03
-    ESP_FLASH_END   = 0x04
-    ESP_MEM_BEGIN   = 0x05
-    ESP_MEM_END     = 0x06
-    ESP_MEM_DATA    = 0x07
-    ESP_SYNC        = 0x08
-    ESP_WRITE_REG   = 0x09
-    ESP_READ_REG    = 0x0a
+    ESP_FLASH_DATA = 0x03
+    ESP_FLASH_END = 0x04
+    ESP_MEM_BEGIN = 0x05
+    ESP_MEM_END = 0x06
+    ESP_MEM_DATA = 0x07
+    ESP_SYNC = 0x08
+    ESP_WRITE_REG = 0x09
+    ESP_READ_REG = 0x0A
 
     # Some comands supported by ESP32 and later chips ROM bootloader (or -8266 w/ stub)
     ESP_SPI_SET_PARAMS = 0x0B
-    ESP_SPI_ATTACH     = 0x0D
-    ESP_READ_FLASH_SLOW  = 0x0e  # ROM only, much slower than the stub flash read
+    ESP_SPI_ATTACH = 0x0D
+    ESP_READ_FLASH_SLOW = 0x0E  # ROM only, much slower than the stub flash read
     ESP_CHANGE_BAUDRATE = 0x0F
     ESP_FLASH_DEFL_BEGIN = 0x10
-    ESP_FLASH_DEFL_DATA  = 0x11
-    ESP_FLASH_DEFL_END   = 0x12
-    ESP_SPI_FLASH_MD5    = 0x13
+    ESP_FLASH_DEFL_DATA = 0x11
+    ESP_FLASH_DEFL_END = 0x12
+    ESP_SPI_FLASH_MD5 = 0x13
 
     # Commands supported by ESP32-S2 and later chips ROM bootloader only
     ESP_GET_SECURITY_INFO = 0x14
@@ -166,28 +183,29 @@ class ESPLoader(object):
     ESP_FLASH_ENCRYPT_DATA = 0xD4
 
     # Response code(s) sent by ROM
-    ROM_INVALID_RECV_MSG = 0x05   # response if an invalid message is received
+    ROM_INVALID_RECV_MSG = 0x05  # response if an invalid message is received
 
     # Maximum block sized for RAM and Flash writes, respectively.
-    ESP_RAM_BLOCK   = 0x1800
+    ESP_RAM_BLOCK = 0x1800
 
     FLASH_WRITE_SIZE = 0x400
 
     # Default baudrate. The ROM auto-bauds, so we can use more or less whatever we want.
-    ESP_ROM_BAUD    = 115200
+    ESP_ROM_BAUD = 115200
 
     # First byte of the application image
-    ESP_IMAGE_MAGIC = 0xe9
+    ESP_IMAGE_MAGIC = 0xE9
 
     # Initial state for the checksum routine
-    ESP_CHECKSUM_MAGIC = 0xef
+    ESP_CHECKSUM_MAGIC = 0xEF
 
     # Flash sector size, minimum unit of erase.
     FLASH_SECTOR_SIZE = 0x1000
 
     UART_DATE_REG_ADDR = 0x60000078
 
-    CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000  # This ROM address has a different value on each chip model
+    # This ROM address has a different value on each chip model
+    CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000
 
     UART_CLKDIV_MASK = 0xFFFFF
 
@@ -204,7 +222,8 @@ class ESPLoader(object):
     # ROM supports an encrypted flashing mode
     SUPPORTS_ENCRYPTED_FLASH = False
 
-    # Response to ESP_SYNC might indicate that flasher stub is running instead of the ROM bootloader
+    # Response to ESP_SYNC might indicate that flasher stub is running
+    # instead of the ROM bootloader
     sync_stub_detected = False
 
     # Device PIDs
@@ -225,8 +244,10 @@ class ESPLoader(object):
         with ones which throw NotImplementedInROMError().
 
         """
-        self.secure_download_mode = False  # flag is set to True if esptool detects the ROM is in Secure Download Mode
-        self.stub_is_disabled = False  # flag is set to True if esptool detects conditions which require the stub to be disabled
+        # True if esptool detects the ROM is in Secure Download Mode
+        self.secure_download_mode = False
+        # True if esptool detects conditions which require the stub to be disabled
+        self.stub_is_disabled = False
 
         if isinstance(port, basestring):
             self._port = serial.serial_for_url(port)
@@ -255,17 +276,22 @@ class ESPLoader(object):
         try:
             self._port.baudrate = baud
         except IOError:
-            raise FatalError("Failed to set baud rate %d. The driver may not support this rate." % baud)
+            raise FatalError(
+                "Failed to set baud rate %d. The driver may not support this rate."
+                % baud
+            )
 
-    """ Read a SLIP packet from the serial port """
     def read(self):
+        """Read a SLIP packet from the serial port"""
         return next(self._slip_reader)
 
-    """ Write bytes to the serial port while performing SLIP escaping """
     def write(self, packet):
-        buf = b'\xc0' \
-              + (packet.replace(b'\xdb', b'\xdb\xdd').replace(b'\xc0', b'\xdb\xdc')) \
-              + b'\xc0'
+        """Write bytes to the serial port while performing SLIP escaping"""
+        buf = (
+            b"\xc0"
+            + (packet.replace(b"\xdb", b"\xdb\xdd").replace(b"\xc0", b"\xdb\xdc"))
+            + b"\xc0"
+        )
         self.trace("Write %d bytes: %s", len(buf), HexFormatter(buf))
         self._port.write(buf)
 
@@ -281,9 +307,9 @@ class ESPLoader(object):
             prefix = "TRACE +%.3f " % delta
             print(prefix + (message % format_args))
 
-    """ Calculate checksum of a blob, as it is defined by the ROM """
     @staticmethod
     def checksum(data, state=ESP_CHECKSUM_MAGIC):
+        """Calculate checksum of a blob, as it is defined by the ROM"""
         for b in data:
             if type(b) is int:  # python 2/3 compat
                 state ^= b
@@ -292,8 +318,15 @@ class ESPLoader(object):
 
         return state
 
-    """ Send a request and read the response """
-    def command(self, op=None, data=b"", chk=0, wait_response=True, timeout=DEFAULT_TIMEOUT):
+    def command(
+        self,
+        op=None,
+        data=b"",
+        chk=0,
+        wait_response=True,
+        timeout=DEFAULT_TIMEOUT,
+    ):
+        """Send a request and read the response"""
         saved_timeout = self._port.timeout
         new_timeout = min(timeout, MAX_TIMEOUT)
         if new_timeout != saved_timeout:
@@ -301,9 +334,16 @@ class ESPLoader(object):
 
         try:
             if op is not None:
-                self.trace("command op=0x%02x data len=%s wait_response=%d timeout=%.3f data=%s",
-                           op, len(data), 1 if wait_response else 0, timeout, HexFormatter(data))
-                pkt = struct.pack(b'<BBHI', 0x00, op, len(data), chk) + data
+                self.trace(
+                    "command op=0x%02x data len=%s wait_response=%d "
+                    "timeout=%.3f data=%s",
+                    op,
+                    len(data),
+                    1 if wait_response else 0,
+                    timeout,
+                    HexFormatter(data),
+                )
+                pkt = struct.pack(b"<BBHI", 0x00, op, len(data), chk) + data
                 self.write(pkt)
 
             if not wait_response:
@@ -317,7 +357,7 @@ class ESPLoader(object):
                 p = self.read()
                 if len(p) < 8:
                     continue
-                (resp, op_ret, len_ret, val) = struct.unpack('<BBHI', p[:8])
+                (resp, op_ret, len_ret, val) = struct.unpack("<BBHI", p[:8])
                 if resp != 1:
                     continue
                 data = p[8:]
@@ -325,7 +365,9 @@ class ESPLoader(object):
                 if op is None or op_ret == op:
                     return val, data
                 if byte(data, 0) != 0 and byte(data, 1) == self.ROM_INVALID_RECV_MSG:
-                    self.flush_input()  # Unsupported read_reg can result in more than one error response for some reason
+                    # Unsupported read_reg can result in
+                    # more than one error response for some reason
+                    self.flush_input()
                     raise UnsupportedCommandError(self, op)
 
         finally:
@@ -334,7 +376,9 @@ class ESPLoader(object):
 
         raise FatalError("Response doesn't match request")
 
-    def check_command(self, op_description, op=None, data=b'', chk=0, timeout=DEFAULT_TIMEOUT):
+    def check_command(
+        self, op_description, op=None, data=b"", chk=0, timeout=DEFAULT_TIMEOUT
+    ):
         """
         Execute a command with 'command', check the result code and throw an appropriate
         FatalError if it fails.
@@ -347,17 +391,22 @@ class ESPLoader(object):
 
         # the status bytes are the last 2/4 bytes in the data (depending on chip)
         if len(data) < self.STATUS_BYTES_LENGTH:
-            raise FatalError("Failed to %s. Only got %d byte status response." % (op_description, len(data)))
-        status_bytes = data[-self.STATUS_BYTES_LENGTH:]
-        # we only care if the first one is non-zero. If it is, the second byte is a reason.
+            raise FatalError(
+                "Failed to %s. Only got %d byte status response."
+                % (op_description, len(data))
+            )
+        status_bytes = data[-self.STATUS_BYTES_LENGTH :]
+        # only care if the first one is non-zero. If it is, the second byte is a reason.
         if byte(status_bytes, 0) != 0:
-            raise FatalError.WithResult('Failed to %s' % op_description, status_bytes)
+            raise FatalError.WithResult("Failed to %s" % op_description, status_bytes)
 
         # if we had more data than just the status bytes, return it as the result
         # (this is used by the md5sum command, maybe other commands?)
         if len(data) > self.STATUS_BYTES_LENGTH:
-            return data[:-self.STATUS_BYTES_LENGTH]
-        else:  # otherwise, just return the 'val' field which comes from the reply header (this is used by read_reg)
+            return data[: -self.STATUS_BYTES_LENGTH]
+        else:
+            # otherwise, just return the 'val' field which comes from the reply header
+            # (this is used by read_reg)
             return val
 
     def flush_input(self):
@@ -365,12 +414,13 @@ class ESPLoader(object):
         self._slip_reader = slip_reader(self._port, self.trace)
 
     def sync(self):
-        val, _ = self.command(self.ESP_SYNC, b'\x07\x07\x12\x20' + 32 * b'\x55',
-                              timeout=SYNC_TIMEOUT)
+        val, _ = self.command(
+            self.ESP_SYNC, b"\x07\x07\x12\x20" + 32 * b"\x55", timeout=SYNC_TIMEOUT
+        )
 
-        # ROM bootloaders send some non-zero "val" response. The flasher stub sends 0. If we receive 0 then it
-        # probably indicates that the chip wasn't or couldn't be reseted properly and esptool is talking to the
-        # flasher stub.
+        # ROM bootloaders send some non-zero "val" response. The flasher stub sends 0.
+        # If we receive 0 then it probably indicates that the chip wasn't or couldn't be
+        # reseted properly and esptool is talking to the flasher stub.
         self.sync_stub_detected = val == 0
 
         for _ in range(7):
@@ -389,13 +439,19 @@ class ESPLoader(object):
 
     def _get_pid(self):
         if list_ports is None:
-            print("\nListing all serial ports is currently not available. Can't get device PID.")
+            print(
+                "\nListing all serial ports is currently not available. "
+                "Can't get device PID."
+            )
             return
         active_port = self._port.port
 
         # Pyserial only identifies regular ports, URL handlers are not supported
         if not active_port.lower().startswith(("com", "/dev/")):
-            print("\nDevice PID identification is only supported on COM and /dev/ serial ports.")
+            print(
+                "\nDevice PID identification is only supported on "
+                "COM and /dev/ serial ports."
+            )
             return
         # Return the real path if the active port is a symlink
         if active_port.startswith("/dev/") and os.path.islink(active_port):
@@ -408,10 +464,14 @@ class ESPLoader(object):
         for p in ports:
             if p.device in active_port:
                 return p.pid
-        print("\nFailed to get PID of a device on {}, using standard reset sequence.".format(active_port))
+        print(
+            "\nFailed to get PID of a device on {}, "
+            "using standard reset sequence.".format(active_port)
+        )
 
     def bootloader_reset(self, usb_jtag_serial=False, extra_delay=False):
-        """ Issue a reset-to-bootloader, with USB-JTAG-Serial custom reset sequence option
+        """
+        Issue a reset-to-bootloader, with USB-JTAG-Serial custom reset sequence option
         """
         # RTS = either CH_PD/EN or nRESET (both active low = chip in reset)
         # DTR = GPIO0 (active low = boot to flasher)
@@ -427,27 +487,40 @@ class ESPLoader(object):
             self._setDTR(True)  # Set IO0
             self._setRTS(False)
             time.sleep(0.1)
-            self._setRTS(True)  # Reset. Note dtr/rts calls inverted so we go through (1,1) instead of (0,0)
+            self._setRTS(
+                True
+            )  # Reset. Note dtr/rts calls inverted to go through (1,1) instead of (0,0)
             self._setDTR(False)
-            self._setRTS(True)  # Extra RTS set for RTS as Windows only propagates DTR on RTS setting
+            self._setRTS(
+                True
+            )  # Extra RTS set for RTS as Windows only propagates DTR on RTS setting
             time.sleep(0.1)
             self._setDTR(False)
             self._setRTS(False)
         else:
             # This fpga delay is for Espressif internal use
-            fpga_delay = True if self.FPGA_SLOW_BOOT and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1" else False
-            delay = 7 if fpga_delay else 0.5 if extra_delay else 0.05  # 0.5 needed for ESP32 rev0 and rev1
+            fpga_delay = (
+                True
+                if self.FPGA_SLOW_BOOT
+                and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1"
+                else False
+            )
+            delay = (
+                7 if fpga_delay else 0.5 if extra_delay else 0.05
+            )  # 0.5 needed for ESP32 rev0 and rev1
 
             self._setDTR(False)  # IO0=HIGH
-            self._setRTS(True)   # EN=LOW, chip in reset
+            self._setRTS(True)  # EN=LOW, chip in reset
             time.sleep(0.1)
-            self._setDTR(True)   # IO0=LOW
+            self._setDTR(True)  # IO0=LOW
             self._setRTS(False)  # EN=HIGH, chip out of reset
             time.sleep(delay)
             self._setDTR(False)  # IO0=HIGH, done
 
-    def _connect_attempt(self, mode='default_reset', usb_jtag_serial=False, extra_delay=False):
-        """ A single connection attempt """
+    def _connect_attempt(
+        self, mode="default_reset", usb_jtag_serial=False, extra_delay=False
+    ):
+        """A single connection attempt"""
         last_error = None
         boot_log_detected = False
         download_mode = False
@@ -457,15 +530,18 @@ class ESPLoader(object):
         if mode == "no_reset_no_sync":
             return last_error
 
-        if mode != 'no_reset':
+        if mode != "no_reset":
             if not self.USES_RFC2217:  # Might block on rfc2217 ports
-                self._port.reset_input_buffer()  # Empty serial buffer to isolate boot log
+                # Empty serial buffer to isolate boot log
+                self._port.reset_input_buffer()
             self.bootloader_reset(usb_jtag_serial, extra_delay)
 
             # Detect the ROM boot log and check actual boot mode (ESP32 and later only)
             waiting = self._port.inWaiting()
             read_bytes = self._port.read(waiting)
-            data = re.search(b'boot:(0x[0-9a-fA-F]+)(.*waiting for download)?', read_bytes, re.DOTALL)
+            data = re.search(
+                b"boot:(0x[0-9a-fA-F]+)(.*waiting for download)?", read_bytes, re.DOTALL
+            )
             if data is not None:
                 boot_log_detected = True
                 boot_mode = data.group(1)
@@ -478,52 +554,83 @@ class ESPLoader(object):
                 self.sync()
                 return None
             except FatalError as e:
-                print('.', end='')
+                print(".", end="")
                 sys.stdout.flush()
                 time.sleep(0.05)
                 last_error = e
 
         if boot_log_detected:
-            last_error = FatalError("Wrong boot mode detected ({})! The chip needs to be in download mode.".format(boot_mode.decode("utf-8")))
+            last_error = FatalError(
+                "Wrong boot mode detected ({})! "
+                "The chip needs to be in download mode.".format(
+                    boot_mode.decode("utf-8")
+                )
+            )
             if download_mode:
-                last_error = FatalError("Download mode successfully detected, but getting no sync reply: The serial TX path seems to be down.")
+                last_error = FatalError(
+                    "Download mode successfully detected, but getting no sync reply: "
+                    "The serial TX path seems to be down."
+                )
         return last_error
 
     def get_memory_region(self, name):
-        """ Returns a tuple of (start, end) for the memory map entry with the given name, or None if it doesn't exist
+        """
+        Returns a tuple of (start, end) for the memory map entry with the given name,
+        or None if it doesn't exist
         """
         try:
             return [(start, end) for (start, end, n) in self.MEMORY_MAP if n == name][0]
         except IndexError:
             return None
 
-    def connect(self, mode='default_reset', attempts=DEFAULT_CONNECT_ATTEMPTS, detecting=False, warnings=True):
-        """ Try connecting repeatedly until successful, or giving up """
-        if warnings and mode in ['no_reset', 'no_reset_no_sync']:
-            print('WARNING: Pre-connection option "{}" was selected.'.format(mode),
-                  'Connection may fail if the chip is not in bootloader or flasher stub mode.')
-        print('Connecting...', end='')
+    def connect(
+        self,
+        mode="default_reset",
+        attempts=DEFAULT_CONNECT_ATTEMPTS,
+        detecting=False,
+        warnings=True,
+    ):
+        """Try connecting repeatedly until successful, or giving up"""
+        if warnings and mode in ["no_reset", "no_reset_no_sync"]:
+            print(
+                'WARNING: Pre-connection option "{}" was selected.'.format(mode),
+                "Connection may fail if the chip is not in bootloader "
+                "or flasher stub mode.",
+            )
+        print("Connecting...", end="")
         sys.stdout.flush()
         last_error = None
 
-        usb_jtag_serial = (mode == 'usb_reset') or (self._get_pid() == self.USB_JTAG_SERIAL_PID)
+        usb_jtag_serial = (mode == "usb_reset") or (
+            self._get_pid() == self.USB_JTAG_SERIAL_PID
+        )
 
         try:
-            for _, extra_delay in zip(range(attempts) if attempts > 0 else itertools.count(), itertools.cycle((False, True))):
-                last_error = self._connect_attempt(mode=mode, usb_jtag_serial=usb_jtag_serial, extra_delay=extra_delay)
+            for _, extra_delay in zip(
+                range(attempts) if attempts > 0 else itertools.count(),
+                itertools.cycle((False, True)),
+            ):
+                last_error = self._connect_attempt(
+                    mode=mode, usb_jtag_serial=usb_jtag_serial, extra_delay=extra_delay
+                )
                 if last_error is None:
                     break
         finally:
-            print('')  # end 'Connecting...' line
+            print("")  # end 'Connecting...' line
 
         if last_error is not None:
-            raise FatalError('Failed to connect to {}: {}'
-                             '\nFor troubleshooting steps visit: '
-                             'https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html'.format(self.CHIP_NAME, last_error))
+            raise FatalError(
+                "Failed to connect to {}: {}"
+                "\nFor troubleshooting steps visit: "
+                "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html".format(  # noqa E501
+                    self.CHIP_NAME, last_error
+                )
+            )
 
         if not detecting:
             try:
                 from .targets import ROM_LIST
+
                 # check the date code registers match what we expect to see
                 chip_magic_value = self.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
                 if chip_magic_value not in self.CHIP_DETECT_MAGIC_VALUE:
@@ -533,10 +640,17 @@ class ESPLoader(object):
                             actually = cls
                             break
                     if warnings and actually is None:
-                        print(("WARNING: This chip doesn't appear to be a %s (chip magic value 0x%08x). "
-                               "Probably it is unsupported by this version of esptool.") % (self.CHIP_NAME, chip_magic_value))
+                        print(
+                            "WARNING: This chip doesn't appear to be a %s "
+                            "(chip magic value 0x%08x). "
+                            "Probably it is unsupported by this version of esptool."
+                            % (self.CHIP_NAME, chip_magic_value)
+                        )
                     else:
-                        raise FatalError("This chip is %s not %s. Wrong --chip argument?" % (actually.CHIP_NAME, self.CHIP_NAME))
+                        raise FatalError(
+                            "This chip is %s not %s. Wrong --chip argument?"
+                            % (actually.CHIP_NAME, self.CHIP_NAME)
+                        )
             except UnsupportedCommandError:
                 self.secure_download_mode = True
             self._post_connect()
@@ -550,26 +664,33 @@ class ESPLoader(object):
         pass
 
     def read_reg(self, addr, timeout=DEFAULT_TIMEOUT):
-        """ Read memory address in target """
+        """Read memory address in target"""
         # we don't call check_command here because read_reg() function is called
-        # when detecting chip type, and the way we check for success (STATUS_BYTES_LENGTH) is different
-        # for different chip types (!)
-        val, data = self.command(self.ESP_READ_REG, struct.pack('<I', addr), timeout=timeout)
+        # when detecting chip type, and the way we check for success
+        # (STATUS_BYTES_LENGTH) is different for different chip types (!)
+        val, data = self.command(
+            self.ESP_READ_REG, struct.pack("<I", addr), timeout=timeout
+        )
         if byte(data, 0) != 0:
-            raise FatalError.WithResult("Failed to read register address %08x" % addr, data)
+            raise FatalError.WithResult(
+                "Failed to read register address %08x" % addr, data
+            )
         return val
 
-    """ Write to memory address in target """
     def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0, delay_after_us=0):
-        command = struct.pack('<IIII', addr, value, mask, delay_us)
+        """Write to memory address in target"""
+        command = struct.pack("<IIII", addr, value, mask, delay_us)
         if delay_after_us > 0:
             # add a dummy write to a date register as an excuse to have a delay
-            command += struct.pack('<IIII', self.UART_DATE_REG_ADDR, 0, 0, delay_after_us)
+            command += struct.pack(
+                "<IIII", self.UART_DATE_REG_ADDR, 0, 0, delay_after_us
+            )
 
         return self.check_command("write target memory", self.ESP_WRITE_REG, command)
 
     def update_reg(self, addr, mask, new_val):
-        """ Update register at 'addr', replace the bits masked out by 'mask'
+        """
+        Update register at 'addr', replace the bits masked out by 'mask'
         with new_val. new_val is shifted left to match the LSB of 'mask'
 
         Returns just-written value of register.
@@ -582,50 +703,64 @@ class ESPLoader(object):
 
         return val
 
-    """ Start downloading an application image to RAM """
     def mem_begin(self, size, blocks, blocksize, offset):
-        if self.IS_STUB:  # check we're not going to overwrite a running stub with this data
+        """Start downloading an application image to RAM"""
+        # check we're not going to overwrite a running stub with this data
+        if self.IS_STUB:
             stub = self.STUB_CODE
             load_start = offset
             load_end = offset + size
-            for (start, end) in [(stub["data_start"], stub["data_start"] + len(stub["data"])),
-                                 (stub["text_start"], stub["text_start"] + len(stub["text"]))]:
+            for (start, end) in [
+                (stub["data_start"], stub["data_start"] + len(stub["data"])),
+                (stub["text_start"], stub["text_start"] + len(stub["text"])),
+            ]:
                 if load_start < end and load_end > start:
-                    raise FatalError(("Software loader is resident at 0x%08x-0x%08x. "
-                                      "Can't load binary at overlapping address range 0x%08x-0x%08x. "
-                                      "Either change binary loading address, or use the --no-stub "
-                                      "option to disable the software loader.") % (start, end, load_start, load_end))
+                    raise FatalError(
+                        "Software loader is resident at 0x%08x-0x%08x. "
+                        "Can't load binary at overlapping address range 0x%08x-0x%08x. "
+                        "Either change binary loading address, or use the --no-stub "
+                        "option to disable the software loader."
+                        % (start, end, load_start, load_end)
+                    )
 
-        return self.check_command("enter RAM download mode", self.ESP_MEM_BEGIN,
-                                  struct.pack('<IIII', size, blocks, blocksize, offset))
+        return self.check_command(
+            "enter RAM download mode",
+            self.ESP_MEM_BEGIN,
+            struct.pack("<IIII", size, blocks, blocksize, offset),
+        )
 
-    """ Send a block of an image to RAM """
     def mem_block(self, data, seq):
-        return self.check_command("write to target RAM", self.ESP_MEM_DATA,
-                                  struct.pack('<IIII', len(data), seq, 0, 0) + data,
-                                  self.checksum(data))
+        """Send a block of an image to RAM"""
+        return self.check_command(
+            "write to target RAM",
+            self.ESP_MEM_DATA,
+            struct.pack("<IIII", len(data), seq, 0, 0) + data,
+            self.checksum(data),
+        )
 
-    """ Leave download mode and run the application """
     def mem_finish(self, entrypoint=0):
+        """Leave download mode and run the application"""
         # Sending ESP_MEM_END usually sends a correct response back, however sometimes
         # (with ROM loader) the executed code may reset the UART or change the baud rate
-        # before the transmit FIFO is empty. So in these cases we set a short timeout and
-        # ignore errors.
+        # before the transmit FIFO is empty. So in these cases we set a short timeout
+        # and ignore errors.
         timeout = DEFAULT_TIMEOUT if self.IS_STUB else MEM_END_ROM_TIMEOUT
-        data = struct.pack('<II', int(entrypoint == 0), entrypoint)
+        data = struct.pack("<II", int(entrypoint == 0), entrypoint)
         try:
-            return self.check_command("leave RAM download mode", self.ESP_MEM_END,
-                                      data=data, timeout=timeout)
+            return self.check_command(
+                "leave RAM download mode", self.ESP_MEM_END, data=data, timeout=timeout
+            )
         except FatalError:
             if self.IS_STUB:
                 raise
             pass
 
-    """ Start downloading to Flash (performs an erase)
-
-    Returns number of blocks (of size self.FLASH_WRITE_SIZE) to write.
-    """
     def flash_begin(self, size, offset, begin_rom_encrypted=False):
+        """
+        Start downloading to Flash (performs an erase)
+
+        Returns number of blocks (of size self.FLASH_WRITE_SIZE) to write.
+        """
         num_blocks = (size + self.FLASH_WRITE_SIZE - 1) // self.FLASH_WRITE_SIZE
         erase_size = self.get_erase_size(offset, size)
 
@@ -633,57 +768,66 @@ class ESPLoader(object):
         if self.IS_STUB:
             timeout = DEFAULT_TIMEOUT
         else:
-            timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)  # ROM performs the erase up front
+            timeout = timeout_per_mb(
+                ERASE_REGION_TIMEOUT_PER_MB, size
+            )  # ROM performs the erase up front
 
-        params = struct.pack('<IIII', erase_size, num_blocks, self.FLASH_WRITE_SIZE, offset)
+        params = struct.pack(
+            "<IIII", erase_size, num_blocks, self.FLASH_WRITE_SIZE, offset
+        )
         if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
-            params += struct.pack('<I', 1 if begin_rom_encrypted else 0)
-        self.check_command("enter Flash download mode", self.ESP_FLASH_BEGIN,
-                           params, timeout=timeout)
+            params += struct.pack("<I", 1 if begin_rom_encrypted else 0)
+        self.check_command(
+            "enter Flash download mode", self.ESP_FLASH_BEGIN, params, timeout=timeout
+        )
         if size != 0 and not self.IS_STUB:
             print("Took %.2fs to erase flash block" % (time.time() - t))
         return num_blocks
 
-    """ Write block to flash """
     def flash_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        self.check_command("write to target Flash after seq %d" % seq,
-                           self.ESP_FLASH_DATA,
-                           struct.pack('<IIII', len(data), seq, 0, 0) + data,
-                           self.checksum(data),
-                           timeout=timeout)
+        """Write block to flash"""
+        self.check_command(
+            "write to target Flash after seq %d" % seq,
+            self.ESP_FLASH_DATA,
+            struct.pack("<IIII", len(data), seq, 0, 0) + data,
+            self.checksum(data),
+            timeout=timeout,
+        )
 
-    """ Encrypt before writing to flash """
     def flash_encrypt_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
+        """Encrypt before writing to flash"""
         if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
             # ROM support performs the encrypted writes via the normal write command,
             # triggered by flash_begin(begin_rom_encrypted=True)
             return self.flash_block(data, seq, timeout)
 
-        self.check_command("Write encrypted to target Flash after seq %d" % seq,
-                           self.ESP_FLASH_ENCRYPT_DATA,
-                           struct.pack('<IIII', len(data), seq, 0, 0) + data,
-                           self.checksum(data),
-                           timeout=timeout)
+        self.check_command(
+            "Write encrypted to target Flash after seq %d" % seq,
+            self.ESP_FLASH_ENCRYPT_DATA,
+            struct.pack("<IIII", len(data), seq, 0, 0) + data,
+            self.checksum(data),
+            timeout=timeout,
+        )
 
-    """ Leave flash mode and run/reboot """
     def flash_finish(self, reboot=False):
-        pkt = struct.pack('<I', int(not reboot))
+        """Leave flash mode and run/reboot"""
+        pkt = struct.pack("<I", int(not reboot))
         # stub sends a reply to this command
         self.check_command("leave Flash mode", self.ESP_FLASH_END, pkt)
 
-    """ Run application code in flash """
     def run(self, reboot=False):
+        """Run application code in flash"""
         # Fake flash begin immediately followed by flash end
         self.flash_begin(0, 0)
         self.flash_finish(reboot)
 
-    """ Read SPI flash manufacturer and device id """
     def flash_id(self):
+        """Read SPI flash manufacturer and device id"""
         SPIFLASH_RDID = 0x9F
         return self.run_spiflash_command(SPIFLASH_RDID, b"", 24)
 
     def get_security_info(self):
-        res = self.check_command('get security info', self.ESP_GET_SECURITY_INFO, b'')
+        res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
         esp32s2 = True if len(res) == 12 else False
         res = struct.unpack("<IBBBBBBBB" if esp32s2 else "<IBBBBBBBBII", res)
         return {
@@ -696,8 +840,10 @@ class ESPLoader(object):
 
     @esp32s3_or_newer_function_only
     def get_chip_id(self):
-        res = self.check_command('get security info', self.ESP_GET_SECURITY_INFO, b'')
-        res = struct.unpack("<IBBBBBBBBI", res[:16])  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
+        res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
+        res = struct.unpack(
+            "<IBBBBBBBBI", res[:16]
+        )  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
         chip_id = res[9]  # 2/4 status bytes invariant
         return chip_id
 
@@ -706,16 +852,21 @@ class ESPLoader(object):
         try:
             return cls.FLASH_SIZES[arg]
         except KeyError:
-            raise FatalError("Flash size '%s' is not supported by this chip type. Supported sizes: %s"
-                             % (arg, ", ".join(cls.FLASH_SIZES.keys())))
+            raise FatalError(
+                "Flash size '%s' is not supported by this chip type. "
+                "Supported sizes: %s" % (arg, ", ".join(cls.FLASH_SIZES.keys()))
+            )
 
     @classmethod
     def parse_flash_freq_arg(cls, arg):
         try:
             return cls.FLASH_FREQUENCY[arg]
         except KeyError:
-            raise FatalError("Flash frequency '%s' is not supported by this chip type. Supported frequencies: %s"
-                             % (arg, ", ".join(cls.FLASH_FREQUENCY.keys())))
+            raise FatalError(
+                "Flash frequency '%s' is not supported by this chip type. "
+                "Supported frequencies: %s"
+                % (arg, ", ".join(cls.FLASH_FREQUENCY.keys()))
+            )
 
     def run_stub(self, stub=None):
         if stub is None:
@@ -727,7 +878,7 @@ class ESPLoader(object):
 
         # Upload
         print("Uploading stub...")
-        for field in ['text', 'data']:
+        for field in ["text", "data"]:
             if field in stub:
                 offs = stub[field + "_start"]
                 length = len(stub[field])
@@ -738,17 +889,18 @@ class ESPLoader(object):
                     to_offs = from_offs + self.ESP_RAM_BLOCK
                     self.mem_block(stub[field][from_offs:to_offs], seq)
         print("Running stub...")
-        self.mem_finish(stub['entry'])
+        self.mem_finish(stub["entry"])
 
         p = self.read()
-        if p != b'OHAI':
+        if p != b"OHAI":
             raise FatalError("Failed to start stub. Unexpected response: %s" % p)
         print("Stub running...")
         return self.STUB_CLASS(self)
 
     @stub_and_esp32_function_only
     def flash_defl_begin(self, size, compsize, offset):
-        """ Start downloading compressed data to Flash (performs an erase)
+        """
+        Start downloading compressed data to Flash (performs an erase)
 
         Returns number of blocks (size self.FLASH_WRITE_SIZE) to write.
         """
@@ -757,35 +909,55 @@ class ESPLoader(object):
 
         t = time.time()
         if self.IS_STUB:
-            write_size = size  # stub expects number of bytes here, manages erasing internally
+            write_size = (
+                size  # stub expects number of bytes here, manages erasing internally
+            )
             timeout = DEFAULT_TIMEOUT
         else:
-            write_size = erase_blocks * self.FLASH_WRITE_SIZE  # ROM expects rounded up to erase block size
-            timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, write_size)  # ROM performs the erase up front
+            write_size = (
+                erase_blocks * self.FLASH_WRITE_SIZE
+            )  # ROM expects rounded up to erase block size
+            timeout = timeout_per_mb(
+                ERASE_REGION_TIMEOUT_PER_MB, write_size
+            )  # ROM performs the erase up front
         print("Compressed %d bytes to %d..." % (size, compsize))
-        params = struct.pack('<IIII', write_size, num_blocks, self.FLASH_WRITE_SIZE, offset)
+        params = struct.pack(
+            "<IIII", write_size, num_blocks, self.FLASH_WRITE_SIZE, offset
+        )
         if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
-            params += struct.pack('<I', 0)  # extra param is to enter encrypted flash mode via ROM (not supported currently)
-        self.check_command("enter compressed flash mode", self.ESP_FLASH_DEFL_BEGIN, params, timeout=timeout)
+            # extra param is to enter encrypted flash mode via ROM
+            # (not supported currently)
+            params += struct.pack("<I", 0)
+        self.check_command(
+            "enter compressed flash mode",
+            self.ESP_FLASH_DEFL_BEGIN,
+            params,
+            timeout=timeout,
+        )
         if size != 0 and not self.IS_STUB:
             # (stub erases as it writes, but ROM loaders erase on begin)
             print("Took %.2fs to erase flash block" % (time.time() - t))
         return num_blocks
 
-    """ Write block to flash, send compressed """
     @stub_and_esp32_function_only
     def flash_defl_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        self.check_command("write compressed data to flash after seq %d" % seq,
-                           self.ESP_FLASH_DEFL_DATA, struct.pack('<IIII', len(data), seq, 0, 0) + data, self.checksum(data), timeout=timeout)
+        """Write block to flash, send compressed"""
+        self.check_command(
+            "write compressed data to flash after seq %d" % seq,
+            self.ESP_FLASH_DEFL_DATA,
+            struct.pack("<IIII", len(data), seq, 0, 0) + data,
+            self.checksum(data),
+            timeout=timeout,
+        )
 
-    """ Leave compressed flash mode and run/reboot """
     @stub_and_esp32_function_only
     def flash_defl_finish(self, reboot=False):
+        """Leave compressed flash mode and run/reboot"""
         if not reboot and not self.IS_STUB:
             # skip sending flash_finish to ROM loader, as this
             # exits the bootloader. Stub doesn't do this.
             return
-        pkt = struct.pack('<I', int(not reboot))
+        pkt = struct.pack("<I", int(not reboot))
         self.check_command("leave compressed flash mode", self.ESP_FLASH_DEFL_END, pkt)
         self.in_bootloader = False
 
@@ -794,8 +966,12 @@ class ESPLoader(object):
         # the MD5 command returns additional bytes in the standard
         # command reply slot
         timeout = timeout_per_mb(MD5_TIMEOUT_PER_MB, size)
-        res = self.check_command('calculate md5sum', self.ESP_SPI_FLASH_MD5, struct.pack('<IIII', addr, size, 0, 0),
-                                 timeout=timeout)
+        res = self.check_command(
+            "calculate md5sum",
+            self.ESP_SPI_FLASH_MD5,
+            struct.pack("<IIII", addr, size, 0, 0),
+            timeout=timeout,
+        )
 
         if len(res) == 32:
             return res.decode("utf-8")  # already hex formatted
@@ -809,7 +985,7 @@ class ESPLoader(object):
         print("Changing baud rate to %d" % baud)
         # stub takes the new baud rate and the old one
         second_arg = self._port.baudrate if self.IS_STUB else 0
-        self.command(self.ESP_CHANGE_BAUDRATE, struct.pack('<II', baud, second_arg))
+        self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", baud, second_arg))
         print("Changed.")
         self._set_port_baudrate(baud)
         time.sleep(0.05)  # get rid of crap sent during baud rate change
@@ -818,8 +994,9 @@ class ESPLoader(object):
     @stub_function_only
     def erase_flash(self):
         # depending on flash chip model the erase may take this long (maybe longer!)
-        self.check_command("erase flash", self.ESP_ERASE_FLASH,
-                           timeout=CHIP_ERASE_TIMEOUT)
+        self.check_command(
+            "erase flash", self.ESP_ERASE_FLASH, timeout=CHIP_ERASE_TIMEOUT
+        )
 
     @stub_function_only
     def erase_region(self, offset, size):
@@ -828,7 +1005,12 @@ class ESPLoader(object):
         if size % self.FLASH_SECTOR_SIZE != 0:
             raise FatalError("Size of data to erase must be a multiple of 4096")
         timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)
-        self.check_command("erase region", self.ESP_ERASE_REGION, struct.pack('<II', offset, size), timeout=timeout)
+        self.check_command(
+            "erase region",
+            self.ESP_ERASE_REGION,
+            struct.pack("<II", offset, size),
+            timeout=timeout,
+        )
 
     def read_flash_slow(self, offset, length, progress_fn):
         raise NotImplementedInROMError(self, self.read_flash_slow)
@@ -838,34 +1020,38 @@ class ESPLoader(object):
             return self.read_flash_slow(offset, length, progress_fn)  # ROM-only routine
 
         # issue a standard bootloader command to trigger the read
-        self.check_command("read flash", self.ESP_READ_FLASH,
-                           struct.pack('<IIII',
-                                       offset,
-                                       length,
-                                       self.FLASH_SECTOR_SIZE,
-                                       64))
+        self.check_command(
+            "read flash",
+            self.ESP_READ_FLASH,
+            struct.pack("<IIII", offset, length, self.FLASH_SECTOR_SIZE, 64),
+        )
         # now we expect (length // block_size) SLIP frames with the data
-        data = b''
+        data = b""
         while len(data) < length:
             p = self.read()
             data += p
             if len(data) < length and len(p) < self.FLASH_SECTOR_SIZE:
-                raise FatalError('Corrupt data, expected 0x%x bytes but received 0x%x bytes' % (self.FLASH_SECTOR_SIZE, len(p)))
-            self.write(struct.pack('<I', len(data)))
+                raise FatalError(
+                    "Corrupt data, expected 0x%x bytes but received 0x%x bytes"
+                    % (self.FLASH_SECTOR_SIZE, len(p))
+                )
+            self.write(struct.pack("<I", len(data)))
             if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
                 progress_fn(len(data), length)
         if progress_fn:
             progress_fn(len(data), length)
         if len(data) > length:
-            raise FatalError('Read more than expected')
+            raise FatalError("Read more than expected")
 
         digest_frame = self.read()
         if len(digest_frame) != 16:
-            raise FatalError('Expected digest, got: %s' % hexify(digest_frame))
+            raise FatalError("Expected digest, got: %s" % hexify(digest_frame))
         expected_digest = hexify(digest_frame).upper()
         digest = hashlib.md5(data).hexdigest().upper()
         if digest != expected_digest:
-            raise FatalError('Digest mismatch: expected %s, got %s' % (expected_digest, digest))
+            raise FatalError(
+                "Digest mismatch: expected %s, got %s" % (expected_digest, digest)
+            )
         return data
 
     def flash_spi_attach(self, hspi_arg):
@@ -875,12 +1061,13 @@ class ESPLoader(object):
         has it as a SPI command.
         """
         # last 3 bytes in ESP_SPI_ATTACH argument are reserved values
-        arg = struct.pack('<I', hspi_arg)
+        arg = struct.pack("<I", hspi_arg)
         if not self.IS_STUB:
             # ESP32 ROM loader takes additional 'is legacy' arg, which is not
-            # currently supported in the stub loader or esptool.py (as it's not usually needed.)
+            # currently supported in the stub loader or esptool.py
+            # (as it's not usually needed.)
             is_legacy = 0
-            arg += struct.pack('BBBB', is_legacy, 0, 0, 0)
+            arg += struct.pack("BBBB", is_legacy, 0, 0, 0)
         self.check_command("configure SPI flash pins", self.ESP_SPI_ATTACH, arg)
 
     def flash_set_parameters(self, size):
@@ -899,11 +1086,30 @@ class ESPLoader(object):
         block_size = 64 * 1024
         sector_size = 4 * 1024
         page_size = 256
-        status_mask = 0xffff
-        self.check_command("set SPI params", self.ESP_SPI_SET_PARAMS,
-                           struct.pack('<IIIIII', fl_id, total_size, block_size, sector_size, page_size, status_mask))
+        status_mask = 0xFFFF
+        self.check_command(
+            "set SPI params",
+            self.ESP_SPI_SET_PARAMS,
+            struct.pack(
+                "<IIIIII",
+                fl_id,
+                total_size,
+                block_size,
+                sector_size,
+                page_size,
+                status_mask,
+            ),
+        )
 
-    def run_spiflash_command(self, spiflash_command, data=b"", read_bits=0, addr=None, addr_len=0, dummy_len=0):
+    def run_spiflash_command(
+        self,
+        spiflash_command,
+        data=b"",
+        read_bits=0,
+        addr=None,
+        addr_len=0,
+        dummy_len=0,
+    ):
         """Run an arbitrary SPI flash command.
 
         This function uses the "USR_COMMAND" functionality in the ESP
@@ -916,24 +1122,25 @@ class ESPLoader(object):
         """
 
         # SPI_USR register flags
-        SPI_USR_COMMAND = (1 << 31)
-        SPI_USR_ADDR    = (1 << 30)
-        SPI_USR_DUMMY   = (1 << 29)
-        SPI_USR_MISO    = (1 << 28)
-        SPI_USR_MOSI    = (1 << 27)
+        SPI_USR_COMMAND = 1 << 31
+        SPI_USR_ADDR = 1 << 30
+        SPI_USR_DUMMY = 1 << 29
+        SPI_USR_MISO = 1 << 28
+        SPI_USR_MOSI = 1 << 27
 
         # SPI registers, base address differs ESP32* vs 8266
         base = self.SPI_REG_BASE
-        SPI_CMD_REG       = base + 0x00
-        SPI_ADDR_REG      = base + 0x04
-        SPI_USR_REG       = base + self.SPI_USR_OFFS
-        SPI_USR1_REG      = base + self.SPI_USR1_OFFS
-        SPI_USR2_REG      = base + self.SPI_USR2_OFFS
-        SPI_W0_REG        = base + self.SPI_W0_OFFS
+        SPI_CMD_REG = base + 0x00
+        SPI_ADDR_REG = base + 0x04
+        SPI_USR_REG = base + self.SPI_USR_OFFS
+        SPI_USR1_REG = base + self.SPI_USR1_OFFS
+        SPI_USR2_REG = base + self.SPI_USR2_OFFS
+        SPI_W0_REG = base + self.SPI_W0_OFFS
 
         # following two registers are ESP32 and later chips only
         if self.SPI_MOSI_DLEN_OFFS is not None:
-            # ESP32 and later chips have a more sophisticated way to set up "user" commands
+            # ESP32 and later chips have a more sophisticated way
+            # to set up "user" commands
             def set_data_lengths(mosi_bits, miso_bits):
                 SPI_MOSI_DLEN_REG = base + self.SPI_MOSI_DLEN_OFFS
                 SPI_MISO_DLEN_REG = base + self.SPI_MISO_DLEN_OFFS
@@ -943,36 +1150,46 @@ class ESPLoader(object):
                     self.write_reg(SPI_MISO_DLEN_REG, miso_bits - 1)
                 flags = 0
                 if dummy_len > 0:
-                    flags |= (dummy_len - 1)
+                    flags |= dummy_len - 1
                 if addr_len > 0:
                     flags |= (addr_len - 1) << SPI_USR_ADDR_LEN_SHIFT
                 if flags:
                     self.write_reg(SPI_USR1_REG, flags)
+
         else:
+
             def set_data_lengths(mosi_bits, miso_bits):
                 SPI_DATA_LEN_REG = SPI_USR1_REG
                 SPI_MOSI_BITLEN_S = 17
                 SPI_MISO_BITLEN_S = 8
                 mosi_mask = 0 if (mosi_bits == 0) else (mosi_bits - 1)
                 miso_mask = 0 if (miso_bits == 0) else (miso_bits - 1)
-                flags = (miso_mask << SPI_MISO_BITLEN_S) | (mosi_mask << SPI_MOSI_BITLEN_S)
+                flags = (miso_mask << SPI_MISO_BITLEN_S) | (
+                    mosi_mask << SPI_MOSI_BITLEN_S
+                )
                 if dummy_len > 0:
-                    flags |= (dummy_len - 1)
+                    flags |= dummy_len - 1
                 if addr_len > 0:
                     flags |= (addr_len - 1) << SPI_USR_ADDR_LEN_SHIFT
                 self.write_reg(SPI_DATA_LEN_REG, flags)
 
         # SPI peripheral "command" bitmasks for SPI_CMD_REG
-        SPI_CMD_USR  = (1 << 18)
+        SPI_CMD_USR = 1 << 18
 
         # shift values
         SPI_USR2_COMMAND_LEN_SHIFT = 28
         SPI_USR_ADDR_LEN_SHIFT = 26
 
         if read_bits > 32:
-            raise FatalError("Reading more than 32 bits back from a SPI flash operation is unsupported")
+            raise FatalError(
+                "Reading more than 32 bits back from a SPI flash "
+                "operation is unsupported"
+            )
         if len(data) > 64:
-            raise FatalError("Writing more than 64 bytes of data with one SPI command is unsupported")
+            raise FatalError(
+                "Writing more than 64 bytes of data with one SPI "
+                "command is unsupported"
+            )
 
         data_bits = len(data) * 8
         old_spi_usr = self.read_reg(SPI_USR_REG)
@@ -988,14 +1205,15 @@ class ESPLoader(object):
             flags |= SPI_USR_DUMMY
         set_data_lengths(data_bits, read_bits)
         self.write_reg(SPI_USR_REG, flags)
-        self.write_reg(SPI_USR2_REG,
-                       (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflash_command)
+        self.write_reg(
+            SPI_USR2_REG, (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflash_command
+        )
         if addr and addr_len > 0:
             self.write_reg(SPI_ADDR_REG, addr)
         if data_bits == 0:
             self.write_reg(SPI_W0_REG, 0)  # clear data register before we read it
         else:
-            data = pad_to(data, 4, b'\00')  # pad to 32-bit multiple
+            data = pad_to(data, 4, b"\00")  # pad to 32-bit multiple
             words = struct.unpack("I" * (len(data) // 4), data)
             next_reg = SPI_W0_REG
             for word in words:
@@ -1008,6 +1226,7 @@ class ESPLoader(object):
                 if (self.read_reg(SPI_CMD_REG) & SPI_CMD_USR) == 0:
                     return
             raise FatalError("SPI command did not complete in time")
+
         wait_done()
 
         status = self.read_reg(SPI_W0_REG)
@@ -1018,7 +1237,9 @@ class ESPLoader(object):
 
     def read_spiflash_sfdp(self, addr, read_bits):
         CMD_RDSFDP = 0x5A
-        return self.run_spiflash_command(CMD_RDSFDP, read_bits=read_bits, addr=addr, addr_len=24, dummy_len=8)
+        return self.run_spiflash_command(
+            CMD_RDSFDP, read_bits=read_bits, addr=addr, addr_len=24, dummy_len=8
+        )
 
     def read_status(self, num_bytes=2):
         """Read up to 24 bits (num_bytes) of SPI flash status register contents
@@ -1027,7 +1248,7 @@ class ESPLoader(object):
         Not all SPI flash supports all three commands. The upper 1 or 2
         bytes may be 0xFF.
         """
-        SPIFLASH_RDSR  = 0x05
+        SPIFLASH_RDSR = 0x05
         SPIFLASH_RDSR2 = 0x35
         SPIFLASH_RDSR3 = 0x15
 
@@ -1067,7 +1288,8 @@ class ESPLoader(object):
             self.run_spiflash_command(enable_cmd)
             self.run_spiflash_command(SPIFLASH_WRSR, struct.pack("<H", new_status))
 
-        # also try using individual commands (also not supported by all chips for num_bytes 2 & 3)
+        # also try using individual commands
+        # (also not supported by all chips for num_bytes 2 & 3)
         for cmd in [SPIFLASH_WRSR, SPIFLASH_WRSR2, SPIFLASH_WRSR3][0:num_bytes]:
             self.run_spiflash_command(enable_cmd)
             self.run_spiflash_command(cmd, struct.pack("B", new_status & 0xFF))
@@ -1076,23 +1298,32 @@ class ESPLoader(object):
         self.run_spiflash_command(SPIFLASH_WRDI)
 
     def get_crystal_freq(self):
-        # Figure out the crystal frequency from the UART clock divider
-        # Returns a normalized value in integer MHz (40 or 26 are the only supported values)
-        #
+        """
+        Figure out the crystal frequency from the UART clock divider
+
+        Returns a normalized value in integer MHz (only values 40 or 26 are supported)
+        """
         # The logic here is:
-        # - We know that our baud rate and the ESP UART baud rate are roughly the same, or we couldn't communicate
-        # - We can read the UART clock divider register to know how the ESP derives this from the APB bus frequency
-        # - Multiplying these two together gives us the bus frequency which is either the crystal frequency (ESP32)
-        #   or double the crystal frequency (ESP8266). See the self.XTAL_CLK_DIVIDER parameter for this factor.
+        # - We know that our baud rate and the ESP UART baud rate are roughly the same,
+        #   or we couldn't communicate
+        # - We can read the UART clock divider register to know how the ESP derives this
+        #   from the APB bus frequency
+        # - Multiplying these two together gives us the bus frequency which is either
+        #   the crystal frequency (ESP32) or double the crystal frequency (ESP8266).
+        #   See the self.XTAL_CLK_DIVIDER parameter for this factor.
         uart_div = self.read_reg(self.UART_CLKDIV_REG) & self.UART_CLKDIV_MASK
         est_xtal = (self._port.baudrate * uart_div) / 1e6 / self.XTAL_CLK_DIVIDER
         norm_xtal = 40 if est_xtal > 33 else 26
         if abs(norm_xtal - est_xtal) > 1:
-            print("WARNING: Detected crystal freq %.2fMHz is quite different to normalized freq %dMHz. Unsupported crystal in use?" % (est_xtal, norm_xtal))
+            print(
+                "WARNING: Detected crystal freq %.2fMHz is quite different to "
+                "normalized freq %dMHz. Unsupported crystal in use?"
+                % (est_xtal, norm_xtal)
+            )
         return norm_xtal
 
     def hard_reset(self):
-        print('Hard resetting via RTS pin...')
+        print("Hard resetting via RTS pin...")
         self._setRTS(True)  # EN->LOW
         time.sleep(0.1)
         self._setRTS(False)
@@ -1112,7 +1343,9 @@ class ESPLoader(object):
                 self.flash_begin(0, 0)
                 self.flash_finish(True)
             elif self.CHIP_NAME != "ESP8266":
-                raise FatalError("Soft resetting is currently only supported on ESP8266")
+                raise FatalError(
+                    "Soft resetting is currently only supported on ESP8266"
+                )
             else:
                 # running user code from stub loader requires some hacks
                 # in the stub loader
@@ -1122,8 +1355,14 @@ class ESPLoader(object):
         try:
             chip_id = self.get_chip_id()
             if chip_id != self.IMAGE_CHIP_ID:
-                print("WARNING: Chip ID {} ({}) doesn't match expected Chip ID {}. esptool may not work correctly."
-                      .format(chip_id, self.UNSUPPORTED_CHIPS.get(chip_id, 'Unknown'), self.IMAGE_CHIP_ID))
+                print(
+                    "WARNING: Chip ID {} ({}) doesn't match expected Chip ID {}. "
+                    "esptool may not work correctly.".format(
+                        chip_id,
+                        self.UNSUPPORTED_CHIPS.get(chip_id, "Unknown"),
+                        self.IMAGE_CHIP_ID,
+                    )
+                )
                 # Try to flash anyways by disabling stub
                 self.stub_is_disabled = True
         except NotImplementedInROMError:
@@ -1143,11 +1382,17 @@ def slip_reader(port, trace_function):
     while True:
         waiting = port.inWaiting()
         read_bytes = port.read(1 if waiting == 0 else waiting)
-        if read_bytes == b'':
+        if read_bytes == b"":
             if partial_packet is None:  # fail due to no data
-                msg = "Serial data stream stopped: Possible serial noise or corruption." if successful_slip else "No serial data received."
+                msg = (
+                    "Serial data stream stopped: Possible serial noise or corruption."
+                    if successful_slip
+                    else "No serial data received."
+                )
             else:  # fail during packet transfer
-                msg = "Packet content transfer stopped (received {} bytes)".format(len(partial_packet))
+                msg = "Packet content transfer stopped (received {} bytes)".format(
+                    len(partial_packet)
+                )
             trace_function(msg)
             raise FatalError(msg)
         trace_function("Read %d bytes: %s", len(read_bytes), HexFormatter(read_bytes))
@@ -1156,25 +1401,34 @@ def slip_reader(port, trace_function):
                 b = bytes([b])  # python 2/3 compat
 
             if partial_packet is None:  # waiting for packet header
-                if b == b'\xc0':
+                if b == b"\xc0":
                     partial_packet = b""
                 else:
                     trace_function("Read invalid data: %s", HexFormatter(read_bytes))
-                    trace_function("Remaining data in serial buffer: %s", HexFormatter(port.read(port.inWaiting())))
-                    raise FatalError('Invalid head of packet (0x%s): Possible serial noise or corruption.' % hexify(b))
+                    trace_function(
+                        "Remaining data in serial buffer: %s",
+                        HexFormatter(port.read(port.inWaiting())),
+                    )
+                    raise FatalError(
+                        "Invalid head of packet (0x%s): "
+                        "Possible serial noise or corruption." % hexify(b)
+                    )
             elif in_escape:  # part-way through escape sequence
                 in_escape = False
-                if b == b'\xdc':
-                    partial_packet += b'\xc0'
-                elif b == b'\xdd':
-                    partial_packet += b'\xdb'
+                if b == b"\xdc":
+                    partial_packet += b"\xc0"
+                elif b == b"\xdd":
+                    partial_packet += b"\xdb"
                 else:
                     trace_function("Read invalid data: %s", HexFormatter(read_bytes))
-                    trace_function("Remaining data in serial buffer: %s", HexFormatter(port.read(port.inWaiting())))
-                    raise FatalError('Invalid SLIP escape (0xdb, 0x%s)' % (hexify(b)))
-            elif b == b'\xdb':  # start of escape sequence
+                    trace_function(
+                        "Remaining data in serial buffer: %s",
+                        HexFormatter(port.read(port.inWaiting())),
+                    )
+                    raise FatalError("Invalid SLIP escape (0xdb, 0x%s)" % (hexify(b)))
+            elif b == b"\xdb":  # start of escape sequence
                 in_escape = True
-            elif b == b'\xc0':  # end of packet
+            elif b == b"\xc0":  # end of packet
                 trace_function("Received full packet: %s", HexFormatter(partial_packet))
                 yield partial_packet
                 partial_packet = None
@@ -1199,6 +1453,7 @@ class HexFormatter(object):
     printed as separately indented lines, with ASCII decoding at the end
     of each line.
     """
+
     def __init__(self, binary_string, auto_split=True):
         self._s = binary_string
         self._auto_split = auto_split
@@ -1209,10 +1464,21 @@ class HexFormatter(object):
             s = self._s
             while len(s) > 0:
                 line = s[:16]
-                ascii_line = "".join(c if (c == ' ' or (c in string.printable and c not in string.whitespace))
-                                     else '.' for c in line.decode('ascii', 'replace'))
+                ascii_line = "".join(
+                    c
+                    if (
+                        c == " "
+                        or (c in string.printable and c not in string.whitespace)
+                    )
+                    else "."
+                    for c in line.decode("ascii", "replace")
+                )
                 s = s[16:]
-                result += "\n    %-16s %-16s | %s" % (hexify(line[:8], False), hexify(line[8:], False), ascii_line)
+                result += "\n    %-16s %-16s | %s" % (
+                    hexify(line[:8], False),
+                    hexify(line[8:], False),
+                    ascii_line,
+                )
             return result
         else:
             return hexify(self._s, False)

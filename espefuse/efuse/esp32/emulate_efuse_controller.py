@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses controller for ESP32 chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
@@ -14,14 +15,14 @@ from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalErr
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):
-    """ The class for virtual efuse operations. Using for HOST_TEST.
-    """
+    """The class for virtual efuse operations. Using for HOST_TEST."""
+
     CHIP_NAME = "ESP32"
     mem = None
     debug = False
-    Blocks  = EfuseDefineBlocks
-    Fields  = EfuseDefineFields
-    REGS    = EfuseDefineRegisters
+    Blocks = EfuseDefineBlocks
+    Fields = EfuseDefineFields
+    REGS = EfuseDefineRegisters
 
     def __init__(self, efuse_file=None, debug=False):
         super(EmulateEfuseController, self).__init__(efuse_file, debug)
@@ -42,7 +43,10 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             while time.time() < deadline:
                 if self.read_reg(self.REGS.EFUSE_REG_CMD) == 0:
                     return
-            raise FatalError("Timed out waiting for Efuse controller command to complete")
+            raise FatalError(
+                "Timed out waiting for Efuse controller command to complete"
+            )
+
         self.write_reg(self.REGS.EFUSE_REG_CMD, self.REGS.EFUSE_CMD_WRITE)
         wait_idle()
         self.write_reg(self.REGS.EFUSE_REG_CONF, self.REGS.EFUSE_CONF_READ)
@@ -61,13 +65,21 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 self.save_to_file()
 
     def read_raw_coding_scheme(self):
-        return self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD) & self.REGS.EFUSE_CODING_SCHEME_MASK
+        return (
+            self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD)
+            & self.REGS.EFUSE_CODING_SCHEME_MASK
+        )
 
     def write_raw_coding_scheme(self, value):
-        self.write_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD, value & self.REGS.EFUSE_CODING_SCHEME_MASK)
+        self.write_efuse(
+            self.REGS.EFUSE_CODING_SCHEME_WORD,
+            value & self.REGS.EFUSE_CODING_SCHEME_MASK,
+        )
         self.send_burn_cmd()
         if value != self.read_raw_coding_scheme():
-            raise FatalError("Error during a burning process to set the new coding scheme")
+            raise FatalError(
+                "Error during a burning process to set the new coding scheme"
+            )
         print("Set coding scheme = %d" % self.read_raw_coding_scheme())
 
     def get_bitlen_of_block(self, blk, wr=False):
@@ -83,7 +95,9 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 else:
                     return 32 * blk.len * 3 // 4
             else:
-                raise FatalError("The {} coding scheme is not supported".format(coding_scheme))
+                raise FatalError(
+                    "The {} coding scheme is not supported".format(coding_scheme)
+                )
 
     def handle_coding_scheme(self, blk, data):
         # it verifies the coding scheme part of data and returns just data
@@ -95,16 +109,23 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             for _ in range(0, 4):
                 xor_res = 0
                 mul_res = 0
-                chunk_data = data.readlist('8*uint:8')
+                chunk_data = data.readlist("8*uint:8")
                 chunk_data = chunk_data[::-1]
                 for i in range(0, 6):
                     byte_data = chunk_data[i]
                     xor_res ^= byte_data
-                    mul_res += (i + 1) * bin(byte_data).count('1')
+                    mul_res += (i + 1) * bin(byte_data).count("1")
                 if xor_res != chunk_data[6] or mul_res != chunk_data[7]:
-                    print("xor_res ", xor_res, chunk_data[6], "mul_res", mul_res, chunk_data[7])
+                    print(
+                        "xor_res ",
+                        xor_res,
+                        chunk_data[6],
+                        "mul_res",
+                        mul_res,
+                        chunk_data[7],
+                    )
                     raise FatalError("Error in coding scheme data")
             # cut the coded data
             for i in range(0, 4):
-                del data[i * 6 * 8: (i * 6 * 8) + 16]
+                del data[i * 6 * 8 : (i * 6 * 8) + 16]
         return data

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
-# Tests for regressions in python modules used by esptool.py, espefuse.py, and espsecure.py
+# Tests for regressions in python modules
+# used by esptool.py, espefuse.py, and espsecure.py
 from __future__ import division, print_function
 
 import unittest
@@ -10,6 +11,7 @@ import reedsolo
 
 class ReedSoloTests(unittest.TestCase):
     def test_reed_solomon_encoding(self):
+        # fmt: off
         pairs = [("a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf", "0404992ae0b12cb0ef0d4fd3"),
                  ("11a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbd11bf", "e001803c2130884c190d57d5"),
                  ("22a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbd22bf", "6c32056dd3fcc33fa6193773"),
@@ -30,15 +32,17 @@ class ReedSoloTests(unittest.TestCase):
                  ("0001000100010001000a000b000c000d000e000f000100010001000100010001", "6dc2afb4820bb002d9263544"),
                  ("0000000000000000000000000000000000000000000000000000000000000001", "44774376dc1f07545c7fd561"),
                  ]  # Pregenerated pairs consisting of 32 bytes of data + 12 bytes of RS ECC (FPGA verified)
+        # fmt: on
 
         rs = reedsolo.RSCodec(12)  # 12 ECC symbols
 
         for pair in pairs:
             bin_base = bytearray.fromhex(pair[0])
-            encoded_data = rs.encode([x for x in bin_base])  # Encode the original 32 bytes of data
+            # Encode the original 32 bytes of data
+            encoded_data = rs.encode([x for x in bin_base])
             self.assertEqual(encoded_data, bytearray.fromhex(pair[0] + pair[1]))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Running python modules tests...")
     unittest.main(buffer=True)

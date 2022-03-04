@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-#
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -37,22 +36,28 @@ def align_file_position(f, size):
 
 
 class ESPBOOTLOADER(object):
-    """These are constants related to software ESP8266 bootloader, working with 'v2' image files"""
+    """
+    These are constants related to software ESP8266 bootloader,
+    working with 'v2' image files
+    """
 
     # First byte of the "v2" application image
     IMAGE_V2_MAGIC = 0xEA
 
-    # First 'segment' value in a "v2" application image, appears to be a constant version value?
+    # First 'segment' value in a "v2" application image,
+    # appears to be a constant version value?
     IMAGE_V2_SEGMENT = 4
 
 
 def LoadFirmwareImage(chip, filename):
-    """Load a firmware image. Can be for any supported SoC.
+    """
+    Load a firmware image. Can be for any supported SoC.
 
-    ESP8266 images will be examined to determine if they are original ROM firmware images (ESP8266ROMFirmwareImage)
-    or "v2" OTA bootloader images.
+    ESP8266 images will be examined to determine if they are original ROM firmware
+    images (ESP8266ROMFirmwareImage) or "v2" OTA bootloader images.
 
-    Returns a BaseFirmwareImage subclass, either ESP8266ROMFirmwareImage (v1) or ESP8266V2FirmwareImage (v2).
+    Returns a BaseFirmwareImage subclass, either ESP8266ROMFirmwareImage (v1)
+    or ESP8266V2FirmwareImage (v2).
     """
     chip = re.sub(r"[-()]", "", chip.lower())
     with open(filename, "rb") as f:
@@ -171,8 +176,8 @@ class BaseFirmwareImage(object):
     def verify(self):
         if len(self.segments) > 16:
             raise FatalError(
-                "Invalid segment count %d (max 16). Usually this indicates a linker script problem."
-                % len(self.segments)
+                "Invalid segment count %d (max 16). "
+                "Usually this indicates a linker script problem." % len(self.segments)
             )
 
     def load_segment(self, f, is_irom_segment=False):
@@ -196,15 +201,24 @@ class BaseFirmwareImage(object):
                 print("WARNING: Suspicious segment 0x%x, length %d" % (offset, size))
 
     def maybe_patch_segment_data(self, f, segment_data):
-        """If SHA256 digest of the ELF file needs to be inserted into this segment, do so. Returns segment data."""
+        """
+        If SHA256 digest of the ELF file needs to be inserted into this segment, do so.
+        Returns segment data.
+        """
         segment_len = len(segment_data)
         file_pos = f.tell()  # file_pos is position in the .bin file
-        if (self.elf_sha256_offset >= file_pos and self.elf_sha256_offset < file_pos + segment_len):
+        if (
+            self.elf_sha256_offset >= file_pos
+            and self.elf_sha256_offset < file_pos + segment_len
+        ):
             # SHA256 digest needs to be patched into this binary segment,
             # calculate offset of the digest inside the binary segment.
             patch_offset = self.elf_sha256_offset - file_pos
             # Sanity checks
-            if (patch_offset < self.SEG_HEADER_LEN or patch_offset + self.SHA256_DIGEST_LEN > segment_len):
+            if (
+                patch_offset < self.SEG_HEADER_LEN
+                or patch_offset + self.SHA256_DIGEST_LEN > segment_len
+            ):
                 raise FatalError(
                     "Cannot place SHA256 digest on segment boundary"
                     "(elf_sha256_offset=%d, file_pos=%d, segment_size=%d)"
@@ -212,17 +226,27 @@ class BaseFirmwareImage(object):
                 )
             # offset relative to the data part
             patch_offset -= self.SEG_HEADER_LEN
-            if (segment_data[patch_offset: patch_offset + self.SHA256_DIGEST_LEN] != b"\x00" * self.SHA256_DIGEST_LEN):
+            if (
+                segment_data[patch_offset : patch_offset + self.SHA256_DIGEST_LEN]
+                != b"\x00" * self.SHA256_DIGEST_LEN
+            ):
                 raise FatalError(
-                    "Contents of segment at SHA256 digest offset 0x%x are not all zero. Refusing to overwrite."
-                    % self.elf_sha256_offset
+                    "Contents of segment at SHA256 digest offset 0x%x are not all zero."
+                    " Refusing to overwrite." % self.elf_sha256_offset
                 )
             assert len(self.elf_sha256) == self.SHA256_DIGEST_LEN
-            segment_data = (segment_data[0:patch_offset] + self.elf_sha256 + segment_data[patch_offset + self.SHA256_DIGEST_LEN:])
+            segment_data = (
+                segment_data[0:patch_offset]
+                + self.elf_sha256
+                + segment_data[patch_offset + self.SHA256_DIGEST_LEN :]
+            )
         return segment_data
 
     def save_segment(self, f, segment, checksum=None):
-        """Save the next segment to the image file, return next checksum value if provided"""
+        """
+        Save the next segment to the image file,
+        return next checksum value if provided
+        """
         segment_data = self.maybe_patch_segment_data(f, segment.data)
         f.write(struct.pack("<II", segment.addr, len(segment_data)))
         f.write(segment_data)
@@ -237,7 +261,8 @@ class BaseFirmwareImage(object):
         return ord(f.read(1))
 
     def calculate_checksum(self):
-        """Calculate checksum of loaded image, based on segments in
+        """
+        Calculate checksum of loaded image, based on segments in
         segment array.
         """
         checksum = ESPLoader.ESP_CHECKSUM_MAGIC
@@ -264,7 +289,8 @@ class BaseFirmwareImage(object):
         )
 
     def is_irom_addr(self, addr):
-        """Returns True if an address starts in the irom region.
+        """
+        Returns True if an address starts in the irom region.
         Valid for ESP8266 only.
         """
         return ESP8266ROM.IROM_MAP_START <= addr < ESP8266ROM.IROM_MAP_END
@@ -302,10 +328,11 @@ class BaseFirmwareImage(object):
                     next_elem.addr == elem.addr + len(elem.data),
                 )
             ):
-                # Merge any segment that ends where the next one starts, without spanning memory types
+                # Merge any segment that ends where the next one starts,
+                # without spanning memory types
                 #
-                # (don't 'pad' any gaps here as they may be excluded from the image due to 'noinit'
-                # or other reasons.)
+                # (don't 'pad' any gaps here as they may be excluded from the image
+                # due to 'noinit' or other reasons.)
                 elem.data += next_elem.data
             else:
                 # The section next_elem cannot be merged into the previous one,
@@ -318,17 +345,20 @@ class BaseFirmwareImage(object):
         # "previous" section.
         segments.insert(0, self.segments[0])
 
-        # note: we could sort segments here as well, but the ordering of segments is sometimes
-        # important for other reasons (like embedded ELF SHA-256), so we assume that the linker
-        # script will have produced any adjacent sections in linear order in the ELF, anyhow.
+        # note: we could sort segments here as well, but the ordering of segments is
+        # sometimes important for other reasons (like embedded ELF SHA-256),
+        # so we assume that the linker script will have produced any adjacent sections
+        # in linear order in the ELF, anyhow.
         self.segments = segments
 
     def set_mmu_page_size(self, size):
-        """If supported, this should be overridden by the chip-specific class. Gets called in elf2image."""
+        """
+        If supported, this should be overridden by the chip-specific class.
+        Gets called in elf2image.
+        """
         print(
-            "WARNING: Changing MMU page size is not supported on {}! Defaulting to 64KB.".format(
-                self.ROM_LOADER.CHIP_NAME
-            )
+            "WARNING: Changing MMU page size is not supported on {}! "
+            "Defaulting to 64KB.".format(self.ROM_LOADER.CHIP_NAME)
         )
 
 
@@ -394,7 +424,8 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
         if load_file is not None:
             segments = self.load_common_header(load_file, ESPBOOTLOADER.IMAGE_V2_MAGIC)
             if segments != ESPBOOTLOADER.IMAGE_V2_SEGMENT:
-                # segment count is not really segment count here, but we expect to see '4'
+                # segment count is not really segment count here,
+                # but we expect to see '4'
                 print(
                     'Warning: V2 header has unexpected "segment" count %d (usually 4)'
                     % segments
@@ -405,7 +436,8 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             # the file is saved in the image with a zero load address
             # in the header, so we need to calculate a load address
             irom_segment = self.load_segment(load_file, True)
-            irom_segment.addr = 0  # for actual mapped addr, add ESP8266ROM.IROM_MAP_START + flashing_addr + 8
+            # for actual mapped addr, add ESP8266ROM.IROM_MAP_START + flashing_addr + 8
+            irom_segment.addr = 0
             irom_segment.include_in_checksum = False
 
             first_flash_mode = self.flash_mode
@@ -417,17 +449,20 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
 
             if first_flash_mode != self.flash_mode:
                 print(
-                    "WARNING: Flash mode value in first header (0x%02x) disagrees with second (0x%02x). Using second value."
+                    "WARNING: Flash mode value in first header (0x%02x) disagrees "
+                    "with second (0x%02x). Using second value."
                     % (first_flash_mode, self.flash_mode)
                 )
             if first_flash_size_freq != self.flash_size_freq:
                 print(
-                    "WARNING: Flash size/freq value in first header (0x%02x) disagrees with second (0x%02x). Using second value."
+                    "WARNING: Flash size/freq value in first header (0x%02x) disagrees "
+                    "with second (0x%02x). Using second value."
                     % (first_flash_size_freq, self.flash_size_freq)
                 )
             if first_entrypoint != self.entrypoint:
                 print(
-                    "WARNING: Entrypoint address in first header (0x%08x) disagrees with second header (0x%08x). Using second value."
+                    "WARNING: Entrypoint address in first header (0x%08x) disagrees "
+                    "with second header (0x%08x). Using second value."
                     % (first_entrypoint, self.entrypoint)
                 )
 
@@ -567,7 +602,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         return "%s.bin" % (os.path.splitext(input_file)[0])
 
     def warn_if_unusual_segment(self, offset, size, is_irom_segment):
-        pass  # TODO: add warnings for ESP32 segment offset/size combinations that are wrong
+        pass  # TODO: add warnings for wrong ESP32 segment offset/size combinations
 
     def save(self, filename):
         total_segments = 0
@@ -580,7 +615,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
 
-            # split segments into flash-mapped vs ram-loaded, and take copies so we can mutate them
+            # split segments into flash-mapped vs ram-loaded,
+            # and take copies so we can mutate them
             flash_segments = [
                 copy.deepcopy(s)
                 for s in sorted(self.segments, key=lambda s: s.addr)
@@ -592,34 +628,36 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 if not self.is_flash_addr(s.addr)
             ]
 
-            # check for multiple ELF sections that are mapped in the same flash mapping region.
-            # this is usually a sign of a broken linker script, but if you have a legitimate
-            # use case then let us know
+            # check for multiple ELF sections that are mapped in the same
+            # flash mapping region. This is usually a sign of a broken linker script,
+            # but if you have a legitimate use case then let us know
             if len(flash_segments) > 0:
                 last_addr = flash_segments[0].addr
                 for segment in flash_segments[1:]:
                     if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
                         raise FatalError(
-                            (
-                                "Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. "
-                                "Can't generate binary. Suggest changing linker script or ELF to merge sections."
-                            )
+                            "Segment loaded at 0x%08x lands in same 64KB flash mapping "
+                            "as segment loaded at 0x%08x. Can't generate binary. "
+                            "Suggest changing linker script or ELF to merge sections."
                             % (segment.addr, last_addr)
                         )
                     last_addr = segment.addr
 
             def get_alignment_data_needed(segment):
-                # Actual alignment (in data bytes) required for a segment header: positioned so that
-                # after we write the next 8 byte header, file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
+                # Actual alignment (in data bytes) required for a segment header:
+                # positioned so that after we write the next 8 byte header,
+                # file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
                 #
-                # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
-                # IROM_ALIGN+0x18 to account for the binary file header
+                # (this is because the segment's vaddr may not be IROM_ALIGNed,
+                # more likely is aligned IROM_ALIGN+0x18
+                # to account for the binary file header
                 align_past = (segment.addr % self.IROM_ALIGN) - self.SEG_HEADER_LEN
                 pad_len = (self.IROM_ALIGN - (f.tell() % self.IROM_ALIGN)) + align_past
                 if pad_len == 0 or pad_len == self.IROM_ALIGN:
                     return 0  # already aligned
 
-                # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
+                # subtract SEG_HEADER_LEN a second time,
+                # as the padding block has a header as well
                 pad_len -= self.SEG_HEADER_LEN
                 if pad_len < 0:
                     pad_len += self.IROM_ALIGN
@@ -658,16 +696,22 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 # This ensures all mapped flash content will be verified.
                 if not self.append_digest:
                     raise FatalError(
-                        "secure_pad only applies if a SHA-256 digest is also appended to the image"
+                        "secure_pad only applies if a SHA-256 digest "
+                        "is also appended to the image"
                     )
                 align_past = (f.tell() + self.SEG_HEADER_LEN) % self.IROM_ALIGN
-                # 16 byte aligned checksum (force the alignment to simplify calculations)
+                # 16 byte aligned checksum
+                # (force the alignment to simplify calculations)
                 checksum_space = 16
                 if self.secure_pad == "1":
-                    # after checksum: SHA-256 digest + (to be added by signing process) version, signature + 12 trailing bytes due to alignment
+                    # after checksum: SHA-256 digest +
+                    # (to be added by signing process) version,
+                    # signature + 12 trailing bytes due to alignment
                     space_after_checksum = 32 + 4 + 64 + 12
                 elif self.secure_pad == "2":  # Secure Boot V2
-                    # after checksum: SHA-256 digest + signature sector, but we place signature sector after the 64KB boundary
+                    # after checksum: SHA-256 digest +
+                    # signature sector,
+                    # but we place signature sector after the 64KB boundary
                     space_after_checksum = 32
                 pad_len = (
                     self.IROM_ALIGN - align_past - checksum_space - space_after_checksum
@@ -703,12 +747,15 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 real_file.write(f.getvalue())
 
     def save_flash_segment(self, f, segment, checksum=None):
-        """Save the next segment to the image file, return next checksum value if provided"""
+        """
+        Save the next segment to the image file, return next checksum value if provided
+        """
         segment_end_pos = f.tell() + len(segment.data) + self.SEG_HEADER_LEN
         segment_len_remainder = segment_end_pos % self.IROM_ALIGN
         if segment_len_remainder < 0x24:
             # Work around a bug in ESP-IDF 2nd stage bootloader, that it didn't map the
-            # last MMU page, if an IROM/DROM segment was < 0x24 bytes over the page boundary.
+            # last MMU page, if an IROM/DROM segment was < 0x24 bytes
+            # over the page boundary.
             segment.data += b"\x00" * (0x24 - segment_len_remainder)
         return self.save_segment(f, segment, checksum)
 
@@ -740,7 +787,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         # reserved fields in the middle should all be zero
         if any(f for f in fields[6:-1] if f != 0):
             print(
-                "Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?"
+                "Warning: some reserved header fields have non-zero values. "
+                "This image may be from a newer esptool.py?"
             )
 
         append_digest = fields[-1]  # last byte is append_digest
@@ -788,7 +836,8 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
 
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
 
-            # split segments into flash-mapped vs ram-loaded, and take copies so we can mutate them
+            # split segments into flash-mapped vs ram-loaded,
+            # and take copies so we can mutate them
             flash_segments = [
                 copy.deepcopy(s)
                 for s in sorted(self.segments, key=lambda s: s.addr)
@@ -800,18 +849,17 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
                 if not self.is_flash_addr(s.addr) and len(s.data)
             ]
 
-            # check for multiple ELF sections that are mapped in the same flash mapping region.
-            # this is usually a sign of a broken linker script, but if you have a legitimate
-            # use case then let us know
+            # check for multiple ELF sections that are mapped in the same
+            # flash mapping region. This is usually a sign of a broken linker script,
+            # but if you have a legitimate use case then let us know
             if len(flash_segments) > 0:
                 last_addr = flash_segments[0].addr
                 for segment in flash_segments[1:]:
                     if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
                         raise FatalError(
-                            (
-                                "Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. "
-                                "Can't generate binary. Suggest changing linker script or ELF to merge sections."
-                            )
+                            "Segment loaded at 0x%08x lands in same 64KB flash mapping "
+                            "as segment loaded at 0x%08x. Can't generate binary. "
+                            "Suggest changing linker script or ELF to merge sections."
                             % (segment.addr, last_addr)
                         )
                     last_addr = segment.addr
@@ -881,7 +929,8 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
         # remaining fields in the middle should all be zero
         if any(f for f in fields[4:15] if f != 0):
             print(
-                "Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?"
+                "Warning: some reserved header fields have non-zero values. "
+                "This image may be from a newer esptool.py?"
             )
 
 
@@ -1019,8 +1068,8 @@ class ELFFile(object):
             raise FatalError("%s has invalid ELF magic header" % self.name)
         if machine not in [0x5E, 0xF3]:
             raise FatalError(
-                "%s does not appear to be an Xtensa or an RISCV ELF file. e_machine=%04x"
-                % (self.name, machine)
+                "%s does not appear to be an Xtensa or an RISCV ELF file. "
+                "e_machine=%04x" % (self.name, machine)
             )
         if shentsize != self.LEN_SEC_HEADER:
             raise FatalError(
@@ -1043,8 +1092,8 @@ class ELFFile(object):
             )
         if len(section_header) != (len_bytes):
             raise FatalError(
-                "Only read 0x%x bytes from section header (expected 0x%x.) Truncated ELF file?"
-                % (len(section_header), len_bytes)
+                "Only read 0x%x bytes from section header (expected 0x%x.) "
+                "Truncated ELF file?" % (len(section_header), len_bytes)
             )
 
         # walk through the section header and extract all sections
@@ -1072,8 +1121,9 @@ class ELFFile(object):
         f.seek(sec_offs)
         string_table = f.read(sec_size)
 
-        # build the real list of ELFSections by reading the actual section names from the
-        # string table section, and actual data for each section from the ELF file itself
+        # build the real list of ELFSections by reading the actual section names from
+        # the string table section, and actual data for each section
+        # from the ELF file itself
         def lookup_string(offs):
             raw = string_table[offs:]
             return raw[: raw.index(b"\x00")]
@@ -1100,8 +1150,8 @@ class ELFFile(object):
             )
         if len(segment_header) != (len_bytes):
             raise FatalError(
-                "Only read 0x%x bytes from segment header (expected 0x%x.) Truncated ELF file?"
-                % (len(segment_header), len_bytes)
+                "Only read 0x%x bytes from segment header (expected 0x%x.) "
+                "Truncated ELF file?" % (len(segment_header), len_bytes)
             )
 
         # walk through the segment header and extract all segments

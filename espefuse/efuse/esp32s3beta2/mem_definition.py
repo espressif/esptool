@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses fields and registers for ESP32-S3(beta2) chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
@@ -10,6 +11,7 @@ from __future__ import division, print_function
 from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegistersBase
 
 
+# fmt: off
 class EfuseDefineRegisters(EfuseRegistersBase):
 
     EFUSE_ADDR_MASK = 0x00000FFF
@@ -239,3 +241,4 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('ADC2_MODE2_D1',           "calibration",   2,  7, 20,  "uint:6",   21,   None, "adc_tp",     "??? ADC2 calibration 15", None),
         ('ADC2_MODE3_D1',           "calibration",   2,  7, 26,  "uint:6",   21,   None, "adc_tp",     "??? ADC2 calibration 16", None),
     ]
+# fmt: on

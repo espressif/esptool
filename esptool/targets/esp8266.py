@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -128,7 +129,9 @@ class ESP8266ROM(ESPLoader):
             super(ESP8266ROM, self).flash_set_parameters(size)
 
     def chip_id(self):
-        """Read Chip ID from efuse - the equivalent of the SDK system_get_chip_id() function"""
+        """
+        Read Chip ID from efuse - the equivalent of the SDK system_get_chip_id() func
+        """
         id0 = self.read_reg(self.ESP_OTP_MAC0)
         id1 = self.read_reg(self.ESP_OTP_MAC1)
         return (id0 >> 24) | ((id1 & 0xFFFFFF) << 8)

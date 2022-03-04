@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -97,7 +98,6 @@ class ESP32ROM(ESPLoader):
     """ Try to read the BLOCK1 (encryption key) and check if it is valid """
 
     def is_flash_encryption_key_valid(self):
-
         """Bit 0 of efuse_rd_disable[3:0] is mapped to BLOCK1
         this bit is at position 16 in EFUSE_BLK0_RDATA0_REG"""
         word0 = self.read_efuse(0)
@@ -108,9 +108,10 @@ class ESP32ROM(ESPLoader):
             return True
         else:
             # reading of BLOCK1 is ALLOWED so we will read and verify for non-zero.
-            # When ESP32 has not generated AES/encryption key in BLOCK1, the contents will be readable and 0.
-            # If the flash encryption is enabled it is expected to have a valid non-zero key. We break out on
-            # first occurance of non-zero value
+            # When ESP32 has not generated AES/encryption key in BLOCK1,
+            # the contents will be readable and 0.
+            # If the flash encryption is enabled it is expected to have a valid
+            # non-zero key. We break out on first occurance of non-zero value
             key_word = [0] * 7
             for i in range(len(key_word)):
                 key_word[i] = self.read_efuse(14 + i)
@@ -142,7 +143,10 @@ class ESP32ROM(ESPLoader):
             return 0xF
 
     def get_encrypted_download_disabled(self):
-        if self.read_reg(self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG) & self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT:
+        if (
+            self.read_reg(self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG)
+            & self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT
+        ):
             return True
         else:
             return False
@@ -277,7 +281,9 @@ class ESP32ROM(ESPLoader):
         RTC_CNTL_DREFH_SDIO_M = 3 << 29
         RTC_CNTL_DREFM_SDIO_M = 3 << 27
         RTC_CNTL_DREFL_SDIO_M = 3 << 25
-        # RTC_CNTL_SDIO_TIEH = (1 << 23)  # not used here, setting TIEH=1 would set 3.3V output, not safe for esptool.py to do
+        # RTC_CNTL_SDIO_TIEH = (1 << 23)
+        # not used here, setting TIEH=1 would set 3.3V output,
+        # not safe for esptool.py to do
         RTC_CNTL_SDIO_FORCE = 1 << 22
         RTC_CNTL_SDIO_PD_EN = 1 << 21
 
@@ -308,9 +314,9 @@ class ESP32ROM(ESPLoader):
                     "Expected %d byte block, got %d bytes. Serial errors?"
                     % (block_len, len(r))
                 )
-            data += r[
-                :block_len
-            ]  # command always returns 64 byte buffer, regardless of how many bytes were actually read from flash
+            # command always returns 64 byte buffer,
+            # regardless of how many bytes were actually read from flash
+            data += r[:block_len]
             if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
                 progress_fn(len(data), length)
         return data

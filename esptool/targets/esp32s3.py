@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -168,11 +169,15 @@ class ESP32S3ROM(ESP32ROM):
         """
         if os.getenv("ESPTOOL_TESTING") is not None:
             print("ESPTOOL_TESTING is set, ignoring strapping mode check")
-            # Esptool tests over USB CDC run with GPIO0 strapped low, don't complain in this case.
+            # Esptool tests over USB CDC run with GPIO0 strapped low,
+            # don't complain in this case.
             return
         strap_reg = self.read_reg(self.GPIO_STRAP_REG)
         force_dl_reg = self.read_reg(self.RTC_CNTL_OPTION1_REG)
-        if strap_reg & self.GPIO_STRAP_SPI_BOOT_MASK == 0 and force_dl_reg & self.RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK == 0:
+        if (
+            strap_reg & self.GPIO_STRAP_SPI_BOOT_MASK == 0
+            and force_dl_reg & self.RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK == 0
+        ):
             print(
                 "WARNING: {} chip was placed into download mode using GPIO0.\n"
                 "esptool.py can not exit the download mode over USB. "
@@ -190,7 +195,8 @@ class ESP32S3ROM(ESP32ROM):
         print("Hard resetting via RTS pin...")
         self._setRTS(True)  # EN->LOW
         if self.uses_usb():
-            # Give the chip some time to come out of reset, to be able to handle further DTR/RTS transitions
+            # Give the chip some time to come out of reset,
+            # to be able to handle further DTR/RTS transitions
             time.sleep(0.2)
             self._setRTS(False)
             time.sleep(0.2)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses fields and registers for ESP32 chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
@@ -12,42 +13,44 @@ from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegiste
 
 class EfuseDefineRegisters(EfuseRegistersBase):
 
-    EFUSE_MEM_SIZE = (0x011C + 4)
+    EFUSE_MEM_SIZE = 0x011C + 4
 
     # EFUSE registers & command/conf values
-    DR_REG_EFUSE_BASE   = 0x3ff5A000
-    EFUSE_REG_CONF      = DR_REG_EFUSE_BASE + 0x0FC
-    EFUSE_CONF_WRITE    = 0x5A5A
-    EFUSE_CONF_READ     = 0x5AA5
-    EFUSE_REG_CMD       = DR_REG_EFUSE_BASE + 0x104
-    EFUSE_CMD_OP_MASK   = 0x3
-    EFUSE_CMD_WRITE     = 0x2
-    EFUSE_CMD_READ      = 0x1
+    DR_REG_EFUSE_BASE = 0x3FF5A000
+    EFUSE_REG_CONF = DR_REG_EFUSE_BASE + 0x0FC
+    EFUSE_CONF_WRITE = 0x5A5A
+    EFUSE_CONF_READ = 0x5AA5
+    EFUSE_REG_CMD = DR_REG_EFUSE_BASE + 0x104
+    EFUSE_CMD_OP_MASK = 0x3
+    EFUSE_CMD_WRITE = 0x2
+    EFUSE_CMD_READ = 0x1
 
     # 3/4 Coding scheme warnings registers
-    EFUSE_REG_DEC_STATUS        = DR_REG_EFUSE_BASE + 0x11C
-    EFUSE_REG_DEC_STATUS_MASK   = 0xFFF
+    EFUSE_REG_DEC_STATUS = DR_REG_EFUSE_BASE + 0x11C
+    EFUSE_REG_DEC_STATUS_MASK = 0xFFF
 
     # Coding Scheme
-    EFUSE_CODING_SCHEME_WORD    = 6
-    EFUSE_CODING_SCHEME_MASK    = 0x3
+    EFUSE_CODING_SCHEME_WORD = 6
+    EFUSE_CODING_SCHEME_MASK = 0x3
 
     # Efuse clock control
-    EFUSE_DAC_CONF_REG      = DR_REG_EFUSE_BASE + 0x118
-    EFUSE_CLK_REG           = DR_REG_EFUSE_BASE + 0x0F8
-    EFUSE_DAC_CLK_DIV_MASK  = 0xFF
-    EFUSE_CLK_SEL0_MASK     = 0x00FF
-    EFUSE_CLK_SEL1_MASK     = 0xFF00
+    EFUSE_DAC_CONF_REG = DR_REG_EFUSE_BASE + 0x118
+    EFUSE_CLK_REG = DR_REG_EFUSE_BASE + 0x0F8
+    EFUSE_DAC_CLK_DIV_MASK = 0xFF
+    EFUSE_CLK_SEL0_MASK = 0x00FF
+    EFUSE_CLK_SEL1_MASK = 0xFF00
 
     EFUSE_CLK_SETTINGS = {
         # APB freq: clk_sel0, clk_sel1, dac_clk_div
         # Taken from TRM chapter "eFuse Controller": Timing Configuration
+        # 80 is here for completeness only as esptool never sets an 80MHz APB clock
         26: (250, 255, 52),
         40: (160, 255, 80),
-        80: (80, 128, 100),  # this is here for completeness only as esptool never sets an 80MHz APB clock
+        80: (80, 128, 100),
     }
 
 
+# fmt: off
 class EfuseDefineBlocks(EfuseBlocksBase):
 
     __base_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE
@@ -148,3 +151,4 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('ADC2_TP_LOW',          "calibration", 3, 3, 16,  "uint:7",    9,    2,    "adc_tp",   "ADC2 150mV reading", None),
         ('ADC2_TP_HIGH',         "calibration", 3, 3, 23,  "uint:9",    9,    2,    "adc_tp",   "ADC2 850mV reading", None),
     ]
+# fmt: on

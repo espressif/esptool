@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#
 # This file describes eFuses for ESP32 chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
@@ -68,9 +69,9 @@ class EspEfuses(base_fields.EspEfusesBase):
     Wrapper object to manage the efuse fields in a connected ESP bootloader
     """
 
-    Blocks  = EfuseDefineBlocks()
-    Fields  = EfuseDefineFields()
-    REGS    = EfuseDefineRegisters
+    Blocks = EfuseDefineBlocks()
+    Fields = EfuseDefineFields()
+    REGS = EfuseDefineRegisters
     BURN_BLOCK_DATA_NAMES = Blocks.get_burn_block_data_names()
     BLOCKS_FOR_KEYS = Blocks.get_blocks_for_keys()
 
@@ -82,29 +83,77 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.debug = debug
         self.do_not_confirm = do_not_confirm
         if esp.CHIP_NAME != "ESP32":
-            raise esptool.FatalError("Expected the 'esp' param for ESP32 chip but got for '%s'." % (esp.CHIP_NAME))
-        self.blocks = [EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect) for block in self.Blocks.BLOCKS]
+            raise esptool.FatalError(
+                "Expected the 'esp' param for ESP32 chip but got for '%s'."
+                % (esp.CHIP_NAME)
+            )
+        self.blocks = [
+            EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect)
+            for block in self.Blocks.BLOCKS
+        ]
         if not skip_connect:
             self.get_coding_scheme_warnings()
-        self.efuses = [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.EFUSES]
+        self.efuses = [
+            EfuseField.from_tuple(
+                self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+            )
+            for efuse in self.Fields.EFUSES
+        ]
         if skip_connect:
-            self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS_256]
-            self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.CUSTOM_MAC]
-            self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.ADC_CALIBRATION]
+            self.efuses += [
+                EfuseField.from_tuple(
+                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                )
+                for efuse in self.Fields.KEYBLOCKS_256
+            ]
+            self.efuses += [
+                EfuseField.from_tuple(
+                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                )
+                for efuse in self.Fields.CUSTOM_MAC
+            ]
+            self.efuses += [
+                EfuseField.from_tuple(
+                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                )
+                for efuse in self.Fields.ADC_CALIBRATION
+            ]
         else:
             if self.coding_scheme == self.REGS.CODING_SCHEME_NONE:
-                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS_256]
+                self.efuses += [
+                    EfuseField.from_tuple(
+                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                    )
+                    for efuse in self.Fields.KEYBLOCKS_256
+                ]
             elif self.coding_scheme == self.REGS.CODING_SCHEME_34:
-                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.KEYBLOCKS_192]
+                self.efuses += [
+                    EfuseField.from_tuple(
+                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                    )
+                    for efuse in self.Fields.KEYBLOCKS_192
+                ]
             else:
-                raise esptool.FatalError("The coding scheme (%d) - is not supported" % self.coding_scheme)
+                raise esptool.FatalError(
+                    "The coding scheme (%d) - is not supported" % self.coding_scheme
+                )
             if self["MAC_VERSION"].get() == 1:
-                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.CUSTOM_MAC]
+                self.efuses += [
+                    EfuseField.from_tuple(
+                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                    )
+                    for efuse in self.Fields.CUSTOM_MAC
+                ]
             if self["BLK3_PART_RESERVE"].get():
-                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.ADC_CALIBRATION]
+                self.efuses += [
+                    EfuseField.from_tuple(
+                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                    )
+                    for efuse in self.Fields.ADC_CALIBRATION
+                ]
 
     def __getitem__(self, efuse_name):
-        """ Return the efuse field with the given name """
+        """Return the efuse field with the given name"""
         for e in self.efuses:
             if efuse_name == e.name:
                 return e
@@ -112,12 +161,22 @@ class EspEfuses(base_fields.EspEfusesBase):
         for efuse in self.Fields.CUSTOM_MAC:
             e = self.Fields.get(efuse)
             if e.name == efuse_name:
-                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.CUSTOM_MAC]
+                self.efuses += [
+                    EfuseField.from_tuple(
+                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                    )
+                    for efuse in self.Fields.CUSTOM_MAC
+                ]
                 new_fields = True
         for efuse in self.Fields.ADC_CALIBRATION:
             e = self.Fields.get(efuse)
             if e.name == efuse_name:
-                self.efuses += [EfuseField.from_tuple(self, self.Fields.get(efuse), self.Fields.get(efuse).class_type) for efuse in self.Fields.ADC_CALIBRATION]
+                self.efuses += [
+                    EfuseField.from_tuple(
+                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                    )
+                    for efuse in self.Fields.ADC_CALIBRATION
+                ]
                 new_fields = True
         if new_fields:
             for e in self.efuses:
@@ -126,14 +185,21 @@ class EspEfuses(base_fields.EspEfusesBase):
         raise KeyError
 
     def read_coding_scheme(self):
-        self.coding_scheme = self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD) & self.REGS.EFUSE_CODING_SCHEME_MASK
+        self.coding_scheme = (
+            self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD)
+            & self.REGS.EFUSE_CODING_SCHEME_MASK
+        )
 
     def print_status_regs(self):
         print("")
-        print('{:27} 0x{:08x}'.format('EFUSE_REG_DEC_STATUS', self.read_reg(self.REGS.EFUSE_REG_DEC_STATUS)))
+        print(
+            "{:27} 0x{:08x}".format(
+                "EFUSE_REG_DEC_STATUS", self.read_reg(self.REGS.EFUSE_REG_DEC_STATUS)
+            )
+        )
 
     def write_efuses(self, block):
-        """ Write the values in the efuse write registers to
+        """Write the values in the efuse write registers to
         the efuse hardware, then refresh the efuse read registers.
         """
 
@@ -141,9 +207,15 @@ class EspEfuses(base_fields.EspEfusesBase):
         apb_freq = self.get_crystal_freq()
         clk_sel0, clk_sel1, dac_clk_div = self.REGS.EFUSE_CLK_SETTINGS[apb_freq]
 
-        self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_CLK_DIV_MASK, dac_clk_div)
-        self.update_reg(self.REGS.EFUSE_CLK_REG, self.REGS.EFUSE_CLK_SEL0_MASK, clk_sel0)
-        self.update_reg(self.REGS.EFUSE_CLK_REG, self.REGS.EFUSE_CLK_SEL1_MASK, clk_sel1)
+        self.update_reg(
+            self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_CLK_DIV_MASK, dac_clk_div
+        )
+        self.update_reg(
+            self.REGS.EFUSE_CLK_REG, self.REGS.EFUSE_CLK_SEL0_MASK, clk_sel0
+        )
+        self.update_reg(
+            self.REGS.EFUSE_CLK_REG, self.REGS.EFUSE_CLK_SEL1_MASK, clk_sel1
+        )
 
         self.write_reg(self.REGS.EFUSE_REG_CONF, self.REGS.EFUSE_CONF_WRITE)
         self.write_reg(self.REGS.EFUSE_REG_CMD, self.REGS.EFUSE_CMD_WRITE)
@@ -156,7 +228,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         while time.time() < deadline:
             if self.read_reg(self.REGS.EFUSE_REG_CMD) == 0:
                 return
-        raise esptool.FatalError("Timed out waiting for Efuse controller command to complete")
+        raise esptool.FatalError(
+            "Timed out waiting for Efuse controller command to complete"
+        )
 
     def efuse_read(self):
         self.wait_efuse_idle()
@@ -165,23 +239,30 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.wait_efuse_idle()
 
     def get_coding_scheme_warnings(self, silent=False):
-        """ Check if the coding scheme has detected any errors.
+        """Check if the coding scheme has detected any errors.
         Meaningless for default coding scheme (0)
         """
-        err = self.read_reg(self.REGS.EFUSE_REG_DEC_STATUS) & self.REGS.EFUSE_REG_DEC_STATUS_MASK
+        err = (
+            self.read_reg(self.REGS.EFUSE_REG_DEC_STATUS)
+            & self.REGS.EFUSE_REG_DEC_STATUS_MASK
+        )
         for block in self.blocks:
             if block.id != 0:
                 block.num_errors = 0
                 block.fail = err != 0
             if not silent and block.fail:
-                print("Error(s) in BLOCK%d [ERRORS:%d FAIL:%d]" % (block.id, block.num_errors, block.fail))
+                print(
+                    "Error(s) in BLOCK%d [ERRORS:%d FAIL:%d]"
+                    % (block.id, block.num_errors, block.fail)
+                )
         if (self.debug or err) and not silent:
             self.print_status_regs()
         return err != 0
 
     def summary(self):
         if self["XPD_SDIO_FORCE"].get() == 0:
-            output = "Flash voltage (VDD_SDIO) determined by GPIO12 on reset (High for 1.8V, Low/NC for 3.3V)."
+            output = "Flash voltage (VDD_SDIO) determined by GPIO12 on reset "
+            "(High for 1.8V, Low/NC for 3.3V)."
         elif self["XPD_SDIO_REG"].get() == 0:
             output = "Flash voltage (VDD_SDIO) internal regulator disabled by efuse."
         elif self["XPD_SDIO_TIEH"].get() == 0:
@@ -213,15 +294,24 @@ class EfuseMacField(EfuseField):
 
     def check_format(self, new_value_str):
         if new_value_str is None:
-            raise esptool.FatalError("Required MAC Address in AA:CD:EF:01:02:03 format!")
+            raise esptool.FatalError(
+                "Required MAC Address in AA:CD:EF:01:02:03 format!"
+            )
         if new_value_str.count(":") != 5:
-            raise esptool.FatalError("MAC Address needs to be a 6-byte hexadecimal format separated by colons (:)!")
+            raise esptool.FatalError(
+                "MAC Address needs to be a 6-byte hexadecimal format "
+                "separated by colons (:)!"
+            )
         hexad = new_value_str.replace(":", "")
         if len(hexad) != 12:
-            raise esptool.FatalError("MAC Address needs to be a 6-byte hexadecimal number (12 hexadecimal characters)!")
+            raise esptool.FatalError(
+                "MAC Address needs to be a 6-byte hexadecimal number "
+                "(12 hexadecimal characters)!"
+            )
         # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
         bindata = binascii.unhexlify(hexad)
-        # unicast address check according to https://tools.ietf.org/html/rfc7042#section-2.1
+        # unicast address check according to
+        # https://tools.ietf.org/html/rfc7042#section-2.1
         if esptool.util.byte(bindata, 0) & 0x01:
             raise esptool.FatalError("Custom MAC must be a unicast MAC!")
         return bindata
@@ -232,7 +322,10 @@ class EfuseMacField(EfuseField):
         if computed_crc == stored_crc:
             valid_msg = "(CRC 0x%02x OK)" % stored_crc
         else:
-            valid_msg = "(CRC 0x%02x invalid - calculated 0x%02x)" % (stored_crc, computed_crc)
+            valid_msg = "(CRC 0x%02x invalid - calculated 0x%02x)" % (
+                stored_crc,
+                computed_crc,
+            )
         return "%s %s" % (util.hexify(raw_mac, ":"), valid_msg)
 
     @staticmethod
@@ -249,7 +342,7 @@ class EfuseMacField(EfuseField):
                 lsb = result & 1
                 result >>= 1
                 if lsb != 0:
-                    result ^= 0x8c
+                    result ^= 0x8C
         return result
 
     def get(self, from_read=True):
@@ -263,7 +356,11 @@ class EfuseMacField(EfuseField):
 
     def save(self, new_value):
         def print_field(e, new_value):
-            print("    - '{}' ({}) {} -> {}".format(e.name, e.description, e.get_bitstring(), new_value))
+            print(
+                "    - '{}' ({}) {} -> {}".format(
+                    e.name, e.description, e.get_bitstring(), new_value
+                )
+            )
 
         if self.name == "CUSTOM_MAC":
             # Writing the BLK3:
@@ -278,7 +375,11 @@ class EfuseMacField(EfuseField):
             else:
                 if mac_version.get() != 1:
                     if not self.parent.force_write_always:
-                        raise esptool.FatalError("MAC_VERSION = {}, should be 0 or 1.".format(mac_version.get()))
+                        raise esptool.FatalError(
+                            "MAC_VERSION = {}, should be 0 or 1.".format(
+                                mac_version.get()
+                            )
+                        )
 
             bitarray_mac = self.convert_to_bitstring(new_value)
             print_field(self, bitarray_mac)
@@ -289,7 +390,8 @@ class EfuseMacField(EfuseField):
             print_field(crc_field, hex(crc_val))
             crc_field.save(crc_val)
         else:
-            # Writing the BLK0 default MAC is not sensible, as it's written in the factory.
+            # Writing the BLK0 default MAC is not possible,
+            # as it's written in the factory.
             raise esptool.FatalError("Writing Factory MAC address is not supported")
 
 
@@ -307,9 +409,14 @@ class EfuseSpiPinField(EfuseField):
         new_value_int = int(new_value_str, 0)
 
         if new_value_int in [30, 31]:
-            raise esptool.FatalError("IO pins 30 & 31 cannot be set for SPI flash. 0-29, 32 & 33 only.")
+            raise esptool.FatalError(
+                "IO pins 30 & 31 cannot be set for SPI flash. 0-29, 32 & 33 only."
+            )
         elif new_value_int > 33:
-            raise esptool.FatalError("IO pin %d cannot be set for SPI flash. 0-29, 32 & 33 only." % new_value_int)
+            raise esptool.FatalError(
+                "IO pin %d cannot be set for SPI flash. 0-29, 32 & 33 only."
+                % new_value_int
+            )
         elif new_value_int in [32, 33]:
             return str(new_value_int - 2)
         else:
@@ -325,10 +432,10 @@ class EfuseVRefField(EfuseField):
     def get(self, from_read=True):
         val = self.get_raw(from_read)
         # sign-magnitude format
-        if (val & self.VREF_SIGN_BIT):
+        if val & self.VREF_SIGN_BIT:
             val = -(val & self.VREF_MAG_BITS)
         else:
-            val = (val & self.VREF_MAG_BITS)
+            val = val & self.VREF_MAG_BITS
         val *= self.VREF_STEP_SIZE
         return self.VREF_OFFSET + val
 

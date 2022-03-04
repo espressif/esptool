@@ -18,37 +18,44 @@ import re
 import sys
 import zlib
 
-sys.path.append('..')
+sys.path.append("..")
 import esptool  # noqa: E402
 
 
 def wrap_stub(elf_file):
-    """ Wrap an ELF file into a stub 'dict' """
-    print('Wrapping ELF file %s...' % elf_file)
+    """Wrap an ELF file into a stub 'dict'"""
+    print("Wrapping ELF file %s..." % elf_file)
     e = esptool.bin_image.ELFFile(elf_file)
 
-    text_section = e.get_section('.text')
+    text_section = e.get_section(".text")
     try:
-        data_section = e.get_section('.data')
+        data_section = e.get_section(".data")
     except ValueError:
         data_section = None
     stub = {
-        'text': text_section.data,
-        'text_start': text_section.addr,
-        'entry': e.entrypoint,
+        "text": text_section.data,
+        "text_start": text_section.addr,
+        "entry": e.entrypoint,
     }
     if data_section is not None:
-        stub['data'] = data_section.data
-        stub['data_start'] = data_section.addr
+        stub["data"] = data_section.data
+        stub["data_start"] = data_section.addr
 
     # Pad text with NOPs to mod 4.
-    if len(stub['text']) % 4 != 0:
-        stub['text'] += (4 - (len(stub['text']) % 4)) * '\0'
+    if len(stub["text"]) % 4 != 0:
+        stub["text"] += (4 - (len(stub["text"]) % 4)) * "\0"
 
-    print('Stub text: %d @ 0x%08x, data: %d @ 0x%08x, entry @ 0x%x' % (
-        len(stub['text']), stub['text_start'],
-        len(stub.get('data', '')), stub.get('data_start', 0),
-        stub['entry']), file=sys.stderr)
+    print(
+        "Stub text: %d @ 0x%08x, data: %d @ 0x%08x, entry @ 0x%x"
+        % (
+            len(stub["text"]),
+            stub["text_start"],
+            len(stub.get("data", "")),
+            stub.get("data_start", 0),
+            stub["entry"],
+        ),
+        file=sys.stderr,
+    )
     return stub
 
 
@@ -68,12 +75,14 @@ STUB_FLASHER_PY = "../esptool/stub_flasher.py"
 
 def write_python_snippet_to_file(stub_name, stub_data, out_file):
     print("writing %s stub" % stub_name)
-    encoded = base64.b64encode(zlib.compress(repr(stub_data).encode("utf-8"), 9)).decode("utf-8")
+    encoded = base64.b64encode(
+        zlib.compress(repr(stub_data).encode("utf-8"), 9)
+    ).decode("utf-8")
     in_lines = ""
     # split encoded data into 160 character lines
     LINE_LEN = 160
     for c in range(0, len(encoded), LINE_LEN):
-        in_lines += encoded[c:c + LINE_LEN] + "\\\n"
+        in_lines += encoded[c : c + LINE_LEN] + "\\\n"
     out_file.write(PYTHON_TEMPLATE % (stub_name, in_lines))
 
 
@@ -86,7 +95,7 @@ def write_python_snippets(stub_dict, out_file):
 
 
 def embed_python_snippets(stubs):
-    with open(STUB_FLASHER_PY, 'r') as f:
+    with open(STUB_FLASHER_PY, "r") as f:
         lines = [line for line in f]
 
     with open(STUB_FLASHER_PY, "w") as f:
@@ -113,21 +122,27 @@ def embed_python_snippets(stubs):
 
 
 def stub_name(filename):
-    """ Return a dictionary key for the stub with filename 'filename' """
+    """Return a dictionary key for the stub with filename 'filename'"""
     return os.path.splitext(os.path.basename(filename))[0]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out-file", required=False, type=argparse.FileType('w'),
-                        help="Output file name. If not specified, stubs are embedded into esptool.py.")
+    parser.add_argument(
+        "--out-file",
+        required=False,
+        type=argparse.FileType("w"),
+        help="Output file name. If not specified, stubs are embedded into esptool.py.",
+    )
     parser.add_argument("elf_files", nargs="+", help="Stub ELF files to convert")
     args = parser.parse_args()
 
-    stubs = dict((stub_name(elf_file), wrap_stub(elf_file)) for elf_file in args.elf_files)
+    stubs = dict(
+        (stub_name(elf_file), wrap_stub(elf_file)) for elf_file in args.elf_files
+    )
     if args.out_file:
-        print('Dumping to Python snippet file %s.' % args.out_file.name)
+        print("Dumping to Python snippet file %s." % args.out_file.name)
         write_python_snippets(stubs, args.out_file)
     else:
-        print('Embedding Python snippets into esptool.py')
+        print("Embedding Python snippets into esptool.py")
         embed_python_snippets(stubs)

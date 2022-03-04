@@ -24,12 +24,16 @@ import esptool  # noqa: E402
 
 # Python hackiness: evaluate the snippet in the context of the esptool module, so it
 # edits the esptool's global variables
-exec(open("%s/build/stub_flasher_snippet.py" % THIS_DIR).read(), esptool.__dict__, esptool.__dict__)
+exec(
+    open("%s/build/stub_flasher_snippet.py" % THIS_DIR).read(),
+    esptool.__dict__,
+    esptool.__dict__,
+)
 
 
 if __name__ == "__main__":
     try:
         esptool.main()
     except esptool.FatalError as e:
-        print('\nA fatal error occurred: %s' % e)
+        print("\nA fatal error occurred: %s" % e)
         sys.exit(2)

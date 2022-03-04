@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton, Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,6 +7,8 @@ from __future__ import division, print_function
 
 import base64
 import zlib
+
+# fmt: off
 
 # Binary stub codes (see flasher_stub directory for source & details)
 ESP8266StubCode = eval(zlib.decompress(base64.b64decode(b"""

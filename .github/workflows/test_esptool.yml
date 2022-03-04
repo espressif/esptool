@@ -28,9 +28,6 @@ jobs:
         python test/test_merge_bin.py
         python test/test_modules.py
 
-    - name: Lint with flake8
-      run: python -m flake8
-
     - name: Check the installed versions can run
       run: |
         esptool --help
@@ -53,3 +50,17 @@ jobs:
         ./test/ci/setup_ci_build_env.sh
         make -C flasher_stub V=1
         cd flasher_stub && python ./compare_stubs.py
+
+  lint_esptool:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v2
+
+        - name: Lint with flake8
+          run: |
+            pip install -e .[dev]
+            python -m flake8
+
+        - name: Check formatting with Black
+          uses: psf/black@stable
