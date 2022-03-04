@@ -132,8 +132,11 @@ class EfuseTestCase(unittest.TestCase):
 class TestReadCommands(EfuseTestCase):
 
     def test_help(self):
-        self.espefuse_not_virt_py("--help")
+        self.espefuse_not_virt_py("--help", check_msg='usage: espefuse.py [-h]')
         self.espefuse_not_virt_py("--chip %s --help" % (chip_target))
+
+    def test_help2(self):
+        self.espefuse_not_virt_py('', check_msg='usage: espefuse.py [-h]', ret_code=1)
 
     def test_dump(self):
         self.espefuse_py("dump -h")
@@ -990,6 +993,35 @@ class TestExecuteScriptsCommands(EfuseTestCase):
 
 
 class TestMultipleCommands(EfuseTestCase):
+    def test_multiple_cmds_help(self):
+        if chip_target == "esp32c2":
+            command1 = 'burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem'
+            command2 = 'burn_key BLOCK_KEY0 images/efuse/128bit_key XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS'
+        elif chip_target == "esp32":
+            command1 = 'burn_key_digest secure_images/rsa_secure_boot_signing_key.pem'
+            command2 = 'burn_key flash_encryption images/efuse/256bit'
+        else:
+            command1 = 'burn_key_digest BLOCK_KEY0 secure_images/rsa_secure_boot_signing_key.pem SECURE_BOOT_DIGEST0'
+            command2 = 'burn_key BLOCK_KEY0 secure_images/rsa_public_key_digest.bin SECURE_BOOT_DIGEST0'
+
+        self.espefuse_py(' -h \
+                          {cmd1} \
+                          {cmd2} \
+                          '.format(cmd1=command1, cmd2=command2),
+                         check_msg='usage: espefuse.py [-h]')
+
+        self.espefuse_py(' \
+                          {cmd1} -h \
+                          {cmd2} \
+                          '.format(cmd1=command1, cmd2=command2),
+                         check_msg='usage: espefuse.py burn_key_digest [-h]')
+
+        self.espefuse_py(' \
+                          {cmd1} \
+                          {cmd2} -h \
+                          '.format(cmd1=command1, cmd2=command2),
+                         check_msg='usage: espefuse.py burn_key [-h]')
+
     @unittest.skipUnless(chip_target == "esp32c2", "For this chip, FE and SB keys go into one BLOCK")
     def test_1_esp32c2(self):
         self.espefuse_py('burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \

@@ -157,13 +157,16 @@ def main(custom_commandline=None):
     efuse_operations.add_commands(subparsers, efuses)
 
     grouped_remaining_args, used_cmds = split_on_groups(remaining_args)
+    print('espefuse.py v%s' % esptool.__version__)
+    if len(grouped_remaining_args) == 0:
+        parser.print_help()
+        parser.exit(1)
     there_are_multiple_burn_commands_in_args = sum(cmd in SUPPORTED_BURN_COMMANDS for cmd in used_cmds) > 1
     if there_are_multiple_burn_commands_in_args:
         efuses.batch_mode_cnt += 1
 
     for rem_args in grouped_remaining_args:
         args, unused_args = parser.parse_known_args(rem_args, namespace=common_args)
-        print('espefuse.py v%s' % esptool.__version__)
         if args.operation is None:
             parser.print_help()
             parser.exit(1)
