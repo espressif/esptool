@@ -35,6 +35,15 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     def get_crystal_freq(self):
         return 40  # MHz (common for all chips)
 
+    def get_security_info(self):
+        return {
+            "flags": 0,
+            "flash_crypt_cnt": 0,
+            "key_purposes": 0,
+            "chip_id": None,
+            "api_version": None,
+        }
+
     """ << esptool method end """
 
     def handle_writing_event(self, addr, value):

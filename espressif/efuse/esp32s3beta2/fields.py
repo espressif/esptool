@@ -72,6 +72,11 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.do_not_confirm = do_not_confirm
         if esp.CHIP_NAME != "ESP32-S3(beta2)":
             raise esptool.FatalError("Expected the 'esp' param for ESP32-S3(beta2) chip but got for '%s'." % (esp.CHIP_NAME))
+        if not skip_connect:
+            flags = self._esp.get_security_info()['flags']
+            GET_SECURITY_INFO_FLAG_SECURE_DOWNLOAD_ENABLE = (1 << 2)
+            if flags & GET_SECURITY_INFO_FLAG_SECURE_DOWNLOAD_ENABLE:
+                raise esptool.FatalError("Secure Download Mode is enabled. The tool can not read eFuses.")
         self.blocks = [EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect) for block in self.Blocks.BLOCKS]
         if not skip_connect:
             self.get_coding_scheme_warnings()
