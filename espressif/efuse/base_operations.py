@@ -102,7 +102,8 @@ def add_common_commands(subparsers, efuses):
                                  'It allows to retrieve unique data per chip from configfiles and then burn them (ex. CUSTOM_MAC, UNIQUE_ID).', type=int)
     execute_scripts.add_argument('--configfiles', help='List of configfiles with data', nargs="?", action='append', type=argparse.FileType('r'))
 
-    subparsers.add_parser('check_error', help='Checks eFuse errors')
+    check_error_cmd = subparsers.add_parser('check_error', help='Checks eFuse errors')
+    check_error_cmd.add_argument('--recovery', help="Recovery of BLOCKs after encoding errors", action='store_true')
 
 
 def add_force_write_always(p):
@@ -383,6 +384,22 @@ def burn_bit(esp, efuses, args):
 
 
 def check_error(esp, efuses, args):
-    if efuses.get_coding_scheme_warnings():
-        raise esptool.FatalError("Error(s) were detected in eFuses")
+    error_in_blocks = efuses.get_coding_scheme_warnings()
+    if args.recovery:
+        if error_in_blocks:
+            confirmed = False
+            for block in efuses.blocks:
+                if block.fail or block.num_errors > 0:
+                    if not block.get_bitstring().all(False):
+                        block.save(block.get_bitstring().bytes[::-1])
+                        if not confirmed:
+                            confirmed = True
+                            efuses.confirm("Recovery of block coding errors", args.do_not_confirm)
+                        block.burn()
+            # Reset the recovery flag to run check_error() without it, just to check the new state of eFuse blocks.
+            args.recovery = False
+            check_error(esp, efuses, args)
+    else:
+        if error_in_blocks:
+            raise esptool.FatalError("Error(s) were detected in eFuses")
     print("No errors detected")

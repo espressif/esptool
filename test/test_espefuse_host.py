@@ -166,6 +166,7 @@ class TestReadCommands(EfuseTestCase):
     def test_check_error(self):
         self.espefuse_py("check_error -h")
         self.espefuse_py("check_error")
+        self.espefuse_py("check_error --recovery")
 
 
 class TestReadProtectionCommands(EfuseTestCase):
