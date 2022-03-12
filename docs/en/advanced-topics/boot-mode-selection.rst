@@ -206,7 +206,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
    +-------------------------+----------------------------------------------+
    | Value                   | Meaning                                      |
    +=========================+==============================================+
-   | 1 (eg. boot mode:(1,x)) | UART download mmode (download FW into Flash) |
+   | 1 (eg. boot mode:(1,x)) | UART download mode (download FW into Flash)  |
    +-------------------------+----------------------------------------------+
    | 2 (eg. boot mode:(3,x)) | Boot from flash mode                         |
    +-------------------------+----------------------------------------------+
