@@ -118,7 +118,7 @@ def add_commands(subparsers, efuses):
     p.add_argument("voltage", help="Voltage selection", choices=["1.8V", "3.3V", "OFF"])
 
     p = subparsers.add_parser(
-        "burn_custom_mac", help="Burn a 48-bit Custom MAC Address to EFUSE BLOCK3."
+        "burn_custom_mac", help="Burn a 48-bit Custom MAC Address to EFUSE BLOCK1."
     )
     p.add_argument(
         "mac",

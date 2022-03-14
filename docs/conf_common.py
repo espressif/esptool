@@ -18,14 +18,11 @@ extensions += ["esp_docs.esp_extensions.dummy_build_system"]
 ESP8266_DOCS = []
 
 ESP32_DOCS = [
-    "espefuse/index.rst",
-    "espsecure/index.rst",
+    "espefuse/*",
+    "espsecure/*",
 ]
 
-ESP32S2_DOCS = [
-    "espefuse/index.rst",
-    "espsecure/index.rst",
-]
+ESP32S2_DOCS = ESP32_DOCS
 
 ESP32C3_DOCS = ESP32S2_DOCS
 
