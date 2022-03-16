@@ -15,8 +15,7 @@ html_static_path = ['../_static']
 # Conditional content
 extensions += ['esp_docs.esp_extensions.dummy_build_system']
 
-ESP8266_DOCS = ['advanced-topics/firmware-image-format.rst',
-                ]
+ESP8266_DOCS = []
 
 ESP32_DOCS = ['espefuse/index.rst',
               'espsecure/index.rst',
