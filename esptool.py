@@ -2606,7 +2606,7 @@ def LoadFirmwareImage(chip, filename):
 
         Returns a BaseFirmwareImage subclass, either ESP8266ROMFirmwareImage (v1) or ESP8266V2FirmwareImage (v2).
     """
-    chip = chip.lower().replace("-", "")
+    chip = re.sub(r"[-()]", "", chip.lower())
     with open(filename, 'rb') as f:
         if chip == 'esp32':
             return ESP32FirmwareImage(f)
@@ -4042,6 +4042,8 @@ def write_flash(esp, args):
 
 
 def image_info(args):
+    if args.chip == "auto":
+        print("WARNING: --chip not specified, defaulting to ESP8266.")
     image = LoadFirmwareImage(args.chip, args.filename)
     print('Image version: %d' % image.version)
     print('Entry point: %08x' % image.entrypoint if image.entrypoint != 0 else 'Entry point not set')
