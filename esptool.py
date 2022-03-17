@@ -1626,6 +1626,7 @@ class ESP32ROM(ESPLoader):
             4: "ESP32-U4WDH",
             5: "ESP32-PICO-V3" if rev3 else "ESP32-PICO-D4",
             6: "ESP32-PICO-V3-02",
+            7: "ESP32-D0WDR2-V3",
         }.get(pkg_version, "unknown ESP32")
 
         # ESP32-D0WD-V3, ESP32-D0WDQ6-V3
