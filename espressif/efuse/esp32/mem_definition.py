@@ -88,6 +88,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('CHIP_VER_REV2',        "identity",    0, 5, 20,  "bool",      6,    None, None,       "Silicon Revision 2", None),
         ('CHIP_VERSION',         "identity",    0, 3, 12,  "uint:2",    3,    None, None,       "Reserved for future chip versions", None),
         ('CHIP_PACKAGE',         "identity",    0, 3, 9,   "uint:3",    3,    None, None,       "Chip package identifier", None),
+        ('CHIP_PACKAGE_4BIT',    "identity",    0, 3, 2,   "bool",      3,    None, None,       "Chip package identifier #4bit", None),
         ('XPD_SDIO_FORCE',       "config",      0, 4, 16,  "bool",      5,    None, None,       "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset", None),
         ('XPD_SDIO_REG',         "config",      0, 4, 14,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset", None),
         ('XPD_SDIO_TIEH',        "config",      0, 4, 15,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE & XPD_SDIO_REG",
