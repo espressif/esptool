@@ -458,6 +458,13 @@ class EspEfusesBase(object):
     def efuse_controller_setup(self):
         pass
 
+    def reconnect_chip(self, esp):
+        print("Re-connecting...")
+        baudrate = esp._port.baudrate
+        port = esp._port.port
+        esp._port.close()
+        return esptool.cmds.detect_chip(port, baudrate)
+
     def get_index_block_by_name(self, name):
         for block in self.blocks:
             if block.name == name or name in block.alias:

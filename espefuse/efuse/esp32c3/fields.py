@@ -197,10 +197,44 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.write_reg(self.REGS.EFUSE_CONF_REG, self.REGS.EFUSE_READ_OP_CODE)
         # need to add a delay after triggering EFUSE_READ_CMD, as ROM loader checks some
         # efuse registers after each command is completed
-        self.write_reg(
-            self.REGS.EFUSE_CMD_REG, self.REGS.EFUSE_READ_CMD, delay_after_us=1000
-        )
-        self.wait_efuse_idle()
+        # if ENABLE_SECURITY_DOWNLOAD or DIS_DOWNLOAD_MODE is enabled by the current cmd, then we need to try to reconnect to the chip.
+        try:
+            self.write_reg(
+                self.REGS.EFUSE_CMD_REG, self.REGS.EFUSE_READ_CMD, delay_after_us=1000
+            )
+            self.wait_efuse_idle()
+        except esptool.FatalError:
+            secure_download_mode_before = self._esp.secure_download_mode
+
+            try:
+                self._esp = self.reconnect_chip(self._esp)
+            except esptool.FatalError:
+                print("Can not re-connect to the chip")
+                if not self["DIS_DOWNLOAD_MODE"].get() and self[
+                    "DIS_DOWNLOAD_MODE"
+                ].get(from_read=False):
+                    print(
+                        "This is the correct behavior as we are actually burning "
+                        "DIS_DOWNLOAD_MODE which disables the connection to the chip"
+                    )
+                    print("DIS_DOWNLOAD_MODE is enabled")
+                    print("Successful")
+                    exit(0)  # finish without errors
+                raise
+
+            print("Established a connection with the chip")
+            if self._esp.secure_download_mode and not secure_download_mode_before:
+                print("Secure download mode is enabled")
+                if not self["ENABLE_SECURITY_DOWNLOAD"].get() and self[
+                    "ENABLE_SECURITY_DOWNLOAD"
+                ].get(from_read=False):
+                    print(
+                        "espefuse tool can not continue to work in Secure download mode"
+                    )
+                    print("ENABLE_SECURITY_DOWNLOAD is enabled")
+                    print("Successful")
+                    exit(0)  # finish without errors
+            raise
 
     def set_efuse_timing(self):
         """Set timing registers for burning efuses"""
