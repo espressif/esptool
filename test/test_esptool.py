@@ -628,7 +628,7 @@ class TestKeepImageSettings(EsptoolTestCase):
             "esp32s3": "images/bootloader_esp32s3.bin",
             "esp32c3": "images/bootloader_esp32c3.bin",
         }[chip]
-        self.flash_offset = 0x1000 if chip in ("esp32", "esp32s2", "esp32s3") else 0  # bootloader offset
+        self.flash_offset = 0x1000 if chip in ("esp32", "esp32s2") else 0  # bootloader offset
         with open(self.BL_IMAGE, "rb") as f:
             self.header = f.read(8)
 
@@ -717,7 +717,7 @@ class TestDeepSleepFlash(EsptoolTestCase):
 
 
 class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
-    BL_OFFSET = 0x1000 if chip in ("esp32", "esp32s2", "esp32s3") else 0
+    BL_OFFSET = 0x1000 if chip in ("esp32", "esp32s2") else 0
 
     def test_flash_header_rewrite(self):
         bl_image = {"esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",

@@ -1,3 +1,5 @@
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp8266="0x0", esp32="0x1000", esp32s2="0x1000", esp32s3="0x0", esp32c3="0x0"}
+
 .. _advanced-commands:
 
 Advanced Commands
@@ -27,8 +29,7 @@ The ``--diff yes`` option specifies that if the files are different, the details
 
     .. list::
 
-        :esp8266: * If verifying a default boot image (offset 0 for ESP8266) then any ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` arguments which were passed to `write_flash` must also be passed to ``verify_flash``. Otherwise, ``verify_flash`` will detect mismatches in the header of the image file.
-        :not esp8266: * If verifying a default boot image (offset 0x1000 for {IDF_TARGET_NAME}) then any ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` arguments which were passed to `write_flash` must also be passed to ``verify_flash``. Otherwise, ``verify_flash`` will detect mismatches in the header of the image file.
+        * If verifying a default boot image (offset {IDF_TARGET_BOOTLOADER_OFFSET} for {IDF_TARGET_NAME}) then any ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` arguments which were passed to `write_flash` must also be passed to ``verify_flash``. Otherwise, ``verify_flash`` will detect mismatches in the header of the image file.
         * Another way to compare flash contents is to use the ``read_flash`` command, and then use binary diffing tools on the host.
 
 .. _dump-mem:

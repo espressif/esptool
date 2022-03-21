@@ -1,3 +1,5 @@
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp8266="0x0", esp32="0x1000", esp32s2="0x1000", esp32s3="0x0", esp32c3="0x0"}
+
 .. _flash-modes:
 
 Flash Modes
@@ -12,14 +14,7 @@ To override these values, the options ``--flash_mode``, ``--flash_size`` and/or 
 
     esptool.py --port /dev/ttyUSB1 write_flash --flash_mode dio --flash_size 4MB 0x0 bootloader.bin
 
-.. only:: esp8266
-
-    These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset 0x0. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
-
-.. only:: not esp8266
-
-    These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset 0x1000. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
-
+These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset {IDF_TARGET_BOOTLOADER_OFFSET}. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
 
 Flash Mode (--flash_mode, -fm)
 -------------------------------

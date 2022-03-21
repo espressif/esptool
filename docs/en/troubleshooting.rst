@@ -1,3 +1,5 @@
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp8266="0x0", esp32="0x1000", esp32s2="0x1000", esp32s3="0x0", esp32c3="0x0"}
+
 .. _troubleshooting:
 
 Troubleshooting
@@ -65,14 +67,14 @@ Missing Bootloader
 .. only:: esp8266
 
    The `ESP8266 SDK <https://github.com/espressif/ESP8266_RTOS_SDK>`_ uses a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program.
-   On ESP8266, firmware bootloader image (with a filename like ``boot_v1.x.bin``) has to be flashed at offset 0. If the firmware bootloader is missing then the ESP8266 will not boot.
+   On ESP8266, firmware bootloader image (with a filename like ``boot_v1.x.bin``) has to be flashed at offset {IDF_TARGET_BOOTLOADER_OFFSET}. If the firmware bootloader is missing then the ESP8266 will not boot.
 
    Refer to ESP8266 SDK documentation for details regarding which binaries need to be flashed at which offsets.
 
 .. only:: not esp8266
 
    `ESP-IDF <https://github.com/espressif/esp-idf>`_ and uses a small firmware bootloader program. The hardware bootloader in ROM loads this firmware bootloader from flash, and then it runs the program.
-   On {IDF_TARGET_NAME}, the bootloader image should be flashed by ESP-IDF at offset 0x1000.
+   On {IDF_TARGET_NAME}, the bootloader image should be flashed by ESP-IDF at offset {IDF_TARGET_BOOTLOADER_OFFSET}.
 
    Refer to ESP-IDF documentation for details regarding which binaries need to be flashed at which offsets.
 
