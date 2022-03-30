@@ -59,6 +59,16 @@ Esptool will display information about which flash memory sectors will be erased
 
 Use the ``-e/--erase-all`` option to erase all flash sectors (not just the write areas) before programming.
 
+.. only:: not esp8266
+
+    Bootloader Protection
+    ^^^^^^^^^^^^^^^^^^^^^
+
+    Flashing into the bootloader region (``0x0`` -> ``0x8000``) is disabled by default if active `Secure Boot <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html>`_ is detected.
+    This is a safety measure to prevent accidentally overwriting the secure bootloader, which **can ultimately lead to bricking the device**.
+
+    This behavior can be overridden with the ``--force`` option. **Use this only at your own risk and only if you know what you are doing!**
+
 Read Flash Contents: read_flash
 --------------------------------
 
@@ -90,6 +100,17 @@ To erase a region of the flash, starting at address 0x20000 with length 0x4000 b
     esptool erase_region 0x20000 0x4000
 
 The address and length must both be multiples of the SPI flash erase sector size. This is 0x1000 (4096) bytes for supported flash chips.
+
+.. only:: not esp8266
+
+    Flash Protection
+    ^^^^^^^^^^^^^^^^
+
+    Erasing the flash chip is disabled by default if either active `Secure Boot <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html>`_ or
+    `Flash Encryption <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/flash-encryption.html>`_ is detected.
+    This is a safety measure to prevent accidentally deleting the secure bootloader or encrypted data, which **can ultimately lead to bricking the device**.
+
+    This behavior can be overridden with the ``--force`` option. **Use this only at your own risk and only if you know what you are doing!**
 
 Read Built-in MAC Address: read_mac
 ------------------------------------

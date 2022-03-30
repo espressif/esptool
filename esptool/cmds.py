@@ -286,6 +286,21 @@ def write_flash(esp, args):
     if args.compress is None and not args.no_compress:
         args.compress = not args.no_stub
 
+    if (
+        not args.force
+        and esp.CHIP_NAME != "ESP8266"
+        and not esp.secure_download_mode
+        and esp.get_secure_boot_enabled()
+    ):
+        for address, _ in args.addr_filename:
+            if address < 0x8000:
+                raise FatalError(
+                    "Secure Boot detected, writing to flash regions < 0x8000 "
+                    "is disabled to protect the bootloader. "
+                    "Use --force to override, "
+                    "please use with caution, otherwise it may brick your device!"
+                )
+
     # In case we have encrypted files to write,
     # we first do few sanity checks before actual flash
     if args.encrypt or args.encrypt_files is not None:
@@ -710,6 +725,14 @@ def chip_id(esp, args):
 
 
 def erase_flash(esp, args):
+    if not args.force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
+        if esp.get_flash_encryption_enabled() or esp.get_secure_boot_enabled():
+            raise FatalError(
+                "Active security features detected, "
+                "erasing flash is disabled as a safety measure. "
+                "Use --force to override, "
+                "please use with caution, otherwise it may brick your device!"
+            )
     print("Erasing flash (this may take a while)...")
     t = time.time()
     esp.erase_flash()
@@ -717,6 +740,14 @@ def erase_flash(esp, args):
 
 
 def erase_region(esp, args):
+    if not args.force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
+        if esp.get_flash_encryption_enabled() or esp.get_secure_boot_enabled():
+            raise FatalError(
+                "Active security features detected, "
+                "erasing flash is disabled as a safety measure. "
+                "Use --force to override, "
+                "please use with caution, otherwise it may brick your device!"
+            )
     print("Erasing region (may be slow depending on size)...")
     t = time.time()
     esp.erase_region(args.address, args.size)

@@ -311,6 +311,11 @@ def main(argv=None, esp=None):
         help="Ignore flash encryption efuse settings ",
         action="store_true",
     )
+    parser_write_flash.add_argument(
+        "--force",
+        help="Force write even if Secure Boot is enabled. Use with caution!",
+        action="store_true",
+    )
 
     compress_args = parser_write_flash.add_mutually_exclusive_group(required=False)
     compress_args.add_argument(
@@ -485,10 +490,20 @@ def main(argv=None, esp=None):
     parser_erase_flash = subparsers.add_parser(
         "erase_flash", help="Perform Chip Erase on SPI flash"
     )
+    parser_erase_flash.add_argument(
+        "--force",
+        help="Erase flash even if security features are enabled. Use with caution!",
+        action="store_true",
+    )
     add_spi_connection_arg(parser_erase_flash)
 
     parser_erase_region = subparsers.add_parser(
         "erase_region", help="Erase a region of the flash"
+    )
+    parser_erase_region.add_argument(
+        "--force",
+        help="Erase region even if security features are enabled. Use with caution!",
+        action="store_true",
     )
     add_spi_connection_arg(parser_erase_region)
     parser_erase_region.add_argument(

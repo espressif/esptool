@@ -45,6 +45,13 @@ class ESP32ROM(ESPLoader):
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE + 0x18
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 7  # EFUSE_RD_DISABLE_DL_ENCRYPT
 
+    EFUSE_SPI_BOOT_CRYPT_CNT_REG = EFUSE_RD_REG_BASE  # EFUSE_BLK0_WDATA0_REG
+    EFUSE_SPI_BOOT_CRYPT_CNT_MASK = 0x7F << 20  # EFUSE_FLASH_CRYPT_CNT
+
+    EFUSE_RD_ABS_DONE_REG = EFUSE_RD_REG_BASE + 0x018
+    EFUSE_RD_ABS_DONE_0_MASK = 1 << 4
+    EFUSE_RD_ABS_DONE_1_MASK = 1 << 5
+
     DR_REG_SYSCON_BASE = 0x3FF66000
 
     SPI_W0_OFFS = 0x80
@@ -150,6 +157,21 @@ class ESP32ROM(ESPLoader):
             return True
         else:
             return False
+
+    def get_flash_encryption_enabled(self):
+        flash_crypt_cnt = (
+            self.read_reg(self.EFUSE_SPI_BOOT_CRYPT_CNT_REG)
+            & self.EFUSE_SPI_BOOT_CRYPT_CNT_MASK
+        )
+        # Flash encryption enabled when odd number of bits are set
+        return bin(flash_crypt_cnt).count("1") & 1 != 0
+
+    def get_secure_boot_enabled(self):
+        efuses = self.read_reg(self.EFUSE_RD_ABS_DONE_REG)
+        rev = self.get_chip_revision()
+        return efuses & self.EFUSE_RD_ABS_DONE_0_MASK or (
+            rev >= 3 and efuses & self.EFUSE_RD_ABS_DONE_1_MASK
+        )
 
     def get_pkg_version(self):
         word3 = self.read_efuse(3)
