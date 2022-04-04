@@ -753,9 +753,11 @@ def read_flash(esp, args):
     t = time.time()
     data = esp.read_flash(args.address, args.size, flash_progress)
     t = time.time() - t
+    speed_msg = " ({:.1f} kbit/s)".format(len(data) / t * 8 / 1000) if t > 0.0 else ""
     print_overwrite(
-        "Read %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)..."
-        % (len(data), args.address, t, len(data) / t * 8 / 1000),
+        "Read {:d} bytes at {:#010x} in {:.1f} seconds{}...".format(
+            len(data), args.address, t, speed_msg
+        ),
         last_line=True,
     )
     with open(args.filename, "wb") as f:
