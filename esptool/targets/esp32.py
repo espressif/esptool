@@ -284,10 +284,7 @@ class ESP32ROM(ESPLoader):
         words = [self.read_efuse(2), self.read_efuse(1)]
         bitstring = struct.pack(">II", *words)
         bitstring = bitstring[2:8]  # trim the 2 byte CRC
-        try:
-            return tuple(ord(b) for b in bitstring)
-        except TypeError:  # Python 3, bitstring elements are already bytes
-            return tuple(bitstring)
+        return tuple(bitstring)
 
     def get_erase_size(self, offset, size):
         return size

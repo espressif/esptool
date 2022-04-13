@@ -731,10 +731,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             # kinda hacky: go back to the initial header and write the new segment count
             # that includes padding segments. This header is not checksummed
             f.seek(1)
-            try:
-                f.write(chr(total_segments))
-            except TypeError:  # Python 3
-                f.write(bytes([total_segments]))
+            f.write(bytes([total_segments]))
 
             if self.append_digest:
                 # calculate the SHA256 of the whole file and append it
@@ -888,10 +885,7 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
             # kinda hacky: go back to the initial header and write the new segment count
             # that includes padding segments. This header is not checksummed
             f.seek(1)
-            try:
-                f.write(chr(total_segments))
-            except TypeError:  # Python 3
-                f.write(bytes([total_segments]))
+            f.write(bytes([total_segments]))
 
             if self.append_digest:
                 # calculate the SHA256 of the whole file and append it

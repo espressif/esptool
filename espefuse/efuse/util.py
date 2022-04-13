@@ -12,10 +12,7 @@ import esptool
 
 
 def hexify(bitstring, separator=""):
-    try:
-        as_bytes = tuple(ord(b) for b in bitstring)
-    except TypeError:  # python 3, items in bitstring already ints
-        as_bytes = tuple(b for b in bitstring)
+    as_bytes = tuple(b for b in bitstring)
     return separator.join(("%02x" % b) for b in as_bytes)
 
 

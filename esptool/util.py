@@ -8,19 +8,9 @@ from __future__ import division, print_function
 import struct
 import sys
 
-PYTHON2 = sys.version_info[0] < 3  # True if on pre-Python 3
 
-# Function to return nth byte of a bitstring
-# Different behaviour on Python 2 vs 3
-if PYTHON2:
-
-    def byte(bitstr, index):
-        return ord(bitstr[index])
-
-else:
-
-    def byte(bitstr, index):
-        return bitstr[index]
+def byte(bitstr, index):
+    return bitstr[index]
 
 
 def mask_to_shift(mask):
@@ -66,10 +56,7 @@ def flash_size_bytes(size):
 
 def hexify(s, uppercase=True):
     format_str = "%02X" if uppercase else "%02x"
-    if not PYTHON2:
-        return "".join(format_str % c for c in s)
-    else:
-        return "".join(format_str % ord(c) for c in s)
+    return "".join(format_str % c for c in s)
 
 
 def pad_to(data, alignment, pad_character=b"\xFF"):

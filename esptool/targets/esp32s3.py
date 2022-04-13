@@ -158,10 +158,7 @@ class ESP32S3ROM(ESP32ROM):
         mac0 = self.read_reg(self.MAC_EFUSE_REG)
         mac1 = self.read_reg(self.MAC_EFUSE_REG + 4)  # only bottom 16 bits are MAC
         bitstring = struct.pack(">II", mac1, mac0)[2:]
-        try:
-            return tuple(ord(b) for b in bitstring)
-        except TypeError:  # Python 3, bitstring elements are already bytes
-            return tuple(bitstring)
+        return tuple(bitstring)
 
     def uses_usb(self, _cache=[]):
         if self.secure_download_mode:

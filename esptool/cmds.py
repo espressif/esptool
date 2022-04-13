@@ -43,7 +43,6 @@ from .util import (
     UnsupportedCommandError,
 )
 from .util import (
-    PYTHON2,
     div_roundup,
     flash_size_bytes,
     hexify,
@@ -831,9 +830,6 @@ def verify_flash(esp, args):
         for d in diff:
             flash_byte = flash[d]
             image_byte = image[d]
-            if PYTHON2:
-                flash_byte = ord(flash_byte)
-                image_byte = ord(image_byte)
             print("   %08x %02x %02x" % (address + d, flash_byte, image_byte))
     if differences:
         raise FatalError("Verify failed.")

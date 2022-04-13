@@ -123,13 +123,6 @@ def esp32s3_or_newer_function_only(func):
     )
 
 
-# Provide a 'basestring' class on Python 3
-try:
-    basestring
-except NameError:
-    basestring = str
-
-
 class ESPLoader(object):
     """Base class providing access to ESP ROM & software stub bootloaders.
     Subclasses provide ESP8266 & ESP32 Family specific functionality.
@@ -249,7 +242,7 @@ class ESPLoader(object):
         # True if esptool detects conditions which require the stub to be disabled
         self.stub_is_disabled = False
 
-        if isinstance(port, basestring):
+        if isinstance(port, str):
             self._port = serial.serial_for_url(port)
         else:
             self._port = port
@@ -311,10 +304,7 @@ class ESPLoader(object):
     def checksum(data, state=ESP_CHECKSUM_MAGIC):
         """Calculate checksum of a blob, as it is defined by the ROM"""
         for b in data:
-            if type(b) is int:  # python 2/3 compat
-                state ^= b
-            else:
-                state ^= ord(b)
+            state ^= b
 
         return state
 
@@ -1397,9 +1387,7 @@ def slip_reader(port, trace_function):
             raise FatalError(msg)
         trace_function("Read %d bytes: %s", len(read_bytes), HexFormatter(read_bytes))
         for b in read_bytes:
-            if type(b) is int:
-                b = bytes([b])  # python 2/3 compat
-
+            b = bytes([b])
             if partial_packet is None:  # waiting for packet header
                 if b == b"\xc0":
                     partial_packet = b""

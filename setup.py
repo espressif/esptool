@@ -84,28 +84,21 @@ setup(
         "Topic :: Software Development :: Embedded Systems",
         "Environment :: Console",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
-        "Programming Language :: Python :: 2.7",
-        # Note: when dropping 3.4, 3.5 support, remove the check in setup_requires
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
-    setup_requires=(
-        ["wheel"]
-        if "bdist_wheel" in sys.argv and sys.version_info[0:2] not in [(3, 4), (3, 5)]
-        else []
-    ),
+    python_requires=">=3.7",
+    setup_requires=(["wheel"] if "bdist_wheel" in sys.argv else []),
     extras_require={
         "dev": [
             "flake8>=3.2.0",
             "flake8-future-import",
             "flake8-import-order",
             "pyelftools",
-            # the replacement of the old xmlrunner package (Python 2 comp. version)
-            "unittest-xml-reporting<=2.5.2",
+            # the replacement of the old xmlrunner package
+            "unittest-xml-reporting",
             "coverage",
             "black",
             "pre-commit",

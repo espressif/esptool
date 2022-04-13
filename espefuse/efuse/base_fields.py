@@ -522,10 +522,7 @@ class EspEfusesBase(object):
             print("Type 'BURN' (all capitals) to continue.")
             # required for Pythons which disable line buffering, ie mingw in mintty
             sys.stdout.flush()
-            try:
-                yes = raw_input()  # raw_input renamed to input in Python 3
-            except NameError:
-                yes = input()
+            yes = input()
             if yes != "BURN":
                 print("Aborting.")
                 sys.exit(0)

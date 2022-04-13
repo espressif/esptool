@@ -69,7 +69,6 @@ from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM, ESP8266ROM
 from esptool.util import (
     FatalError,
     NotImplementedInROMError,
-    PYTHON2,
     flash_size_bytes,
     format_chip_name,
 )
@@ -583,12 +582,7 @@ def main(argv=None, esp=None):
         )
 
     operation_func = globals()[args.operation]
-
-    if PYTHON2:
-        # This function is depreciated in Python3
-        operation_args = inspect.getargspec(operation_func).args
-    else:
-        operation_args = inspect.getfullargspec(operation_func).args
+    operation_args = inspect.getfullargspec(operation_func).args
 
     if (
         operation_args[0] == "esp"

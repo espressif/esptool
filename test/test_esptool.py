@@ -768,21 +768,13 @@ class TestKeepImageSettings(EsptoolTestCase):
             % (self.flash_offset, self.BL_IMAGE)
         )
 
-        def val(x):
-            try:
-                return ord(x)  # converts character to integer on Python 2
-            except TypeError:
-                return x  # throws TypeError on Python 3 where x is already an integer
-
         readback = self.readback(self.flash_offset, 8)
         self.assertEqual(self.header[0], readback[0])
         self.assertEqual(self.header[1], readback[1])
-        self.assertEqual(
-            0x3F if chip == "esp8266" else 0x1F, val(readback[3])
-        )  # size_freq
+        self.assertEqual(0x3F if chip == "esp8266" else 0x1F, readback[3])  # size_freq
 
-        self.assertNotEqual(3, val(self.header[2]))  # original image not dout mode
-        self.assertEqual(3, val(readback[2]))  # value in flash is dout mode
+        self.assertNotEqual(3, self.header[2])  # original image not dout mode
+        self.assertEqual(3, readback[2])  # value in flash is dout mode
 
         self.assertNotEqual(
             self.header[3], readback[3]

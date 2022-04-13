@@ -27,13 +27,6 @@ import ecdsa
 
 import esptool
 
-try:
-    _string_type = basestring
-except NameError:
-    # this has to be done with exception in order to avoid flake8 error
-    # Python 3
-    _string_type = str
-
 SIG_BLOCK_MAGIC = 0xE7
 
 # Scheme used in Secure Boot V2
@@ -654,22 +647,8 @@ def verify_signature_v2(args):
                     24 if curve_id == CURVE_ID_P192 else 32
                 )  # length of each number in the keypair
 
-                if esptool.PYTHON2:
-
-                    def from_bytes(data):
-                        # data is assumed to be represented in little endian
-                        if type(data) == str:
-                            data = bytearray(data)
-                        num = 0
-                        for offset, byte in enumerate(data):
-                            num += byte << (offset * 8)
-                        return num
-
-                    r = from_bytes(encoded_rs[:keylen])
-                    s = from_bytes(encoded_rs[keylen : keylen * 2])
-                else:
-                    r = int.from_bytes(encoded_rs[:keylen], "little")
-                    s = int.from_bytes(encoded_rs[keylen : keylen * 2], "little")
+                r = int.from_bytes(encoded_rs[:keylen], "little")
+                s = int.from_bytes(encoded_rs[keylen : keylen * 2], "little")
 
                 signature = utils.encode_dss_signature(r, s)
 
@@ -935,25 +914,9 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
 
     Return tweaked key
     """
-    if esptool.PYTHON2:
-        key = [ord(k) for k in key]
-        assert len(key) == 32
-
-        offset_bits = [(offset & (1 << x)) != 0 for x in range(24)]
-
-        for bit in tweak_range:
-            if offset_bits[_FLASH_ENCRYPTION_TWEAK_PATTERN[bit]]:
-                # note that each byte has a backwards bit order, compared
-                # to how it is looked up in the tweak pattern table
-                key[bit // 8] ^= 1 << (7 - (bit % 8))
-
-        key = b"".join(chr(k) for k in key)
-        return key
-
-    else:
-        addr = offset >> 5
-        key ^= ((mul1 * addr) | ((mul2 * addr) & mul2_mask)) & tweak_range
-        return int.to_bytes(key, length=32, byteorder="big", signed=False)
+    addr = offset >> 5
+    key ^= ((mul1 * addr) | ((mul2 * addr) & mul2_mask)) & tweak_range
+    return int.to_bytes(key, length=32, byteorder="big", signed=False)
 
 
 def generate_flash_encryption_key(args):
@@ -974,11 +937,8 @@ def _flash_encryption_operation_esp32(
     if flash_crypt_conf == 0:
         print("WARNING: Setting FLASH_CRYPT_CONF to zero is not recommended")
 
-    if esptool.PYTHON2:
-        tweak_range = _flash_encryption_tweak_range(flash_crypt_conf)
-    else:
-        tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
-        key = int.from_bytes(key, byteorder="big", signed=False)
+    tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
+    key = int.from_bytes(key, byteorder="big", signed=False)
 
     backend = default_backend()
 
@@ -1163,14 +1123,9 @@ def encrypt_flash_data(args):
 
 
 def _samefile(p1, p2):
-    try:
-        return os.path.samefile(p1, p2)
-    except (OSError, AttributeError):
-        # AttributeError - Python 2.7 on Windows doesn't know os.path.samefile()
-        # OSError (FileNotFoundError under Python 3)
-        return os.path.normcase(os.path.normpath(p1)) == os.path.normcase(
-            os.path.normpath(p2)
-        )
+    return os.path.normcase(os.path.normpath(p1)) == os.path.normcase(
+        os.path.normpath(p2)
+    )
 
 
 def _check_output_is_not_input(input_file, output_file):
@@ -1180,11 +1135,7 @@ def _check_output_is_not_input(input_file, output_file):
     # was invoked from command line
     # i & o still can be something else when espsecure was imported
     # and the functions used directly (e.g. io.BytesIO())
-    check_f = (
-        _samefile
-        if isinstance(i, _string_type) and isinstance(o, _string_type)
-        else operator.eq
-    )
+    check_f = _samefile if isinstance(i, str) and isinstance(o, str) else operator.eq
     if check_f(i, o):
         raise esptool.FatalError(
             'The input "{}" and output "{}" should not be the same!'.format(i, o)
