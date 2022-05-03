@@ -23,7 +23,7 @@ cache:
     - host_test
   dependencies: []
   before_script:
-    - pip install -e .[dev]
+    - pip install -e .[dev] --prefer-binary
 
 version_check:
   <<: *test_template
@@ -72,7 +72,7 @@ check_python_style:
   script:
     # This step installs any 'dev' dependencies (ie flake8, Black)
     # The runner should cache the downloads, so still quite fast.
-    - pip install -e .[dev]
+    - pip install -e .[dev] --prefer-binary
     - python -m flake8
     - python -m black --check --diff .
 
@@ -128,7 +128,7 @@ check_stub_build:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
   before_script:
-    - pip install -e .[dev]
+    - pip install -e .[dev] --prefer-binary
   artifacts:
     reports:
       junit: test/report.xml
@@ -208,7 +208,7 @@ combine_reports:
   variables:
     LC_ALL: C.UTF-8
   before_script:
-    - pip install -e .[dev]
+    - pip install -e .[dev] --prefer-binary
   script:
     # all .coverage files in sub-directories are moved to the parent dir first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
@@ -234,7 +234,7 @@ build_docs:
     expire_in: 4 days
   script:
     - cd docs
-    - pip install -r requirements.txt
+    - pip install -r requirements.txt --prefer-binary
     - build-docs -l en -t {esp8266,esp32,esp32s2,esp32c3,esp32s3}
 
 .deploy_docs_template:
@@ -251,7 +251,7 @@ build_docs:
     - source ${CI_PROJECT_DIR}/docs/utils.sh
     - add_doc_server_ssh_keys $DOCS_DEPLOY_PRIVATEKEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
     - export GIT_VER=$(git describe --always)
-    - pip install -r ${CI_PROJECT_DIR}/docs/requirements.txt
+    - pip install -r ${CI_PROJECT_DIR}/docs/requirements.txt --prefer-binary
     - deploy-docs
 
 deploy_docs_preview:
