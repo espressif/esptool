@@ -70,7 +70,6 @@ from esptool.util import (
     FatalError,
     NotImplementedInROMError,
     flash_size_bytes,
-    format_chip_name,
 )
 
 
@@ -99,7 +98,7 @@ def main(argv=None, esp=None):
         "--chip",
         "-c",
         help="Target chip type",
-        type=format_chip_name,  # support ESP32-S2, etc.
+        type=lambda c: c.lower().replace("-", ""),  # support ESP32-S2, etc.
         choices=["auto"] + CHIP_LIST,
         default=os.environ.get("ESPTOOL_CHIP", "auto"),
     )

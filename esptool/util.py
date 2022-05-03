@@ -22,18 +22,6 @@ def mask_to_shift(mask):
     return shift
 
 
-def format_chip_name(c):
-    """Normalize chip name from user input"""
-    c = c.lower().replace("-", "")
-    if c == "esp8684":  # TODO: Delete alias, ESPTOOL-389
-        print(
-            "WARNING: Chip name ESP8684 is deprecated in favor of ESP32-C2 "
-            "and will be removed in a future release. Using ESP32-C2 instead."
-        )
-        return "esp32c2"
-    return c
-
-
 def div_roundup(a, b):
     """Return a/b rounded up to nearest integer,
     equivalent result to int(math.ceil(float(int(a)) / float(int(b))), only
