@@ -759,9 +759,17 @@ class TestKeepImageSettings(EsptoolTestCase):
         )
         readback = self.readback(self.flash_offset, 8)
         self.assertEqual(self.header[:3], readback[:3])  # first 3 bytes unchanged
-        self.assertNotEqual(self.header[3], readback[3])  # size_freq byte changed
+        if chip in ["esp8266", "esp32"]:
+            self.assertNotEqual(self.header[3], readback[3])  # size_freq byte changed
+        else:
+            # Not changed because protected by SHA256 digest
+            self.assertEqual(self.header[3], readback[3])  # size_freq byte unchanged
         self.assertEqual(self.header[4:], readback[4:])  # rest unchanged
 
+    @unittest.skipUnless(
+        chip in ["esp8266", "esp32"],
+        "Bootloader header needs to be modifiable - without sha256",
+    )
     def test_explicit_set_size_freq_mode(self):
         self.run_esptool(
             "write_flash -fs 2MB -fm dout -ff 80m 0x%x %s"
@@ -855,7 +863,14 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
         output = self.run_esptool(
             "write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, bl_image)
         )
-        self.assertIn("Flash params set to", output)
+        if chip in ["esp8266", "esp32"]:
+            # There is no SHA256 digest so the header can be changed - ESP8266 doesn't
+            # support this; The test image for ESP32 just doesn't have it.
+            self.assertIn("Flash params set to", output)
+        else:
+            self.assertNotIn("Flash params set to", output)
+            self.assertIn("not changing the flash mode setting", output)
+            self.assertIn("not changing the flash frequency setting", output)
 
     def test_flash_header_no_magic_no_rewrite(self):
         # first image doesn't start with magic byte, second image does

@@ -260,16 +260,44 @@ def _update_image_flash_params(esp, address, args, image):
         )
         return image
 
+    # After the 8-byte header comes the extended header for chips others than ESP8266.
+    # The 15th byte of the extended header indicates if the image is protected by
+    # a SHA256 checksum. In that case we should not modify the header because
+    # the checksum check would fail.
+    sha_implies_keep = args.chip != "esp8266" and image[8 + 15] == 1
+
+    def print_keep_warning(arg_to_keep, arg_used):
+        print(
+            "Warning: Image file at {addr} is protected with a hash checksum, "
+            "so not changing the flash {arg} setting. "
+            "Use the --flash_{arg}=keep option instead of --flash_{arg}={arg_orig} "
+            "in order to remove this warning".format(
+                addr=hex(address), arg=arg_to_keep, arg_orig=arg_used
+            )
+        )
+
     if args.flash_mode != "keep":
-        flash_mode = FLASH_MODES[args.flash_mode]
+        new_flash_mode = FLASH_MODES[args.flash_mode]
+        if flash_mode != new_flash_mode and sha_implies_keep:
+            print_keep_warning("mode", args.flash_mode)
+        else:
+            flash_mode = new_flash_mode
 
     flash_freq = flash_size_freq & 0x0F
     if args.flash_freq != "keep":
-        flash_freq = esp.parse_flash_freq_arg(args.flash_freq)
+        new_flash_freq = esp.parse_flash_freq_arg(args.flash_freq)
+        if flash_freq != new_flash_freq and sha_implies_keep:
+            print_keep_warning("frequency", args.flash_freq)
+        else:
+            flash_freq = new_flash_freq
 
     flash_size = flash_size_freq & 0xF0
     if args.flash_size != "keep":
-        flash_size = esp.parse_flash_size_arg(args.flash_size)
+        new_flash_size = esp.parse_flash_size_arg(args.flash_size)
+        if flash_size != new_flash_size and sha_implies_keep:
+            print_keep_warning("size", args.flash_size)
+        else:
+            flash_size = new_flash_size
 
     flash_params = struct.pack(b"BB", flash_mode, flash_size + flash_freq)
     if flash_params != image[2:4]:
