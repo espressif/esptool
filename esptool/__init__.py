@@ -216,12 +216,16 @@ def main(argv=None, esp=None):
 
         if auto_detect and allow_keep:
             extra_fs_message = ", detect, or keep"
+            flash_sizes = ["detect", "keep"]
         elif auto_detect:
             extra_fs_message = ", or detect"
+            flash_sizes = ["detect"]
         elif allow_keep:
             extra_fs_message = ", or keep"
+            flash_sizes = ["keep"]
         else:
             extra_fs_message = ""
+            flash_sizes = []
 
         parent.add_argument(
             "--flash_freq",
@@ -256,8 +260,21 @@ def main(argv=None, esp=None):
             help="SPI Flash size in MegaBytes "
             "(1MB, 2MB, 4MB, 8MB, 16MB, 32MB, 64MB, 128MB) "
             "plus ESP8266-only (256KB, 512KB, 2MB-c1, 4MB-c1)" + extra_fs_message,
-            action=FlashSizeAction,
-            auto_detect=auto_detect,
+            choices=flash_sizes
+            + [
+                "256KB",
+                "512KB",
+                "1MB",
+                "2MB",
+                "2MB-c1",
+                "4MB",
+                "4MB-c1",
+                "8MB",
+                "16MB",
+                "32MB",
+                "64MB",
+                "128MB",
+            ],
             default=os.environ.get("ESPTOOL_FS", "keep" if allow_keep else "1MB"),
         )
         add_spi_connection_arg(parent)
@@ -537,7 +554,18 @@ def main(argv=None, esp=None):
         "--fill-flash-size",
         help="If set, the final binary file will be padded with FF "
         "bytes up to this flash size.",
-        action=FlashSizeAction,
+        choices=[
+            "256KB",
+            "512KB",
+            "1MB",
+            "2MB",
+            "4MB",
+            "8MB",
+            "16MB",
+            "32MB",
+            "64MB",
+            "128MB",
+        ],
     )
     parser_merge_bin.add_argument(
         "addr_filename",
@@ -855,53 +883,6 @@ def get_default_connected_device(
             print("%s failed to connect: %s" % (each_port, err))
             _esp = None
     return _esp
-
-
-class FlashSizeAction(argparse.Action):
-    """
-    Custom flash size parser class to support backwards compatibility
-    with megabit size arguments.
-
-    (At next major relase, remove deprecated sizes and this can become
-    a 'normal' choices= argument again.) - ESPTOOL-419
-    """
-
-    def __init__(self, option_strings, dest, nargs=1, auto_detect=False, **kwargs):
-        super(FlashSizeAction, self).__init__(option_strings, dest, nargs, **kwargs)
-        self._auto_detect = auto_detect
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        try:
-            value = {
-                "2m": "256KB",
-                "4m": "512KB",
-                "8m": "1MB",
-                "16m": "2MB",
-                "32m": "4MB",
-                "16m-c1": "2MB-c1",
-                "32m-c1": "4MB-c1",
-            }[values[0]]
-            print(
-                "WARNING: Flash size arguments in megabits like '%s' are deprecated."
-                % (values[0])
-            )
-            print("Please use the equivalent size '%s'." % (value))
-            print("Megabit arguments may be removed in a future release.")
-        except KeyError:
-            value = values[0]
-
-        known_sizes = dict(ESP8266ROM.FLASH_SIZES)
-        known_sizes.update(ESP32ROM.FLASH_SIZES)
-        if self._auto_detect:
-            known_sizes["detect"] = "detect"
-            known_sizes["keep"] = "keep"
-        if value not in known_sizes:
-            raise argparse.ArgumentError(
-                self,
-                "%s is not a known flash size. Known sizes: %s"
-                % (value, ", ".join(known_sizes.keys())),
-            )
-        setattr(namespace, self.dest, value)
 
 
 class SpiConnectionAction(argparse.Action):
