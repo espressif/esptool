@@ -33,15 +33,9 @@ Getting started is easy:
 
     ::
 
-        $ esptool -p PORT flash_id
+        $ esptool.py -p PORT flash_id
 
     Replace ``PORT`` with the name of used serial port. If connection fails, see :ref:`troubleshooting`.
-
-.. note::
-
-    Starting from v4.0, ``esptool.py`` is run simply as ``$ esptool -h``, on the command-line. The same applies to ``espefuse.py`` and ``espsecure.py``.
-
-    The ``.py`` extension is only used when reffering to the tools in a written documentation.
 
 More Information
 ----------------

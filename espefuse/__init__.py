@@ -224,7 +224,7 @@ def main(custom_commandline=None):
 
     parser = argparse.ArgumentParser(parents=[init_parser])
     subparsers = parser.add_subparsers(
-        dest="operation", help="Run espefuse {command} -h for additional help"
+        dest="operation", help="Run espefuse.py {command} -h for additional help"
     )
 
     efuse_operations.add_commands(subparsers, efuses)

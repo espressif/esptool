@@ -37,7 +37,7 @@ body:
     attributes:
       label: Full Esptool Command Line that Was Run
       description: Please input the full esptool command.
-      placeholder: ex. `esptool elf2image esp32-bootloader.elf`
+      placeholder: ex. `esptool.py elf2image esp32-bootloader.elf`
   - type: textarea
     id: output
     attributes:

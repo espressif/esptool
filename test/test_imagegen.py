@@ -115,7 +115,7 @@ class BaseTestCase(unittest.TestCase):
 
     def assertImageInfo(self, binpath, chip="esp8266"):
         """
-        Run esptool image_info on a binary file,
+        Run esptool.py image_info on a binary file,
         assert no red flags about contents.
         """
         cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "image_info", binpath]

@@ -12,6 +12,16 @@
 # then this file is not used at all,
 # it's compatibility for the older "run from source dir" espefuse approach.
 
+# Linux/macOS: remove current script directory to avoid importing this file
+# as a module; we want to import the installed espefuse module instead
+import contextlib
+import os
+import sys
+
+with contextlib.suppress(ValueError):
+    if os.name != "nt":
+        sys.path.remove(os.path.dirname(sys.executable))
+
 import espefuse
 
 if __name__ == "__main__":

@@ -165,7 +165,7 @@ def main(argv=None, esp=None):
     )
 
     subparsers = parser.add_subparsers(
-        dest="operation", help="Run esptool {command} -h for additional help"
+        dest="operation", help="Run esptool.py {command} -h for additional help"
     )
 
     def add_spi_connection_arg(parent):

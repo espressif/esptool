@@ -52,7 +52,7 @@ Passing ``--no-stub`` will disable certain options, as not all options are imple
 
     The optional ``--spi-connection`` argument overrides the SPI flash connection configuration on ESP32. This means that the SPI flash can be connected to other pins, or esptool can be used to communicate with a different SPI flash chip to the default.
 
-    Supply the ``--spi-connection`` argument after the ``esptool`` command, ie ``esptool flash_id --spi-connection HSPI``.
+    Supply the ``--spi-connection`` argument after the ``esptool.py`` command, ie ``esptool.py flash_id --spi-connection HSPI``.
 
     Default Behavior
     ^^^^^^^^^^^^^^^^

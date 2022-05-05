@@ -115,7 +115,7 @@ For exact serial port configuration values, see :ref:`serial-port-settings`.
 Tracing Esptool Interactions
 ----------------------------
 
-Running ``esptool --trace`` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
+Running ``esptool.py --trace`` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
 
 See :ref:`the related Advanced Topics page <tracing-communications>` for more information.
 
@@ -167,8 +167,8 @@ Other things to try:
 
 .. list::
 
-   * Try to sync and communicate at a much lower baud rate, e.g. ``esptool --baud 9600 ...``.
-   * Try `tracing the interactions <Tracing Esptool Interactions>`_ running ``esptool --trace ...`` and see if anything is received back at all.
-   * Try skipping chip autodetection by specifying the chip type, run ``esptool --chip {IDF_TARGET_NAME} ...``.
+   * Try to sync and communicate at a much lower baud rate, e.g. ``esptool.py --baud 9600 ...``.
+   * Try `tracing the interactions <Tracing Esptool Interactions>`_ running ``esptool.py --trace ...`` and see if anything is received back at all.
+   * Try skipping chip autodetection by specifying the chip type, run ``esptool.py --chip {IDF_TARGET_NAME} ...``.
 
 If none of the above mentioned fixes help and your problem persists, please `open a new issue <https://github.com/espressif/esptool/issues/new/choose>`_.

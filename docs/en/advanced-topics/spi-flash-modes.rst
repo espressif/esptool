@@ -3,7 +3,7 @@
 SPI Flash Modes
 ===============
 
-The ESP chips support four different SPI flash access modes: DIO, DOUT, QIO & QOUT. These can be set via the ``--flash_mode`` option of ``esptool write_flash``.
+The ESP chips support four different SPI flash access modes: DIO, DOUT, QIO & QOUT. These can be set via the ``--flash_mode`` option of ``esptool.py write_flash``.
 
 These options control how many I/O pins are used for communication with the attached SPI flash chip, and which SPI commands are used.
 
@@ -83,7 +83,7 @@ Why don't qio & qout modes work with my Espressif chip/module?
 It is usually one of the following reasons:
 
 * The WP and HOLD pins of the SPI flash chip are not wired to the correct GPIOs of the Espressif chip. These pins must be connected correctly for quad modes to work, and not all boards/modules connect them at all.
-* The SPI flash chip does not support quad modes. Look up the flash chip datasheet to see which modes it supports. You can identify the flash chip visually, or by using the :ref:`esptool flash_id <read-spi-flash-id>` command.
+* The SPI flash chip does not support quad modes. Look up the flash chip datasheet to see which modes it supports. You can identify the flash chip visually, or by using the :ref:`esptool.py flash_id <read-spi-flash-id>` command.
 * Quad mode is not enabled correctly for this chip model. SPI flash is not a standard, so every manufacturer implements their chip differently. Most flash chips require certain commands to be sent in order to enable Quad SPI modes, and these commands vary.
   For Espressif chips, this often means that the chip first boots in a Dual SPI mode and then software detects the chip type and tries to enable Quad SPI mode.
   If the particular chip model is not supported by the software then it won't be able to enter quad mode.

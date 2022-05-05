@@ -1198,7 +1198,7 @@ def main(custom_commandline=None):
     )
 
     subparsers = parser.add_subparsers(
-        dest="operation", help="Run espsecure {command} -h for additional help"
+        dest="operation", help="Run espsecure.py {command} -h for additional help"
     )
 
     p = subparsers.add_parser(

@@ -6,7 +6,7 @@ A Python-based, open-source, platform-independent utility to communicate with th
 
 ## Documentation
 
-Visit the [documentation](https://docs.espressif.com/projects/esptool/) or run `esptool -h`.
+Visit the [documentation](https://docs.espressif.com/projects/esptool/) or run `esptool.py -h`.
 
 ## Contribute
 

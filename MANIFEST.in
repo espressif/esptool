@@ -8,8 +8,3 @@ prune .github
 prune docs
 exclude .git*
 exclude MANIFEST*
-# the following scripts are only compatibility for the older "run from source dir" approach
-# these are not used at all when installing with setup.py or pip
-exclude esptool.py
-exclude espefuse.py
-exclude espsecure.py

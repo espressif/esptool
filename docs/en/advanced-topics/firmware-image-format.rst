@@ -1,7 +1,7 @@
 Firmware Image Format
 =====================
 
-This is technical documentation for the firmware image format used by the ROM bootloader. These are the images created by ``esptool elf2image``.
+This is technical documentation for the firmware image format used by the ROM bootloader. These are the images created by ``esptool.py elf2image``.
 
 .. only:: esp8266
 
@@ -60,7 +60,7 @@ The image header is 8 bytes long:
         TODO: Update flash frequency lists to be esp32c2 or esp32h2 specific
 
 esptool.py overrides the 2nd and 3rd (start from 0) bytes according to the SPI flash info provided through command line option, regardless of corresponding bytes from the input .bin file that will be written to address 0x00000.
-So you must provide SPI flash info when running ``esptool write_flash`` command. For example: ``esptool write_flash -ff 80m -fm qio -fs 1MB 0x00000 boot.bin 0x01000 user1.bin``
+So you must provide SPI flash info when running ``esptool.py write_flash`` command. For example: ``esptool.py write_flash -ff 80m -fm qio -fs 1MB 0x00000 boot.bin 0x01000 user1.bin``
 
 .. only:: not esp8266
 

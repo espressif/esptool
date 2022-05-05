@@ -10,13 +10,13 @@ Binary data can be written to the ESP's flash chip via the serial ``write_flash`
 
 ::
 
-    esptool --port COM4 write_flash 0x1000 my_app-0x01000.bin
+    esptool.py --port COM4 write_flash 0x1000 my_app-0x01000.bin
 
 Multiple flash addresses and file names can be given on the same command line:
 
 ::
 
-    esptool --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
+    esptool.py --port COM4 write_flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
 
 The ``--chip`` argument is optional when writing to flash, esptool will detect the type of chip when it connects to the serial port.
 
@@ -42,7 +42,7 @@ You may also need to specify arguments for :ref:`flash mode and flash size <flas
 
 ::
 
-    esptool --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
+    esptool.py --port /dev/ttyUSB0 write_flash --flash_mode qio --flash_size 32m 0x0 bootloader.bin 0x1000 my_app.bin
 
 Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the ``.bin`` image file. See the :ref:`flash-modes` section for more details.
 
@@ -76,7 +76,7 @@ The read_flash command allows reading back the contents of flash. The arguments 
 
 ::
 
-    esptool -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
+    esptool.py -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
 
 .. note::
 
@@ -91,13 +91,13 @@ To erase the entire flash chip (all data replaced with 0xFF bytes):
 
 ::
 
-    esptool erase_flash
+    esptool.py erase_flash
 
 To erase a region of the flash, starting at address 0x20000 with length 0x4000 bytes (16KB):
 
 ::
 
-    esptool erase_region 0x20000 0x4000
+    esptool.py erase_region 0x20000 0x4000
 
 The address and length must both be multiples of the SPI flash erase sector size. This is 0x1000 (4096) bytes for supported flash chips.
 
@@ -117,7 +117,7 @@ Read Built-in MAC Address: read_mac
 
 ::
 
-    esptool read_mac
+    esptool.py read_mac
 
 .. _read-spi-flash-id:
 
@@ -126,7 +126,7 @@ Read SPI Flash ID: flash_id
 
 ::
 
-    esptool flash_id
+    esptool.py flash_id
 
 Example output:
 
@@ -145,7 +145,7 @@ The ``elf2image`` command converts an ELF file (from compiler/linker output) int
 
 ::
 
-    esptool --chip {IDF_TARGET_NAME} elf2image my_app.elf
+    esptool.py --chip {IDF_TARGET_NAME} elf2image my_app.elf
 
 This command does not require a serial connection.
 
@@ -162,7 +162,7 @@ By default, ``elf2image`` uses the sections in the ELF file to generate each seg
 
     ::
 
-        esptool --chip {IDF_TARGET_NAME} elf2image --version=2 -o my_app-ota.bin my_app.elf
+        esptool.py --chip {IDF_TARGET_NAME} elf2image --version=2 -o my_app-ota.bin my_app.elf
 
 .. only:: not esp8266
 
@@ -170,7 +170,7 @@ By default, ``elf2image`` uses the sections in the ELF file to generate each seg
 
     ::
 
-        esptool --chip {IDF_TARGET_NAME} elf2image my_esp_app.elf
+        esptool.py --chip {IDF_TARGET_NAME} elf2image my_esp_app.elf
 
     In the above example, the output image file would be called ``my_esp_app.bin``.
 
@@ -181,7 +181,7 @@ The ``image_info`` command outputs some information (load addresses, sizes, etc)
 
 ::
 
-    esptool --chip {IDF_TARGET_NAME} image_info my_esp_app.bin
+    esptool.py --chip {IDF_TARGET_NAME} image_info my_esp_app.bin
 
 .. only:: not esp8266
 
@@ -200,9 +200,9 @@ For example:
 
 ::
 
-    esptool --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
+    esptool.py --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
 
-Will create a file ``merged-flash.bin`` with the contents of the other 3 files. This file can be later be written to flash with ``esptool write_flash 0x0 merged-flash.bin``.
+Will create a file ``merged-flash.bin`` with the contents of the other 3 files. This file can be later be written to flash with ``esptool.py write_flash 0x0 merged-flash.bin``.
 
 .. note:
 
@@ -219,7 +219,7 @@ Will create a file ``merged-flash.bin`` with the contents of the other 3 files. 
 .. code:: sh
 
     cd build    # The build directory of an ESP-IDF project
-    esptool --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin @flash_args
+    esptool.py --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin @flash_args
 
 Advanced Commands
 -----------------
