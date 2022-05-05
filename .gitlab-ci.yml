@@ -122,8 +122,7 @@ check_stub_build:
 
 .target_esptool_test:
   stage: test
-  # python:3.7 (bullseye) has a problem with libffi needed for cryptography, buster doesn't
-  image: python:3.7-buster
+  image: python:3.7
   variables:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
