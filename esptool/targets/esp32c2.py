@@ -20,7 +20,8 @@ class ESP32C2ROM(ESP32C3ROM):
     DROM_MAP_START = 0x3C000000
     DROM_MAP_END = 0x3C400000
 
-    CHIP_DETECT_MAGIC_VALUE = [0x7C41A06F]
+    # Magic value for ESP32C2 ECO0 and ECO1 respectively
+    CHIP_DETECT_MAGIC_VALUE = [0x6F51306F, 0x7C41A06F]
 
     EFUSE_BASE = 0x60008800
     MAC_EFUSE_REG = EFUSE_BASE + 0x040
@@ -46,6 +47,16 @@ class ESP32C2ROM(ESP32C3ROM):
         chip_revision = self.get_chip_revision()
 
         return "%s (revision %d)" % (chip_name, chip_revision)
+
+    def get_chip_revision(self):
+        si = self.get_security_info()
+        return si["api_version"]
+
+    def _post_connect(self):
+        # ESP32C2 ECO0 is no longer supported by the flasher stub
+        if self.get_chip_revision() == 0:
+            self.stub_is_disabled = True
+            self.IS_STUB = False
 
 
 class ESP32C2StubLoader(ESP32C2ROM):
