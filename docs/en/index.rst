@@ -50,4 +50,5 @@ More Information
    Advanced Topics <advanced-topics/index>
    Troubleshooting <troubleshooting>
    Contribute <contributing>
+   Versions <versions>
    About <about>
