@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # This file consists of the common useful functions for eFuse
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 esptool.py "unit" tests (really integration tests).
 Uses a device connected to the serial port.

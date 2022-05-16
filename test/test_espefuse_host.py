@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # HOST_TEST for espefuse.py
 # [support esp32, esp32s2, esp32s3beta2, esp32s3, esp32c3, esp32h2beta1, esp32c2]
 #

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Tests for espsecure.py
 #
 # Assumes openssl binary is in the PATH

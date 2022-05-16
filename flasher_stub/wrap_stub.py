@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-#
 # Stub has to be generated via Python 3, for correct repr() output
 #
 # SPDX-FileCopyrightText: 2016 Cesanta Software Limited

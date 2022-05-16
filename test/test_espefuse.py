@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Tests for espefuse.py on ESP32
 #
 # IMPORTANT These are not designed to be run on a real ESP32 chip.

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # This file describes eFuses for ESP32S2 chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD

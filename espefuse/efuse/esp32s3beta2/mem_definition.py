@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # This file describes eFuses fields and registers for ESP32-S3(beta2) chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD

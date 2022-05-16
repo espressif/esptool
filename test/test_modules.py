@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # Tests for regressions in python modules
 # used by esptool.py, espefuse.py, and espsecure.py
 from __future__ import division, print_function
