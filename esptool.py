@@ -19,7 +19,7 @@ import sys
 
 with contextlib.suppress(ValueError):
     if os.name != "nt":
-        sys.path.remove(os.path.dirname(sys.executable))
+        sys.path.remove(os.path.realpath(os.path.dirname(__file__)))
 
 import esptool
 
