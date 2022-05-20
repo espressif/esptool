@@ -7,20 +7,26 @@
 
 # This executable script is a thin wrapper around the main functionality
 # in the espsecure Python package
-#
-# If esptool (with espefuse and espsecure) is installed via setup.py or pip
-# then this file is not used at all,
-# it's compatibility for the older "run from source dir" espsecure approach.
 
-# Linux/macOS: remove current script directory to avoid importing this file
-# as a module; we want to import the installed espsecure module instead
+# When updating this script, please also update esptool.py and espefuse.py
+
 import contextlib
 import os
 import sys
 
-with contextlib.suppress(ValueError):
-    if os.name != "nt":
+if os.name != "nt":
+    # Linux/macOS: remove current script directory to avoid importing this file
+    # as a module; we want to import the installed espsecure module instead
+    with contextlib.suppress(ValueError):
+        if sys.path[0].endswith("/bin"):
+            sys.path.pop(0)
         sys.path.remove(os.path.dirname(sys.executable))
+
+    # Linux/macOS: delete imported module entry to force Python to load
+    # the module from scratch; this enables importing espsecure module in
+    # other Python scripts
+    with contextlib.suppress(KeyError):
+        del sys.modules["espsecure"]
 
 import espsecure
 
