@@ -76,8 +76,19 @@ check_python_style:
     - python -m flake8
     - python -m black --check --diff .
 
-# Check all the scripts can run when installed
-check_installation_can_run:
+.run_esptool: &run_esptool |
+  esptool.py --help
+  espefuse.py --help
+  espsecure.py --help
+  python esptool.py --help
+  python espefuse.py --help
+  python espsecure.py --help
+  python -m esptool --help
+  python -m espefuse --help
+  python -m espsecure --help
+
+# Check all the scripts can run when installed, collect coverage
+check_install_coverage:
   <<: *test_template
   artifacts:
     when: always
@@ -90,9 +101,46 @@ check_installation_can_run:
     - coverage run --parallel-mode esptool.py --help
     - coverage run --parallel-mode espefuse.py --help
     - coverage run --parallel-mode espsecure.py --help
-    - esptool.py --help
-    - espefuse.py --help
-    - espsecure.py --help
+    - *run_esptool
+
+# Check all the scripts can run when installed
+check_install:
+  <<: *test_template
+  before_script:
+    - pip install .
+  script:
+    - *run_esptool
+
+# Check all the scripts can run when installed in editable mode
+check_install_editable:
+  <<: *test_template
+  before_script:
+    - pip install -e .
+  script:
+    - *run_esptool
+
+# Check all the scripts can run when installed in Python user install directory
+check_install_system:
+  <<: *test_template
+  before_script:
+    - pip install --user .
+  script:
+    - python esptool.py --help
+    - python espefuse.py --help
+    - python espsecure.py --help
+    - python -m esptool --help
+    - python -m espefuse --help
+    - python -m espsecure --help
+
+# Check all the scripts can run when installed in virtual environment
+check_install_venv:
+  <<: *test_template
+  before_script:
+    - python -m venv test_env
+    - source test_env/bin/activate
+    - python -m pip install .
+  script:
+    - *run_esptool
 
 # Check the stub can build and that a stub built in CI has the same contents
 # as the one embedded in esptool
