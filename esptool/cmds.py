@@ -271,7 +271,9 @@ def _update_image_flash_params(esp, address, args, image):
             "Warning: Image file at {addr} is protected with a hash checksum, "
             "so not changing the flash {arg} setting. "
             "Use the --flash_{arg}=keep option instead of --flash_{arg}={arg_orig} "
-            "in order to remove this warning".format(
+            "in order to remove this warning, or use the --dont-append-digest option "
+            "for the elf2image command in order to generate an image file "
+            "without a hash checksum".format(
                 addr=hex(address), arg=arg_to_keep, arg_orig=arg_used
             )
         )
@@ -704,6 +706,7 @@ def elf2image(args):
 
     if args.chip != "esp8266":
         image.min_rev = int(args.min_rev)
+        image.append_digest = args.append_digest
 
     if args.flash_mmu_page_size:
         image.set_mmu_page_size(flash_size_bytes(args.flash_mmu_page_size))

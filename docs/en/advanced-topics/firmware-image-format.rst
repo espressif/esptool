@@ -59,12 +59,7 @@ The image header is 8 bytes long:
 
         TODO: Update flash frequency lists to be esp32c2 or esp32h2 specific
 
-esptool.py overrides the 2nd and 3rd (start from 0) bytes according to the SPI flash info provided through command line option, regardless of corresponding bytes from the input .bin file that will be written to address 0x00000.
-So you must provide SPI flash info when running ``esptool.py write_flash`` command. For example: ``esptool.py write_flash -ff 80m -fm qio -fs 1MB 0x00000 boot.bin 0x01000 user1.bin``
-
-.. only:: not esp8266
-
-    Please note that the appended SHA256 hash becomes incorrect when esptool.py overrides these SPI flash info bytes in a bootloader image, which leads to an error if Secure Boot is enabled.
+``esptool.py`` overrides the 2nd and 3rd (start from 0) bytes according to the SPI flash info provided through command line option, but only if there is no SHA256 digest appended after the image. Therefore, if you would like to change SPI flash info during flashing, i.e. with the ``esptool.py write_flash`` command, then generate images without SHA256 digests. This can be achieved by running `esptool.py elf2image`` with the ``--dont-append-digest`` argument.
 
 .. only:: esp8266
 
@@ -113,7 +108,7 @@ The file is padded with zeros until its size is one byte less than a multiple of
 
 .. only:: not esp8266
 
-    If ``hash appended`` in the extended file header is ``0x01``, a SHA256 digest “simple hash” (of the entire image) is appended after the checksum. This digest is separate to secure boot and only used for detecting corruption.
+    If ``hash appended`` in the extended file header is ``0x01``, a SHA256 digest “simple hash” (of the entire image) is appended after the checksum. This digest is separate to secure boot and only used for detecting corruption. The SPI flash info cannot be changed during flashing if hash is appended after the image.
 
     If secure boot is enabled, a signature is also appended (and the simple hash is included in the signed data). This image signature is `Secure Boot V1 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v1.html#image-signing-algorithm>`_ and `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html#signature-block-format>`_ specific.
 

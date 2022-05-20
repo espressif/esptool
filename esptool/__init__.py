@@ -422,6 +422,14 @@ def main(argv=None, esp=None):
         default=None,
     )
     parser_elf2image.add_argument(
+        "--dont-append-digest",
+        dest="append_digest",
+        help="Don't append a SHA256 digest of the entire image after the checksum. "
+        "This argument is not supported and ignored for ESP8266.",
+        action="store_false",
+        default=True,
+    )
+    parser_elf2image.add_argument(
         "--use_segments",
         help="If set, ELF segments will be used instead of ELF sections "
         "to genereate the image.",

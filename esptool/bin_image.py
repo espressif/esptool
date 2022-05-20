@@ -554,7 +554,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     IROM_ALIGN = 65536
 
-    def __init__(self, load_file=None):
+    def __init__(self, load_file=None, append_digest=True):
         super(ESP32FirmwareImage, self).__init__()
         self.secure_pad = None
         self.flash_mode = 0
@@ -570,7 +570,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.wp_drv = 0
         self.min_rev = 0
 
-        self.append_digest = True
+        self.append_digest = append_digest
 
         if load_file is not None:
             start = load_file.tell()

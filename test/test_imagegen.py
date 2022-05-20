@@ -458,6 +458,44 @@ class ELFSHA256Tests(BaseTestCase):
         self.assertIn(b"zero", output)
 
 
+class HashAppendTests(BaseTestCase):
+    ELF = "esp32-bootloader.elf"
+    BIN = "esp32-bootloader.bin"
+
+    # 15th byte of the extended header after the 8-byte image header
+    HASH_APPEND_OFFSET = 15 + 8
+
+    def test_hash_append(self):
+        self.addCleanup(os.remove, self.BIN)
+        self.run_elf2image(
+            "esp32",
+            self.ELF,
+            extra_args=["-o", self.BIN],
+        )
+        with open(self.BIN, "rb") as f:
+            bin_with_hash = f.read()
+
+        self.assertEqual(bin_with_hash[self.HASH_APPEND_OFFSET], 1)
+
+        # drop the last 32 bytes (SHA256 digest)
+        expected_bin_without_hash = bytearray(bin_with_hash[:-32])
+        # disable the hash append byte in the file header
+        expected_bin_without_hash[self.HASH_APPEND_OFFSET] = 0
+
+        try_delete(self.BIN)
+        self.run_elf2image(
+            "esp32",
+            self.ELF,
+            extra_args=["--dont-append-digest", "-o", self.BIN],
+        )
+
+        with open(self.BIN, "rb") as f:
+            bin_without_hash = f.read()
+
+        self.assertEqual(bin_without_hash[self.HASH_APPEND_OFFSET], 0)
+        self.assertSequenceEqual(bytes(expected_bin_without_hash), bin_without_hash)
+
+
 if __name__ == "__main__":
     print("Running image generation tests...")
     unittest.main(buffer=True)
