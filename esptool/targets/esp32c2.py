@@ -26,6 +26,23 @@ class ESP32C2ROM(ESP32C3ROM):
     EFUSE_BASE = 0x60008800
     MAC_EFUSE_REG = EFUSE_BASE + 0x040
 
+    EFUSE_SECURE_BOOT_EN_REG = EFUSE_BASE + 0x30
+    EFUSE_SECURE_BOOT_EN_MASK = 1 << 21
+
+    EFUSE_SPI_BOOT_CRYPT_CNT_REG = EFUSE_BASE + 0x30
+    EFUSE_SPI_BOOT_CRYPT_CNT_MASK = 0x7 << 18
+
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_BASE + 0x30
+    EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 6
+
+    EFUSE_XTS_KEY_LENGTH_256_REG = EFUSE_BASE + 0x30
+    EFUSE_XTS_KEY_LENGTH_256 = 1 << 10
+
+    EFUSE_BLOCK_KEY0_REG = EFUSE_BASE + 0x60
+
+    EFUSE_RD_DIS_REG = EFUSE_BASE + 0x30
+    EFUSE_RD_DIS = 3
+
     FLASH_FREQUENCY = {
         "60m": 0xF,
         "30m": 0x0,
@@ -57,6 +74,34 @@ class ESP32C2ROM(ESP32C3ROM):
         if self.get_chip_revision() == 0:
             self.stub_is_disabled = True
             self.IS_STUB = False
+
+    """ Try to read (encryption key) and check if it is valid """
+
+    def is_flash_encryption_key_valid(self):
+        key_len_256 = (
+            self.read_reg(self.EFUSE_XTS_KEY_LENGTH_256_REG)
+            & self.EFUSE_XTS_KEY_LENGTH_256
+        )
+
+        word0 = self.read_reg(self.EFUSE_RD_DIS_REG) & self.EFUSE_RD_DIS
+        rd_disable = word0 == 3 if key_len_256 else word0 == 1
+
+        # reading of BLOCK3 is NOT ALLOWED so we assume valid key is programmed
+        if rd_disable:
+            return True
+        else:
+            # reading of BLOCK3 is ALLOWED so we will read and verify for non-zero.
+            # When chip has not generated AES/encryption key in BLOCK3,
+            # the contents will be readable and 0.
+            # If the flash encryption is enabled it is expected to have a valid
+            # non-zero key. We break out on first occurance of non-zero value
+            key_word = [0] * 7 if key_len_256 else [0] * 3
+            for i in range(len(key_word)):
+                key_word[i] = self.read_reg(self.EFUSE_BLOCK_KEY0_REG + i * 4)
+                # key is non-zero so break & return
+                if key_word[i] != 0:
+                    return True
+            return False
 
 
 class ESP32C2StubLoader(ESP32C2ROM):
