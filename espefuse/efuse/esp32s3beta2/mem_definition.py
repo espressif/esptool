@@ -153,14 +153,12 @@ class EfuseDefineFields(EfuseFieldsBase):
                                                                                                        "unit is (ms/2). When the value is 15, delay is 7.5 ms",
                                                                                                        None),
         ("DIS_DOWNLOAD_MODE",            "security", 0,  4, 0,   "bool",     18,   None, None,         "Disables all Download boot modes", None),
-        ("DIS_LEGACY_SPI_BOOT",          "config",   0,  4, 1,   "bool",     18,   None, None,         "Disables Legacy SPI boot mode", None),
-        ("UART_PRINT_CHANNEL",           "config",   0,  4, 2,   "bool",     18,   None, None,         "Selects the default UART for printing boot msg",
-         {0: "UART0",
-          1: "UART1"}),
+        ("DIS_DIRECT_BOOT",              "config",   0,  4, 1,   "bool",     18,   None, None,         "Disables direct boot mode", None),
+        ("DIS_USB_SERIAL_JTAG_ROM_PRINT", "config",  0,  4, 2,   "bool",     18,   None, None,         "Disables USB-Serial-JTAG ROM printing", None),
         ("FLASH_ECC_MODE",               "config",   0,  4, 3,   "bool",     18,   None, None,         "Configures the ECC mode for SPI flash",
          {0: "16-byte to 18-byte mode",
           1: "16-byte to 17-byte mode"}),
-        ("DIS_USB_DOWNLOAD_MODE",        "config",   0,  4, 4,   "bool",     18,   None, None,         "Disables USB OTG download feature in "
+        ("DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE", "config", 0, 4, 4, "bool",     18,   None, None,         "Disables USB-Serial-JTAG download feature in "
                                                                                                        "UART download boot mode", None),
         ("ENABLE_SECURITY_DOWNLOAD",    "security",  0,  4, 5,   "bool",     18,   None, None,         "Enables secure UART download mode "
                                                                                                        "(read/write flash only)", None),
@@ -181,6 +179,8 @@ class EfuseDefineFields(EfuseFieldsBase):
                                                                                                        "during SPI boot", None),
         ("SECURE_VERSION",             "identity",   0,  4, 14,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
                                                                                                        None),
+        ("DIS_USB_OTG_DOWNLOAD_MODE",    "config",   0,  4, 31,  "bool",     19,   None, None,         "Disables USB-OTG download feature in "
+                                                                                                       "UART download boot mode", None),
         #
         # Table 53: Parameters in BLOCK1-10
         # Name                          Category  Block Word Pos  Type:len WR_DIS RD_DIS Class         Description                Dictionary
