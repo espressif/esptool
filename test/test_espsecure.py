@@ -121,6 +121,31 @@ class SigningTests(EspSecureTestCase):
 
     GenerateKeyArgs = namedtuple("generate_key_args", ["version", "scheme", "keyfile"])
 
+    def test_key_generation_v1(self):
+        # tempfile.TemporaryDirectory() would be better
+        # but we need compatibility with old Pythons
+        keydir = tempfile.mkdtemp()
+        self.addCleanup(os.rmdir, keydir)
+
+        # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
+        # cannot be used for keyfile
+        keyfile_name = os.path.join(keydir, "key.pem")
+        self.addCleanup(os.remove, keyfile_name)
+        self.run_espsecure("generate_signing_key --version 1 {}".format(keyfile_name))
+
+    def test_key_generation_v2(self):
+        # tempfile.TemporaryDirectory() would be better
+        # but we need compatibility with old Pythons
+        keydir = tempfile.mkdtemp()
+        self.addCleanup(os.rmdir, keydir)
+
+        # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
+        # cannot be used for keyfile
+        keyfile_name = os.path.join(keydir, "key.pem")
+        self.addCleanup(os.remove, keyfile_name)
+
+        self.run_espsecure("generate_signing_key --version 2 {}".format(keyfile_name))
+
     def _test_sign_v1_data(self, key_name):
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
