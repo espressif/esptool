@@ -164,7 +164,7 @@ def generate_signing_key(args):
         raise esptool.FatalError("ERROR: Key file %s already exists" % args.keyfile)
     if args.version == "1":
         if hasattr(args, "scheme"):
-            if args.scheme != "ecdsa256":
+            if args.scheme != "ecdsa256" and args.scheme is not None:
                 raise esptool.FatalError("ERROR: V1 only supports ECDSA256")
         """ Generate an ECDSA signing key for signing secure boot images (post-bootloader) """
         _generate_ecdsa_signing_key(ecdsa.NIST256p, args.keyfile)
