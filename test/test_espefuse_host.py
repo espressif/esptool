@@ -347,8 +347,9 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            SECURE_BOOT_KEY_REVOKE2 KEY_PURPOSE_0 KEY_PURPOSE_1
                            KEY_PURPOSE_2 KEY_PURPOSE_3 KEY_PURPOSE_4 KEY_PURPOSE_5
                            SECURE_BOOT_EN SECURE_BOOT_AGGRESSIVE_REVOKE FLASH_TPUW
-                           DIS_DOWNLOAD_MODE DIS_LEGACY_SPI_BOOT UART_PRINT_CHANNEL
-                           DIS_USB_DOWNLOAD_MODE ENABLE_SECURITY_DOWNLOAD
+                           DIS_DOWNLOAD_MODE DIS_DIRECT_BOOT
+                           DIS_USB_SERIAL_JTAG_ROM_PRINT
+                           DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE ENABLE_SECURITY_DOWNLOAD
                            UART_PRINT_CONTROL MAC SPI_PAD_CONFIG_CLK SPI_PAD_CONFIG_Q
                            SPI_PAD_CONFIG_D SPI_PAD_CONFIG_CS SPI_PAD_CONFIG_HD
                            SPI_PAD_CONFIG_WP SPI_PAD_CONFIG_DQS SPI_PAD_CONFIG_D4
@@ -357,6 +358,15 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            BLOCK2_VERSION BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1
                            BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5"""
             efuse_lists2 = "RD_DIS DIS_ICACHE"
+        if chip_target == "esp32s2":
+            replace_rule = {
+                # New bit definition after esp32c3    Old defintion in esp32s2
+                "DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE": "DIS_USB_DOWNLOAD_MODE",
+                "DIS_DIRECT_BOOT": "DIS_LEGACY_SPI_BOOT",
+                "DIS_USB_SERIAL_JTAG_ROM_PRINT": "UART_PRINT_CHANNEL",
+            }
+            for old_name in replace_rule:
+                efuse_lists = efuse_lists.replace(old_name, replace_rule[old_name])
         self.espefuse_py("write_protect_efuse {}".format(efuse_lists))
         output = self.espefuse_py("write_protect_efuse {}".format(efuse_lists2))
         self.assertEqual(2, output.count("is already write protected"))
