@@ -5,7 +5,7 @@ espefuse(esp, efuses, args, 'burn_bit BLOCK_USR_DATA 64 66 69 72 78 82 83 90')
 espefuse(esp, efuses, args, 'read_protect_efuse BLOCK_SYS_DATA2')
 espefuse(esp, efuses, args, 'write_protect_efuse BLOCK_SYS_DATA2')
 espefuse(esp, efuses, args, 'burn_block_data BLOCK_KEY5 ../../images/efuse/256bit')
-espefuse(esp, efuses, args, 'burn_key BLOCK_KEY0 ../../images/efuse/256bit XTS_AES_256_KEY_1 --no-read-protect')
+espefuse(esp, efuses, args, 'burn_key BLOCK_KEY0 ../../images/efuse/256bit XTS_AES_128_KEY --no-read-protect')
 espefuse(esp, efuses, args, 'burn_key_digest BLOCK_KEY1 ../../secure_images/rsa_secure_boot_signing_key.pem SECURE_BOOT_DIGEST0')
 
 efuses.burn_all()
@@ -40,8 +40,8 @@ if efuses["BLOCK_KEY0"].get_meaning() != "bf be bd bc bb ba b9 b8 b7 b6 b5 b4 b3
 if not efuses["BLOCK_KEY0"].is_readable() or efuses["BLOCK_KEY0"].is_writeable():
     raise esptool.FatalError("BLOCK_KEY0 should be readable and not writable")
 
-if efuses["KEY_PURPOSE_0"].get_meaning() != "XTS_AES_256_KEY_1":
-    raise esptool.FatalError("KEY_PURPOSE_0 was not set XTS_AES_256_KEY_1")
+if efuses["KEY_PURPOSE_0"].get_meaning() != "XTS_AES_128_KEY":
+    raise esptool.FatalError("KEY_PURPOSE_0 was not set XTS_AES_128_KEY")
 
 if efuses["KEY_PURPOSE_0"].is_writeable():
     raise esptool.FatalError("KEY_PURPOSE_0 should be write-protected")
@@ -60,7 +60,7 @@ if not efuses["BLOCK_KEY1"].is_readable() or efuses["BLOCK_KEY1"].is_writeable()
     raise esptool.FatalError("BLOCK_KEY1 should be readable and not writable")
 
 
-espefuse(esp, efuses, args, 'burn_key BLOCK_KEY0 ../../images/efuse/256bit XTS_AES_256_KEY_1')
+espefuse(esp, efuses, args, 'burn_key BLOCK_KEY0 ../../images/efuse/256bit XTS_AES_128_KEY')
 efuses.burn_all()
 if efuses["BLOCK_KEY0"].is_readable() or efuses["BLOCK_KEY0"].is_writeable():
     raise esptool.FatalError("BLOCK_KEY0 should be not readable and not writeable")

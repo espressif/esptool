@@ -367,8 +367,6 @@ class EfuseKeyPurposeField(EfuseField):
     KEY_PURPOSES = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
         ("RESERVED",                     1,  None,       None,      "no_need_rd_protect"),   # Reserved
-        ("XTS_AES_256_KEY_1",            2,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_1 (flash/PSRAM encryption)
-        ("XTS_AES_256_KEY_2",            3,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_2 (flash/PSRAM encryption)
         ("XTS_AES_128_KEY",              4,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_128_KEY (flash/PSRAM encryption)
         ("HMAC_DOWN_ALL",                5,  None,       None,      "need_rd_protect"),      # HMAC Downstream mode
         ("HMAC_DOWN_JTAG",               6,  None,       None,      "need_rd_protect"),      # JTAG soft enable key (uses HMAC Downstream mode)
@@ -390,6 +388,11 @@ class EfuseKeyPurposeField(EfuseField):
             if purpose_name[0] == new_value_str:
                 raw_val = str(purpose_name[1])
                 break
+        if raw_val.isdigit():
+            if int(raw_val) not in [p[1] for p in self.KEY_PURPOSES if p[1] > 0]:
+                raise esptool.FatalError("'%s' can not be set (value out of range)" % raw_val)
+        else:
+            raise esptool.FatalError("'%s' unknown name" % raw_val)
         return raw_val
 
     def need_reverse(self, new_key_purpose):
@@ -403,15 +406,11 @@ class EfuseKeyPurposeField(EfuseField):
                 return key[4] == "need_rd_protect"
 
     def get(self, from_read=True):
-        try:
-            return self.KEY_PURPOSES[self.get_raw(from_read)][0]
-        except IndexError:
-            return " "
+        for p in self.KEY_PURPOSES:
+            if p[1] == self.get_raw(from_read):
+                return p[0]
+        return "FORBIDDEN_STATE"
 
     def save(self, new_value):
-        raw_val = new_value
-        for purpose_name in self.KEY_PURPOSES:
-            if purpose_name[0] == new_value:
-                raw_val = purpose_name[1]
-                break
+        raw_val = int(self.check_format(str(new_value)))
         return super(EfuseKeyPurposeField, self).save(raw_val)
