@@ -186,8 +186,8 @@ class TestReadProtectionCommands(EfuseTestCase):
             count_protects = 1
         else:
             self.espefuse_py('burn_efuse \
-                              KEY_PURPOSE_0 XTS_AES_256_KEY_1 \
-                              KEY_PURPOSE_1 XTS_AES_256_KEY_2 \
+                              KEY_PURPOSE_0 HMAC_UP \
+                              KEY_PURPOSE_1 XTS_AES_128_KEY \
                               KEY_PURPOSE_2 XTS_AES_128_KEY \
                               KEY_PURPOSE_3 HMAC_DOWN_ALL \
                               KEY_PURPOSE_4 HMAC_DOWN_JTAG \
@@ -519,19 +519,20 @@ class TestBurnKeyCommands(EfuseTestCase):
 
     @unittest.skipUnless(chip_target in ["esp32s2", "esp32s3", "esp32s3beta1", "esp32c3", "esp32h2", "esp32h2beta1"], "Only chip with 6 keys")
     def test_burn_key_with_6_keys(self):
-        self.espefuse_py('burn_key \
-                          BLOCK_KEY0 images/efuse/256bit   XTS_AES_256_KEY_1 \
-                          BLOCK_KEY1 images/efuse/256bit_1 XTS_AES_256_KEY_2 \
-                          BLOCK_KEY2 images/efuse/256bit_2 XTS_AES_128_KEY   --no-read-protect --no-write-protect')
+        cmd = 'burn_key \
+               BLOCK_KEY0 images/efuse/256bit   XTS_AES_256_KEY_1 \
+               BLOCK_KEY1 images/efuse/256bit_1 XTS_AES_256_KEY_2 \
+               BLOCK_KEY2 images/efuse/256bit_2 XTS_AES_128_KEY'
+        if chip_target == 'esp32c3':
+            cmd = cmd.replace('XTS_AES_256_KEY_1', 'XTS_AES_128_KEY')
+            cmd = cmd.replace('XTS_AES_256_KEY_2', 'XTS_AES_128_KEY')
+        self.espefuse_py(cmd + ' --no-read-protect --no-write-protect')
         output = self.espefuse_py('summary -d')
         self.check_data_block_in_log(output, "images/efuse/256bit", reverse_order=True)
         self.check_data_block_in_log(output, "images/efuse/256bit_1", reverse_order=True)
         self.check_data_block_in_log(output, "images/efuse/256bit_2", reverse_order=True)
 
-        self.espefuse_py('burn_key \
-                          BLOCK_KEY0 images/efuse/256bit   XTS_AES_256_KEY_1 \
-                          BLOCK_KEY1 images/efuse/256bit_1 XTS_AES_256_KEY_2 \
-                          BLOCK_KEY2 images/efuse/256bit_2 XTS_AES_128_KEY')
+        self.espefuse_py(cmd)
         output = self.espefuse_py('summary -d')
         self.assertIn('[4 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
         self.assertIn('[5 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000', output)
