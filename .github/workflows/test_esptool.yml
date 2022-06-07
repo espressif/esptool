@@ -26,6 +26,7 @@ jobs:
         python test/test_imagegen.py
         python test/test_espsecure.py
         python test/test_merge_bin.py
+        python test/test_image_info.py
         python test/test_modules.py
 
     - name: Check the installed versions can run

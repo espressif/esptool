@@ -53,6 +53,7 @@ host_tests:
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_imagegen.py
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espsecure.py
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_merge_bin.py
+    - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_image_info.py
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_modules.py
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_espefuse_host.py esp32c2

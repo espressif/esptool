@@ -1,3 +1,5 @@
+.. _image-format:
+
 Firmware Image Format
 =====================
 
@@ -113,11 +115,7 @@ The file is padded with zeros until its size is one byte less than a multiple of
     If secure boot is enabled, a signature is also appended (and the simple hash is included in the signed data). This image signature is `Secure Boot V1 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v1.html#image-signing-algorithm>`_ and `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html#signature-block-format>`_ specific.
 
 
-.. only:: not esp8266
+Analyzing a Binary Image
+------------------------
 
-    Analyzing the Binary Image Format
-    ---------------------------------
-
-    A great tool to inspect and parse the binary image format is the `Kaitai Struct online IDE <https://ide.kaitai.io/>`_. It allows the user to describe types and structures, import a real binary image and watch how these get parsed in real-time.
-
-    Kaitai Struct description of the binary structure used by Espressif chips can `be found here. <https://gist.github.com/igrr/ab899cef9b121134785a82eaee50ed89>`_
+To analyze a binary image and get a complete summary of its headers and segments, use the :ref:`image_info <image-info>` command with the ``--version 2`` option.

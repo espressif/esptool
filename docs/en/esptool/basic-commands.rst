@@ -174,14 +174,20 @@ By default, ``elf2image`` uses the sections in the ELF file to generate each seg
 
     In the above example, the output image file would be called ``my_esp_app.bin``.
 
+.. _image-info:
+
 Output .bin Image Details: image_info
 -------------------------------------
 
 The ``image_info`` command outputs some information (load addresses, sizes, etc) about a ``.bin`` file created by ``elf2image``.
 
+To view more information about the image, such as set flash size, frequency and mode, or extended header information, use the ``--version 2`` option. This extended output will become the default in a future major release.
+
+This information corresponds to the headers described in :ref:`image-format`.
+
 ::
 
-    esptool.py --chip {IDF_TARGET_NAME} image_info my_esp_app.bin
+    esptool.py --chip {IDF_TARGET_NAME} image_info --version 2 my_esp_app.bin
 
 .. only:: not esp8266
 

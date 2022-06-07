@@ -568,6 +568,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.cs_drv = 0
         self.hd_drv = 0
         self.wp_drv = 0
+        self.chip_id = 0
         self.min_rev = 0
 
         self.append_digest = append_digest
@@ -771,14 +772,14 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.d_drv, self.cs_drv = split_byte(fields[2])
         self.hd_drv, self.wp_drv = split_byte(fields[3])
 
-        chip_id = fields[4]
-        if chip_id != self.ROM_LOADER.IMAGE_CHIP_ID:
+        self.chip_id = fields[4]
+        if self.chip_id != self.ROM_LOADER.IMAGE_CHIP_ID:
             print(
                 (
                     "Unexpected chip id in image. Expected %d but value was %d. "
                     "Is this image for a different chip model?"
                 )
-                % (self.ROM_LOADER.IMAGE_CHIP_ID, chip_id)
+                % (self.ROM_LOADER.IMAGE_CHIP_ID, self.chip_id)
             )
 
         # reserved fields in the middle should all be zero

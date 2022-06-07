@@ -594,42 +594,163 @@ def write_flash(esp, args):
 
 
 def image_info(args):
+    def v2():
+        def get_key_from_value(dict, val):
+            """Get key from value in dictionary"""
+            for key, value in dict.items():
+                if value == val:
+                    return key
+            return None
+
+        title = "{} image header".format(args.chip.upper())
+        print(title)
+        print("=" * len(title))
+        print("Image version: {}".format(image.version))
+        print(
+            "Entry point: {:#8x}".format(image.entrypoint)
+            if image.entrypoint != 0
+            else "Entry point not set"
+        )
+
+        print("Segments: {}".format(len(image.segments)))
+
+        # Flash size
+        flash_s_bits = image.flash_size_freq & 0xF0  # high four bits
+        flash_s = get_key_from_value(image.ROM_LOADER.FLASH_SIZES, flash_s_bits)
+        print(
+            "Flash size: {}".format(flash_s)
+            if flash_s is not None
+            else "WARNING: Invalid flash size ({:#02x})".format(flash_s_bits)
+        )
+
+        # Flash frequency
+        flash_fr_bits = image.flash_size_freq & 0x0F  # low four bits
+        flash_fr = get_key_from_value(image.ROM_LOADER.FLASH_FREQUENCY, flash_fr_bits)
+        print(
+            "Flash freq: {}".format(flash_fr)
+            if flash_fr is not None
+            else "WARNING: Invalid flash frequency ({:#02x})".format(flash_fr_bits)
+        )
+
+        # Flash mode
+        flash_mode = get_key_from_value(FLASH_MODES, image.flash_mode)
+        print(
+            "Flash mode: {}".format(flash_mode.upper())
+            if flash_mode is not None
+            else "WARNING: Invalid flash mode ({})".format(image.flash_mode)
+        )
+
+        # Extended header (ESP32 and later only)
+        if args.chip != "esp8266":
+            print()
+            title = "{} extended image header".format(args.chip.upper())
+            print(title)
+            print("=" * len(title))
+            print("WP pin: {:#02x}".format(image.wp_pin))
+            print(
+                "Flash pins drive settings: "
+                "clk_drv: {:#02x}, q_drv: {:#02x}, d_drv: {:#02x}, "
+                "cs0_drv: {:#02x}, hd_drv: {:#02x}, wp_drv: {:#02x}".format(
+                    image.clk_drv,
+                    image.q_drv,
+                    image.d_drv,
+                    image.cs_drv,
+                    image.hd_drv,
+                    image.wp_drv,
+                )
+            )
+            print("Chip ID: {}".format(image.chip_id))
+            print("Minimal chip revision: {}".format(image.min_rev))
+        print()
+
+        # Segments overview
+        title = "Segments information"
+        print(title)
+        print("=" * len(title))
+        headers_str = "{:>7}  {:>7}  {:>10}  {:>10}  {:10}"
+        print(
+            headers_str.format(
+                "Segment", "Length", "Load addr", "File offs", "Memory types"
+            )
+        )
+        print(
+            "{}  {}  {}  {}  {}".format("-" * 7, "-" * 7, "-" * 10, "-" * 10, "-" * 12)
+        )
+        format_str = "{:7}  {:#07x}  {:#010x}  {:#010x}  {}"
+        for idx, seg in enumerate(image.segments, start=1):
+            segs = seg.get_memory_type(image)
+            seg_name = ", ".join(segs)
+            print(
+                format_str.format(idx, len(seg.data), seg.addr, seg.file_offs, seg_name)
+            )
+        print()
+
+        # Footer
+        title = "Image footer"
+        print(title)
+        print("=" * len(title))
+        calc_checksum = image.calculate_checksum()
+        print(
+            "Checksum: {:#02x} ({})".format(
+                image.checksum,
+                "valid"
+                if image.checksum == calc_checksum
+                else "invalid - calculated {:02x}".format(calc_checksum),
+            )
+        )
+        try:
+            digest_msg = "Not appended"
+            if image.append_digest:
+                is_valid = image.stored_digest == image.calc_digest
+                digest_msg = "{} ({})".format(
+                    hexify(image.calc_digest).lower(),
+                    "valid" if is_valid else "invalid",
+                )
+                print("Validation hash: {}".format(digest_msg))
+        except AttributeError:
+            pass  # ESP8266 image has no append_digest field
+
     if args.chip == "auto":
         print("WARNING: --chip not specified, defaulting to ESP8266.")
+        args.chip = "esp8266"
     image = LoadFirmwareImage(args.chip, args.filename)
-    print("Image version: %d" % image.version)
+
+    if args.version == "2":
+        v2()
+        return
+
+    print("Image version: {}".format(image.version))
     print(
-        "Entry point: %08x" % image.entrypoint
+        "Entry point: {:8x}".format(image.entrypoint)
         if image.entrypoint != 0
         else "Entry point not set"
     )
-    print("%d segments" % len(image.segments))
+    print("{} segments".format(len(image.segments)))
     print()
     idx = 0
     for seg in image.segments:
         idx += 1
         segs = seg.get_memory_type(image)
         seg_name = ",".join(segs)
-        print("Segment %d: %r [%s]" % (idx, seg, seg_name))
+        print("Segment {}: {} [{}]".format(idx, seg, seg_name))
     calc_checksum = image.calculate_checksum()
     print(
-        "Checksum: %02x (%s)"
-        % (
+        "Checksum: {:02x} ({})".format(
             image.checksum,
             "valid"
             if image.checksum == calc_checksum
-            else "invalid - calculated %02x" % calc_checksum,
+            else "invalid - calculated {:02x}".format(calc_checksum),
         )
     )
     try:
         digest_msg = "Not appended"
         if image.append_digest:
             is_valid = image.stored_digest == image.calc_digest
-            digest_msg = "%s (%s)" % (
+            digest_msg = "{} ({})".format(
                 hexify(image.calc_digest).lower(),
                 "valid" if is_valid else "invalid",
             )
-            print("Validation Hash: %s" % digest_msg)
+            print("Validation Hash: {}".format(digest_msg))
     except AttributeError:
         pass  # ESP8266 image has no append_digest field
 

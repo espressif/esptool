@@ -354,6 +354,13 @@ def main(argv=None, esp=None):
         "image_info", help="Dump headers from an application image"
     )
     parser_image_info.add_argument("filename", help="Image file to parse")
+    parser_image_info.add_argument(
+        "--version",
+        "-v",
+        help="Output format version (1 - legacy, 2 - extended)",
+        choices=["1", "2"],
+        default="1",
+    )
 
     parser_make_image = subparsers.add_parser(
         "make_image", help="Create an application image from binary files"
