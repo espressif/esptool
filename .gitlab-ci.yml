@@ -18,7 +18,7 @@ cache:
 
 .test_template: &test_template
   stage: test
-  image: python:3.7
+  image: python:3.7-bullseye
   tags:
     - host_test
   dependencies: []
@@ -66,7 +66,7 @@ host_tests:
 
 check_python_style:
   stage: test
-  image: python:3.7
+  image: python:3.7-bullseye
   tags:
     - host_test
   script:
@@ -170,7 +170,7 @@ check_stub_build:
 
 .target_esptool_test:
   stage: test
-  image: python:3.7
+  image: python:3.7-bullseye
   variables:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
@@ -200,6 +200,8 @@ target_esptool_test_esp32:
   tags:
     - esptool_esp32_target
   script:
+    # libffi (needed for espsecure) version keeps changing in python docker images, add a symlink to the installed version
+    - ln -sfn /usr/lib/arm-linux-gnueabihf/libffi.so.7.1.0 /usr/lib/arm-linux-gnueabihf/libffi.so.6
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32 esp32 115200
 
 # ESP32S2
@@ -242,7 +244,7 @@ target_esptool_test_esp32s3_usbcdc:
 
 combine_reports:
   stage: report
-  image: python:3.7
+  image: python:3.7-bullseye
   artifacts:
     reports:
       cobertura: cobertura_report.xml
@@ -266,7 +268,7 @@ combine_reports:
 
 build_docs:
   stage: build_docs
-  image: python:3.7
+  image: python:3.7-bullseye
   tags:
     - build_docs
   only:
@@ -286,7 +288,7 @@ build_docs:
 
 .deploy_docs_template:
   stage: deploy_docs
-  image: python:3.7
+  image: python:3.7-bullseye
   tags:
     - deploy
   needs:
