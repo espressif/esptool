@@ -3,8 +3,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from __future__ import division, print_function
-
 from .esp32h2beta1 import ESP32H2BETA1ROM
 from ..stub_flasher import ESP32H2BETA2StubCode
 

@@ -3,7 +3,6 @@
 # Tests for espsecure.py
 #
 # Assumes openssl binary is in the PATH
-from __future__ import division, print_function
 
 import binascii
 import io

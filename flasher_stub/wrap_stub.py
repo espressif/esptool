@@ -8,8 +8,6 @@
 #
 # SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
 
-from __future__ import division, print_function
-
 import argparse
 import base64
 import os

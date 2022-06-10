@@ -6,8 +6,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from __future__ import division, print_function
-
 from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegistersBase
 
 

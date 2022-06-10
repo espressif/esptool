@@ -4,8 +4,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from __future__ import division, print_function
-
 import argparse
 import os
 import sys

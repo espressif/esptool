@@ -11,8 +11,6 @@
 # Connections:
 # RTS (active low) to reset
 # DTR (active high) to clear efuses
-#
-from __future__ import division, print_function
 
 import struct
 import sys

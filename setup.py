@@ -3,8 +3,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from __future__ import division, print_function
-
 import io
 import os
 import re
@@ -108,7 +106,6 @@ setup(
     extras_require={
         "dev": [
             "flake8>=3.2.0",
-            "flake8-future-import",
             "flake8-import-order",
             "pyelftools",
             # the replacement of the old xmlrunner package

@@ -6,8 +6,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from __future__ import division, print_function
-
 import argparse
 import os  # noqa: F401. It is used in IDF scripts
 import traceback

@@ -3,8 +3,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from __future__ import division, print_function
-
 from ..loader import ESPLoader
 from ..stub_flasher import ESP8266StubCode
 from ..util import FatalError, NotImplementedInROMError

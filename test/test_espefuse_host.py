@@ -21,7 +21,6 @@
 #       to slow down the connection sequence
 #       because of a long delay (~6 seconds) after resetting the FPGA.
 #       This is not necessary when using other images than ESP32
-from __future__ import division, print_function
 
 import os
 import subprocess

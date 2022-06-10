@@ -28,7 +28,6 @@
 # (C) 2009-2015 Chris Liechti <cliechti@gmx.net>
 #
 # SPDX-License-Identifier: BSD-3-Clause
-from __future__ import division, print_function
 
 import logging
 import socket

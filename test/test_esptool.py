@@ -9,7 +9,6 @@ Chip name & serial port are passed in as arguments to test. Same test suite
 runs on esp8266 & esp32 (some addresses will change, see below.)
 
 """
-from __future__ import division, print_function
 
 import io
 import os

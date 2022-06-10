@@ -5,8 +5,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from __future__ import division, print_function
-
 import sys
 
 # Compare the esptool stub loaders to freshly built ones
