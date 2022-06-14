@@ -292,16 +292,15 @@ def _get_sbv2_rsa_primitives(public_key):
     return primitives
 
 
-def _microecc_format(a, b):
+def _microecc_format(a, b, curve_len):
     """
     Given two numbers (curve coordinates or (r,s) signature), write them out as a
     little-endian byte sequence suitable for micro-ecc
     "native little endian" mode
     """
-    ab = int_to_bytes(a)[::-1] + int_to_bytes(b)[::-1]
-    assert (
-        len(ab) == 48 or len(ab) == 64
-    ), "a, b may need to be byte padded to either be 48 or 64 bytes in length"
+    byte_len = int(curve_len / 8)
+    ab = int_to_bytes(a, byte_len)[::-1] + int_to_bytes(b, byte_len)[::-1]
+    assert len(ab) == 48 or len(ab) == 64
     return ab
 
 
@@ -459,10 +458,17 @@ def sign_secure_boot_v2(args):
             )
 
             numbers = private_key.public_key().public_numbers()
-            pubkey_point = _microecc_format(numbers.x, numbers.y)
+            if isinstance(private_key.curve, ec.SECP192R1):
+                curve_len = 192
+                curve_id = CURVE_ID_P192
+            else:
+                curve_len = 256
+                curve_id = CURVE_ID_P256
+
+            pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
 
             r, s = utils.decode_dss_signature(signature)
-            signature_rs = _microecc_format(r, s)
+            signature_rs = _microecc_format(r, s, curve_len)
 
             # block is padded out to the much larger size
             # of the RSA version of this structure
@@ -471,9 +477,7 @@ def sign_secure_boot_v2(args):
                 SIG_BLOCK_MAGIC,
                 SIG_BLOCK_VERSION_ECDSA,
                 digest,
-                CURVE_ID_P192
-                if isinstance(private_key.curve, ec.SECP192R1)
-                else CURVE_ID_P256,
+                curve_id,
                 pubkey_point,
                 signature_rs,
             )
@@ -781,13 +785,17 @@ def _digest_sbv2_public_key(keyfile):
         )
     else:  # ECC public key
         numbers = public_key.public_numbers()
-        pubkey_point = _microecc_format(numbers.x, numbers.y)
+        if isinstance(public_key.curve, ec.SECP192R1):
+            curve_len = 192
+            curve_id = CURVE_ID_P192
+        else:
+            curve_len = 256
+            curve_id = CURVE_ID_P256
+        pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
 
         binary_format = struct.pack(
             "<B64s",
-            CURVE_ID_P192
-            if isinstance(public_key.curve, ec.SECP192R1)
-            else CURVE_ID_P256,
+            curve_id,
             pubkey_point,
         )
 
