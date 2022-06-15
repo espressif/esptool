@@ -10,18 +10,12 @@ body:
       placeholder: ex. macOS 12.1 and Xubuntu 20.04
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: version
     attributes:
-      label: Version
-      description: What version of esptool are you running? If possible, consider updating esptool.
-      options:
-        - latest master
-        - v3.2
-        - v3.1
-        - v3.0
-        - v2.8
-        - other
+      label: Esptool Version
+      description: The output of `git describe` if working with the sources, output of `esptool.py version` otherwise. If possible, consider updating esptool.
+      placeholder: ex. v4.0.1, commit v4.1-10-g2059335aa
     validations:
       required: true
   - type: input
