@@ -217,8 +217,6 @@ class EspEfuses(base_fields.EspEfusesBase):
 
     def get_coding_scheme_warnings(self, silent=False):
         """Check if the coding scheme has detected any errors."""
-        old_addr_reg = 0
-        reg_value = 0
         ret_fail = False
         for block in self.blocks:
             if block.id == 0:
@@ -235,16 +233,20 @@ class EspEfuses(base_fields.EspEfusesBase):
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
-                addr_reg, err_num_mask, err_num_offs, fail_bit = self.REGS.BLOCK_ERRORS[
-                    block.id
-                ]
-                if err_num_mask is None or err_num_offs is None or fail_bit is None:
-                    continue
-                if addr_reg != old_addr_reg:
-                    old_addr_reg = addr_reg
-                    reg_value = self.read_reg(addr_reg)
-                block.fail = reg_value & (1 << fail_bit) != 0
-                block.num_errors = (reg_value >> err_num_offs) & err_num_mask
+                addr_reg_f, fail_bit = self.REGS.BLOCK_FAIL_BIT[block.id]
+                if fail_bit is None:
+                    block.fail = False
+                else:
+                    block.fail = self.read_reg(addr_reg_f) & (1 << fail_bit) != 0
+
+                addr_reg_n, num_mask, num_offs = self.REGS.BLOCK_NUM_ERRORS[block.id]
+                if num_mask is None or num_offs is None:
+                    block.num_errors = 0
+                else:
+                    block.num_errors = (
+                        self.read_reg(addr_reg_n) >> num_offs
+                    ) & num_mask
+
             ret_fail |= block.fail
             if not silent and (block.fail or block.num_errors):
                 print(
