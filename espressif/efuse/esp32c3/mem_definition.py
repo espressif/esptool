@@ -40,19 +40,35 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_PGM_CMD           = 0x2
     EFUSE_READ_CMD          = 0x1
 
-    BLOCK_ERRORS = [
-        # error_reg,               err_num_mask, err_num_offs,     fail_bit
-        (EFUSE_RD_REPEAT_ERR0_REG, None,         None,             None),  # BLOCK0
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          4,                7),     # MAC_SPI_8M_0
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          8,                11),    # BLOCK_SYS_DATA
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          12,               15),    # BLOCK_USR_DATA
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          16,               19),    # BLOCK_KEY0
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          20,               23),    # BLOCK_KEY1
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          24,               27),    # BLOCK_KEY2
-        (EFUSE_RD_RS_ERR0_REG,     0x7,          28,               31),    # BLOCK_KEY3
-        (EFUSE_RD_RS_ERR1_REG,     0x7,          0,                3),     # BLOCK_KEY4
-        (EFUSE_RD_RS_ERR1_REG,     0x7,          4,                7),     # BLOCK_KEY5
-        (EFUSE_RD_RS_ERR1_REG,     None,         None,             None),  # BLOCK_SYS_DATA2
+    # this chip has a design error so fail_bit is shifted by one block but err_num is in the correct place
+    BLOCK_FAIL_BIT = [
+        # error_reg,                fail_bit
+        (EFUSE_RD_REPEAT_ERR0_REG,  None),  # BLOCK0
+        (EFUSE_RD_RS_ERR0_REG,      7),     # MAC_SPI_8M_0
+        (EFUSE_RD_RS_ERR0_REG,      11),    # BLOCK_SYS_DATA
+        (EFUSE_RD_RS_ERR0_REG,      15),    # BLOCK_USR_DATA
+        (EFUSE_RD_RS_ERR0_REG,      19),    # BLOCK_KEY0
+        (EFUSE_RD_RS_ERR0_REG,      23),    # BLOCK_KEY1
+        (EFUSE_RD_RS_ERR0_REG,      27),    # BLOCK_KEY2
+        (EFUSE_RD_RS_ERR0_REG,      31),    # BLOCK_KEY3
+        (EFUSE_RD_RS_ERR1_REG,      3),     # BLOCK_KEY4
+        (EFUSE_RD_RS_ERR1_REG,      7),     # BLOCK_KEY5
+        (EFUSE_RD_RS_ERR1_REG,      None),  # BLOCK_SYS_DATA2
+    ]
+
+    BLOCK_NUM_ERRORS = [
+        # error_reg,               err_num_mask, err_num_offs
+        (EFUSE_RD_REPEAT_ERR0_REG, None,         None),  # BLOCK0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          0),     # MAC_SPI_8M_0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          4),     # BLOCK_SYS_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          8),     # BLOCK_USR_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          12),    # BLOCK_KEY0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          16),    # BLOCK_KEY1
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          20),    # BLOCK_KEY2
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          24),    # BLOCK_KEY3
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          28),    # BLOCK_KEY4
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          0),     # BLOCK_KEY5
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          4),     # BLOCK_SYS_DATA2
     ]
 
     # EFUSE_WR_TIM_CONF2_REG
