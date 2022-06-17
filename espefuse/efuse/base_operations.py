@@ -623,7 +623,7 @@ def check_error(esp, efuses, args):
     if args.recovery:
         if error_in_blocks:
             confirmed = False
-            for block in efuses.blocks:
+            for block in reversed(efuses.blocks):
                 if block.fail or block.num_errors > 0:
                     if not block.get_bitstring().all(False):
                         block.save(block.get_bitstring().bytes[::-1])
