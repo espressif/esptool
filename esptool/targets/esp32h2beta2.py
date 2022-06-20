@@ -13,6 +13,16 @@ class ESP32H2BETA2ROM(ESP32H2BETA1ROM):
 
     STUB_CODE = ESP32H2BETA2StubCode
 
+    CHIP_DETECT_MAGIC_VALUE = [0x6881B06F]
+
+    def get_chip_description(self):
+        chip_name = {
+            1: "ESP32-H2(beta2)",
+        }.get(self.get_pkg_version(), "unknown ESP32-H2")
+        chip_revision = self.get_chip_revision()
+
+        return "{} (revision {})".format(chip_name, chip_revision)
+
 
 class ESP32H2BETA2StubLoader(ESP32H2BETA2ROM):
     """Access class for ESP32H2BETA2 stub loader, runs on top of ROM.

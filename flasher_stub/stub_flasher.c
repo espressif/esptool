@@ -156,7 +156,7 @@ void cmd_loop() {
          * ended. */
       }
       break;
-    #if ESP32S2_OR_LATER && !ESP32H2BETA2
+    #if ESP32S2_OR_LATER
     case ESP_GET_SECURITY_INFO:
       error = verify_data_len(command, 0) || handle_get_security_info();
       break;
