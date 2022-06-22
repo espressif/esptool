@@ -780,6 +780,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 % (self.ROM_LOADER.IMAGE_CHIP_ID, self.chip_id)
             )
 
+        self.min_rev = fields[5]
+
         # reserved fields in the middle should all be zero
         if any(f for f in fields[6:-1] if f != 0):
             print(
