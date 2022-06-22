@@ -110,7 +110,7 @@ setup(
             "pyelftools",
             # the replacement of the old xmlrunner package
             "unittest-xml-reporting",
-            "coverage",
+            "coverage~=6.0",
             "black",
             "pre-commit",
         ],
