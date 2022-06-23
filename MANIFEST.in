@@ -1,5 +1,6 @@
 include README.md
 include LICENSE
+include esptool/targets/stub_flasher/*.json
 # sdist includes test/test*.py by default, but esptool.py tests
 # are so far only intended to run from the git repo itself
 prune test

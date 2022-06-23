@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from ..loader import ESPLoader
-from ..stub_flasher import ESP8266StubCode
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -13,8 +12,6 @@ class ESP8266ROM(ESPLoader):
 
     CHIP_NAME = "ESP8266"
     IS_STUB = False
-
-    STUB_CODE = ESP8266StubCode
 
     CHIP_DETECT_MAGIC_VALUE = [0xFFF0C101]
 

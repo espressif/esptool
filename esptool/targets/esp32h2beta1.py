@@ -6,15 +6,12 @@
 import struct
 
 from .esp32 import ESP32ROM
-from ..stub_flasher import ESP32H2BETA1StubCode
 from ..util import FatalError, NotImplementedInROMError
 
 
 class ESP32H2BETA1ROM(ESP32ROM):
     CHIP_NAME = "ESP32-H2(beta1)"
     IMAGE_CHIP_ID = 10
-
-    STUB_CODE = ESP32H2BETA1StubCode
 
     IROM_MAP_START = 0x42000000
     IROM_MAP_END = 0x42800000

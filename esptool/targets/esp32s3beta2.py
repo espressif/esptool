@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from .esp32s3 import ESP32S3ROM
-from ..stub_flasher import ESP32S3BETA2StubCode
 
 
 class ESP32S3BETA2ROM(ESP32S3ROM):
@@ -12,8 +11,6 @@ class ESP32S3BETA2ROM(ESP32S3ROM):
     IMAGE_CHIP_ID = 4
 
     CHIP_DETECT_MAGIC_VALUE = [0xEB004136]
-
-    STUB_CODE = ESP32S3BETA2StubCode
 
     EFUSE_BASE = 0x6001A000  # BLOCK0 read base address
 

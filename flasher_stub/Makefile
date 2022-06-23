@@ -54,6 +54,7 @@ SRCS = stub_flasher.c slip.c stub_commands.c stub_write_flash.c stub_io.c
 SRCS_8266 = miniz.c
 
 BUILD_DIR = build
+ESPTOOL_STUBS_DIR = ../esptool/targets/stub_flasher
 
 STUB_ELF_8266 = $(BUILD_DIR)/$(STUB)_8266.elf
 STUB_ELF_32 = $(BUILD_DIR)/$(STUB)_32.elf
@@ -65,11 +66,12 @@ STUB_ELF_32C6BETA = $(BUILD_DIR)/$(STUB)_32c6beta.elf
 STUB_ELF_32H2_BETA_1 = $(BUILD_DIR)/$(STUB)_32h2beta1.elf
 STUB_ELF_32H2_BETA_2 = $(BUILD_DIR)/$(STUB)_32h2beta2.elf
 STUB_ELF_32C2 = $(BUILD_DIR)/$(STUB)_32c2.elf
-STUB_PY = $(BUILD_DIR)/$(STUB)_snippet.py
 
 .PHONY: all clean embed
 
-all: $(STUB_PY)
+all: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_32C2)
+	@echo "  WRAP $^ -> $(BUILD_DIR)"
+	$(Q) $(WRAP_STUB) $^
 
 $(BUILD_DIR):
 	$(Q) mkdir $@
@@ -123,13 +125,9 @@ $(STUB_ELF_32C2): $(SRCS) $(BUILD_DIR) ld/stub_32c2.ld
 	@echo "  CC(32C2)   $^ -> $@"
 	$(Q) $(CROSS_32C2)gcc $(CFLAGS_ESPRISCV32) -DESP32C2=1 -Tstub_32c2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
-$(STUB_PY): $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_32C2) wrap_stub.py
-	@echo "  WRAP $^ -> $@"
-	$(Q) $(WRAP_STUB) --out-file $@ $(filter %.elf,$^)
-
-embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_32C2) wrap_stub.py
-	@echo "  WRAP $^ -> esptool.py"
-	$(Q) $(WRAP_STUB) $(filter %.elf,$^)
+embed: $(STUB_ELF_8266) $(STUB_ELF_32) $(STUB_ELF_32S2) $(STUB_ELF_32S3_BETA_2) $(STUB_ELF_32S3) $(STUB_ELF_32C3) $(STUB_ELF_32C6BETA) $(STUB_ELF_32H2_BETA_1) $(STUB_ELF_32H2_BETA_2) $(STUB_ELF_32C2)
+	@echo "  WRAP $^ -> $(ESPTOOL_STUBS_DIR)"
+	$(Q) $(WRAP_STUB) --embed $^
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR)

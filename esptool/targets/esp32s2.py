@@ -8,15 +8,12 @@ import struct
 import time
 
 from .esp32 import ESP32ROM
-from ..stub_flasher import ESP32S2StubCode
 from ..util import FatalError, NotImplementedInROMError
 
 
 class ESP32S2ROM(ESP32ROM):
     CHIP_NAME = "ESP32-S2"
     IMAGE_CHIP_ID = 2
-
-    STUB_CODE = ESP32S2StubCode
 
     FPGA_SLOW_BOOT = False
 

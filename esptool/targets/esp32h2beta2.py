@@ -4,14 +4,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from .esp32h2beta1 import ESP32H2BETA1ROM
-from ..stub_flasher import ESP32H2BETA2StubCode
 
 
 class ESP32H2BETA2ROM(ESP32H2BETA1ROM):
     CHIP_NAME = "ESP32-H2(beta2)"
     IMAGE_CHIP_ID = 14
-
-    STUB_CODE = ESP32H2BETA2StubCode
 
     CHIP_DETECT_MAGIC_VALUE = [0x6881B06F]
 

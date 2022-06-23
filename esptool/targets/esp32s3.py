@@ -8,7 +8,6 @@ import struct
 import time
 
 from .esp32 import ESP32ROM
-from ..stub_flasher import ESP32S3StubCode
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -18,8 +17,6 @@ class ESP32S3ROM(ESP32ROM):
     IMAGE_CHIP_ID = 9
 
     CHIP_DETECT_MAGIC_VALUE = [0x9]
-
-    STUB_CODE = ESP32S3StubCode
 
     FPGA_SLOW_BOOT = False
 

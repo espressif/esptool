@@ -3,8 +3,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import base64
 import hashlib
 import itertools
+import json
 import os
 import re
 import string
@@ -72,6 +74,14 @@ MEM_END_ROM_TIMEOUT = 0.05  # short timeout for ESP_MEM_END, as it may never res
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10  # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7  # default number of times to try connection
 
+STUBS_DIR = os.path.join(os.path.dirname(__file__), "./targets/stub_flasher/")
+
+
+def get_stub_json_path(chip_name):
+    chip_name = re.sub(r"[-()]", "", chip_name.lower())
+    chip_name = chip_name.replace("esp", "")
+    return STUBS_DIR + "stub_flasher_" + chip_name + ".json"
+
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
     """Scales timeouts which are size-specific"""
@@ -119,6 +129,23 @@ def esp32s3_or_newer_function_only(func):
     return check_supported_function(
         func, lambda o: o.CHIP_NAME not in ["ESP8266", "ESP32", "ESP32-S2"]
     )
+
+
+class StubFlasher:
+    def __init__(self, json_path):
+        with open(json_path) as json_file:
+            stub = json.load(json_file)
+
+        self.text = base64.b64decode(stub["text"])
+        self.text_start = stub["text_start"]
+        self.entry = stub["entry"]
+
+        try:
+            self.data = base64.b64decode(stub["data"])
+            self.data_start = stub["data_start"]
+        except KeyError:
+            self.data = None
+            self.data_start = None
 
 
 class ESPLoader(object):
@@ -698,12 +725,12 @@ class ESPLoader(object):
         """Start downloading an application image to RAM"""
         # check we're not going to overwrite a running stub with this data
         if self.IS_STUB:
-            stub = self.STUB_CODE
+            stub = StubFlasher(get_stub_json_path(self.CHIP_NAME))
             load_start = offset
             load_end = offset + size
             for (start, end) in [
-                (stub["data_start"], stub["data_start"] + len(stub["data"])),
-                (stub["text_start"], stub["text_start"] + len(stub["text"])),
+                (stub.data_start, stub.data_start + len(stub.data)),
+                (stub.text_start, stub.text_start + len(stub.text)),
             ]:
                 if load_start < end and load_end > start:
                     raise FatalError(
@@ -861,7 +888,7 @@ class ESPLoader(object):
 
     def run_stub(self, stub=None):
         if stub is None:
-            stub = self.STUB_CODE
+            stub = StubFlasher(get_stub_json_path(self.CHIP_NAME))
 
         if self.sync_stub_detected:
             print("Stub is already running. No upload is necessary.")
@@ -869,18 +896,18 @@ class ESPLoader(object):
 
         # Upload
         print("Uploading stub...")
-        for field in ["text", "data"]:
-            if field in stub:
-                offs = stub[field + "_start"]
-                length = len(stub[field])
+        for field in [stub.text, stub.data]:
+            if field is not None:
+                offs = stub.text_start if field == stub.text else stub.data_start
+                length = len(field)
                 blocks = (length + self.ESP_RAM_BLOCK - 1) // self.ESP_RAM_BLOCK
                 self.mem_begin(length, blocks, self.ESP_RAM_BLOCK, offs)
                 for seq in range(blocks):
                     from_offs = seq * self.ESP_RAM_BLOCK
                     to_offs = from_offs + self.ESP_RAM_BLOCK
-                    self.mem_block(stub[field][from_offs:to_offs], seq)
+                    self.mem_block(field[from_offs:to_offs], seq)
         print("Running stub...")
-        self.mem_finish(stub["entry"])
+        self.mem_finish(stub.entry)
 
         p = self.read()
         if p != b"OHAI":

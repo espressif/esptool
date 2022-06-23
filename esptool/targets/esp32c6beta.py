@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from .esp32c3 import ESP32C3ROM
-from ..stub_flasher import ESP32C6BETAStubCode
 
 
 class ESP32C6BETAROM(ESP32C3ROM):
@@ -12,8 +11,6 @@ class ESP32C6BETAROM(ESP32C3ROM):
     IMAGE_CHIP_ID = 7
 
     CHIP_DETECT_MAGIC_VALUE = [0x0DA1806F]
-
-    STUB_CODE = ESP32C6BETAStubCode
 
     UART_DATE_REG_ADDR = 0x00000500
 

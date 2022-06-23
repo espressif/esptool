@@ -8,14 +8,11 @@ import time
 
 from .esp32c3 import ESP32C3ROM
 from ..loader import ESPLoader
-from ..stub_flasher import ESP32C2StubCode
 
 
 class ESP32C2ROM(ESP32C3ROM):
     CHIP_NAME = "ESP32-C2"
     IMAGE_CHIP_ID = 12
-
-    STUB_CODE = ESP32C2StubCode
 
     IROM_MAP_START = 0x42000000
     IROM_MAP_END = 0x42400000

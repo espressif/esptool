@@ -6,7 +6,6 @@
 import struct
 
 from ..loader import ESPLoader
-from ..stub_flasher import ESP32StubCode
 from ..util import FatalError, NotSupportedError
 
 
@@ -16,8 +15,6 @@ class ESP32ROM(ESPLoader):
     CHIP_NAME = "ESP32"
     IMAGE_CHIP_ID = 0
     IS_STUB = False
-
-    STUB_CODE = ESP32StubCode
 
     FPGA_SLOW_BOOT = True
 

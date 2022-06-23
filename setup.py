@@ -123,6 +123,8 @@ setup(
         "reedsolo>=1.5.3,<=1.5.4",
     ],
     packages=find_packages(),
+    include_package_data=True,
+    package_data={"": ["esptool/targets/stub_flasher/*.json"]},
     entry_points=entry_points,
     scripts=scripts,
 )

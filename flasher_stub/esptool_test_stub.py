@@ -1,29 +1,28 @@
 #!/usr/bin/env python
 #
+# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
 # Trivial wrapper program to run esptool.py using the just-compiled
 # flasher stub in the build/ subdirectory
 #
 # For use when developing new flasher_stubs, not important otherwise.
-#
-# Copyright (C) 2014-2016 Fredrik Ahlberg, Angus Gratton, other contributors as noted.
-#
-# This program is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation; either version 2 of the License, or (at your option) any later version.
 
 import os.path
 import sys
 
-THIS_DIR = os.path.dirname(sys.argv[0])
+THIS_DIR = os.path.dirname(__file__)
+STUBS_BUILD_DIR = os.path.join(THIS_DIR, "build/")
 
 sys.path.append("..")
 import esptool  # noqa: E402
 
-
-# Python hackiness: evaluate the snippet in the context of the esptool module, so it
-# edits the esptool's global variables
+# Python hackiness: change the path to stub json files in the context of the esptool
+# module, so it edits the esptool's global variables
 exec(
-    open("%s/build/stub_flasher_snippet.py" % THIS_DIR).read(),
+    "loader.STUBS_DIR = '{}'".format(STUBS_BUILD_DIR),
     esptool.__dict__,
     esptool.__dict__,
 )
