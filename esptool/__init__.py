@@ -406,8 +406,10 @@ def main(argv=None, esp=None):
         "--min-rev",
         "-r",
         help="Minimum chip revision",
-        choices=["0", "1", "2", "3"],
-        default="0",
+        type=int,
+        choices=range(256),
+        metavar="{0, ... 255}",
+        default=0,
     )
     parser_elf2image.add_argument(
         "--secure-pad",

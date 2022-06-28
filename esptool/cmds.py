@@ -824,7 +824,7 @@ def elf2image(args):
     image.flash_mode = FLASH_MODES[args.flash_mode]
 
     if args.chip != "esp8266":
-        image.min_rev = int(args.min_rev)
+        image.min_rev = args.min_rev
         image.append_digest = args.append_digest
 
     if args.flash_mmu_page_size:
