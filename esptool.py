@@ -1556,6 +1556,9 @@ class ESP32ROM(ESPLoader):
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = (1 << 7)  # EFUSE_RD_DISABLE_DL_ENCRYPT
 
     DR_REG_SYSCON_BASE = 0x3ff66000
+    APB_CTL_DATE_ADDR = DR_REG_SYSCON_BASE + 0x7C
+    APB_CTL_DATE_V = 0x1
+    APB_CTL_DATE_S = 31
 
     SPI_W0_OFFS = 0x80
 
@@ -1663,27 +1666,31 @@ class ESP32ROM(ESPLoader):
         return pkg_version
 
     def get_chip_revision(self):
-        word3 = self.read_efuse(3)
-        word5 = self.read_efuse(5)
-        apb_ctl_date = self.read_reg(self.DR_REG_SYSCON_BASE + 0x7C)
+        return self.get_major_chip_version() * 100 + self.get_minor_chip_version()
 
-        rev_bit0 = (word3 >> 15) & 0x1
-        rev_bit1 = (word5 >> 20) & 0x1
-        rev_bit2 = (apb_ctl_date >> 31) & 0x1
-        if rev_bit0:
-            if rev_bit1:
-                if rev_bit2:
-                    return 3
-                else:
-                    return 2
-            else:
-                return 1
-        return 0
+    def get_minor_chip_version(self):
+        return (self.read_efuse(5) >> 24) & 0x3
+
+    def get_major_chip_version(self):
+        rev_bit0 = (self.read_efuse(3) >> 15) & 0x1
+        rev_bit1 = (self.read_efuse(5) >> 20) & 0x1
+        apb_ctl_date = self.read_reg(self.APB_CTL_DATE_ADDR)
+        rev_bit2 = (apb_ctl_date >> self.APB_CTL_DATE_S) & self.APB_CTL_DATE_V
+        combine_value = (rev_bit2 << 2) | (rev_bit1 << 1) | rev_bit0
+
+        revision = {
+            0: 0,
+            1: 1,
+            3: 2,
+            7: 3,
+        }.get(combine_value, 0)
+        return revision
 
     def get_chip_description(self):
         pkg_version = self.get_pkg_version()
-        chip_revision = self.get_chip_revision()
-        rev3 = (chip_revision == 3)
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        rev3 = major_rev == 3
         single_core = self.read_efuse(3) & (1 << 0)  # CHIP_VER DIS_APP_CPU
 
         chip_name = {
@@ -1700,7 +1707,7 @@ class ESP32ROM(ESPLoader):
         if chip_name.startswith("ESP32-D0WD") and rev3:
             chip_name += "-V3"
 
-        return "%s (revision %d)" % (chip_name, chip_revision)
+        return "%s (revision v%d.%d)" % (chip_name, major_rev, minor_rev)
 
     def get_chip_features(self):
         features = ["WiFi"]
@@ -1842,6 +1849,8 @@ class ESP32S2ROM(ESP32ROM):
     # todo: use espefuse APIs to get this info
     EFUSE_BASE = 0x3f41A000
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
+    EFUSE_BLOCK1_ADDR = EFUSE_BASE + 0x044
+    EFUSE_BLOCK2_ADDR = EFUSE_BASE + 0x05C
 
     EFUSE_PURPOSE_KEY0_REG = EFUSE_BASE + 0x34
     EFUSE_PURPOSE_KEY0_SHIFT = 24
@@ -1888,31 +1897,31 @@ class ESP32S2ROM(ESP32ROM):
 
     def get_pkg_version(self):
         num_word = 4
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 0) & 0x0F
-        return pkg_version
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x0F
+
+    def get_minor_chip_version(self):
+        hi_num_word = 3
+        hi = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * hi_num_word)) >> 20) & 0x01
+        low_num_word = 4
+        low = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * low_num_word)) >> 4) & 0x07
+        return (hi << 3) + low
+
+    def get_major_chip_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 18) & 0x03
 
     def get_flash_version(self):
         num_word = 3
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 21) & 0x0F
-        return pkg_version
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x0F
 
     def get_psram_version(self):
         num_word = 3
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 28) & 0x0F
-        return pkg_version
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 28) & 0x0F
 
     def get_block2_version(self):
+        # BLK_VERSION_MINOR
         num_word = 4
-        block2_addr = self.EFUSE_BASE + 0x05C
-        word4 = self.read_reg(block2_addr + (4 * num_word))
-        block2_version = (word4 >> 4) & 0x07
-        return block2_version
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 4) & 0x07
 
     def get_chip_description(self):
         chip_name = {
@@ -1923,7 +1932,9 @@ class ESP32S2ROM(ESP32ROM):
             100: "ESP32-S2R2",
         }.get(self.get_flash_version() + self.get_psram_version() * 100, "unknown ESP32-S2")
 
-        return "%s" % (chip_name)
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (chip_name, major_rev, minor_rev)
 
     def get_chip_features(self):
         features = ["WiFi"]
@@ -2071,7 +2082,7 @@ class ESP32S3ROM(ESP32ROM):
     # todo: use espefuse APIs to get this info
     EFUSE_BASE = 0x60007000  # BLOCK0 read base address
     MAC_EFUSE_REG = EFUSE_BASE + 0x044
-
+    EFUSE_BLOCK1_ADDR = EFUSE_BASE + 0x44
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
 
     EFUSE_PURPOSE_KEY0_REG = EFUSE_BASE + 0x34
@@ -2119,8 +2130,25 @@ class ESP32S3ROM(ESP32ROM):
                   [0x42000000, 0x42800000, "IROM"],
                   [0x50000000, 0x50002000, "RTC_DATA"]]
 
+    def get_pkg_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x07
+
+    def get_minor_chip_version(self):
+        hi_num_word = 5
+        hi = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * hi_num_word)) >> 23) & 0x01
+        low_num_word = 3
+        low = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * low_num_word)) >> 18) & 0x07
+        return (hi << 3) + low
+
+    def get_major_chip_version(self):
+        num_word = 5
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
+
     def get_chip_description(self):
-        return "ESP32-S3"
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (self.CHIP_NAME, major_rev, minor_rev)
 
     def get_chip_features(self):
         return ["WiFi", "BLE"]
@@ -2220,7 +2248,9 @@ class ESP32S3BETA2ROM(ESP32S3ROM):
     EFUSE_BASE = 0x6001A000  # BLOCK0 read base address
 
     def get_chip_description(self):
-        return "ESP32-S3(beta2)"
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (self.CHIP_NAME, major_rev, minor_rev)
 
 
 class ESP32C3ROM(ESP32ROM):
@@ -2250,6 +2280,7 @@ class ESP32C3ROM(ESP32ROM):
     UART_DATE_REG_ADDR = 0x60000000 + 0x7c
 
     EFUSE_BASE = 0x60008800
+    EFUSE_BLOCK1_ADDR = EFUSE_BASE + 0x044
     MAC_EFUSE_REG  = EFUSE_BASE + 0x044
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
@@ -2290,25 +2321,26 @@ class ESP32C3ROM(ESP32ROM):
 
     def get_pkg_version(self):
         num_word = 3
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 21) & 0x07
-        return pkg_version
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x07
 
-    def get_chip_revision(self):
-        # reads WAFER_VERSION field from EFUSE_RD_MAC_SPI_SYS_3_REG
-        block1_addr = self.EFUSE_BASE + 0x044
-        num_word = 3
-        pos = 18
-        return (self.read_reg(block1_addr + (4 * num_word)) & (0x7 << pos)) >> pos
+    def get_minor_chip_version(self):
+        hi_num_word = 5
+        hi = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * hi_num_word)) >> 23) & 0x01
+        low_num_word = 3
+        low = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * low_num_word)) >> 18) & 0x07
+        return (hi << 3) + low
+
+    def get_major_chip_version(self):
+        num_word = 5
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
 
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C3",
         }.get(self.get_pkg_version(), "unknown ESP32-C3")
-        chip_revision = self.get_chip_revision()
-
-        return "%s (revision %d)" % (chip_name, chip_revision)
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (chip_name, major_rev, minor_rev)
 
     def get_chip_features(self):
         return ["Wi-Fi"]
@@ -2375,6 +2407,7 @@ class ESP32H2BETA1ROM(ESP32ROM):
     UART_DATE_REG_ADDR = 0x60000000 + 0x7c
 
     EFUSE_BASE = 0x6001A000
+    EFUSE_BLOCK1_ADDR = EFUSE_BASE + 0x044
     MAC_EFUSE_REG  = EFUSE_BASE + 0x044
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
@@ -2411,26 +2444,24 @@ class ESP32H2BETA1ROM(ESP32ROM):
     }
 
     def get_pkg_version(self):
-        num_word = 3
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 21) & 0x0F
-        return pkg_version
+        num_word = 4
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x07
 
-    def get_chip_revision(self):
-        # reads WAFER_VERSION field from EFUSE_RD_MAC_SPI_SYS_3_REG
-        block1_addr = self.EFUSE_BASE + 0x044
+    def get_minor_chip_version(self):
         num_word = 3
-        pos = 18
-        return (self.read_reg(block1_addr + (4 * num_word)) & (0x7 << pos)) >> pos
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 18) & 0x07
+
+    def get_major_chip_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x03
 
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-H2",
         }.get(self.get_pkg_version(), "unknown ESP32-H2")
-        chip_revision = self.get_chip_revision()
-
-        return "%s (revision %d)" % (chip_name, chip_revision)
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (chip_name, major_rev, minor_rev)
 
     def get_chip_features(self):
         return ["BLE/802.15.4"]
@@ -2476,6 +2507,11 @@ class ESP32H2BETA2ROM(ESP32H2BETA1ROM):
     CHIP_NAME = "ESP32-H2(beta2)"
     IMAGE_CHIP_ID = 14
 
+    def get_chip_description(self):
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (self.CHIP_NAME, major_rev, minor_rev)
+
 
 class ESP32C2ROM(ESP32C3ROM):
     CHIP_NAME = "ESP32-C2"
@@ -2490,6 +2526,7 @@ class ESP32C2ROM(ESP32C3ROM):
     CHIP_DETECT_MAGIC_VALUE = [0x6F51306F, 0x7c41a06f]
 
     EFUSE_BASE = 0x60008800
+    EFUSE_BLOCK2_ADDR = EFUSE_BASE + 0x040
     MAC_EFUSE_REG  = EFUSE_BASE + 0x040
 
     FLASH_FREQUENCY = {
@@ -2500,23 +2537,25 @@ class ESP32C2ROM(ESP32C3ROM):
     }
 
     def get_pkg_version(self):
-        num_word = 3
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 21) & 0x0F
-        return pkg_version
+        num_word = 1
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 22) & 0x07
 
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C2",
+            1: "ESP32-C2",
         }.get(self.get_pkg_version(), "unknown ESP32-C2")
-        chip_revision = self.get_chip_revision()
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (chip_name, major_rev, minor_rev)
 
-        return "%s (revision %d)" % (chip_name, chip_revision)
+    def get_minor_chip_version(self):
+        num_word = 1
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 16) & 0xF
 
-    def get_chip_revision(self):
-        si = self.get_security_info()
-        return si["api_version"]
+    def get_major_chip_version(self):
+        num_word = 1
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 20) & 0x3
 
     def _post_connect(self):
         # ESP32C2 ECO0 is no longer supported by the flasher stub
@@ -2533,13 +2572,25 @@ class ESP32C6BETAROM(ESP32C3ROM):
 
     UART_DATE_REG_ADDR = 0x00000500
 
+    def get_pkg_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 29) & 0x07
+
+    def get_minor_chip_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 18) & 0x0F
+
+    def get_major_chip_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 22) & 0x03
+
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C6",
         }.get(self.get_pkg_version(), "unknown ESP32-C6")
-        chip_revision = self.get_chip_revision()
-
-        return "%s (revision %d)" % (chip_name, chip_revision)
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return "%s (revision v%d.%d)" % (chip_name, major_rev, minor_rev)
 
 
 class ESP32StubLoader(ESP32ROM):
