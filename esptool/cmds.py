@@ -339,7 +339,13 @@ def write_flash(esp, args):
                     f"{argfile.name} is not an {esp.CHIP_NAME} image. "
                     "Use --force to flash anyway."
                 )
-            rev = esp.get_chip_revision()
+            # In IDF, image.min_rev is set based on Kconfig option.
+            # For C3 chip, image.min_rev is the Minor revision
+            # while for the rest chips it is the Major revision.
+            if esp.CHIP_NAME == "ESP32-C3":
+                rev = esp.get_minor_chip_version()
+            else:
+                rev = esp.get_major_chip_version()
             if rev < image.min_rev:
                 raise FatalError(
                     f"{argfile.name} requires chip revision "

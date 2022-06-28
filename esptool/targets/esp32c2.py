@@ -23,6 +23,7 @@ class ESP32C2ROM(ESP32C3ROM):
     CHIP_DETECT_MAGIC_VALUE = [0x6F51306F, 0x7C41A06F]
 
     EFUSE_BASE = 0x60008800
+    EFUSE_BLOCK2_ADDR = EFUSE_BASE + 0x040
     MAC_EFUSE_REG = EFUSE_BASE + 0x040
 
     EFUSE_SECURE_BOOT_EN_REG = EFUSE_BASE + 0x30
@@ -62,26 +63,24 @@ class ESP32C2ROM(ESP32C3ROM):
 
     def get_pkg_version(self):
         num_word = 1
-        block2_addr = self.EFUSE_BASE + 0x040
-        word1 = self.read_reg(block2_addr + (4 * num_word))
-        pkg_version = (word1 >> 22) & 0x07
-        return pkg_version
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 22) & 0x07
 
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C2",
             1: "ESP32-C2",
         }.get(self.get_pkg_version(), "unknown ESP32-C2")
-        chip_revision = self.get_chip_revision()
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
-        return "%s (revision %d)" % (chip_name, chip_revision)
+    def get_minor_chip_version(self):
+        num_word = 1
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 16) & 0xF
 
-    def get_chip_revision(self):
-        res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
-        # Checks only the first two bytes of api_version to be 2/4 status
-        # bytes invariant (needed for --before no_reset, as the last two bytes can
-        # get discarded)
-        return int.from_bytes(res[16:17], "little")
+    def get_major_chip_version(self):
+        num_word = 1
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 20) & 0x3
 
     def get_crystal_freq(self):
         # The crystal detection algorithm of ESP32/ESP8266 works for ESP32-C2 as well.

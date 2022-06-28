@@ -48,6 +48,9 @@ class ESP32ROM(ESPLoader):
     EFUSE_RD_ABS_DONE_1_MASK = 1 << 5
 
     DR_REG_SYSCON_BASE = 0x3FF66000
+    APB_CTL_DATE_ADDR = DR_REG_SYSCON_BASE + 0x7C
+    APB_CTL_DATE_V = 0x1
+    APB_CTL_DATE_S = 31
 
     SPI_W0_OFFS = 0x80
 
@@ -165,7 +168,7 @@ class ESP32ROM(ESPLoader):
         efuses = self.read_reg(self.EFUSE_RD_ABS_DONE_REG)
         rev = self.get_chip_revision()
         return efuses & self.EFUSE_RD_ABS_DONE_0_MASK or (
-            rev >= 3 and efuses & self.EFUSE_RD_ABS_DONE_1_MASK
+            rev >= 300 and efuses & self.EFUSE_RD_ABS_DONE_1_MASK
         )
 
     def get_pkg_version(self):
@@ -175,27 +178,31 @@ class ESP32ROM(ESPLoader):
         return pkg_version
 
     def get_chip_revision(self):
-        word3 = self.read_efuse(3)
-        word5 = self.read_efuse(5)
-        apb_ctl_date = self.read_reg(self.DR_REG_SYSCON_BASE + 0x7C)
+        return self.get_major_chip_version() * 100 + self.get_minor_chip_version()
 
-        rev_bit0 = (word3 >> 15) & 0x1
-        rev_bit1 = (word5 >> 20) & 0x1
-        rev_bit2 = (apb_ctl_date >> 31) & 0x1
-        if rev_bit0:
-            if rev_bit1:
-                if rev_bit2:
-                    return 3
-                else:
-                    return 2
-            else:
-                return 1
-        return 0
+    def get_minor_chip_version(self):
+        return (self.read_efuse(5) >> 24) & 0x3
+
+    def get_major_chip_version(self):
+        rev_bit0 = (self.read_efuse(3) >> 15) & 0x1
+        rev_bit1 = (self.read_efuse(5) >> 20) & 0x1
+        apb_ctl_date = self.read_reg(self.APB_CTL_DATE_ADDR)
+        rev_bit2 = (apb_ctl_date >> self.APB_CTL_DATE_S) & self.APB_CTL_DATE_V
+        combine_value = (rev_bit2 << 2) | (rev_bit1 << 1) | rev_bit0
+
+        revision = {
+            0: 0,
+            1: 1,
+            3: 2,
+            7: 3,
+        }.get(combine_value, 0)
+        return revision
 
     def get_chip_description(self):
         pkg_version = self.get_pkg_version()
-        chip_revision = self.get_chip_revision()
-        rev3 = chip_revision == 3
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        rev3 = major_rev == 3
         single_core = self.read_efuse(3) & (1 << 0)  # CHIP_VER DIS_APP_CPU
 
         chip_name = {
@@ -212,7 +219,7 @@ class ESP32ROM(ESPLoader):
         if chip_name.startswith("ESP32-D0WD") and rev3:
             chip_name += "-V3"
 
-        return "%s (revision %d)" % (chip_name, chip_revision)
+        return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
         features = ["WiFi"]

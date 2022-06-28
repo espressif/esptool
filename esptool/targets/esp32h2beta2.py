@@ -16,9 +16,9 @@ class ESP32H2BETA2ROM(ESP32H2BETA1ROM):
         chip_name = {
             1: "ESP32-H2(beta2)",
         }.get(self.get_pkg_version(), "unknown ESP32-H2")
-        chip_revision = self.get_chip_revision()
-
-        return "{} (revision {})".format(chip_name, chip_revision)
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
 
 class ESP32H2BETA2StubLoader(ESP32H2BETA2ROM):
