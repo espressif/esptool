@@ -97,7 +97,8 @@ class ImageInfoTests(unittest.TestCase):
             "cs0_drv: 0x0, hd_drv: 0x0, wp_drv: 0x0" in out,
             "Wrong flash pins drive settings",
         )
-        self.assertTrue("Minimal chip revision: 0" in out, "Wrong min revision")
+        self.assertTrue("Minimal chip revision: v0.0" in out, "Wrong min revision")
+        self.assertTrue("Maximal chip revision: v0.0" in out, "Wrong min revision")
 
         # Segments
         self.assertTrue(

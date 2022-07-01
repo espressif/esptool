@@ -403,13 +403,31 @@ def main(argv=None, esp=None):
         default="1",
     )
     parser_elf2image.add_argument(
+        # it kept for compatibility
+        # Minimum chip revision (deprecated, consider using --min-rev-full)
         "--min-rev",
         "-r",
-        help="Minimum chip revision",
+        help=argparse.SUPPRESS,
         type=int,
         choices=range(256),
         metavar="{0, ... 255}",
         default=0,
+    )
+    parser_elf2image.add_argument(
+        "--min-rev-full",
+        help="Minimal chip revision (in format: major * 100 + minor)",
+        type=int,
+        choices=range(65536),
+        metavar="{0, ... 65535}",
+        default=0,
+    )
+    parser_elf2image.add_argument(
+        "--max-rev-full",
+        help="Maximal chip revision (in format: major * 100 + minor)",
+        type=int,
+        choices=range(65536),
+        metavar="{0, ... 65535}",
+        default=65535,
     )
     parser_elf2image.add_argument(
         "--secure-pad",

@@ -83,9 +83,13 @@ The image header is 8 bytes long:
     +--------+---------------------------------------------------------------------------------------------------------+
     | 4-5    | Chip ID (which ESP device is this image for)                                                            |
     +--------+---------------------------------------------------------------------------------------------------------+
-    | 6      | Minimum chip revision supported by the image                                                            |
+    | 6      | Minimal chip revision supported by the image (deprecated, use the following field)                      |
     +--------+---------------------------------------------------------------------------------------------------------+
-    | 7-14   | Reserved bytes in additional header space, currently unused                                             |
+    | 7-8    | Minimal chip revision supported by the image (in format: major * 100 + minor)                           |
+    +--------+---------------------------------------------------------------------------------------------------------+
+    | 9-10   | Maximal chip revision supported by the image (in format: major * 100 + minor)                           |
+    +--------+---------------------------------------------------------------------------------------------------------+
+    | 11-14  | Reserved bytes in additional header space, currently unused                                             |
     +--------+---------------------------------------------------------------------------------------------------------+
     | 15     | Hash appended (If 1, SHA256 digest is appended after the checksum)                                      |
     +--------+---------------------------------------------------------------------------------------------------------+

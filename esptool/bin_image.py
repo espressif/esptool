@@ -548,7 +548,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     # to be set to this value so ROM bootloader will skip it.
     WP_PIN_DISABLED = 0xEE
 
-    EXTENDED_HEADER_STRUCT_FMT = "<BBBBHB" + ("B" * 8) + "B"
+    EXTENDED_HEADER_STRUCT_FMT = "<BBBBHBHH" + ("B" * 4) + "B"
 
     IROM_ALIGN = 65536
 
@@ -568,6 +568,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.wp_drv = 0
         self.chip_id = 0
         self.min_rev = 0
+        self.min_rev_full = 0
+        self.max_rev_full = 0
 
         self.append_digest = append_digest
 
@@ -789,9 +791,11 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             )
 
         self.min_rev = fields[5]
+        self.min_rev_full = fields[6]
+        self.max_rev_full = fields[7]
 
         # reserved fields in the middle should all be zero
-        if any(f for f in fields[6:-1] if f != 0):
+        if any(f for f in fields[8:-1] if f != 0):
             print(
                 "Warning: some reserved header fields have non-zero values. "
                 "This image may be from a newer esptool.py?"
@@ -819,8 +823,10 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             join_byte(self.hd_drv, self.wp_drv),
             self.ROM_LOADER.IMAGE_CHIP_ID,
             self.min_rev,
+            self.min_rev_full,
+            self.max_rev_full,
         ]
-        fields += [0] * 8  # padding
+        fields += [0] * 4  # padding
         fields += [append_digest]
 
         packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *fields)
