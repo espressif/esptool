@@ -1669,7 +1669,7 @@ class ESP32ROM(ESPLoader):
     def get_chip_full_revision(self):
         return self.get_major_chip_version() * 100 + self.get_minor_chip_version()
 
-    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    # Returns old version format (ECO number). Use the new format get_chip_full_revision().
     def get_chip_revision(self):
         return self.get_major_chip_version()
 
@@ -1900,7 +1900,7 @@ class ESP32S2ROM(ESP32ROM):
                   [0x40080000, 0x40800000, "IROM"],
                   [0x50000000, 0x50002000, "RTC_DATA"]]
 
-    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    # Returns old version format (ECO number). Use the new format get_chip_full_revision().
     def get_chip_revision(self):
         return self.get_major_chip_version()
 
@@ -2140,7 +2140,7 @@ class ESP32S3ROM(ESP32ROM):
                   [0x42000000, 0x42800000, "IROM"],
                   [0x50000000, 0x50002000, "RTC_DATA"]]
 
-    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    # Returns old version format (ECO number). Use the new format get_chip_full_revision().
     def get_chip_revision(self):
         return self.get_minor_chip_version()
 
@@ -2361,7 +2361,7 @@ class ESP32C3ROM(ESP32ROM):
                   [0x50000000, 0x50002000, "RTC_DRAM"],
                   [0x600FE000, 0x60100000, "MEM_INTERNAL2"]]
 
-    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    # Returns old version format (ECO number). Use the new format get_chip_full_revision().
     def get_chip_revision(self):
         return self.get_minor_chip_version()
 
@@ -2489,7 +2489,7 @@ class ESP32H2BETA1ROM(ESP32ROM):
         '12m': 0x2,
     }
 
-    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    # Returns old version format (ECO number). Use the new format get_chip_full_revision().
     def get_chip_revision(self):
         return 0
 
@@ -2586,7 +2586,7 @@ class ESP32C2ROM(ESP32C3ROM):
         '15m': 0x2,
     }
 
-    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    # Returns old version format (ECO number). Use the new format get_chip_full_revision().
     def get_chip_revision(self):
         return self.get_major_chip_version()
 
@@ -2626,7 +2626,7 @@ class ESP32C6BETAROM(ESP32C3ROM):
 
     UART_DATE_REG_ADDR = 0x00000500
 
-    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    # Returns old version format (ECO number). Use the new format get_chip_full_revision().
     def get_chip_revision(self):
         return 0
 
@@ -3234,7 +3234,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     # to be set to this value so ROM bootloader will skip it.
     WP_PIN_DISABLED = 0xEE
 
-    EXTENDED_HEADER_STRUCT_FMT = "<BBBBHB" + ("B" * 8) + "B"
+    EXTENDED_HEADER_STRUCT_FMT = "<BBBBHBHH" + ("B" * 4) + "B"
 
     IROM_ALIGN = 65536
 
@@ -3253,6 +3253,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.hd_drv = 0
         self.wp_drv = 0
         self.min_rev = 0
+        self.min_rev_full = 0
+        self.max_rev_full = 0
 
         self.append_digest = True
 
@@ -3437,9 +3439,11 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                    "Is this image for a different chip model?") % (self.ROM_LOADER.IMAGE_CHIP_ID, chip_id))
 
         self.min_rev = fields[5]
+        self.min_rev_full = fields[6]
+        self.max_rev_full = fields[7]
 
         # reserved fields in the middle should all be zero
-        if any(f for f in fields[6:-1] if f != 0):
+        if any(f for f in fields[8:-1] if f != 0):
             print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
 
         append_digest = fields[-1]  # last byte is append_digest
@@ -3459,8 +3463,10 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                   join_byte(self.d_drv, self.cs_drv),
                   join_byte(self.hd_drv, self.wp_drv),
                   self.ROM_LOADER.IMAGE_CHIP_ID,
-                  self.min_rev]
-        fields += [0] * 8  # padding
+                  self.min_rev,
+                  self.min_rev_full,
+                  self.max_rev_full]
+        fields += [0] * 4  # padding
         fields += [append_digest]
 
         packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *fields)
@@ -4295,6 +4301,16 @@ def image_info(args):
         print("WARNING: --chip not specified, defaulting to ESP8266.")
     image = LoadFirmwareImage(args.chip, args.filename)
     print('Image version: %d' % image.version)
+    if args.chip != 'auto' and args.chip != 'esp8266':
+        print(
+            "Minimal chip revision:",
+            "v{}.{},".format(image.min_rev_full // 100, image.min_rev_full % 100),
+            "(legacy min_rev = {})".format(image.min_rev)
+        )
+        print(
+            "Maximal chip revision:",
+            "v{}.{}".format(image.max_rev_full // 100, image.max_rev_full % 100),
+        )
     print('Entry point: %08x' % image.entrypoint if image.entrypoint != 0 else 'Entry point not set')
     print('%d segments' % len(image.segments))
     print()
@@ -4387,7 +4403,9 @@ def elf2image(args):
     image.flash_mode = {'qio': 0, 'qout': 1, 'dio': 2, 'dout': 3}[args.flash_mode]
 
     if args.chip != 'esp8266':
-        image.min_rev = int(args.min_rev)
+        image.min_rev = args.min_rev
+        image.min_rev_full = args.min_rev_full
+        image.max_rev_full = args.max_rev_full
 
     if args.flash_mmu_page_size:
         image.set_mmu_page_size(flash_size_bytes(args.flash_mmu_page_size))
@@ -4763,7 +4781,35 @@ def main(argv=None, esp=None):
     parser_elf2image.add_argument('input', help='Input ELF file')
     parser_elf2image.add_argument('--output', '-o', help='Output filename prefix (for version 1 image), or filename (for version 2 single image)', type=str)
     parser_elf2image.add_argument('--version', '-e', help='Output image version', choices=['1', '2', '3'], default='1')
-    parser_elf2image.add_argument('--min-rev', '-r', help='Minimum chip revision', choices=['0', '1', '2', '3'], default='0')
+    parser_elf2image.add_argument(
+        # kept for compatibility
+        # Minimum chip revision (deprecated, consider using --min-rev-full)
+        "--min-rev",
+        "-r",
+        # In v3 we do not do help=argparse.SUPPRESS because
+        # it should remain visible.
+        help="Minimal chip revision (ECO version format)",
+        type=int,
+        choices=range(256),
+        metavar="{0, ... 255}",
+        default=0,
+    )
+    parser_elf2image.add_argument(
+        "--min-rev-full",
+        help="Minimal chip revision (in format: major * 100 + minor)",
+        type=int,
+        choices=range(65536),
+        metavar="{0, ... 65535}",
+        default=0,
+    )
+    parser_elf2image.add_argument(
+        "--max-rev-full",
+        help="Maximal chip revision (in format: major * 100 + minor)",
+        type=int,
+        choices=range(65536),
+        metavar="{0, ... 65535}",
+        default=65535,
+    )
     parser_elf2image.add_argument('--secure-pad', action='store_true',
                                   help='Pad image so once signed it will end on a 64KB boundary. For Secure Boot v1 images only.')
     parser_elf2image.add_argument('--secure-pad-v2', action='store_true',
