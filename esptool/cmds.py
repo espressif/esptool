@@ -16,6 +16,7 @@ from .bin_image import (
     ESP32C2FirmwareImage,
     ESP32C3FirmwareImage,
     ESP32C6BETAFirmwareImage,
+    ESP32C6FirmwareImage,
     ESP32FirmwareImage,
     ESP32H2BETA1FirmwareImage,
     ESP32H2BETA2FirmwareImage,
@@ -865,6 +866,10 @@ def elf2image(args):
             image.secure_pad = "2"
     elif args.chip == "esp32c2":
         image = ESP32C2FirmwareImage()
+        if args.secure_pad_v2:
+            image.secure_pad = "2"
+    elif args.chip == "esp32c6":
+        image = ESP32C6FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = "2"
     elif args.version == "1":  # ESP8266

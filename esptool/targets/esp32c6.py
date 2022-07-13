@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2022 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -9,30 +9,25 @@ from .esp32 import ESP32ROM
 from ..util import FatalError, NotImplementedInROMError
 
 
-class ESP32H2BETA1ROM(ESP32ROM):
-    CHIP_NAME = "ESP32-H2(beta1)"
-    IMAGE_CHIP_ID = 10
+class ESP32C6ROM(ESP32ROM):
+    CHIP_NAME = "ESP32-C6"
+    IMAGE_CHIP_ID = 13
+
+    FPGA_SLOW_BOOT = False
 
     IROM_MAP_START = 0x42000000
     IROM_MAP_END = 0x42800000
-    DROM_MAP_START = 0x3C000000
-    DROM_MAP_END = 0x3C800000
-
-    SPI_REG_BASE = 0x60002000
-    SPI_USR_OFFS = 0x18
-    SPI_USR1_OFFS = 0x1C
-    SPI_USR2_OFFS = 0x20
-    SPI_MOSI_DLEN_OFFS = 0x24
-    SPI_MISO_DLEN_OFFS = 0x28
-    SPI_W0_OFFS = 0x58
+    DROM_MAP_START = 0x42800000
+    DROM_MAP_END = 0x43000000
 
     BOOTLOADER_FLASH_OFFSET = 0x0
 
-    CHIP_DETECT_MAGIC_VALUE = [0xCA26CC22]
+    # Magic value for ESP32C6
+    CHIP_DETECT_MAGIC_VALUE = [0x1EA0206F]
 
     UART_DATE_REG_ADDR = 0x60000000 + 0x7C
 
-    EFUSE_BASE = 0x6001A000
+    EFUSE_BASE = 0x600B0800
     MAC_EFUSE_REG = EFUSE_BASE + 0x044
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
@@ -53,20 +48,31 @@ class ESP32H2BETA1ROM(ESP32ROM):
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 20
 
+    EFUSE_SPI_BOOT_CRYPT_CNT_REG = EFUSE_BASE + 0x034
+    EFUSE_SPI_BOOT_CRYPT_CNT_MASK = 0x7 << 18
+
+    EFUSE_SECURE_BOOT_EN_REG = EFUSE_BASE + 0x038
+    EFUSE_SECURE_BOOT_EN_MASK = 1 << 20
+
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
     SUPPORTS_ENCRYPTED_FLASH = True
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
-    MEMORY_MAP = []
-
-    FLASH_FREQUENCY = {
-        "48m": 0xF,
-        "24m": 0x0,
-        "16m": 0x1,
-        "12m": 0x2,
-    }
+    MEMORY_MAP = [
+        [0x00000000, 0x00010000, "PADDING"],
+        [0x42800000, 0x43000000, "DROM"],
+        [0x40800000, 0x40880000, "DRAM"],
+        [0x40800000, 0x40880000, "BYTE_ACCESSIBLE"],
+        [0x4004AC00, 0x40050000, "DROM_MASK"],
+        [0x40000000, 0x4004AC00, "IROM_MASK"],
+        [0x42000000, 0x42800000, "IROM"],
+        [0x40800000, 0x40880000, "IRAM"],
+        [0x50000000, 0x50004000, "RTC_IRAM"],
+        [0x50000000, 0x50004000, "RTC_DRAM"],
+        [0x600FE000, 0x60100000, "MEM_INTERNAL2"],
+    ]
 
     def get_pkg_version(self):
         num_word = 3
@@ -84,21 +90,22 @@ class ESP32H2BETA1ROM(ESP32ROM):
 
     def get_chip_description(self):
         chip_name = {
-            0: "ESP32-H2",
-        }.get(self.get_pkg_version(), "unknown ESP32-H2")
+            0: "ESP32-C6",
+        }.get(self.get_pkg_version(), "unknown ESP32-C6")
         chip_revision = self.get_chip_revision()
 
         return "%s (revision %d)" % (chip_name, chip_revision)
 
     def get_chip_features(self):
-        return ["BLE/802.15.4"]
+        return ["WiFi 6", "BT 5"]
 
     def get_crystal_freq(self):
-        return 32
+        # ESP32C6 XTAL is fixed to 40MHz
+        return 40
 
     def override_vddsdio(self, new_voltage):
         raise NotImplementedInROMError(
-            "VDD_SDIO overrides are not supported for ESP32-H2"
+            "VDD_SDIO overrides are not supported for ESP32-C6"
         )
 
     def read_mac(self):
@@ -108,7 +115,7 @@ class ESP32H2BETA1ROM(ESP32ROM):
         return tuple(bitstring)
 
     def get_flash_crypt_config(self):
-        return None  # doesn't exist on ESP32-H2
+        return None  # doesn't exist on ESP32-C6
 
     def get_key_block_purpose(self, key_block):
         if key_block < 0 or key_block > 5:
@@ -131,8 +138,8 @@ class ESP32H2BETA1ROM(ESP32ROM):
         return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
 
 
-class ESP32H2BETA1StubLoader(ESP32H2BETA1ROM):
-    """Access class for ESP32H2BETA1 stub loader, runs on top of ROM.
+class ESP32C6StubLoader(ESP32C6ROM):
+    """Access class for ESP32C6 stub loader, runs on top of ROM.
 
     (Basically the same as ESP32StubLoader, but different base class.
     Can possibly be made into a mixin.)
@@ -149,4 +156,4 @@ class ESP32H2BETA1StubLoader(ESP32H2BETA1ROM):
         self.flush_input()  # resets _slip_reader
 
 
-ESP32H2BETA1ROM.STUB_CLASS = ESP32H2BETA1StubLoader
+ESP32C6ROM.STUB_CLASS = ESP32C6StubLoader

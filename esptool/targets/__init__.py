@@ -1,6 +1,7 @@
 from .esp32 import ESP32ROM
 from .esp32c2 import ESP32C2ROM
 from .esp32c3 import ESP32C3ROM
+from .esp32c6 import ESP32C6ROM
 from .esp32c6beta import ESP32C6BETAROM
 from .esp32h2beta1 import ESP32H2BETA1ROM
 from .esp32h2beta2 import ESP32H2BETA2ROM
@@ -21,6 +22,7 @@ CHIP_DEFS = {
     "esp32h2beta1": ESP32H2BETA1ROM,
     "esp32h2beta2": ESP32H2BETA2ROM,
     "esp32c2": ESP32C2ROM,
+    "esp32c6": ESP32C6ROM,
 }
 
 CHIP_LIST = list(CHIP_DEFS.keys())

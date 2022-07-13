@@ -447,7 +447,7 @@ def main(argv=None, esp=None):
     parser_elf2image.add_argument(
         "--flash-mmu-page-size",
         help="Change flash MMU page size.",
-        choices=["64KB", "32KB", "16KB"],
+        choices=["64KB", "32KB", "16KB", "8KB"],
     )
 
     add_spi_flash_subparsers(parser_elf2image, allow_keep=False, auto_detect=False)

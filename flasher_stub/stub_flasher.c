@@ -385,10 +385,10 @@ void stub_main()
 
         spi_flash_attach();
 #else
-#if !ESP32C2
+#if !ESP32C2 && !ESP32C6
         uint32_t spiconfig = ets_efuse_get_spiconfig();
 #else
-        // ESP32C2 doesn't support get spiconfig.
+        // ESP32C2/ESP32C6 doesn't support get spiconfig.
         uint32_t spiconfig = 0;
 #endif
         uint32_t strapping = READ_REG(GPIO_STRAP_REG);

@@ -1448,7 +1448,8 @@ def main(custom_commandline=None):
     p.add_argument(
         "--aes_xts",
         "-x",
-        help="Decrypt data using AES-XTS as used on ESP32-S2, ESP32-C2 and ESP32-C3",
+        help="Decrypt data using AES-XTS as used on "
+        "ESP32-S2, ESP32-C2, ESP32-C3 and ESP32-C6",
         action="store_true",
     )
     p.add_argument(
@@ -1487,7 +1488,8 @@ def main(custom_commandline=None):
     p.add_argument(
         "--aes_xts",
         "-x",
-        help="Encrypt data using AES-XTS as used on ESP32-S2, ESP32-C2 and ESP32-C3",
+        help="Encrypt data using AES-XTS as used on "
+        "ESP32-S2, ESP32-C2, ESP32-C3 and ESP32-C6",
         action="store_true",
     )
     p.add_argument(
