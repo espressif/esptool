@@ -200,14 +200,21 @@ class EspEfuses(base_fields.EspEfusesBase):
     def set_efuse_timing(self):
         """Set timing registers for burning efuses"""
         # Configure clock
-        apb_freq = self.get_crystal_freq()
-        if apb_freq != 40:
+        xtal_freq = self.get_crystal_freq()
+        if xtal_freq not in [26, 40]:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=40M (xtal was %d)" % apb_freq
+                "The eFuse supports only xtal=26M and 40M (xtal was %d)" % xtal_freq
             )
 
         self.update_reg(
             self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x190
+        )
+
+        tpgm_inactive_val = 200 if xtal_freq == 40 else 130
+        self.update_reg(
+            self.REGS.EFUSE_WR_TIM_CONF0_REG,
+            self.REGS.EFUSE_TPGM_INACTIVE_M,
+            tpgm_inactive_val,
         )
 
     def get_coding_scheme_warnings(self, silent=False):

@@ -42,6 +42,10 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_PWR_OFF_NUM_S = 0
     EFUSE_PWR_OFF_NUM_M = 0xFFFF << EFUSE_PWR_OFF_NUM_S
 
+    EFUSE_WR_TIM_CONF0_REG = DR_REG_EFUSE_BASE + 0x110
+    EFUSE_TPGM_INACTIVE_S = 8
+    EFUSE_TPGM_INACTIVE_M = 0xFF << EFUSE_TPGM_INACTIVE_S
+
 
 class EfuseDefineBlocks(EfuseBlocksBase):
 
