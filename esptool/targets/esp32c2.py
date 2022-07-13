@@ -3,7 +3,11 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import struct
+import time
+
 from .esp32c3 import ESP32C3ROM
+from ..loader import ESPLoader
 from ..stub_flasher import ESP32C2StubCode
 
 
@@ -66,6 +70,32 @@ class ESP32C2ROM(ESP32C3ROM):
     def get_chip_revision(self):
         si = self.get_security_info()
         return si["api_version"]
+
+    def get_crystal_freq(self):
+        # The crystal detection algorithm of ESP32/ESP8266 works for ESP32-C2 as well.
+        return ESPLoader.get_crystal_freq(self)
+
+    def change_baud(self, baud):
+        rom_with_26M_XTAL = not self.IS_STUB and self.get_crystal_freq() == 26
+        if rom_with_26M_XTAL:
+            # The code is copied over from ESPLoader.change_baud().
+            # Probably this is just a temporary solution until the next chip revision.
+
+            # The ROM code thinks it uses a 40 MHz XTAL. Recompute the baud rate
+            # in order to trick the ROM code to set the correct baud rate for
+            # a 26 MHz XTAL.
+            false_rom_baud = baud * 40 // 26
+
+            print(f"Changing baud rate to {baud}")
+            self.command(
+                self.ESP_CHANGE_BAUDRATE, struct.pack("<II", false_rom_baud, 0)
+            )
+            print("Changed.")
+            self._set_port_baudrate(baud)
+            time.sleep(0.05)  # get rid of garbage sent during baud rate change
+            self.flush_input()
+        else:
+            ESPLoader.change_baud(self, baud)
 
     def _post_connect(self):
         # ESP32C2 ECO0 is no longer supported by the flasher stub
