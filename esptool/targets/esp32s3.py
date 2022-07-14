@@ -76,8 +76,9 @@ class ESP32S3ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
-    UARTDEV_BUF_NO = 0x3FCEF14C  # Variable in ROM .bss which indicates the port in use
-    UARTDEV_BUF_NO_USB = 3  # Value of the above variable indicating that USB is in use
+    UARTDEV_BUF_NO = 0x3FCEF14C  # Variable in ROM .bss with the port in use
+    UARTDEV_BUF_NO_USB_OTG = 3  # Serial via USB-CDC with USB-OTG peripheral
+    UARTDEV_BUF_NO_USB_CDC = 4  # Serial via hardware USB-CDC peripheral
 
     USB_RAM_BLOCK = 0x800  # Max block size USB CDC is used
 
@@ -163,7 +164,9 @@ class ESP32S3ROM(ESP32ROM):
             return False  # can't detect native USB in secure download mode
         if not _cache:
             buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB)
+            _cache.append(
+                buf_no in [self.UARTDEV_BUF_NO_USB_OTG, self.UARTDEV_BUF_NO_USB_CDC]
+            )
         return _cache[0]
 
     def _post_connect(self):
