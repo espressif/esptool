@@ -34,6 +34,16 @@ import serial
 # point is this file is not 4 byte aligned in length
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
 
+BL_IMAGES = {
+    "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
+    "esp32": "images/bootloader_esp32.bin",
+    "esp32s2": "images/bootloader_esp32s2.bin",
+    "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
+    "esp32s3": "images/bootloader_esp32s3.bin",
+    "esp32c3": "images/bootloader_esp32c3.bin",
+    "esp32c2": "images/bootloader_esp32c2.bin",
+}
+
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(os.path.dirname(__file__))
 try:
@@ -551,30 +561,14 @@ class TestFlashSizes(EsptoolTestCase):
         self.assertIn("will not fit", output)
 
     def test_flash_size_keep(self):
-        if chip == "esp8266":
-            # this image is configured for 512KB flash by default.
-            # assume this is not the flash size in use
-            image = "images/esp8266_sdk/boot_v1.4(b1).bin"
-            offset = 0x0
-        elif chip in ["esp32", "esp32s2"]:
-            # this image is configured for 2MB flash by default,
-            # assume this is not the flash size in use
-            image = {
-                "esp32": "images/bootloader_esp32.bin",
-                "esp32s2": "images/bootloader_esp32s2.bin",
-            }[chip]
-            offset = 0x1000
-        elif chip in ["esp32s3beta2", "esp32s3", "esp32c3"]:
-            # this image is configured for 2MB flash by default,
-            # assume this is not the flash size in use
-            image = {
-                "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
-                "esp32s3": "images/bootloader_esp32s3.bin",
-                "esp32c3": "images/bootloader_esp32c3.bin",
-            }[chip]
-            offset = 0x0
-        else:
+        if chip not in BL_IMAGES.keys():
             self.fail("unsupported chip for test: %s" % chip)
+
+        offset = 0x1000 if chip in ["esp32", "esp32s2"] else 0x0
+
+        # this image is configured for 2MB (512KB on ESP8266) flash by default.
+        # assume this is not the flash size in use
+        image = BL_IMAGES[chip]
 
         with open(image, "rb") as f:
             f.seek(0, 2)
@@ -721,14 +715,7 @@ class TestKeepImageSettings(EsptoolTestCase):
 
     def setUp(self):
         super(TestKeepImageSettings, self).setUp()
-        self.BL_IMAGE = {
-            "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
-            "esp32": "images/bootloader_esp32.bin",
-            "esp32s2": "images/bootloader_esp32s2.bin",
-            "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
-            "esp32s3": "images/bootloader_esp32s3.bin",
-            "esp32c3": "images/bootloader_esp32c3.bin",
-        }[chip]
+        self.BL_IMAGE = BL_IMAGES[chip]
         self.flash_offset = (
             0x1000 if chip in ("esp32", "esp32s2") else 0
         )  # bootloader offset
@@ -809,6 +796,7 @@ class TestLoadRAM(EsptoolTestCase):
     )
     @unittest.skipIf(chip == "esp32s3", "TODO: write a IRAM test binary for esp32s3")
     @unittest.skipIf(chip == "esp32c3", "TODO: write a IRAM test binary for esp32c3")
+    @unittest.skipIf(chip == "esp32c2", "TODO: write a IRAM test binary for esp32c2")
     def test_load_ram(self):
         """Verify load_ram command
 
@@ -850,14 +838,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
     BL_OFFSET = 0x1000 if chip in ("esp32", "esp32s2") else 0
 
     def test_flash_header_rewrite(self):
-        bl_image = {
-            "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
-            "esp32": "images/bootloader_esp32.bin",
-            "esp32s2": "images/bootloader_esp32s2.bin",
-            "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
-            "esp32s3": "images/bootloader_esp32s3.bin",
-            "esp32c3": "images/bootloader_esp32c3.bin",
-        }[chip]
+        bl_image = BL_IMAGES[chip]
 
         output = self.run_esptool(
             "write_flash -fm dout -ff 20m 0x%x %s" % (self.BL_OFFSET, bl_image)
@@ -891,6 +872,7 @@ class TestAutoDetect(EsptoolTestCase):
             "esp32s3beta2": "ESP32-S3(beta2)",
             "esp32s3": "ESP32-S3",
             "esp32c3": "ESP32-C3",
+            "esp32c2": "ESP32-C2",
         }[chip]
         self.assertIn("Detecting chip type... " + expected_chip_name, output)
         self.assertIn("Chip is " + expected_chip_name, output)
@@ -940,21 +922,25 @@ class TestReadWriteMemory(EsptoolTestCase):
         ]:  # find a probably-unused memory type
             region = esp.get_memory_region(test_region)
             if region:
-                test_addr = region[0]
+                # Write at the end of DRAM on ESP32-C2 to avoid overwriting the stub
+                test_addr = region[1] - 8 if chip == "esp32c2" else region[0]
                 break
 
         print("using test address 0x%x" % test_addr)
 
-        esp.read_reg(test_addr)  # verify we can read this word at all
+        val = esp.read_reg(test_addr)  # verify we can read this word at all
 
-        esp.write_reg(test_addr, 0x1234567)
-        self.assertEqual(esp.read_reg(test_addr), 0x1234567)
+        try:
+            esp.write_reg(test_addr, 0x1234567)
+            self.assertEqual(esp.read_reg(test_addr), 0x1234567)
 
-        esp.write_reg(test_addr, 0, delay_us=100)
-        self.assertEqual(esp.read_reg(test_addr), 0)
+            esp.write_reg(test_addr, 0, delay_us=100)
+            self.assertEqual(esp.read_reg(test_addr), 0)
 
-        esp.write_reg(test_addr, 0x555, delay_after_us=100)
-        self.assertEqual(esp.read_reg(test_addr), 0x555)
+            esp.write_reg(test_addr, 0x555, delay_after_us=100)
+            self.assertEqual(esp.read_reg(test_addr), 0x555)
+        finally:
+            esp.write_reg(test_addr, val)  # write the original value, non-destructive
 
     def test_read_write_memory_rom(self):
         esp = esptool.get_default_connected_device(

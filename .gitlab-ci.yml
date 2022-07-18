@@ -243,6 +243,21 @@ target_esptool_test_esp32s3_usbcdc:
   script:
     - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32S3_USBCDC esp32s3 115200
 
+# ESP32C2
+target_esptool_test_esp32c2_40mhz:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32c2_40mhz_target
+  script:
+    - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32C2_40MHZ esp32c2 115200
+
+target_esptool_test_esp32c2_26mhz:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32c2_26mhz_target
+  script:
+    - coverage run --parallel-mode ${CI_PROJECT_DIR}/test/test_esptool.py /dev/serial_ports/ESP32C2_26MHZ esp32c2 115200
+
 combine_reports:
   stage: report
   image: python:3.7-bullseye
