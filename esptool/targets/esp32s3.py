@@ -77,9 +77,9 @@ class ESP32S3ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
     UARTDEV_BUF_NO = 0x3FCEF14C  # Variable in ROM .bss which indicates the port in use
-    UARTDEV_BUF_NO_USB = 3  # Value of the above variable indicating that USB is in use
+    UARTDEV_BUF_NO_USB_OTG = 3  # Value of the above indicating that USB-OTG is in use
 
-    USB_RAM_BLOCK = 0x800  # Max block size USB CDC is used
+    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
 
     GPIO_STRAP_REG = 0x60004038
     GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
@@ -158,16 +158,19 @@ class ESP32S3ROM(ESP32ROM):
         bitstring = struct.pack(">II", mac1, mac0)[2:]
         return tuple(bitstring)
 
-    def uses_usb(self, _cache=[]):
+    def uses_usb_otg(self, _cache=[]):
+        """
+        Check the UARTDEV_BUF_NO register to see if USB-OTG console is being used
+        """
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
         if not _cache:
             buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB)
+            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_OTG)
         return _cache[0]
 
     def _post_connect(self):
-        if self.uses_usb():
+        if self.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
 
     def _check_if_can_reset(self):
@@ -176,7 +179,7 @@ class ESP32S3ROM(ESP32ROM):
         """
         if os.getenv("ESPTOOL_TESTING") is not None:
             print("ESPTOOL_TESTING is set, ignoring strapping mode check")
-            # Esptool tests over USB CDC run with GPIO0 strapped low,
+            # Esptool tests over USB-OTG run with GPIO0 strapped low,
             # don't complain in this case.
             return
         strap_reg = self.read_reg(self.GPIO_STRAP_REG)
@@ -196,12 +199,12 @@ class ESP32S3ROM(ESP32ROM):
             raise SystemExit(1)
 
     def hard_reset(self):
-        if self.uses_usb():
+        if self.uses_usb_otg():
             self._check_if_can_reset()
 
         print("Hard resetting via RTS pin...")
         self._setRTS(True)  # EN->LOW
-        if self.uses_usb():
+        if self.uses_usb_otg():
             # Give the chip some time to come out of reset,
             # to be able to handle further DTR/RTS transitions
             time.sleep(0.2)
@@ -228,7 +231,7 @@ class ESP32S3StubLoader(ESP32S3ROM):
         self._trace_enabled = rom_loader._trace_enabled
         self.flush_input()  # resets _slip_reader
 
-        if rom_loader.uses_usb():
+        if rom_loader.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
             self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
 
