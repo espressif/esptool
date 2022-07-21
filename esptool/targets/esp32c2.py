@@ -64,15 +64,16 @@ class ESP32C2ROM(ESP32C3ROM):
     ]
 
     def get_pkg_version(self):
-        num_word = 3
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 21) & 0x0F
+        num_word = 1
+        block2_addr = self.EFUSE_BASE + 0x040
+        word1 = self.read_reg(block2_addr + (4 * num_word))
+        pkg_version = (word1 >> 22) & 0x07
         return pkg_version
 
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C2",
+            1: "ESP32-C2",
         }.get(self.get_pkg_version(), "unknown ESP32-C2")
         chip_revision = self.get_chip_revision()
 
