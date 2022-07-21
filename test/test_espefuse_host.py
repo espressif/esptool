@@ -509,6 +509,105 @@ class TestSetFlashVoltageCommands(EfuseTestCase):
         )
 
 
+@unittest.skipUnless(
+    chip_target == "esp32c3",
+    "not necessary for all chips",
+)
+class TestValueArgForBurnEfuseCommands(EfuseTestCase):
+    def test_efuse_is_bool_given_none(self):
+        self.espefuse_py("burn_efuse SECURE_BOOT_KEY_REVOKE0")
+
+    def test_efuse_is_bool_given_0(self):
+        self.espefuse_py(
+            "burn_efuse SECURE_BOOT_KEY_REVOKE0 0",
+            check_msg="A fatal error occurred: "
+            "New value is not accepted for efuse 'SECURE_BOOT_KEY_REVOKE0' "
+            "(will always burn 0->1), given value=0",
+            ret_code=2,
+        )
+
+    def test_efuse_is_bool_given_2(self):
+        self.espefuse_py(
+            "burn_efuse SECURE_BOOT_KEY_REVOKE0 2",
+            check_msg="A fatal error occurred: "
+            "New value is not accepted for efuse 'SECURE_BOOT_KEY_REVOKE0' "
+            "(will always burn 0->1), given value=2",
+            ret_code=2,
+        )
+
+    def test_efuse_is_bytes_ok(self):
+        self.espefuse_py(
+            "burn_efuse OPTIONAL_UNIQUE_ID 0x12345678123456781234567812345678"
+        )
+
+    def test_efuse_is_bytes_given_short_val(self):
+        self.espefuse_py(
+            "burn_efuse OPTIONAL_UNIQUE_ID 0x1234567812345678",
+            check_msg="A fatal error occurred: "
+            "The length of efuse 'OPTIONAL_UNIQUE_ID' (128 bits) "
+            "(given len of the new value= 64 bits)",
+            ret_code=2,
+        )
+
+    def test_efuse_is_bytes_given_none(self):
+        self.espefuse_py(
+            "burn_efuse OPTIONAL_UNIQUE_ID",
+            check_msg="A fatal error occurred: "
+            "New value required for efuse 'OPTIONAL_UNIQUE_ID' (given None)",
+            ret_code=2,
+        )
+
+    def test_efuse_is_int_ok(self):
+        self.espefuse_py("burn_efuse SPI_PAD_CONFIG_D 7")
+
+    def test_efuse_is_int_given_out_of_range_val(self):
+        self.espefuse_py(
+            "burn_efuse SPI_PAD_CONFIG_D 200",
+            check_msg="A fatal error occurred: "
+            "200 is too large an unsigned integer for a bitstring "
+            "of length 6. The allowed range is [0, 63].",
+            ret_code=2,
+        )
+
+    def test_efuse_is_int_given_none(self):
+        self.espefuse_py(
+            "burn_efuse SPI_PAD_CONFIG_D",
+            check_msg="A fatal error occurred: "
+            "New value required for efuse 'SPI_PAD_CONFIG_D' (given None)",
+            ret_code=2,
+        )
+
+    def test_efuse_is_int_given_0(self):
+        self.espefuse_py(
+            "burn_efuse SPI_PAD_CONFIG_D 0",
+            check_msg="A fatal error occurred: "
+            "New value should not be 0 for 'SPI_PAD_CONFIG_D' "
+            "(given value= 0)",
+            ret_code=2,
+        )
+
+    def test_efuse_is_bitcount_given_out_of_range_val(self):
+        self.espefuse_py(
+            "burn_efuse SPI_BOOT_CRYPT_CNT 9",
+            check_msg="A fatal error occurred: "
+            "9 is too large an unsigned integer for a bitstring "
+            "of length 3. The allowed range is [0, 7].",
+            ret_code=2,
+        )
+
+    def test_efuse_is_bitcount_given_increase_over_max(self):
+        self.espefuse_py("burn_efuse SPI_BOOT_CRYPT_CNT")
+        self.espefuse_py("burn_efuse SPI_BOOT_CRYPT_CNT")
+        self.espefuse_py("burn_efuse SPI_BOOT_CRYPT_CNT")
+        self.espefuse_py(
+            "burn_efuse SPI_BOOT_CRYPT_CNT",
+            check_msg="A fatal error occurred: "
+            "15 is too large an unsigned integer for a bitstring "
+            "of length 3. The allowed range is [0, 7].",
+            ret_code=2,
+        )
+
+
 class TestBurnEfuseCommands(EfuseTestCase):
     @unittest.skipUnless(
         chip_target == "esp32",
