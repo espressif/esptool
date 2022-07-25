@@ -206,16 +206,26 @@ def main(custom_commandline=None):
     just_print_help = [
         True for arg in remaining_args if arg in ["--help", "-h"]
     ] or remaining_args == []
-    esp = get_esp(
-        common_args.port,
-        common_args.baud,
-        common_args.before,
-        common_args.chip,
-        just_print_help,
-        common_args.virt,
-        common_args.debug,
-        common_args.path_efuse_file,
-    )
+
+    print("espefuse.py v{}".format(esptool.__version__))
+
+    try:
+        esp = get_esp(
+            common_args.port,
+            common_args.baud,
+            common_args.before,
+            common_args.chip,
+            just_print_help,
+            common_args.virt,
+            common_args.debug,
+            common_args.path_efuse_file,
+        )
+    except esptool.FatalError as e:
+        raise esptool.FatalError(
+            f"{e}\nPlease make sure that you have specified "
+            "the right port with the --port argument"
+        )  # TODO: Require the --port argument in the next major release, ESPTOOL-490
+
     efuses, efuse_operations = get_efuses(
         esp, just_print_help, debug_mode, common_args.do_not_confirm
     )
@@ -228,7 +238,6 @@ def main(custom_commandline=None):
     efuse_operations.add_commands(subparsers, efuses)
 
     grouped_remaining_args, used_cmds = split_on_groups(remaining_args)
-    print("espefuse.py v%s" % esptool.__version__)
     if len(grouped_remaining_args) == 0:
         parser.print_help()
         parser.exit(1)
