@@ -127,16 +127,14 @@ class EfuseDefineFields(EfuseFieldsBase):
         # Parameters in BLOCK2
         # Name                          Category  Block Word Pos  Type:len WR_DIS RD_DIS Class         Description                Dictionary
         ("MAC",                        "identity",   2,  0,  0,  "bytes:6",  6,    None, 'mac',        "Factory MAC Address", None),
-        ("WAFER_VERSION",              "identity",   2,  1,  16,  "uint:3",  6,    None, None,         "WAFER version",
-                                                                                                       {0: "(revision 0)",
-                                                                                                        1: "(revision 1)"}),
-        ("PKG_VERSION",                "identity",   2,  1,  19,  "uint:3",  6,    None, None,         "Package version",
+        ("WAFER_VERSION_MINOR",        "identity",   2,  1,  16,  "uint:4",  6,    None, None,         "Minor WAFER version", None),
+        ("WAFER_VERSION_MAJOR",        "identity",   2,  1,  20,  "uint:2",  6,    None, None,         "Major WAFER version", None),
+        ("PKG_VERSION",                "identity",   2,  1,  22,  "uint:3",  6,    None, None,         "Package version",
                                                                                                        {0: "ESP32-C2"}),
-        ("BLOCK2_VERSION",             "identity",   2,  1,  22,  "uint:3",  6,    None, None,         "Version of BLOCK2",
+        ("BLOCK2_VERSION_MINOR",       "identity",   2,  1,  25,  "uint:3",  6,    None, None,         "Minor version of BLOCK2",
                                                                                                        {0: "No calibration", 1: "With calibration"}),
 
-        ("RF_REF_I_BIAS_CONFIG",             "rf",   2,  1,  25,  "uint:3",  6,    None, None,         "", None),
-        ("LDO_VOL_BIAS_CONFIG_LOW",         "ldo",   2,  1,  29,  "uint:3",  6,    None, None,         "", None),
+        ("BLOCK2_VERSION_MAJOR",       "identity",   2,  1,  28,  "uint:2",  6,    None, None,         "Major version of BLOCK2", None),
         ("LDO_VOL_BIAS_CONFIG_HIGH",        "ldo",   2,  2,   0,  "uint:27", 6,    None, None,         "", None),
         ("PVT_LOW",                         "pvt",   2,  2,  27,  "uint:5",  6,    None, None,         "", None),
         ("PVT_HIGH",                        "pvt",   2,  3,   0,  "uint:10", 6,    None, None,         "", None),

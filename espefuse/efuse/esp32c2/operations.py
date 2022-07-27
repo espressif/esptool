@@ -151,7 +151,7 @@ def set_flash_voltage(esp, efuses, args):
 def adc_info(esp, efuses, args):
     print("")
     # fmt: off
-    if efuses["BLOCK2_VERSION"].get() == 1:
+    if efuses["BLOCK2_VERSION_MINOR"].get() == 1:
         print("    RF_REF_I_BIAS_CONFIG:        {}".format(efuses["RF_REF_I_BIAS_CONFIG"].get()))
 
         print("    LDO_VOL_BIAS_CONFIG_LOW:     {}".format(efuses["LDO_VOL_BIAS_CONFIG_LOW"].get()))
@@ -165,7 +165,7 @@ def adc_info(esp, efuses, args):
         print("    ADC_CALIBRATION_2:           {}".format(efuses["ADC_CALIBRATION_2"].get()))
 
     else:
-        print("BLOCK2_VERSION = {}".format(efuses["BLOCK2_VERSION"].get_meaning()))
+        print("BLOCK2_VERSION_MINOR = {}".format(efuses["BLOCK2_VERSION_MINOR"].get_meaning()))
     # fmt: on
 
 
