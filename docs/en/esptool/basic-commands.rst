@@ -69,6 +69,14 @@ Use the ``-e/--erase-all`` option to erase all flash sectors (not just the write
 
     This behavior can be overridden with the ``--force`` option. **Use this only at your own risk and only if you know what you are doing!**
 
+    Flashing an Incompatible Image
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    ``esptool.py`` checks every binary before flashing. If a valid firmware image is detected, the ``Chip ID`` and ``Minimum chip revision`` fields in its :ref:`header <image-format>` are compared against the actually connected chip.
+    If the image turns out to be incompatible with the chip in use or requires a newer chip revision, flashing is stopped.
+
+    This behavior can be overridden with the ``--force`` option.
+
 Read Flash Contents: read_flash
 --------------------------------
 

@@ -315,19 +315,34 @@ def write_flash(esp, args):
     if args.compress is None and not args.no_compress:
         args.compress = not args.no_stub
 
-    if (
-        not args.force
-        and esp.CHIP_NAME != "ESP8266"
-        and not esp.secure_download_mode
-        and esp.get_secure_boot_enabled()
-    ):
-        for address, _ in args.addr_filename:
-            if address < 0x8000:
+    if not args.force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
+        # Check if secure boot is active
+        if esp.get_secure_boot_enabled():
+            for address, _ in args.addr_filename:
+                if address < 0x8000:
+                    raise FatalError(
+                        "Secure Boot detected, writing to flash regions < 0x8000 "
+                        "is disabled to protect the bootloader. "
+                        "Use --force to override, "
+                        "please use with caution, otherwise it may brick your device!"
+                    )
+        # Check if chip_id and min_rev in image are valid for the target in use
+        for _, argfile in args.addr_filename:
+            try:
+                image = LoadFirmwareImage(esp.CHIP_NAME, argfile)
+            except (FatalError, struct.error, RuntimeError):
+                continue
+            if image.chip_id != esp.IMAGE_CHIP_ID:
                 raise FatalError(
-                    "Secure Boot detected, writing to flash regions < 0x8000 "
-                    "is disabled to protect the bootloader. "
-                    "Use --force to override, "
-                    "please use with caution, otherwise it may brick your device!"
+                    f"{argfile.name} is not an {esp.CHIP_NAME} image. "
+                    "Use --force to flash anyway."
+                )
+            rev = esp.get_chip_revision()
+            if rev < image.min_rev:
+                raise FatalError(
+                    f"{argfile.name} requires chip revision "
+                    f"{image.min_rev} or higher (this chip is revision {rev}). "
+                    "Use --force to flash anyway."
                 )
 
     # In case we have encrypted files to write,

@@ -35,7 +35,7 @@ import serial
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
 
 BL_IMAGES = {
-    "esp8266": "images/esp8266_sdk/boot_v1.4(b1).bin",
+    "esp8266": "images/bootloader_esp8266.bin",
     "esp32": "images/bootloader_esp32.bin",
     "esp32s2": "images/bootloader_esp32s2.bin",
     "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
@@ -439,13 +439,13 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0x4000, 96, "images/partitions_singleapp.bin")
 
     def test_partition_table_then_bootloader(self):
-        self._test_partition_table_then_bootloader("write_flash")
+        self._test_partition_table_then_bootloader("write_flash --force")
 
     def test_partition_table_then_bootloader_no_compression(self):
-        self._test_partition_table_then_bootloader("write_flash -u")
+        self._test_partition_table_then_bootloader("write_flash --force -u")
 
     def test_partition_table_then_bootloader_nostub(self):
-        self._test_partition_table_then_bootloader("--no-stub write_flash")
+        self._test_partition_table_then_bootloader("--no-stub write_flash --force")
 
     # note: there is no "partition table then bootloader" test that
     # uses --no-stub and -z, as the ESP32 ROM over-erases and can't
@@ -453,8 +453,7 @@ class TestFlashing(EsptoolTestCase):
     # test_compressed_nostub_flash() instead.
 
     def test_length_not_aligned_4bytes(self):
-        nodemcu = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
-        self.run_esptool("write_flash 0x0 images/%s" % nodemcu)
+        self.run_esptool("write_flash 0x0 images/%s" % NODEMCU_FILE)
 
     def test_length_not_aligned_4bytes_no_compression(self):
         self.run_esptool("write_flash -u 0x0 images/%s" % NODEMCU_FILE)
@@ -481,7 +480,7 @@ class TestFlashing(EsptoolTestCase):
 
     def test_write_no_overlap(self):
         output = self.run_esptool(
-            "write_flash 0x0 images/bootloader_esp32.bin 0x2000 images/one_kb.bin"
+            "write_flash 0x0 images/one_kb.bin 0x2000 images/one_kb.bin"
         )
         self.assertNotIn("Detected overlap at address", output)
 
@@ -515,15 +514,36 @@ class TestFlashing(EsptoolTestCase):
 
     def test_erase_range_messages(self):
         output = self.run_esptool(
-            "write_flash 0x1000 images/bootloader_esp32.bin 0x0FC00 images/one_kb.bin"
+            "write_flash 0x1000 images/sector.bin 0x0FC00 images/one_kb.bin"
         )
-        self.assertIn("Flash will be erased from 0x00001000 to 0x00002fff...", output)
+        self.assertIn("Flash will be erased from 0x00001000 to 0x00001fff...", output)
         self.assertIn(
             "WARNING: Flash address 0x0000fc00 is not aligned to a 0x1000 "
             "byte flash sector. 0xc00 bytes before this address will be erased.",
             output,
         )
         self.assertIn("Flash will be erased from 0x0000f000 to 0x0000ffff...", output)
+
+    @unittest.skipIf(chip == "esp8266", "chip_id field exist in ESP32 and later images")
+    @unittest.skipIf(chip == "esp32s3", "This is a valid ESP32-S3 image, would pass")
+    def test_write_image_for_another_target(self):
+        output = self.run_esptool_error(
+            "write_flash 0x0 images/esp32s3_header.bin 0x1000 images/one_kb.bin"
+        )
+        self.assertIn("Unexpected chip id in image.", output)
+        self.assertIn("value was 9. Is this image for a different chip model?", output)
+        self.assertIn("images/esp32s3_header.bin is not an ", output)
+        self.assertIn("image. Use --force to flash anyway.", output)
+
+    @unittest.skipIf(chip == "esp8266", "min_rev field exist in ESP32 and later images")
+    @unittest.skipUnless(chip == "esp32s3", "This check happens only on a valid image")
+    def test_write_image_for_another_revision(self):
+        output = self.run_esptool_error(
+            "write_flash 0x0 images/one_kb.bin 0x1000 images/esp32s3_header.bin"
+        )
+        self.assertIn("images/esp32s3_header.bin requires chip revision 10", output)
+        self.assertIn("or higher (this chip is revision", output)
+        self.assertIn("Use --force to flash anyway.", output)
 
 
 class TestFlashSizes(EsptoolTestCase):

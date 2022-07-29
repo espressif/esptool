@@ -33,7 +33,7 @@ def align_file_position(f, size):
     f.seek(align, 1)
 
 
-def LoadFirmwareImage(chip, filename):
+def LoadFirmwareImage(chip, image_file):
     """
     Load a firmware image. Can be for any supported SoC.
 
@@ -43,8 +43,9 @@ def LoadFirmwareImage(chip, filename):
     Returns a BaseFirmwareImage subclass, either ESP8266ROMFirmwareImage (v1)
     or ESP8266V2FirmwareImage (v2).
     """
-    chip = re.sub(r"[-()]", "", chip.lower())
-    with open(filename, "rb") as f:
+
+    def select_image_class(f, chip):
+        chip = re.sub(r"[-()]", "", chip.lower())
         if chip != "esp8266":
             return {
                 "esp32": ESP32FirmwareImage,
@@ -66,6 +67,11 @@ def LoadFirmwareImage(chip, filename):
                 return ESP8266V2FirmwareImage(f)
             else:
                 raise FatalError("Invalid image magic number: %d" % magic)
+
+    if isinstance(image_file, str):
+        with open(image_file, "rb") as f:
+            return select_image_class(f, chip)
+    return select_image_class(image_file, chip)
 
 
 class ImageSegment(object):

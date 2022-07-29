@@ -328,7 +328,7 @@ def main(argv=None, esp=None):
     )
     parser_write_flash.add_argument(
         "--force",
-        help="Force write even if Secure Boot is enabled. Use with caution!",
+        help="Force write, skip security and compatibility checks. Use with caution!",
         action="store_true",
     )
 
