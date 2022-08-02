@@ -33,7 +33,7 @@ from .loader import (
     ESPLoader,
     timeout_per_mb,
 )
-from .targets import CHIP_DEFS, CHIP_LIST, ROM_LIST
+from .targets import CHIP_DEFS, CHIP_LIST, ESP8266ROM, ROM_LIST
 from .util import (
     FatalError,
     NotImplementedInROMError,
@@ -708,9 +708,45 @@ def image_info(args):
         except AttributeError:
             pass  # ESP8266 image has no append_digest field
 
-    if args.chip == "auto":
-        print("WARNING: --chip not specified, defaulting to ESP8266.")
-        args.chip = "esp8266"
+    with open(args.filename, "rb") as f:
+        # magic number
+        try:
+            common_header = f.read(8)
+            magic = common_header[0]
+        except IndexError:
+            raise FatalError("File is empty")
+        if magic not in [
+            ESPLoader.ESP_IMAGE_MAGIC,
+            ESP8266V2FirmwareImage.IMAGE_V2_MAGIC,
+        ]:
+            raise FatalError(
+                "This is not a valid image "
+                "(invalid magic number: {:#x})".format(magic)
+            )
+
+        if args.chip == "auto":
+            try:
+                extended_header = f.read(16)
+                # reserved fields, should all be zero
+                if int.from_bytes(extended_header[7:-1], "little") != 0:
+                    raise FatalError("Reserved fields not all zero")
+
+                # append_digest, either 0 or 1
+                if extended_header[-1] not in [0, 1]:
+                    raise FatalError("Append digest field not 0 or 1")
+
+                chip_id = int.from_bytes(extended_header[4:5], "little")
+                for rom in [n for n in ROM_LIST if n != ESP8266ROM]:
+                    if chip_id == rom.IMAGE_CHIP_ID:
+                        args.chip = rom.CHIP_NAME
+                        break
+                else:
+                    raise FatalError(f"Unknown image chip ID ({chip_id})")
+            except FatalError:
+                args.chip = "esp8266"
+
+            print(f"Detected image type: {args.chip.upper()}")
+
     image = LoadFirmwareImage(args.chip, args.filename)
 
     if args.version == "2":

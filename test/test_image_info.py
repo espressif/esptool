@@ -132,6 +132,38 @@ class ImageInfoTests(unittest.TestCase):
             "Wrong segment info",
         )
 
+    def test_image_type_detection(self):
+        # ESP8266, version 1 and 2
+        out = self.run_image_info("auto", NODEMCU_FILE, "1")
+        self.assertTrue("Detected image type: ESP8266" in out)
+        self.assertTrue("Segment 1: len 0x05ed4" in out)
+        out = self.run_image_info("auto", NODEMCU_FILE, "2")
+        self.assertTrue("Detected image type: ESP8266" in out)
+        self.assertTrue("Flash freq: 40m" in out)
+        out = self.run_image_info("auto", "esp8266_deepsleep.bin", "2")
+        self.assertTrue("Detected image type: ESP8266" in out)
+
+        # ESP32, with and without detection
+        out = self.run_image_info("auto", "bootloader_esp32.bin", "2")
+        self.assertTrue("Detected image type: ESP32" in out)
+        out = self.run_image_info("auto", "helloworld-esp32_edit.bin", "2")
+        self.assertTrue("Detected image type: ESP32" in out)
+        out = self.run_image_info("esp32", "bootloader_esp32.bin", "2")
+        self.assertFalse("Detected image type: ESP32" in out)
+
+        # ESP32-C3
+        out = self.run_image_info("auto", "bootloader_esp32c3.bin", "2")
+        self.assertTrue("Detected image type: ESP32-C3" in out)
+
+        # ESP32-S3
+        out = self.run_image_info("auto", "bootloader_esp32s3.bin", "2")
+        self.assertTrue("Detected image type: ESP32-S3" in out)
+
+    @unittest.expectedFailure
+    def test_invalid_image_type_detection(self):
+        # Invalid image
+        self.run_image_info("auto", "one_kb.bin", "2")
+
 
 if __name__ == "__main__":
     unittest.main(buffer=True)

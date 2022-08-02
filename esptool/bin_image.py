@@ -33,20 +33,6 @@ def align_file_position(f, size):
     f.seek(align, 1)
 
 
-class ESPBOOTLOADER(object):
-    """
-    These are constants related to software ESP8266 bootloader,
-    working with 'v2' image files
-    """
-
-    # First byte of the "v2" application image
-    IMAGE_V2_MAGIC = 0xEA
-
-    # First 'segment' value in a "v2" application image,
-    # appears to be a constant version value?
-    IMAGE_V2_SEGMENT = 4
-
-
 def LoadFirmwareImage(chip, filename):
     """
     Load a firmware image. Can be for any supported SoC.
@@ -76,7 +62,7 @@ def LoadFirmwareImage(chip, filename):
             f.seek(0)
             if magic == ESPLoader.ESP_IMAGE_MAGIC:
                 return ESP8266ROMFirmwareImage(f)
-            elif magic == ESPBOOTLOADER.IMAGE_V2_MAGIC:
+            elif magic == ESP8266V2FirmwareImage.IMAGE_V2_MAGIC:
                 return ESP8266V2FirmwareImage(f)
             else:
                 raise FatalError("Invalid image magic number: %d" % magic)
@@ -415,13 +401,19 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
     """
 
     ROM_LOADER = ESP8266ROM
+    # First byte of the "v2" application image
+    IMAGE_V2_MAGIC = 0xEA
+
+    # First 'segment' value in a "v2" application image,
+    # appears to be a constant version value?
+    IMAGE_V2_SEGMENT = 4
 
     def __init__(self, load_file=None):
         super(ESP8266V2FirmwareImage, self).__init__()
         self.version = 2
         if load_file is not None:
-            segments = self.load_common_header(load_file, ESPBOOTLOADER.IMAGE_V2_MAGIC)
-            if segments != ESPBOOTLOADER.IMAGE_V2_SEGMENT:
+            segments = self.load_common_header(load_file, self.IMAGE_V2_MAGIC)
+            if segments != self.IMAGE_V2_SEGMENT:
                 # segment count is not really segment count here,
                 # but we expect to see '4'
                 print(
@@ -489,8 +481,8 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             f.write(
                 struct.pack(
                     b"<BBBBI",
-                    ESPBOOTLOADER.IMAGE_V2_MAGIC,
-                    ESPBOOTLOADER.IMAGE_V2_SEGMENT,
+                    self.IMAGE_V2_MAGIC,
+                    self.IMAGE_V2_SEGMENT,
                     self.flash_mode,
                     self.flash_size_freq,
                     self.entrypoint,

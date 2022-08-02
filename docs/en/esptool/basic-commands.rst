@@ -187,13 +187,7 @@ This information corresponds to the headers described in :ref:`image-format`.
 
 ::
 
-    esptool.py --chip {IDF_TARGET_NAME} image_info --version 2 my_esp_app.bin
-
-.. only:: not esp8266
-
-    .. note::
-
-        Note that ``--chip {IDF_TARGET_NAME}`` is required when reading {IDF_TARGET_NAME} images. Otherwise the default is ``--chip esp8266`` and the image will be interpreted as an invalid ESP8266 image.
+    esptool.py image_info --version 2 my_esp_app.bin
 
 .. _merge-bin:
 
