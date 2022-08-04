@@ -42,7 +42,7 @@ jobs:
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=build_tools/espressif.ico espsecure.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=build_tools/espressif.ico esp_rfc2217_server.py
       - name: Sign binaries
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && github.event_name != 'pull_request'
         env:
           CERTIFICATE: ${{ secrets.CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
