@@ -12,13 +12,17 @@ jobs:
         include:
         - os: macos-latest
           TARGET: macos
+          SEPARATOR: ':'
         - os: ubuntu-latest
           TARGET: linux-amd64
+          SEPARATOR: ':'
         - os: windows-latest
           TARGET: win64
           EXTEN: .exe
+          SEPARATOR: ';'
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
+      STUBS_DIR: /esptool/targets/stub_flasher/
     steps:
       - name: Checkout repository
         uses: actions/checkout@v1
@@ -33,7 +37,7 @@ jobs:
           pip install --user -e .
       - name: Build with PyInstaller
         run: |
-          pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=build_tools/espressif.ico esptool.py
+          pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=build_tools/espressif.ico --add-data=".${{ env.STUBS_DIR }}*.json${{ matrix.SEPARATOR }}${{ env.STUBS_DIR }}" esptool.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=build_tools/espressif.ico espefuse.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=build_tools/espressif.ico espsecure.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=build_tools/espressif.ico esp_rfc2217_server.py
