@@ -208,6 +208,7 @@ class ESP32S3ROM(ESP32ROM):
             self._setRTS(False)
             time.sleep(0.2)
         else:
+            time.sleep(0.1)
             self._setRTS(False)
 
 
