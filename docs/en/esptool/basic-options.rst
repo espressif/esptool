@@ -33,7 +33,9 @@ Serial Port
 If using Cygwin or WSL on Windows, you have to convert the Windows-style name into a Unix-style path (``COM1`` -> ``/dev/ttyS0``, and so on). (This is not necessary if using ESP-IDF with the supplied Windows MSYS2 environment,
 this environment uses a native Windows Python which accepts COM ports as-is.)
 
-In Linux, the current user may not have access to serial ports and a "Permission Denied" error will appear. On most Linux distributions, the solution is to add the user to the ``dialout`` group with a command like ``sudo usermod -a -G dialout <USERNAME>``.
+In Linux, the current user may not have access to serial ports and a "Permission Denied" or "Port doesn't exist" errors may appear.
+On most Linux distributions, the solution is to add the user to the ``dialout`` group (check e.g. ``ls -l /dev/ttyUSB0`` to find the group) with a command like ``sudo usermod -a -G dialout $USER``.
+You can call ``su - $USER`` to enable read and write permissions for the serial port without having to log out and back in again.
 Check your Linux distribution's documentation for more information.
 
 Baud Rate
