@@ -8,6 +8,7 @@ import struct
 import time
 
 from .esp32 import ESP32ROM
+from ..loader import ESPLoader
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -259,6 +260,9 @@ class ESP32S3ROM(ESP32ROM):
         else:
             time.sleep(0.1)
             self._setRTS(False)
+
+    def change_baud(self, baud):
+        ESPLoader.change_baud(self, baud)
 
 
 class ESP32S3StubLoader(ESP32S3ROM):

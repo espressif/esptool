@@ -5,11 +5,11 @@
 
 import struct
 
-from .esp32 import ESP32ROM
+from .esp32c3 import ESP32C3ROM
 from ..util import FatalError, NotImplementedInROMError
 
 
-class ESP32H2BETA1ROM(ESP32ROM):
+class ESP32H2BETA1ROM(ESP32C3ROM):
     CHIP_NAME = "ESP32-H2(beta1)"
     IMAGE_CHIP_ID = 10
 

@@ -6,6 +6,7 @@
 import struct
 
 from .esp32 import ESP32ROM
+from ..loader import ESPLoader
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -154,6 +155,9 @@ class ESP32C3ROM(ESP32ROM):
         purposes = [self.get_key_block_purpose(b) for b in range(6)]
 
         return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
+
+    def change_baud(self, baud):
+        ESPLoader.change_baud(self, baud)
 
 
 class ESP32C3StubLoader(ESP32C3ROM):

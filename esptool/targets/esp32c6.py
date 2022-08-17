@@ -5,11 +5,11 @@
 
 import struct
 
-from .esp32 import ESP32ROM
+from .esp32c3 import ESP32C3ROM
 from ..util import FatalError, NotImplementedInROMError
 
 
-class ESP32C6ROM(ESP32ROM):
+class ESP32C6ROM(ESP32C3ROM):
     CHIP_NAME = "ESP32-C6"
     IMAGE_CHIP_ID = 13
 

@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import struct
+import time
 
 from ..loader import ESPLoader
 from ..util import FatalError, NotSupportedError
@@ -57,6 +58,10 @@ class ESP32ROM(ESPLoader):
     UART_CLKDIV_REG = 0x3FF40014
 
     XTAL_CLK_DIVIDER = 1
+
+    RTCCALICFG1 = 0x3FF5F06C
+    TIMERS_RTC_CALI_VALUE = 0x01FFFFFF
+    TIMERS_RTC_CALI_VALUE_S = 7
 
     FLASH_SIZES = {
         "1MB": 0x00,
@@ -342,6 +347,33 @@ class ESP32ROM(ESPLoader):
                 progress_fn(len(data), length)
         return data
 
+    def get_rom_cal_crystal_freq(self):
+        """
+        Get the crystal frequency calculated by the ROM
+        """
+        # - Simulate the calculation in the ROM to get the XTAL frequency
+        #   calculated by the ROM
+
+        cali_val = (
+            self.read_reg(self.RTCCALICFG1) >> self.TIMERS_RTC_CALI_VALUE_S
+        ) & self.TIMERS_RTC_CALI_VALUE
+        clk_8M_freq = self.read_efuse(4) & (0xFF)  # EFUSE_RD_CK8M_FREQ
+        rom_calculated_freq = cali_val * 15625 * clk_8M_freq / 40
+        return rom_calculated_freq
+
+    def change_baud(self, baud):
+        # It's a workaround to avoid esp32 CK_8M frequency drift.
+        rom_calculated_freq = self.get_rom_cal_crystal_freq()
+        valid_freq = 40000000 if rom_calculated_freq > 33000000 else 26000000
+        false_rom_baud = int(baud * rom_calculated_freq // valid_freq)
+
+        print(f"Changing baud rate to {baud}")
+        self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", false_rom_baud, 0))
+        print("Changed.")
+        self._set_port_baudrate(baud)
+        time.sleep(0.05)  # get rid of garbage sent during baud rate change
+        self.flush_input()
+
 
 class ESP32StubLoader(ESP32ROM):
     """Access class for ESP32 stub loader, runs on top of ROM."""
@@ -355,6 +387,9 @@ class ESP32StubLoader(ESP32ROM):
         self._port = rom_loader._port
         self._trace_enabled = rom_loader._trace_enabled
         self.flush_input()  # resets _slip_reader
+
+    def change_baud(self, baud):
+        ESPLoader.change_baud(self, baud)
 
 
 ESP32ROM.STUB_CLASS = ESP32StubLoader
