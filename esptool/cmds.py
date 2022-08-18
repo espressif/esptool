@@ -58,7 +58,9 @@ DETECTED_FLASH_SIZES = {
     0x18: "16MB",
     0x19: "32MB",
     0x1A: "64MB",
+    0x20: "64MB",
     0x21: "128MB",
+    0x22: "256MB",
 }
 
 FLASH_MODES = {"qio": 0, "qout": 1, "dio": 2, "dout": 3}
