@@ -109,7 +109,7 @@ class ESP32C3ROM(ESP32ROM):
         return "%s (revision %d)" % (chip_name, chip_revision)
 
     def get_chip_features(self):
-        return ["Wi-Fi"]
+        return ["WiFi", "BLE"]
 
     def get_crystal_freq(self):
         # ESP32C3 XTAL is fixed to 40MHz
