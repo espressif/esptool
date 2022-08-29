@@ -261,6 +261,8 @@ target_esptool_test_esp32c2_26mhz:
 combine_reports:
   stage: report
   image: python:3.7-bullseye
+  tags:
+    - host_test
   artifacts:
     reports:
       cobertura: cobertura_report.xml
