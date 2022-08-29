@@ -50,7 +50,7 @@ On client:
 
 ::
 
-    esptool -p socket://localhost:4000 flash_id
+    esptool.py -p socket://localhost:4000 flash_id
 
 .. note::
 

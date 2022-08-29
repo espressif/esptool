@@ -16,7 +16,7 @@ With some Python installations this may not work and you’ll receive an error, 
 
 `Setuptools <https://setuptools.pypa.io/en/latest/userguide/quickstart.html>`_ is also a requirement which is not available on all systems by default. You can install it by a package manager of your operating system, or by ``pip install setuptools``.
 
-After installing, you will have ``esptool.py`` installed into the default Python executables directory and you should be able to run it with the command ``esptool`` or ``python -m esptool``. Please note that probably only ``python -m esptool`` will work for Pythons installed from Windows Store.
+After installing, you will have ``esptool.py`` installed into the default Python executables directory and you should be able to run it with the command ``esptool.py`` or ``python -m esptool``. Please note that probably only ``python -m esptool`` will work for Pythons installed from Windows Store.
 
 .. note::
 

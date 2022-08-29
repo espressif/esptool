@@ -120,22 +120,20 @@ A second option ``--non-volatile`` can be used in order to send a ``WREN`` (06h)
 
     Setting status bits (particularly non-volatile ones) can have permanent side effects for some flash chips, so check carefully before using this command to set any bits!
 
-.. _chip-id:
-
-Read the Chip ID: chip_id
--------------------------
-
-The ``chip_id`` command allows you to read a 4 byte ID which forms part of the MAC address. It is usually better to use ``read_mac`` to identify a chip.
-
-::
-
-    esptool.py chip_id
-
-On ESP8266, output is the same as the ``system_get_chip_id()`` SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero.
-
-On ESP32, there is no ``system_get_chip_id()`` function and this command is the same as ``esptool.py read_mac``.
-
 .. only:: esp8266
+
+    .. _chip-id:
+
+    Read the Chip ID: chip_id
+    -------------------------
+
+    The ``chip_id`` command allows you to read a 4 byte ID which forms part of the MAC address. It is usually better to use ``read_mac`` to identify a chip.
+
+    On {IDF_TARGET_NAME}, output is the same as the ``system_get_chip_id()`` SDK function. The chip ID is four bytes long, the lower three bytes are the final bytes of the MAC address. The upper byte is zero.
+
+    ::
+
+        esptool.py chip_id
 
     .. _make-image:
 

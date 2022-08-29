@@ -5,6 +5,16 @@ Basic Options
 
 These are the basic/fundamental esptool options needed to define the communication with an ESP target. For advanced configuration options, see the :ref:`advanced-options` page.
 
+.. _chip-type:
+
+Chip Type
+---------
+
+* The target chip type can be selected using the ``--chip``/ ``-c`` option, e.g. ``esptool.py --chip {IDF_TARGET_PATH_NAME} <command>``.
+* A default chip type can be specified by setting the ``ESPTOOL_CHIP`` environment variable.
+* If no ``-c`` option or ``ESPTOOL_CHIP`` value is specified, ``esptool.py`` automatically detects the chip type when connecting.
+* Binary image generation commands, such as :ref:`elf2image <elf-2-image>` or :ref:`merge_bin <merge-bin>`, require the chip type to be specified.
+
 .. _serial-port:
 
 Serial Port

@@ -34,7 +34,7 @@ This command supports simultaneous burning of multiple eFuses, it doesn't matter
     Check all blocks for burn...
     idx, BLOCK_NAME,          Conclusion
     [00] BLOCK0               is empty, will burn the new value
-    . 
+    .
     This is an irreversible operation!
     Type 'BURN' (all capitals) to continue.
 

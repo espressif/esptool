@@ -138,6 +138,8 @@ Example output:
 
 Refer to `flashrom source code <https://review.coreboot.org/plugins/gitiles/flashrom/+/refs/heads/master/flashchips.h>`__ for flash chip manufacturer name and part number.
 
+.. _elf-2-image:
+
 Convert ELF to Binary: elf2image
 --------------------------------
 
@@ -234,6 +236,6 @@ The following commands are less commonly used, or only of interest to advanced u
     *  :ref:`read-mem-write-mem`
     *  :ref:`read-flash-status`
     *  :ref:`write-flash-status`
-    *  :ref:`chip-id`
+    :esp8266: *  :ref:`chip-id`
     :esp8266: *  :ref:`make-image`
     :esp8266: *  :ref:`run`
