@@ -149,6 +149,12 @@ class EspEfuses(base_fields.EspEfusesBase):
                     )
                     for efuse in self.Fields.ADC_CALIBRATION
                 ]
+            self.efuses += [
+                EfuseField.from_tuple(
+                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                )
+                for efuse in self.Fields.CALC
+            ]
 
     def __getitem__(self, efuse_name):
         """Return the efuse field with the given name"""
@@ -278,6 +284,8 @@ class EfuseField(base_fields.EfuseFieldBase):
             "spipin": EfuseSpiPinField,
             "vref": EfuseVRefField,
             "adc_tp": EfuseAdcPointCalibration,
+            "wafer": EfuseWafer,
+            "pkg": EfusePkg,
         }.get(type_class, EfuseField)(parent, efuse_tuple)
 
     def get_info(self):
@@ -391,6 +399,38 @@ class EfuseMacField(EfuseField):
             # Writing the BLK0 default MAC is not possible,
             # as it's written in the factory.
             raise esptool.FatalError("Writing Factory MAC address is not supported")
+
+
+class EfuseWafer(EfuseField):
+    def get(self, from_read=True):
+        rev_bit0 = self.parent["CHIP_VER_REV1"].get(from_read)
+        rev_bit1 = self.parent["CHIP_VER_REV2"].get(from_read)
+        apb_ctl_date = self.parent.read_reg(self.parent.REGS.APB_CTL_DATE_ADDR)
+        rev_bit2 = (
+            apb_ctl_date >> self.parent.REGS.APB_CTL_DATE_S
+        ) & self.parent.REGS.APB_CTL_DATE_V
+        combine_value = (rev_bit2 << 2) | (rev_bit1 << 1) | rev_bit0
+
+        revision = {
+            0: 0,
+            1: 1,
+            3: 2,
+            7: 3,
+        }.get(combine_value, 0)
+        return revision
+
+    def save(self, new_value):
+        raise esptool.FatalError("Burning %s is not supported" % self.name)
+
+
+class EfusePkg(EfuseField):
+    def get(self, from_read=True):
+        lo_bits = self.parent["CHIP_PACKAGE"].get(from_read)
+        hi_bits = self.parent["CHIP_PACKAGE_4BIT"].get(from_read)
+        return (hi_bits << 3) + lo_bits
+
+    def save(self, new_value):
+        raise esptool.FatalError("Burning %s is not supported" % self.name)
 
 
 class EfuseSpiPinField(EfuseField):

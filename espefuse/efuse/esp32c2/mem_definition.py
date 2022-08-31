@@ -117,6 +117,8 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SECURE_BOOT_EN",              "security",  0,  1,  21, "bool",     2,    None, None,         "Configures secure boot", None),
         ("SECURE_VERSION",              "identity",  0,  1,  22, "uint:4",   4,    None, "bitcount",   "Secure version (anti-rollback feature)", None),
         ("CUSTOM_MAC_USED",             "identity",  0,  1,  26, "bool",     4,    None, None,         "Enable CUSTOM_MAC programming", None),
+        ("DISABLE_WAFER_VERSION_MAJOR", "config",    0,  1,  27, "bool",     4,    None, None,         "Disables check of wafer version major", None),
+        ("DISABLE_BLK_VERSION_MAJOR",   "config",    0,  1,  28, "bool",     4,    None, None,         "Disables check of blk version major", None),
 
         #
         # Parameters in BLOCK1
@@ -129,12 +131,11 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("MAC",                        "identity",   2,  0,  0,  "bytes:6",  6,    None, 'mac',        "Factory MAC Address", None),
         ("WAFER_VERSION_MINOR",        "identity",   2,  1,  16,  "uint:4",  6,    None, None,         "Minor WAFER version", None),
         ("WAFER_VERSION_MAJOR",        "identity",   2,  1,  20,  "uint:2",  6,    None, None,         "Major WAFER version", None),
-        ("PKG_VERSION",                "identity",   2,  1,  22,  "uint:3",  6,    None, None,         "Package version",
-                                                                                                       {0: "ESP32-C2"}),
-        ("BLOCK2_VERSION_MINOR",       "identity",   2,  1,  25,  "uint:3",  6,    None, None,         "Minor version of BLOCK2",
+        ("PKG_VERSION",                "identity",   2,  1,  22,  "uint:3",  6,    None, None,         "Package version", None),
+        ("BLK_VERSION_MINOR",          "identity",   2,  1,  25,  "uint:3",  6,    None, None,         "Minor version of BLOCK2",
                                                                                                        {0: "No calibration", 1: "With calibration"}),
 
-        ("BLOCK2_VERSION_MAJOR",       "identity",   2,  1,  28,  "uint:2",  6,    None, None,         "Major version of BLOCK2", None),
+        ("BLK_VERSION_MAJOR",          "identity",   2,  1,  28,  "uint:2",  6,    None, None,         "Major version of BLOCK2", None),
         ("LDO_VOL_BIAS_CONFIG_HIGH",        "ldo",   2,  2,   0,  "uint:27", 6,    None, None,         "", None),
         ("PVT_LOW",                         "pvt",   2,  2,  27,  "uint:5",  6,    None, None,         "", None),
         ("PVT_HIGH",                        "pvt",   2,  3,   0,  "uint:10", 6,    None, None,         "", None),
@@ -150,7 +151,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('BLOCK_KEY0_HI_128',  "security", 3,  4, 0,  "bytes:16", 7, 1,      "keyblock", "BLOCK_KEY0 - higher 128-bits. 128-bits key of Secure Boot.", None),
     ]
 
-    # if BLOCK2_VERSION is 1, these efuse fields are in BLOCK2
+    # if BLK_VERSION_MINOR is 1, these efuse fields are in BLOCK2
     BLOCK2_CALIBRATION_EFUSES = [
         # Name                      Category      Block Word Pos Type:len  WR_DIS RD_DIS Class         Description                Dictionary
     ]

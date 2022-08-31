@@ -37,7 +37,7 @@
     = 94:b5:55:80:00:d0 (OK) R/W 
     WAFER_VERSION (BLOCK2)                             WAFER version                                      = (revision 0) R/W (0b000)
     PKG_VERSION (BLOCK2)                               Package version                                    = ESP32-C2 R/W (0b000)
-    BLOCK2_VERSION (BLOCK2)                            Version of BLOCK2                                  = No calibration R/W (0b000)
+    BLK_VERSION_MINOR (BLOCK2)                         Version of BLOCK2                                  = No calibration R/W (0b000)
 
     Jtag Config fuses:
     DIS_PAD_JTAG (BLOCK0)                              Permanently disable JTAG access via padsUSB JTAG i = False R/W (0b0)

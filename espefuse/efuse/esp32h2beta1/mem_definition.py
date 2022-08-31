@@ -163,6 +163,8 @@ class EfuseDefineFields(EfuseFieldsBase):
                                                                                                        "during SPI boot", None),
         ("SECURE_VERSION",             "identity",   0,  4, 14,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
                                                                                                        None),
+        ("DISABLE_WAFER_VERSION_MAJOR", "config",    0,  5, 0,   "bool",     19,   None, None,         "Disables check of wafer version major", None),
+        ("DISABLE_BLK_VERSION_MAJOR",   "config",    0,  5, 1,   "bool",     19,   None, None,         "Disables check of blk version major", None),
         #
         # Table 53: Parameters in BLOCK1-10
         # Name                          Category  Block Word Pos  Type:len WR_DIS RD_DIS Class         Description                Dictionary

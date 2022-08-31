@@ -415,7 +415,7 @@ def burn_efuse(esp, efuses, args):
 
     if (
         esp.CHIP_NAME == "ESP32"
-        and "revision 3" in esp.get_chip_description()
+        and esp.get_chip_revision() >= 300
         and "UART_DOWNLOAD_DIS" in efuse_name_list
     ):
         print(
@@ -466,7 +466,7 @@ def read_protect_efuse(esp, efuses, args):
                 if (
                     efuse_name == "BLOCK2"
                     and not efuses["ABS_DONE_0"].get()
-                    and "revision 3" in esp.get_chip_description()
+                    and esp.get_chip_revision() >= 300
                 ):
                     if efuses["ABS_DONE_1"].get():
                         raise esptool.FatalError(

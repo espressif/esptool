@@ -660,6 +660,9 @@ class EfuseFieldBase(EfuseProtectBase):
         self.save_to_block(bitarray_field)
 
     def update(self, bit_array_block):
+        if self.word is None or self.pos is None:
+            self.bitarray.overwrite(self.convert_to_bitstring(self.get()), pos=0)
+            return
         field_len = self.bitarray.len
         bit_array_block.pos = bit_array_block.length - (
             self.word * 32 + self.pos + field_len

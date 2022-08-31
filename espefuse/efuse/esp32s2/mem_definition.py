@@ -230,6 +230,8 @@ class EfuseDefineFields(EfuseFieldsBase):
                                                                                                        "during SPI boot", None),
         ("SECURE_VERSION",             "identity",   0,  4, 11,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
                                                                                                        None),
+        ("DISABLE_WAFER_VERSION_MAJOR", "config",    0,  5, 0,   "bool",     19,   None, None,         "Disables check of wafer version major", None),
+        ("DISABLE_BLK_VERSION_MAJOR",   "config",    0,  5, 1,   "bool",     19,   None, None,         "Disables check of blk version major", None),
         #
         # Table 53: Parameters in BLOCK1-10
         # Name                          Category  Block Word Pos  Type:len WR_DIS RD_DIS Class         Description                Dictionary
@@ -245,21 +247,23 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SPI_PAD_CONFIG_D5",    "spi_pad_config",   1,  3, 0,   "uint:6",   20,   None, None,         "SPI D5 pad", None),
         ("SPI_PAD_CONFIG_D6",    "spi_pad_config",   1,  3, 6,   "uint:6",   20,   None, None,         "SPI D6 pad", None),
         ("SPI_PAD_CONFIG_D7",    "spi_pad_config",   1,  3, 12,  "uint:6",   20,   None, None,         "SPI D7 pad", None),
-        ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
-         {0: "A"}),
+
+        ("WAFER_VERSION_MAJOR",        "identity",   1,  3, 18,  "uint:2",   20,   None, None,         "WAFER_VERSION_MAJOR", None),
+        ("WAFER_VERSION_MINOR_HI",     "identity",   1,  3, 20,  "uint:1",   20,   None, None,         "WAFER_VERSION_MINOR most significant bits", None),
         ("FLASH_VERSION",              "identity",   1,  3, 21,  "uint:4",   20,   None, None,         "Flash version",
          {0: "No Embedded Flash",
           1: "Embedded Flash 2MB",
           2: "Embedded Flash 4MB"}),
-        ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
+        ("BLK_VERSION_MAJOR",          "identity",   1,  3, 25,  "uint:2",   20,   None, None,         "BLOCK version major", None),
         ("PSRAM_VERSION",              "identity",   1,  3, 28,  "uint:4",   20,   None, None,         "PSRAM version",
          {0: "No Embedded PSRAM",
           1: "Embedded PSRAM 2MB",
           2: "Embedded PSRAM 4MB"}),
-        ("PKG_VERSION",                "identity",   1,  4, 0,   "uint:4",   20,   None, None,         "Package version",
-         {0: "ESP32-S2"}),
+        ("PKG_VERSION",                "identity",   1,  4,  0,  "uint:4",   20,   None, None,         "Package version", None),
+        ("WAFER_VERSION_MINOR_LO",     "identity",   1,  4,  4,  "uint:3",   20,   None, None,         "WAFER_VERSION_MINOR least significant bits", None),
+
         ('OPTIONAL_UNIQUE_ID',         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
-        ('BLOCK2_VERSION',             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
+        ("BLK_VERSION_MINOR",          "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "BLOCK version minor",
          {0: "No calibration",
           1: "With ADC calibration V1",
           2: "With ADC calibration V2"}),
@@ -278,7 +282,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('BLOCK_SYS_DATA2',              "security", 10, 0, 0,   "bytes:32", 29,   6,    None,         "System data (part 2)", None),
     ]
 
-    # if BLOCK2_VERSION is 1, these efuse fields are in BLOCK2
+    # if BLK_VERSION_MINOR is 1, these efuse fields are in BLOCK2
     BLOCK2_CALIBRATION_EFUSES = [
         # Name                      Category      Block Word Pos Type:len  WR_DIS RD_DIS Class         Description                Dictionary
         ('TEMP_SENSOR_CAL',         "calibration",   2,  4, 7,   "uint:9",   21,   None, "t_sensor",   "Temperature calibration", None),
@@ -298,5 +302,9 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('ADC2_MODE1_D1',           "calibration",   2,  7, 14,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 14", None),
         ('ADC2_MODE2_D1',           "calibration",   2,  7, 20,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 15", None),
         ('ADC2_MODE3_D1',           "calibration",   2,  7, 26,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 16", None),
+    ]
+
+    CALC = [
+        ("WAFER_VERSION_MINOR",  "identity",  0, None, None, "uint:4",  None,    None, "wafer",    "calc WAFER VERSION MINOR = WAFER_VERSION_MINOR_HI << 3 + WAFER_VERSION_MINOR_LO (read only)", None),
     ]
 # fmt: on

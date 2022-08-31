@@ -107,7 +107,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
             ]
         else:
-            if self["BLOCK2_VERSION_MINOR"].get() == 1:
+            if self["BLK_VERSION_MINOR"].get() == 1:
                 self.efuses += [
                     EfuseField.from_tuple(
                         self, self.Fields.get(efuse), self.Fields.get(efuse).class_type

@@ -42,6 +42,14 @@ class EmulateEfuseControllerBase(object):
 
     """ esptool method start >> """
 
+    def get_chip_description(self):
+        major_rev = self.get_major_chip_version()
+        minor_rev = self.get_minor_chip_version()
+        return f"{self.CHIP_NAME} (revision v{major_rev}.{minor_rev})"
+
+    def get_chip_revision(self):
+        return self.get_major_chip_version() * 100 + self.get_minor_chip_version()
+
     def read_efuse(self, n, block=0):
         """Read the nth word of the ESP3x EFUSE region."""
         blk = self.Blocks.get(self.Blocks.BLOCKS[block])

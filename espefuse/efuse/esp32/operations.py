@@ -275,11 +275,12 @@ def burn_key_digest(esp, efuses, args):
     if efuses.coding_scheme == efuses.REGS.CODING_SCHEME_34:
         raise esptool.FatalError("burn_key_digest only works with 'None' coding scheme")
 
-    chip_revision = esp.get_chip_description()
-    if "revision 3" not in chip_revision:
+    chip_revision = esp.get_chip_revision()
+    if chip_revision < 300:
         raise esptool.FatalError(
             "Incorrect chip revision for Secure boot v2. "
-            "Detected: %s. Expected: (revision 3)" % chip_revision
+            "Detected: v%d.%d. Expected: >= v3.0"
+            % (chip_revision / 100, chip_revision % 100)
         )
 
     digest = espsecure._digest_sbv2_public_key(args.keyfile)

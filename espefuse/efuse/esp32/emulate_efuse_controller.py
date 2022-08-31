@@ -27,11 +27,25 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     """ esptool method start >> """
 
-    def get_chip_description(self):
-        return "revision 3"
+    def get_major_chip_version(self):
+        return 3
+
+    def get_minor_chip_version(self):
+        return 0
 
     def get_crystal_freq(self):
         return 40  # MHz (common for all chips)
+
+    def read_reg(self, addr):
+        if addr == self.REGS.APB_CTL_DATE_ADDR:
+            return self.REGS.APB_CTL_DATE_V << self.REGS.APB_CTL_DATE_S
+        else:
+            val = 0
+            if addr == self.REGS.EFUSE_BLK0_RDATA3_REG:
+                val = self.REGS.EFUSE_RD_CHIP_VER_REV1
+            if addr == self.REGS.EFUSE_BLK0_RDATA5_REG:
+                val = self.REGS.EFUSE_RD_CHIP_VER_REV2
+            return val | super(EmulateEfuseController, self).read_reg(addr)
 
     """ << esptool method end """
 

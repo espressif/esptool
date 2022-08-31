@@ -47,7 +47,7 @@
     BLOCK1_VERSION (BLOCK1)                  BLOCK1 efuse version                               = 0 R/W (0b000)
     OPTIONAL_UNIQUE_ID (BLOCK2)(0 errors):   Optional unique 128-bit ID                        
     = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W 
-    BLOCK2_VERSION (BLOCK2)                  Version of BLOCK2                                  = No calibration R/W (0b000)
+    BLK_VERSION_MAJOR (BLOCK2)               Version of BLOCK2                                  = No calibration R/W (0b000)
     CUSTOM_MAC (BLOCK3)                      Custom MAC Address                                
     = 00:00:00:00:00:00 (OK) R/W 
 

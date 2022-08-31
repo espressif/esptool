@@ -107,13 +107,19 @@ class EspEfuses(base_fields.EspEfusesBase):
                 for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
             ]
         else:
-            if self["BLOCK2_VERSION"].get() == 1:
+            if self["BLK_VERSION_MINOR"].get() == 1:
                 self.efuses += [
                     EfuseField.from_tuple(
                         self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
                     )
                     for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
                 ]
+            self.efuses += [
+                EfuseField.from_tuple(
+                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                )
+                for efuse in self.Fields.CALC
+            ]
 
     def __getitem__(self, efuse_name):
         """Return the efuse field with the given name"""
@@ -358,6 +364,7 @@ class EfuseField(base_fields.EfuseFieldBase):
             "keypurpose": EfuseKeyPurposeField,
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
+            "wafer": EfuseWafer,
         }.get(type_class, EfuseField)(parent, efuse_tuple)
 
     def get_info(self):
@@ -374,6 +381,16 @@ class EfuseField(base_fields.EfuseFieldBase):
             if name is not None:
                 output += "\n  Purpose: %s\n " % (self.parent[name].get())
         return output
+
+
+class EfuseWafer(EfuseField):
+    def get(self, from_read=True):
+        hi_bits = self.parent["WAFER_VERSION_MINOR_HI"].get(from_read)
+        lo_bits = self.parent["WAFER_VERSION_MINOR_LO"].get(from_read)
+        return (hi_bits << 3) + lo_bits
+
+    def save(self, new_value):
+        raise esptool.FatalError("Burning %s is not supported" % self.name)
 
 
 class EfuseTempSensor(EfuseField):

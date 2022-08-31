@@ -47,6 +47,17 @@ class EfuseDefineRegisters(EfuseRegistersBase):
         80: (80, 128, 100),
     }
 
+    DR_REG_SYSCON_BASE = 0x3FF66000
+    APB_CTL_DATE_ADDR = DR_REG_SYSCON_BASE + 0x7C
+    APB_CTL_DATE_V = 0x1
+    APB_CTL_DATE_S = 31
+
+    EFUSE_BLK0_RDATA3_REG = DR_REG_EFUSE_BASE + 0x00C
+    EFUSE_RD_CHIP_VER_REV1 = 1 << 15
+
+    EFUSE_BLK0_RDATA5_REG = DR_REG_EFUSE_BASE + 0x014
+    EFUSE_RD_CHIP_VER_REV2 = 1 << 20
+
 
 # fmt: off
 class EfuseDefineBlocks(EfuseBlocksBase):
@@ -87,9 +98,9 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('MAC_CRC',              "identity",    0, 2, 16,  "uint:8",    3,    None, None,       "CRC8 for factory MAC address", None),
         ('CHIP_VER_REV1',        "identity",    0, 3, 15,  "bool",      3,    None, None,       "Silicon Revision 1", None),
         ('CHIP_VER_REV2',        "identity",    0, 5, 20,  "bool",      6,    None, None,       "Silicon Revision 2", None),
-        ('CHIP_VERSION',         "identity",    0, 3, 12,  "uint:2",    3,    None, None,       "Reserved for future chip versions", None),
+        ("WAFER_VERSION_MINOR",  "identity",    0, 5, 24,  "uint:2",    6,    None, None,       "WAFER VERSION MINOR", None),
         ('CHIP_PACKAGE',         "identity",    0, 3, 9,   "uint:3",    3,    None, None,       "Chip package identifier", None),
-        ('CHIP_PACKAGE_4BIT',    "identity",    0, 3, 2,   "bool",      3,    None, None,       "Chip package identifier #4bit", None),
+        ('CHIP_PACKAGE_4BIT',    "identity",    0, 3, 2,   "uint:1",    3,    None, None,       "Chip package identifier #4bit", None),
         ('XPD_SDIO_FORCE',       "config",      0, 4, 16,  "bool",      5,    None, None,       "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset", None),
         ('XPD_SDIO_REG',         "config",      0, 4, 14,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset", None),
         ('XPD_SDIO_TIEH',        "config",      0, 4, 15,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE & XPD_SDIO_REG",
@@ -148,5 +159,10 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('ADC1_TP_HIGH',         "calibration", 3, 3, 7,   "uint:9",    9,    2,    "adc_tp",   "ADC1 850mV reading", None),
         ('ADC2_TP_LOW',          "calibration", 3, 3, 16,  "uint:7",    9,    2,    "adc_tp",   "ADC2 150mV reading", None),
         ('ADC2_TP_HIGH',         "calibration", 3, 3, 23,  "uint:9",    9,    2,    "adc_tp",   "ADC2 850mV reading", None),
+    ]
+
+    CALC = [
+        ("WAFER_VERSION_MAJOR",  "identity",  0, None, None, "uint:3",  None,    None, "wafer", "calc WAFER VERSION MAJOR from CHIP_VER_REV1 and CHIP_VER_REV2 and apb_ctl_date (read only)", None),
+        ('PKG_VERSION',          "identity",  0, None, None, "uint:4",  None,    None, "pkg",   "calc Chip package = CHIP_PACKAGE_4BIT << 3 + CHIP_PACKAGE (read only)", None),
     ]
 # fmt: on

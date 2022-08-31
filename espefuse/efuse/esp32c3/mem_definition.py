@@ -178,6 +178,8 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("ERR_RST_ENABLE",               "config",   0,  4, 31,  "bool",     19,   None, None,         "Use BLOCK0 to check error record registers",
          {0: "without check",
           1: "with check"}),
+        ("DISABLE_WAFER_VERSION_MAJOR", "config",    0,  5, 0,   "bool",     19,   None, None,         "Disables check of wafer version major", None),
+        ("DISABLE_BLK_VERSION_MAJOR",   "config",    0,  5, 1,   "bool",     19,   None, None,         "Disables check of blk version major", None),
         #
         # Table 53: Parameters in BLOCK1-10
         # Name                          Category  Block Word Pos  Type:len WR_DIS RD_DIS Class         Description                Dictionary
@@ -193,13 +195,15 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SPI_PAD_CONFIG_D5",    "spi_pad_config",   1,  3, 0,   "uint:6",   20,   None, None,         "SPI D5 pad", None),
         ("SPI_PAD_CONFIG_D6",    "spi_pad_config",   1,  3, 6,   "uint:6",   20,   None, None,         "SPI D6 pad", None),
         ("SPI_PAD_CONFIG_D7",    "spi_pad_config",   1,  3, 12,  "uint:6",   20,   None, None,         "SPI D7 pad", None),
-        ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
-         {0: "(revision 0)", 1: "(revision 1)"}),
-        ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:3",   20,   None, None,         "Package version",
-         {0: "ESP32-C3"}),
-        ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
+
+        ("WAFER_VERSION_MINOR_LO",     "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER_VERSION_MINOR least significant bits", None),
+        ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:3",   20,   None, None,         "Package version", None),
+        ("BLK_VERSION_MINOR",          "identity",   1,  3, 24,  "uint:3",   20,   None, None,         "BLOCK version minor", None),
+        ("WAFER_VERSION_MINOR_HI",     "identity",   1,  5, 23,  "uint:1",   20,   None, None,         "WAFER_VERSION_MINOR most significant bits", None),
+        ("WAFER_VERSION_MAJOR",        "identity",   1,  5, 24,  "uint:2",   20,   None, None,         "WAFER_VERSION_MAJOR", None),
+
         ("OPTIONAL_UNIQUE_ID",         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
-        ("BLOCK2_VERSION",             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
+        ("BLK_VERSION_MAJOR",          "identity",   2,  4, 0,   "uint:2",   21,   None, None,         "BLOCK version major",
          {0: "No calibration",
           1: "With calibration"}),
         ("CUSTOM_MAC",                 "identity",   3,  6, 8,   "bytes:6",  22,   None, "mac",        "Custom MAC Address", None),
@@ -217,7 +221,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('BLOCK_SYS_DATA2',              "security", 10, 0, 0,   "bytes:32", 29,   6,    "keyblock",   "System data (part 2)", None),
     ]
 
-    # if BLOCK2_VERSION is 1, these efuse fields are in BLOCK2
+    # if BLK_VERSION_MAJOR is 1, these efuse fields are in BLOCK2
     BLOCK2_CALIBRATION_EFUSES = [
         # Name                      Category      Block Word Pos Type:len  WR_DIS RD_DIS Class         Description                Dictionary
         ('TEMP_SENSOR_CAL',         "calibration",   2,  4, 7,   "uint:9",   21,   None, "t_sensor",   "Temperature calibration", None),
@@ -237,5 +241,9 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('ADC2_MODE1_D1',           "calibration",   2,  7, 14,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 14", None),
         ('ADC2_MODE2_D1',           "calibration",   2,  7, 20,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 15", None),
         ('ADC2_MODE3_D1',           "calibration",   2,  7, 26,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 16", None),
+    ]
+
+    CALC = [
+        ("WAFER_VERSION_MINOR",  "identity",  0, None, None, "uint:4",  None,    None, "wafer",    "calc WAFER VERSION MINOR = WAFER_VERSION_MINOR_HI << 3 + WAFER_VERSION_MINOR_LO (read only)", None),
     ]
 # fmt: on

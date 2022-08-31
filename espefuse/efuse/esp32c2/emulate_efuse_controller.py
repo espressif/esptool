@@ -30,8 +30,11 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     """ esptool method start >>"""
 
-    def get_chip_description(self):
-        return ""
+    def get_major_chip_version(self):
+        return 1
+
+    def get_minor_chip_version(self):
+        return 0
 
     def get_crystal_freq(self):
         return 40  # MHz

@@ -149,6 +149,7 @@ class EfuseTestCase(unittest.TestCase):
                 self.assertIn(check_msg, output)
             if returncode:
                 print(output)
+                print(cmd)
             self.assertEqual(ret_code, returncode)
             return output
         except subprocess.CalledProcessError as error:
@@ -331,7 +332,7 @@ class TestWriteProtectionCommands(EfuseTestCase):
     def test_write_protect_efuse(self):
         self.espefuse_py("write_protect_efuse -h")
         if chip_target == "esp32":
-            efuse_lists = """WR_DIS RD_DIS CODING_SCHEME CHIP_VERSION CHIP_PACKAGE
+            efuse_lists = """WR_DIS RD_DIS CODING_SCHEME
                            XPD_SDIO_FORCE XPD_SDIO_REG XPD_SDIO_TIEH SPI_PAD_CONFIG_CLK
                            FLASH_CRYPT_CNT UART_DOWNLOAD_DIS FLASH_CRYPT_CONFIG
                            ADC_VREF BLOCK1 BLOCK2 BLOCK3"""
@@ -355,8 +356,8 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            SPI_PAD_CONFIG_D SPI_PAD_CONFIG_CS SPI_PAD_CONFIG_HD
                            SPI_PAD_CONFIG_WP SPI_PAD_CONFIG_DQS SPI_PAD_CONFIG_D4
                            SPI_PAD_CONFIG_D5 SPI_PAD_CONFIG_D6 SPI_PAD_CONFIG_D7
-                           WAFER_VERSION PKG_VERSION BLOCK1_VERSION OPTIONAL_UNIQUE_ID
-                           BLOCK2_VERSION BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1
+                           OPTIONAL_UNIQUE_ID
+                           BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1
                            BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5"""
             efuse_lists2 = "RD_DIS DIS_ICACHE"
         if chip_target == "esp32s2":
@@ -632,7 +633,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
         self.assertIn(
             "(Override SD_CMD pad (GPIO11/SPICS0)) 0b00000 -> 0b11111", output
         )
-        self.assertIn("BURN BLOCK0  - OK (write block == read block)", output)
+        self.assertIn("BURN BLOCK0  - OK (all write block bits are set)", output)
 
     def test_burn_mac_custom_efuse(self):
         crc_msg = "(OK)"
@@ -703,9 +704,13 @@ class TestBurnEfuseCommands(EfuseTestCase):
             self.assertIn(
                 "= 68 e1 ea d6 26 3a 84 8f 69 5f 14 c9 5a ad 28 23 R/W", output
             )
+            efuse_from_blk2 = "BLK_VERSION_MAJOR"
+            if chip_target == "esp32s2":
+                efuse_from_blk2 = "BLK_VERSION_MINOR"
+            if chip_target == "esp32h2beta1":
+                efuse_from_blk2 = "BLOCK2_VERSION"
             self.espefuse_py(
-                "burn_efuse \
-                              BLOCK2_VERSION  1",
+                "burn_efuse %s  1" % efuse_from_blk2,
                 check_msg="Burn into BLOCK_SYS_DATA is forbidden "
                 "(RS coding scheme does not allow this).",
                 ret_code=2,
@@ -1340,7 +1345,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
     def test_burn_key_digest(self):
         self.espefuse_py("burn_key_digest -h")
         esp = self.get_esptool()
-        if "revision 3" in esp.get_chip_description():
+        if esp.get_chip_revision() >= 300:
             self.espefuse_py(
                 "burn_key_digest secure_images/rsa_secure_boot_signing_key.pem"
             )
