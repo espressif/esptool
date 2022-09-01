@@ -87,6 +87,7 @@ class FatalError(RuntimeError):
         """
 
         err_defs = {
+            # ROM error codes
             0x101: "Out of memory",
             0x102: "Invalid argument",
             0x103: "Invalid state",
@@ -98,6 +99,18 @@ class FatalError(RuntimeError):
             0x109: "CRC or checksum was invalid",
             0x10A: "Version was invalid",
             0x10B: "MAC address was invalid",
+            # Flasher stub error codes
+            0xC000: "Bad data length",
+            0xC100: "Bad data checksum",
+            0xC200: "Bad blocksize",
+            0xC300: "Invalid command",
+            0xC400: "Failed SPI operation",
+            0xC500: "Failed SPI unlock",
+            0xC600: "Not in flash mode",
+            0xC700: "Inflate error",
+            0xC800: "Not enough data",
+            0xC900: "Too much data",
+            0xFF00: "Command not implemented",
         }
 
         err_code = struct.unpack(">H", result[:2])
