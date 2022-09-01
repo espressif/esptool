@@ -73,6 +73,7 @@ ERASE_WRITE_TIMEOUT_PER_MB = 40  # timeout (per megabyte) for erasing and writin
 MEM_END_ROM_TIMEOUT = 0.05  # short timeout for ESP_MEM_END, as it may never respond
 DEFAULT_SERIAL_WRITE_TIMEOUT = 10  # timeout for serial port write
 DEFAULT_CONNECT_ATTEMPTS = 7  # default number of times to try connection
+WRITE_BLOCK_ATTEMPTS = 3  # number of times to try writing a data block
 
 STUBS_DIR = os.path.join(os.path.dirname(__file__), "./targets/stub_flasher/")
 
@@ -803,29 +804,51 @@ class ESPLoader(object):
         return num_blocks
 
     def flash_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        """Write block to flash"""
-        self.check_command(
-            "write to target Flash after seq %d" % seq,
-            self.ESP_FLASH_DATA,
-            struct.pack("<IIII", len(data), seq, 0, 0) + data,
-            self.checksum(data),
-            timeout=timeout,
-        )
+        """Write block to flash, retry if fail"""
+        for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
+            try:
+                self.check_command(
+                    "write to target Flash after seq %d" % seq,
+                    self.ESP_FLASH_DATA,
+                    struct.pack("<IIII", len(data), seq, 0, 0) + data,
+                    self.checksum(data),
+                    timeout=timeout,
+                )
+                break
+            except FatalError:
+                if attempts_left:
+                    self.trace(
+                        "Block write failed, "
+                        f"retrying with {attempts_left} attempts left"
+                    )
+                else:
+                    raise
 
     def flash_encrypt_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        """Encrypt before writing to flash"""
+        """Encrypt, write block to flash, retry if fail"""
         if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
             # ROM support performs the encrypted writes via the normal write command,
             # triggered by flash_begin(begin_rom_encrypted=True)
             return self.flash_block(data, seq, timeout)
 
-        self.check_command(
-            "Write encrypted to target Flash after seq %d" % seq,
-            self.ESP_FLASH_ENCRYPT_DATA,
-            struct.pack("<IIII", len(data), seq, 0, 0) + data,
-            self.checksum(data),
-            timeout=timeout,
-        )
+        for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
+            try:
+                self.check_command(
+                    "Write encrypted to target Flash after seq %d" % seq,
+                    self.ESP_FLASH_ENCRYPT_DATA,
+                    struct.pack("<IIII", len(data), seq, 0, 0) + data,
+                    self.checksum(data),
+                    timeout=timeout,
+                )
+                break
+            except FatalError:
+                if attempts_left:
+                    self.trace(
+                        "Encrypted block write failed, "
+                        f"retrying with {attempts_left} attempts left"
+                    )
+                else:
+                    raise
 
     def flash_finish(self, reboot=False):
         """Leave flash mode and run/reboot"""
@@ -959,14 +982,25 @@ class ESPLoader(object):
 
     @stub_and_esp32_function_only
     def flash_defl_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        """Write block to flash, send compressed"""
-        self.check_command(
-            "write compressed data to flash after seq %d" % seq,
-            self.ESP_FLASH_DEFL_DATA,
-            struct.pack("<IIII", len(data), seq, 0, 0) + data,
-            self.checksum(data),
-            timeout=timeout,
-        )
+        """Write block to flash, send compressed, retry if fail"""
+        for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
+            try:
+                self.check_command(
+                    "write compressed data to flash after seq %d" % seq,
+                    self.ESP_FLASH_DEFL_DATA,
+                    struct.pack("<IIII", len(data), seq, 0, 0) + data,
+                    self.checksum(data),
+                    timeout=timeout,
+                )
+                break
+            except FatalError:
+                if attempts_left:
+                    self.trace(
+                        "Compressed block write failed, "
+                        f"retrying with {attempts_left} attempts left"
+                    )
+                else:
+                    raise
 
     @stub_and_esp32_function_only
     def flash_defl_finish(self, reboot=False):
