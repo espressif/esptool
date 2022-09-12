@@ -13,16 +13,6 @@ import zlib
 
 from .bin_image import ELFFile, ImageSegment, LoadFirmwareImage
 from .bin_image import (
-    ESP32C2FirmwareImage,
-    ESP32C3FirmwareImage,
-    ESP32C6BETAFirmwareImage,
-    ESP32C6FirmwareImage,
-    ESP32FirmwareImage,
-    ESP32H2BETA1FirmwareImage,
-    ESP32H2BETA2FirmwareImage,
-    ESP32S2FirmwareImage,
-    ESP32S3BETA2FirmwareImage,
-    ESP32S3FirmwareImage,
     ESP8266ROMFirmwareImage,
     ESP8266V2FirmwareImage,
     ESP8266V3FirmwareImage,
@@ -841,48 +831,14 @@ def elf2image(args):
 
     print("Creating {} image...".format(args.chip))
 
-    if args.chip == "esp32":
-        image = ESP32FirmwareImage()
-        if args.secure_pad:
+    if args.chip != "esp8266":
+        image = CHIP_DEFS[args.chip].BOOTLOADER_IMAGE()
+        if args.chip == "esp32" and args.secure_pad:
             image.secure_pad = "1"
-        elif args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32s2":
-        image = ESP32S2FirmwareImage()
         if args.secure_pad_v2:
             image.secure_pad = "2"
-    elif args.chip == "esp32s3beta2":
-        image = ESP32S3BETA2FirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32s3":
-        image = ESP32S3FirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32c3":
-        image = ESP32C3FirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32c6beta":
-        image = ESP32C6BETAFirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32h2beta1":
-        image = ESP32H2BETA1FirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32h2beta2":
-        image = ESP32H2BETA2FirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32c2":
-        image = ESP32C2FirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
-    elif args.chip == "esp32c6":
-        image = ESP32C6FirmwareImage()
-        if args.secure_pad_v2:
-            image.secure_pad = "2"
+        image.min_rev = args.min_rev
+        image.append_digest = args.append_digest
     elif args.version == "1":  # ESP8266
         image = ESP8266ROMFirmwareImage()
     elif args.version == "2":
@@ -891,10 +847,6 @@ def elf2image(args):
         image = ESP8266V3FirmwareImage()
     image.entrypoint = e.entrypoint
     image.flash_mode = FLASH_MODES[args.flash_mode]
-
-    if args.chip != "esp8266":
-        image.min_rev = args.min_rev
-        image.append_digest = args.append_digest
 
     if args.flash_mmu_page_size:
         image.set_mmu_page_size(flash_size_bytes(args.flash_mmu_page_size))
