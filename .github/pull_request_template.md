@@ -12,4 +12,4 @@
 
 # I have run the esptool.py automated integration tests with this change and the above hardware. The results were:
 
-(Details here: https://github.com/espressif/esptool/blob/master/CONTRIBUTING.md#automated-integration-tests )
+(Details here: https://docs.espressif.com/projects/esptool/en/latest/contributing.html#automated-integration-tests)
