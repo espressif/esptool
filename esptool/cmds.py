@@ -654,6 +654,7 @@ def image_info(args):
                     return key
             return None
 
+        print()
         title = "{} image header".format(args.chip.upper())
         print(title)
         print("=" * len(title))
@@ -737,16 +738,19 @@ def image_info(args):
             "{}  {}  {}  {}  {}".format("-" * 7, "-" * 7, "-" * 10, "-" * 10, "-" * 12)
         )
         format_str = "{:7}  {:#07x}  {:#010x}  {:#010x}  {}"
+        app_desc = None
         for idx, seg in enumerate(image.segments, start=1):
             segs = seg.get_memory_type(image)
             seg_name = ", ".join(segs)
+            if "DROM" in segs:  # The DROM segment starts with the esp_app_desc_t struct
+                app_desc = seg.data[:256]
             print(
                 format_str.format(idx, len(seg.data), seg.addr, seg.file_offs, seg_name)
             )
         print()
 
         # Footer
-        title = "Image footer"
+        title = f"{args.chip.upper()} image footer"
         print(title)
         print("=" * len(title))
         calc_checksum = image.calculate_checksum()
@@ -763,12 +767,39 @@ def image_info(args):
             if image.append_digest:
                 is_valid = image.stored_digest == image.calc_digest
                 digest_msg = "{} ({})".format(
-                    hexify(image.calc_digest).lower(),
+                    hexify(image.calc_digest, uppercase=False),
                     "valid" if is_valid else "invalid",
                 )
                 print("Validation hash: {}".format(digest_msg))
         except AttributeError:
             pass  # ESP8266 image has no append_digest field
+
+        if app_desc:
+            APP_DESC_STRUCT_FMT = "<II" + "8s" + "32s32s16s16s32s32s" + "80s"
+            (
+                magic_word,
+                secure_version,
+                reserv1,
+                version,
+                project_name,
+                time,
+                date,
+                idf_ver,
+                app_elf_sha256,
+                reserv2,
+            ) = struct.unpack(APP_DESC_STRUCT_FMT, app_desc)
+
+            if magic_word == 0xABCD5432:
+                print()
+                title = "Application information"
+                print(title)
+                print("=" * len(title))
+                print(f'Project name: {project_name.decode("utf-8")}')
+                print(f'App version: {version.decode("utf-8")}')
+                print(f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}')
+                print(f"ELF file SHA256: {hexify(app_elf_sha256, uppercase=False)}")
+                print(f'ESP-IDF: {idf_ver.decode("utf-8")}')
+                print(f"Secure version: {secure_version}")
 
     with open(args.filename, "rb") as f:
         # magic number
@@ -843,7 +874,7 @@ def image_info(args):
         if image.append_digest:
             is_valid = image.stored_digest == image.calc_digest
             digest_msg = "{} ({})".format(
-                hexify(image.calc_digest).lower(),
+                hexify(image.calc_digest, uppercase=False),
                 "valid" if is_valid else "invalid",
             )
             print("Validation Hash: {}".format(digest_msg))

@@ -199,6 +199,10 @@ This information corresponds to the headers described in :ref:`image-format`.
 
     esptool.py image_info --version 2 my_esp_app.bin
 
+.. only:: not esp8266
+
+    If a valid `ESP-IDF application header <https://docs.espressif.com/projects/esp-idf/en/latest/api-reference/system/app_image_format.html#application-description>`__ is detected in the image, specific fields describing the application are also displayed.
+
 .. _merge-bin:
 
 Merge Binaries for Flashing: merge_bin
