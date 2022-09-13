@@ -107,13 +107,19 @@ class EspEfuses(base_fields.EspEfusesBase):
                 for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
             ]
         else:
-            if self["BLOCK2_VERSION"].get() == 1:
+            if self["BLK_VERSION_MAJOR"].get() == 1:
                 self.efuses += [
                     EfuseField.from_tuple(
                         self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
                     )
                     for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
                 ]
+            self.efuses += [
+                EfuseField.from_tuple(
+                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
+                )
+                for efuse in self.Fields.CALC
+            ]
 
     def __getitem__(self, efuse_name):
         """Return the efuse field with the given name"""
@@ -197,10 +203,44 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.write_reg(self.REGS.EFUSE_CONF_REG, self.REGS.EFUSE_READ_OP_CODE)
         # need to add a delay after triggering EFUSE_READ_CMD, as ROM loader checks some
         # efuse registers after each command is completed
-        self.write_reg(
-            self.REGS.EFUSE_CMD_REG, self.REGS.EFUSE_READ_CMD, delay_after_us=1000
-        )
-        self.wait_efuse_idle()
+        # if ENABLE_SECURITY_DOWNLOAD or DIS_DOWNLOAD_MODE is enabled by the current cmd, then we need to try to reconnect to the chip.
+        try:
+            self.write_reg(
+                self.REGS.EFUSE_CMD_REG, self.REGS.EFUSE_READ_CMD, delay_after_us=1000
+            )
+            self.wait_efuse_idle()
+        except esptool.FatalError:
+            secure_download_mode_before = self._esp.secure_download_mode
+
+            try:
+                self._esp = self.reconnect_chip(self._esp)
+            except esptool.FatalError:
+                print("Can not re-connect to the chip")
+                if not self["DIS_DOWNLOAD_MODE"].get() and self[
+                    "DIS_DOWNLOAD_MODE"
+                ].get(from_read=False):
+                    print(
+                        "This is the correct behavior as we are actually burning "
+                        "DIS_DOWNLOAD_MODE which disables the connection to the chip"
+                    )
+                    print("DIS_DOWNLOAD_MODE is enabled")
+                    print("Successful")
+                    exit(0)  # finish without errors
+                raise
+
+            print("Established a connection with the chip")
+            if self._esp.secure_download_mode and not secure_download_mode_before:
+                print("Secure download mode is enabled")
+                if not self["ENABLE_SECURITY_DOWNLOAD"].get() and self[
+                    "ENABLE_SECURITY_DOWNLOAD"
+                ].get(from_read=False):
+                    print(
+                        "espefuse tool can not continue to work in Secure download mode"
+                    )
+                    print("ENABLE_SECURITY_DOWNLOAD is enabled")
+                    print("Successful")
+                    exit(0)  # finish without errors
+            raise
 
     def set_efuse_timing(self):
         """Set timing registers for burning efuses"""
@@ -270,6 +310,7 @@ class EfuseField(base_fields.EfuseFieldBase):
             "keypurpose": EfuseKeyPurposeField,
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
+            "wafer": EfuseWafer,
         }.get(type_class, EfuseField)(parent, efuse_tuple)
 
     def get_info(self):
@@ -286,6 +327,16 @@ class EfuseField(base_fields.EfuseFieldBase):
             if name is not None:
                 output += "\n  Purpose: %s\n " % (self.parent[name].get())
         return output
+
+
+class EfuseWafer(EfuseField):
+    def get(self, from_read=True):
+        hi_bits = self.parent["WAFER_VERSION_MINOR_HI"].get(from_read)
+        lo_bits = self.parent["WAFER_VERSION_MINOR_LO"].get(from_read)
+        return (hi_bits << 3) + lo_bits
+
+    def save(self, new_value):
+        raise esptool.FatalError("Burning %s is not supported" % self.name)
 
 
 class EfuseTempSensor(EfuseField):

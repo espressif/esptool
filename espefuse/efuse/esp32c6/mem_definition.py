@@ -24,28 +24,54 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_CMD_REG           = DR_REG_EFUSE_BASE + 0x1D4
     EFUSE_RD_RS_ERR0_REG    = DR_REG_EFUSE_BASE + 0x1C0
     EFUSE_RD_RS_ERR1_REG    = DR_REG_EFUSE_BASE + 0x1C4
+    EFUSE_RD_REPEAT_ERR0_REG = DR_REG_EFUSE_BASE + 0x17C
+    EFUSE_RD_REPEAT_ERR1_REG = DR_REG_EFUSE_BASE + 0x180
+    EFUSE_RD_REPEAT_ERR2_REG = DR_REG_EFUSE_BASE + 0x184
+    EFUSE_RD_REPEAT_ERR3_REG = DR_REG_EFUSE_BASE + 0x188
+    EFUSE_RD_REPEAT_ERR4_REG = DR_REG_EFUSE_BASE + 0x18C
+    EFUSE_DAC_CONF_REG = DR_REG_EFUSE_BASE + 0x1E8
+    EFUSE_RD_TIM_CONF_REG = DR_REG_EFUSE_BASE + 0x1EC
+    EFUSE_WR_TIM_CONF1_REG = DR_REG_EFUSE_BASE + 0x1F0
+    EFUSE_WR_TIM_CONF2_REG = DR_REG_EFUSE_BASE + 0x1F4
+    EFUSE_DATE_REG = DR_REG_EFUSE_BASE + 0x1FC
     EFUSE_WRITE_OP_CODE     = 0x5A5A
     EFUSE_READ_OP_CODE      = 0x5AA5
     EFUSE_PGM_CMD_MASK      = 0x3
     EFUSE_PGM_CMD           = 0x2
     EFUSE_READ_CMD          = 0x1
 
-    BLOCK_ERRORS = [
-        # error reg,            err_num,    fail_bit
-        (None,                  None,       None),  # BLOCK0
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 0,     3),     # MAC_SPI_8M_0
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 4,     7),     # BLOCK_SYS_DATA
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 8,     11),    # BLOCK_USR_DATA
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 12,    15),    # BLOCK_KEY0
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 16,    19),    # BLOCK_KEY1
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 20,    23),    # BLOCK_KEY2
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 24,    27),    # BLOCK_KEY3
-        (EFUSE_RD_RS_ERR0_REG,  0x7 << 28,    31),    # BLOCK_KEY4
-        (EFUSE_RD_RS_ERR1_REG,  0x7 << 0,     3),     # BLOCK_KEY5
-        (EFUSE_RD_RS_ERR1_REG,  0x7 << 4,     7),     # BLOCK_SYS_DATA2
+    # this chip has a design error so fail_bit is shifted by one block but err_num is in the correct place
+    BLOCK_FAIL_BIT = [
+        # error_reg,                fail_bit
+        (EFUSE_RD_REPEAT_ERR0_REG,  None),  # BLOCK0
+        (EFUSE_RD_RS_ERR0_REG,      7),     # MAC_SPI_8M_0
+        (EFUSE_RD_RS_ERR0_REG,      11),    # BLOCK_SYS_DATA
+        (EFUSE_RD_RS_ERR0_REG,      15),    # BLOCK_USR_DATA
+        (EFUSE_RD_RS_ERR0_REG,      19),    # BLOCK_KEY0
+        (EFUSE_RD_RS_ERR0_REG,      23),    # BLOCK_KEY1
+        (EFUSE_RD_RS_ERR0_REG,      27),    # BLOCK_KEY2
+        (EFUSE_RD_RS_ERR0_REG,      31),    # BLOCK_KEY3
+        (EFUSE_RD_RS_ERR1_REG,      3),     # BLOCK_KEY4
+        (EFUSE_RD_RS_ERR1_REG,      7),     # BLOCK_KEY5
+        (EFUSE_RD_RS_ERR1_REG,      None),  # BLOCK_SYS_DATA2
     ]
 
-    EFUSE_WR_TIM_CONF2_REG = DR_REG_EFUSE_BASE + 0x1F4
+    BLOCK_NUM_ERRORS = [
+        # error_reg,               err_num_mask, err_num_offs
+        (EFUSE_RD_REPEAT_ERR0_REG, None,         None),  # BLOCK0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          0),     # MAC_SPI_8M_0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          4),     # BLOCK_SYS_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          8),     # BLOCK_USR_DATA
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          12),    # BLOCK_KEY0
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          16),    # BLOCK_KEY1
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          20),    # BLOCK_KEY2
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          24),    # BLOCK_KEY3
+        (EFUSE_RD_RS_ERR0_REG,     0x7,          28),    # BLOCK_KEY4
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          0),     # BLOCK_KEY5
+        (EFUSE_RD_RS_ERR1_REG,     0x7,          4),     # BLOCK_SYS_DATA2
+    ]
+
+    # EFUSE_WR_TIM_CONF2_REG
     EFUSE_PWR_OFF_NUM_S = 0
     EFUSE_PWR_OFF_NUM_M = 0xFFFF << EFUSE_PWR_OFF_NUM_S
 
@@ -139,7 +165,7 @@ class EfuseDefineFields(EfuseFieldsBase):
                                                                                                        "unit is (ms/2). When the value is 15, delay is 7.5 ms",
                                                                                                        None),
         ("DIS_DOWNLOAD_MODE",            "security", 0,  4, 0,   "bool",     18,   None, None,         "Disables all Download boot modes", None),
-        ("DIS_LEGACY_SPI_BOOT",          "config",   0,  4, 1,   "bool",     18,   None, None,         "Disables Legacy SPI boot mode", None),
+        ("DIS_DIRECT_BOOT",              "config",   0,  4, 1,   "bool",     18,   None, None,         "Disables direct boot mode", None),
         ("UART_PRINT_CHANNEL",           "config",   0,  4, 2,   "bool",     18,   None, None,         "Selects the default UART for printing boot msg",
          {0: "UART0",
           1: "UART1"}),
@@ -166,6 +192,8 @@ class EfuseDefineFields(EfuseFieldsBase):
                                                                                                        "during SPI boot", None),
         ("SECURE_VERSION",             "identity",   0,  4, 14,  "uint:16",  18,   None, "bitcount",   "Secure version (used by ESP-IDF anti-rollback feature)",
                                                                                                        None),
+        ("DISABLE_WAFER_VERSION_MAJOR", "config",    0,  5, 0,   "bool",     19,   None, None,         "Disables check of wafer version major", None),
+        ("DISABLE_BLK_VERSION_MAJOR",   "config",    0,  5, 1,   "bool",     19,   None, None,         "Disables check of blk version major", None),
         #
         # Table 53: Parameters in BLOCK1-10
         # Name                          Category  Block Word Pos  Type:len WR_DIS RD_DIS Class         Description                Dictionary
@@ -181,13 +209,15 @@ class EfuseDefineFields(EfuseFieldsBase):
         ("SPI_PAD_CONFIG_D5",    "spi_pad_config",   1,  3, 0,   "uint:6",   20,   None, None,         "SPI D5 pad", None),
         ("SPI_PAD_CONFIG_D6",    "spi_pad_config",   1,  3, 6,   "uint:6",   20,   None, None,         "SPI D6 pad", None),
         ("SPI_PAD_CONFIG_D7",    "spi_pad_config",   1,  3, 12,  "uint:6",   20,   None, None,         "SPI D7 pad", None),
-        ("WAFER_VERSION",              "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER version",
-         {0: "(revision 0)", 1: "(revision 1)"}),
-        ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:3",   20,   None, None,         "Package version",
-         {0: "ESP32-C6"}),
-        ("BLOCK1_VERSION",             "identity",   1,  3, 25,  "uint:3",   20,   None, None,         "BLOCK1 efuse version", None),
+
+        ("WAFER_VERSION_MINOR_LO",     "identity",   1,  3, 18,  "uint:3",   20,   None, None,         "WAFER_VERSION_MINOR least significant bits", None),
+        ("PKG_VERSION",                "identity",   1,  3, 21,  "uint:3",   20,   None, None,         "Package version", None),
+        ("BLK_VERSION_MINOR",          "identity",   1,  3, 24,  "uint:3",   20,   None, None,         "BLOCK version minor", None),
+        ("WAFER_VERSION_MINOR_HI",     "identity",   1,  5, 23,  "uint:1",   20,   None, None,         "WAFER_VERSION_MINOR most significant bits", None),
+        ("WAFER_VERSION_MAJOR",        "identity",   1,  5, 24,  "uint:2",   20,   None, None,         "WAFER_VERSION_MAJOR", None),
+
         ("OPTIONAL_UNIQUE_ID",         "identity",   2,  0, 0,   "bytes:16", 21,   None, "keyblock",   "Optional unique 128-bit ID", None),
-        ("BLOCK2_VERSION",             "identity",   2,  4, 4,   "uint:3",   21,   None, None,         "Version of BLOCK2",
+        ("BLK_VERSION_MAJOR",          "identity",   2,  4, 0,   "uint:2",   21,   None, None,         "BLOCK version major",
          {0: "No calibration",
           1: "With calibration"}),
         ("CUSTOM_MAC",                 "identity",   3,  6, 8,   "bytes:6",  22,   None, "mac",        "Custom MAC Address", None),
@@ -205,7 +235,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('BLOCK_SYS_DATA2',              "security", 10, 0, 0,   "bytes:32", 29,   6,    "keyblock",   "System data (part 2)", None),
     ]
 
-    # if BLOCK2_VERSION is 1, these efuse fields are in BLOCK2
+    # if BLK_VERSION_MAJOR is 1, these efuse fields are in BLOCK2
     BLOCK2_CALIBRATION_EFUSES = [
         # Name                      Category      Block Word Pos Type:len  WR_DIS RD_DIS Class         Description                Dictionary
         ('TEMP_SENSOR_CAL',         "calibration",   2,  4, 7,   "uint:9",   21,   None, "t_sensor",   "Temperature calibration", None),
@@ -226,3 +256,8 @@ class EfuseDefineFields(EfuseFieldsBase):
         ('ADC2_MODE2_D1',           "calibration",   2,  7, 20,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 15", None),
         ('ADC2_MODE3_D1',           "calibration",   2,  7, 26,  "uint:6",   21,   None, "adc_tp",     "ADC2 calibration 16", None),
     ]
+
+    CALC = [
+        ("WAFER_VERSION_MINOR",  "identity",  0, None, None, "uint:4",  None,    None, "wafer",    "calc WAFER VERSION MINOR = WAFER_VERSION_MINOR_HI << 3 + WAFER_VERSION_MINOR_LO (read only)", None),
+    ]
+# fmt: on

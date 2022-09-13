@@ -349,9 +349,8 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            SECURE_BOOT_KEY_REVOKE2 KEY_PURPOSE_0 KEY_PURPOSE_1
                            KEY_PURPOSE_2 KEY_PURPOSE_3 KEY_PURPOSE_4 KEY_PURPOSE_5
                            SECURE_BOOT_EN SECURE_BOOT_AGGRESSIVE_REVOKE FLASH_TPUW
-                           DIS_DOWNLOAD_MODE DIS_DIRECT_BOOT
-                           DIS_USB_SERIAL_JTAG_ROM_PRINT
-                           DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE ENABLE_SECURITY_DOWNLOAD
+                           DIS_DOWNLOAD_MODE
+                           ENABLE_SECURITY_DOWNLOAD
                            UART_PRINT_CONTROL MAC SPI_PAD_CONFIG_CLK SPI_PAD_CONFIG_Q
                            SPI_PAD_CONFIG_D SPI_PAD_CONFIG_CS SPI_PAD_CONFIG_HD
                            SPI_PAD_CONFIG_WP SPI_PAD_CONFIG_DQS SPI_PAD_CONFIG_D4
@@ -360,15 +359,6 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1
                            BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5"""
             efuse_lists2 = "RD_DIS DIS_ICACHE"
-        if chip_target == "esp32s2":
-            replace_rule = {
-                # New bit definition after esp32c3    Old defintion in esp32s2
-                "DIS_USB_SERIAL_JTAG_DOWNLOAD_MODE": "DIS_USB_DOWNLOAD_MODE",
-                "DIS_DIRECT_BOOT": "DIS_LEGACY_SPI_BOOT",
-                "DIS_USB_SERIAL_JTAG_ROM_PRINT": "UART_PRINT_CHANNEL",
-            }
-            for old_name in replace_rule:
-                efuse_lists = efuse_lists.replace(old_name, replace_rule[old_name])
         self.espefuse_py("write_protect_efuse {}".format(efuse_lists))
         output = self.espefuse_py("write_protect_efuse {}".format(efuse_lists2))
         self.assertEqual(2, output.count("is already write protected"))
@@ -446,6 +436,9 @@ class TestBurnCustomMacCommands(EfuseTestCase):
 )
 @unittest.skipIf(
     chip_target == "esp32c3", "TODO: add support set_flash_voltage for ESP32-C3"
+)
+@unittest.skipIf(
+    chip_target == "esp32c6", "TODO: add support set_flash_voltage for ESP32-C6"
 )
 class TestSetFlashVoltageCommands(EfuseTestCase):
     def test_set_flash_voltage_1_8v(self):
@@ -874,7 +867,15 @@ class TestBurnKeyCommands(EfuseTestCase):
 
     @unittest.skipUnless(
         chip_target
-        in ["esp32s2", "esp32s3", "esp32s3beta1", "esp32c3", "esp32h2", "esp32h2beta1"],
+        in [
+            "esp32s2",
+            "esp32s3",
+            "esp32s3beta1",
+            "esp32c3",
+            "esp32h2",
+            "esp32h2beta1",
+            "esp32c6",
+        ],
         "Only chip with 6 keys",
     )
     def test_burn_key_with_6_keys(self):
@@ -882,7 +883,7 @@ class TestBurnKeyCommands(EfuseTestCase):
                BLOCK_KEY0 images/efuse/256bit   XTS_AES_256_KEY_1 \
                BLOCK_KEY1 images/efuse/256bit_1 XTS_AES_256_KEY_2 \
                BLOCK_KEY2 images/efuse/256bit_2 XTS_AES_128_KEY"
-        if chip_target == "esp32c3":
+        if chip_target in ["esp32c3", "esp32c6"]:
             cmd = cmd.replace("XTS_AES_256_KEY_1", "XTS_AES_128_KEY")
             cmd = cmd.replace("XTS_AES_256_KEY_2", "XTS_AES_128_KEY")
         self.espefuse_py(cmd + " --no-read-protect --no-write-protect")
@@ -1127,7 +1128,15 @@ class TestBurnBlockDataCommands(EfuseTestCase):
 
     @unittest.skipUnless(
         chip_target
-        in ["esp32s2", "esp32s3", "esp32s3beta1", "esp32c3", "esp32h2", "esp32h2beta1"],
+        in [
+            "esp32s2",
+            "esp32s3",
+            "esp32s3beta1",
+            "esp32c3",
+            "esp32h2",
+            "esp32h2beta1",
+            "esp32c6",
+        ],
         "Only chip with 6 keys",
     )
     def test_burn_block_data_with_6_keys(self):
@@ -1260,7 +1269,15 @@ class TestBurnBlockDataCommands(EfuseTestCase):
 
     @unittest.skipUnless(
         chip_target
-        in ["esp32s2", "esp32s3", "esp32s3beta1", "esp32c3", "esp32h2", "esp32h2beta1"],
+        in [
+            "esp32s2",
+            "esp32s3",
+            "esp32s3beta1",
+            "esp32c3",
+            "esp32h2",
+            "esp32h2beta1",
+            "esp32c6",
+        ],
         "Only chip with 6 keys",
     )
     def test_burn_block_data_with_offset_6_keys(self):
@@ -1455,7 +1472,15 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
 
 @unittest.skipUnless(
     chip_target
-    in ["esp32s2", "esp32s3", "esp32s3beta1", "esp32c3", "esp32h2", "esp32h2beta1"],
+    in [
+        "esp32s2",
+        "esp32s3",
+        "esp32s3beta1",
+        "esp32c3",
+        "esp32h2",
+        "esp32h2beta1",
+        "esp32c6",
+    ],
     "Supports 6 key blocks",
 )
 class TestBurnKeyDigestCommands(EfuseTestCase):
@@ -1570,7 +1595,15 @@ class TestBurnBitCommands(EfuseTestCase):
 
     @unittest.skipUnless(
         chip_target
-        in ["esp32s2", "esp32s3", "esp32s3beta1", "esp32c3", "esp32h2", "esp32h2beta1"],
+        in [
+            "esp32s2",
+            "esp32s3",
+            "esp32s3beta1",
+            "esp32c3",
+            "esp32h2",
+            "esp32h2beta1",
+            "esp32c6",
+        ],
         "Only chip with 6 keys",
     )
     def test_burn_bit_for_chips_with_6_key_blocks(self):
