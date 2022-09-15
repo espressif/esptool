@@ -71,10 +71,15 @@ check_python_style:
   image: python:3.7-bullseye
   tags:
     - host_test
+  artifacts:
+    reports:
+      codequality: code_quality_report.json
+    when: on_failure
   script:
     # This step installs any 'dev' dependencies (ie flake8, Black)
     # The runner should cache the downloads, so still quite fast.
     - pip install -e .[dev] --prefer-binary
+    - python -m flake8 --exit-zero --format gl-codeclimate --output-file code_quality_report.json
     - python -m flake8
     - python -m black --check --diff .
 
