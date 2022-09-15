@@ -119,6 +119,8 @@ def get_default_connected_device(serial_list, port, connect_attempts, initial_ba
             if port is not None:
                 raise
             print("%s failed to connect: %s" % (each_port, err))
+            if _esp and _esp._port:
+                _esp._port.close()
             _esp = None
     return _esp
 
