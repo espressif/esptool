@@ -278,6 +278,7 @@ combine_reports:
       - cobertura_report.xml
       - ./html_report/
     expire_in: 1 week
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   variables:
     LC_ALL: C.UTF-8
   before_script:
