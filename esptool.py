@@ -3251,6 +3251,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             print(("Unexpected chip id in image. Expected %d but value was %d. "
                    "Is this image for a different chip model?") % (self.ROM_LOADER.IMAGE_CHIP_ID, chip_id))
 
+        self.min_rev = fields[5]
+
         # reserved fields in the middle should all be zero
         if any(f for f in fields[6:-1] if f != 0):
             print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
