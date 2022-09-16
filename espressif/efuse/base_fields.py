@@ -7,12 +7,11 @@
 
 from __future__ import division, print_function
 
-import argparse
 import binascii
 import re
 import sys
 
-from bitstring import BitArray, BitString
+from bitstring import BitArray, BitString, CreationError
 
 import esptool
 
@@ -29,8 +28,8 @@ class CheckArgValue(object):
             if efuse.efuse_type.startswith("bool"):
                 new_value = 1 if new_value is None else int(new_value, 0)
                 if new_value != 1:
-                    raise argparse.ArgumentTypeError("New value is not accepted for efuse '{}' (will always burn 0->1), given value={}"
-                                                     .format(efuse.name, new_value))
+                    raise esptool.FatalError("New value is not accepted for efuse '{}' (will always burn 0->1), given value={}"
+                                             .format(efuse.name, new_value))
             elif efuse.efuse_type.startswith(('int', 'uint')):
                 if efuse.efuse_class == "bitcount":
                     if new_value is None:
@@ -45,18 +44,18 @@ class CheckArgValue(object):
                         new_value = int(new_value, 0)
                 else:
                     if new_value is None:
-                        raise argparse.ArgumentTypeError("New value required for efuse '{}' (given None)".format(efuse.name))
+                        raise esptool.FatalError("New value required for efuse '{}' (given None)".format(efuse.name))
                     new_value = int(new_value, 0)
                     if new_value == 0:
-                        raise argparse.ArgumentTypeError("New value should not be 0 for '{}' (given value= {})".format(efuse.name, new_value))
+                        raise esptool.FatalError("New value should not be 0 for '{}' (given value= {})".format(efuse.name, new_value))
             elif efuse.efuse_type.startswith("bytes"):
                 if new_value is None:
-                    raise argparse.ArgumentTypeError("New value required for efuse '{}' (given None)".format(efuse.name))
+                    raise esptool.FatalError("New value required for efuse '{}' (given None)".format(efuse.name))
                 if len(new_value) * 8 != efuse.bitarray.len:
-                    raise argparse.ArgumentTypeError("The length of efuse '{}' ({} bits) (given len of the new value= {} bits)"
-                                                     .format(efuse.name, efuse.bitarray.len, len(new_value) * 8))
+                    raise esptool.FatalError("The length of efuse '{}' ({} bits) (given len of the new value= {} bits)"
+                                             .format(efuse.name, efuse.bitarray.len, len(new_value) * 8))
             else:
-                raise argparse.ArgumentTypeError("The '{}' type for the '{}' efuse is not supported yet.".format(efuse.efuse_type, efuse.name))
+                raise esptool.FatalError("The '{}' type for the '{}' efuse is not supported yet.".format(efuse.efuse_type, efuse.name))
             return new_value
 
         efuse = self.efuses[self.name]
@@ -488,7 +487,15 @@ class EfuseFieldBase(EfuseProtectBase):
                 # *[x] - means a byte.
                 return BitArray(bytes=new_value[::-1], length=len(new_value) * 8)
             else:
-                return BitArray(self.efuse_type + "={}".format(new_value))
+                try:
+                    return BitArray(self.efuse_type + "={}".format(new_value))
+                except CreationError as err:
+                    print(
+                        "New value '{}' is not suitable for {} ({})".format(
+                            new_value, self.name, self.efuse_type
+                        )
+                    )
+                    raise esptool.FatalError(err)
 
     def check_new_value(self, bitarray_new_value):
         bitarray_old_value = self.get_bitstring() | self.get_bitstring(from_read=False)
