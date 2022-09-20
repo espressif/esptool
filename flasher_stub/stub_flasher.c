@@ -368,6 +368,12 @@ void stub_main()
   /* this points to stub_main now, clear for next boot */
   ets_set_user_start(0);
 
+#ifdef ESP32S3
+  /* Set CPU frequency to 240 MHz. This also increases SPI speed to 20 MHz. */
+  WRITE_REG(SYSTEM_CPU_PER_CONF_REG, (READ_REG(SYSTEM_CPU_PER_CONF_REG) & ~SYSTEM_CPUPERIOD_SEL_M) | (2 << SYSTEM_CPUPERIOD_SEL_S));
+  WRITE_REG(SYSTEM_SYSCLK_CONF_REG, (READ_REG(SYSTEM_SYSCLK_CONF_REG) & ~SYSTEM_SOC_CLK_SEL_M) | (1 << SYSTEM_SOC_CLK_SEL_S));
+#endif
+
   /* zero bss */
   for(uint32_t *p = &_bss_start; p < &_bss_end; p++) {
     *p = 0;

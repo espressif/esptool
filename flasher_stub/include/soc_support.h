@@ -77,6 +77,7 @@
 #define USB_BASE_REG        0x60080000
 #define RTCCNTL_BASE_REG    0x60008000 /* RTC Control */
 #define USB_DEVICE_BASE_REG 0x60038000
+#define SYSTEM_BASE_REG     0x600C0000
 #endif
 
 #ifdef ESP32C3
@@ -282,6 +283,22 @@
 #endif
 
 #define RTC_CNTL_FORCE_DOWNLOAD_BOOT  (1 << 0)
+
+/**********************************************************
+ * SYSTEM registers
+ */
+
+#ifdef ESP32S3
+#define SYSTEM_CPU_PER_CONF_REG       (SYSTEM_BASE_REG + 0x010)
+#define SYSTEM_CPUPERIOD_SEL_M        ((SYSTEM_CPUPERIOD_SEL_V)<<(SYSTEM_CPUPERIOD_SEL_S))
+#define SYSTEM_CPUPERIOD_SEL_V        0x3
+#define SYSTEM_CPUPERIOD_SEL_S        0
+
+#define SYSTEM_SYSCLK_CONF_REG        (SYSTEM_BASE_REG + 0x060)
+#define SYSTEM_SOC_CLK_SEL_M          ((SYSTEM_SOC_CLK_SEL_V)<<(SYSTEM_SOC_CLK_SEL_S))
+#define SYSTEM_SOC_CLK_SEL_V          0x3
+#define SYSTEM_SOC_CLK_SEL_S          10
+#endif
 
 /**********************************************************
  * Per-SOC security info buffer size
