@@ -2869,7 +2869,7 @@ class BaseFirmwareImage(object):
             if segment_data[patch_offset:patch_offset + self.SHA256_DIGEST_LEN] != b'\x00' * self.SHA256_DIGEST_LEN:
                 raise FatalError('Contents of segment at SHA256 digest offset 0x%x are not all zero. Refusing to overwrite.' %
                                  self.elf_sha256_offset)
-            assert(len(self.elf_sha256) == self.SHA256_DIGEST_LEN)
+            assert len(self.elf_sha256) == self.SHA256_DIGEST_LEN
             segment_data = segment_data[0:patch_offset] + self.elf_sha256 + \
                 segment_data[patch_offset + self.SHA256_DIGEST_LEN:]
         return segment_data

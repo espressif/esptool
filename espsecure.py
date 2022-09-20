@@ -484,7 +484,7 @@ def validate_signature_block(image_content, sig_blk_num):
 
     offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
     sig_blk = image_content[offset: offset + SIG_BLOCK_SIZE]
-    assert(len(sig_blk) == SIG_BLOCK_SIZE)
+    assert len(sig_blk) == SIG_BLOCK_SIZE
 
     # note: in case of ECDSA key, the exact fields in the middle are wrong (but unused here)
     magic, version, _, _, _, _, _, _, blk_crc = struct.unpack("<BBxx32s384sI384sI384sI16x",
