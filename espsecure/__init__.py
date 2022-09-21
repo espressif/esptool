@@ -1050,7 +1050,7 @@ def _flash_encryption_operation_aes_xts(
 
     inblocks = _split_blocks(indata, 0x80)  # split into 1024 bit blocks
 
-    output = b""
+    output = []
     for inblock in inblocks:  # for each block
         tweak = struct.pack("<I", (flash_address & ~0x7F)) + (b"\x00" * 12)
         flash_address += 0x80  # for next block
@@ -1065,7 +1065,9 @@ def _flash_encryption_operation_aes_xts(
 
         inblock = inblock[::-1]  # reverse input
         outblock = encryptor.update(inblock)  # standard algo
-        output += outblock[::-1]  # reverse output
+        output.append(outblock[::-1])  # reverse output
+
+    output = b"".join(output)
 
     # undo any padding we applied to the input
     if pad_right != 0:
@@ -1087,9 +1089,10 @@ def _flash_encryption_operation_aes_xts(
 def _split_blocks(text, block_len=16):
     """Take a bitstring, split it into chunks of "block_len" each"""
     assert len(text) % block_len == 0
-    while len(text) > 0:
-        yield text[0:block_len]
-        text = text[block_len:]
+    pos = 0
+    while pos < len(text):
+        yield text[pos : pos + block_len]
+        pos = pos + block_len
 
 
 def decrypt_flash_data(args):
