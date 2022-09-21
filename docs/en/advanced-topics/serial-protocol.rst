@@ -1,7 +1,9 @@
+{IDF_TARGET_SECURITY_INFO:default="32 bits ``flags``, 1 byte ``flash_crypt_cnt``, 7x1 byte ``key_purposes``, 32-bit word ``chip_id``, 32-bit word ``eco_version``", esp32s2="32 bits ``flags``, 1 byte ``flash_crypt_cnt``, 7x1 byte ``key_purposes``                                                      "}
+
 Serial Protocol
 ===============
 
-This is technical documentation for the serial protocol used by the UART bootloader in the ESP chip ROM and the esptool software :ref:`stub loader <stub>` program.
+This is technical documentation for the serial protocol used by the UART bootloader in the {IDF_TARGET_NAME} ROM and the esptool :ref:`stub loader <stub>` program.
 
 The UART bootloader runs on chip reset if certain strapping pins are set. See :ref:`entering-the-bootloader` for details of this process.
 
@@ -9,7 +11,11 @@ The UART bootloader runs on chip reset if certain strapping pins are set. See :r
 
     The {IDF_TARGET_NAME} ROM loader serial protocol is similar to ESP8266, although {IDF_TARGET_NAME} adds some additional commands and some slightly different behaviour.
 
-By default, esptool uploads a stub "software loader" to the IRAM of the chip. The software loader then replaces the ROM loader for all future interactions. This standardizes much of the behaviour. Pass ``--no-stub`` to esptool in order to disable the software stub loader. See :ref:`stub` for more information.
+By default, esptool uploads a stub "software loader" to the IRAM of the chip. The stub loader then replaces the ROM loader for all future interactions. This standardizes much of the behaviour. Pass ``--no-stub`` to esptool in order to disable the stub loader. See :ref:`stub` for more information.
+
+.. note::
+
+    There are differences in the serial protocol between ESP chips! To switch to documentation for a different chip, choose the desired target from the dropdown menu in the upper left corner.
 
 Packet Description
 ------------------
@@ -70,11 +76,11 @@ The final bytes of the Data payload indicate command status:
 
 .. only:: esp8266
 
-    For software loader and ESP8266 ROM loader the final two bytes indicate status (most commands return at least a two byte Data payload):
+    For stub loader and ESP8266 ROM loader the final two bytes indicate status (most commands return at least a two byte Data payload):
 
 .. only:: not esp8266
 
-    For software loader the final two bytes indicate status (most commands return at least a two byte Data payload):
+    For stub loader the final two bytes indicate status (most commands return at least a two byte Data payload):
 
 +----------+----------+-----------------------------------------------------+
 | Byte     | Name     | Comment                                             |
@@ -86,7 +92,7 @@ The final bytes of the Data payload indicate command status:
 
 .. only:: not esp8266
 
-    For {IDF_TARGET_NAME} ROM (only, not the software loader) the final four bytes are used, but only the first two bytes contain status information:
+    For {IDF_TARGET_NAME} ROM (only, not the stub loader) the final four bytes are used, but only the first two bytes contain status information:
 
     +----------+------------+---------------------------------------------------+
     | Byte     | Name       | Comment                                           |
@@ -105,20 +111,30 @@ ROM Loader Errors
 
 The ROM loader sends the following error values
 
-.. list::
++----------+---------------------------------------------------------------------------+
+| Value    | Meaning                                                                   |
++==========+===========================================================================+
+| ``0x05`` | "Received message is invalid" (parameters or length field is invalid)     |
++----------+---------------------------------------------------------------------------+
+| ``0x06`` | "Failed to act on received message"                                       |
++----------+---------------------------------------------------------------------------+
+| ``0x07`` | "Invalid CRC in message"                                                  |
++----------+---------------------------------------------------------------------------+
+| ``0x08`` | "Flash write error" - after writing a block of data to flash,             |
+|          | the ROM loader reads the value back and the 8-bit CRC is compared         |
+|          | to the data read from flash. If they don't match, this error is returned. |
++----------+---------------------------------------------------------------------------+
+| ``0x09`` | "Flash read error" - SPI read failed                                      |
++----------+---------------------------------------------------------------------------+
+| ``0x0a`` | "Flash read length error" - SPI read request length is too long           |
++----------+---------------------------------------------------------------------------+
+| ``0x0b`` | "Deflate error" (compressed uploads only)                                 |
++----------+---------------------------------------------------------------------------+
 
-    -  0x05 - "Received message is invalid" (parameters or length field is invalid)
-    -  0x06 - "Failed to act on received message"
-    -  0x07 - "Invalid CRC in message"
-    -  0x08 - "flash write error" - after writing a block of data to flash, the ROM loader reads the value back and the 8-bit CRC is compared to the data read from flash. If they don't match, this error is returned.
-    -  0x09 - "flash read error" - SPI read failed
-    -  0x0a - "flash read length error" - SPI read request length is too long
-    -  0x0b - "Deflate error" (compressed uploads only)
+Stub Loader Status & Error
+""""""""""""""""""""""""""
 
-Software Loader Status & Error
-""""""""""""""""""""""""""""""
-
-If the software loader is used:
+If the stub loader is used:
 
 -  The status response is always 2 bytes regardless of chip type.
 -  Stub loader error codes are entirely different to the ROM loader codes. They all take the form ``0xC*``, or ``0xFF`` for "unimplemented command". (`Full list here <https://github.com/espressif/esptool/blob/master/flasher_stub/include/stub_flasher.h#L95>`_).
@@ -128,8 +144,8 @@ After sending a command, the host should continue to read response packets until
 Commands
 ^^^^^^^^
 
-Supported by software loader and ROM loader
-"""""""""""""""""""""""""""""""""""""""""""
+Supported by stub loader and ROM loader
+"""""""""""""""""""""""""""""""""""""""
 
 .. only:: esp8266
 
@@ -140,9 +156,9 @@ Supported by software loader and ROM loader
     +------------+----------------+-------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------+
     | ``0x03``   | FLASH_DATA     | `Flash Download Data <#writing-data>`__               | Four 32-bit words: data size, sequence number, ``0``, ``0``, then data. Uses `Checksum`_.                                          |                                                |
     +------------+----------------+-------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------+
-    | ``0x04``   | FLASH_END      | `Finish Flash Download <#writing-data>`__             | One 32-bit word: ``0`` to reboot, ``1`` "run to user code". Not necessary to send this command if you wish to stay in the loader   |                                                |
+    | ``0x04``   | FLASH_END      | `Finish Flash Download <#writing-data>`__             | One 32-bit word: ``0`` to reboot, ``1`` to run user code. Not necessary to send this command if you wish to stay in the loader     |                                                |
     +------------+----------------+-------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------+
-    | ``0x05``   | MEM_BEGIN      | `Begin RAM Download Start <#writing-data>`__          | total size, number of data packets, data size in one packet, memory offset                                                         |                                                |
+    | ``0x05``   | MEM_BEGIN      | `Begin RAM Download Start <#writing-data>`__          | Total size, number of data packets, data size in one packet, memory offset                                                         |                                                |
     +------------+----------------+-------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------+
     | ``0x06``   | MEM_END        | `Finish RAM Download <#writing-data>`__               | Two 32-bit words: execute flag, entry point address                                                                                |                                                |
     +------------+----------------+-------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------+
@@ -155,7 +171,7 @@ Supported by software loader and ROM loader
     | ``0x0a``   | READ_REG       | `Read 32-bit memory address <#32-bit-readwrite>`__    | Address as 32-bit word                                                                                                             | Read data as 32-bit word in ``value`` field.   |
     +------------+----------------+-------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------+
 
-.. only:: not esp8266
+.. only:: esp32
 
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | Byte       | Name                 | Description                                                    | Input Data                                                                                                                                                                                                                                     | Output Data                                                                                                                       |
@@ -164,9 +180,9 @@ Supported by software loader and ROM loader
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | ``0x03``   | FLASH_DATA           | `Flash Download Data <#writing-data>`__                        | Four 32-bit words: data size, sequence number, ``0``, ``0``, then data. Uses `Checksum`_.                                                                                                                                                      |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
-    | ``0x04``   | FLASH_END            | `Finish Flash Download <#writing-data>`__                      | One 32-bit word: ``0`` to reboot, ``1`` "run to user code". Not necessary to send this command if you wish to stay in the loader                                                                                                               |                                                                                                                                   |
+    | ``0x04``   | FLASH_END            | `Finish Flash Download <#writing-data>`__                      | One 32-bit word: ``0`` to reboot, ``1`` to run user code. Not necessary to send this command if you wish to stay in the loader                                                                                                                 |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
-    | ``0x05``   | MEM_BEGIN            | `Begin RAM Download Start <#writing-data>`__                   | total size, number of data packets, data size in one packet, memory offset                                                                                                                                                                     |                                                                                                                                   |
+    | ``0x05``   | MEM_BEGIN            | `Begin RAM Download Start <#writing-data>`__                   | Total size, number of data packets, data size in one packet, memory offset                                                                                                                                                                     |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | ``0x06``   | MEM_END              | `Finish RAM Download <#writing-data>`__                        | Two 32-bit words: execute flag, entry point address                                                                                                                                                                                            |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
@@ -182,19 +198,60 @@ Supported by software loader and ROM loader
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | ``0x0d``   | SPI_ATTACH           | `Attach SPI flash <#spi-attach-command>`__                     | 32-bit word: Zero for normal SPI flash. A second 32-bit word (should be ``0``) is passed to ROM loader only.                                                                                                                                   |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
-    | ``0x0f``   | CHANGE_BAUDRATE      | `Change Baud rate <#initial-synchronisation>`__                | Two 32-bit words: new baud rate, ``0`` if we are talking to the ROM flasher or the current/old baud rate if we are talking to the software stub flasher.                                                                                       |                                                                                                                                   |
+    | ``0x0f``   | CHANGE_BAUDRATE      | `Change Baud rate <#initial-synchronisation>`__                | Two 32-bit words: new baud rate, ``0`` if we are talking to the ROM loader or the current/old baud rate if we are talking to the stub loader.                                                                                                  |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
-    | ``0x10``   | FLASH_DEFL_BEGIN     | `Begin compressed flash download <#writing-data>`__            | Four 32-bit words: uncompressed size, number of data packets, data packet size, flash offset.With stub loader the uncompressed size is exact byte count to be written, whereas on ROM bootloader it is rounded up to flash erase block size.   |                                                                                                                                   |
+    | ``0x10``   | FLASH_DEFL_BEGIN     | `Begin compressed flash download <#writing-data>`__            | Four 32-bit words: uncompressed size, number of data packets, data packet size, flash offset. With stub loader the uncompressed size is exact byte count to be written, whereas on ROM bootloader it is rounded up to flash erase block size.  |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | ``0x11``   | FLASH_DEFL_DATA      | `Compressed flash download data <#writing-data>`__             | Four 32-bit words: data size, sequence number, ``0``, ``0``, then data. Uses `Checksum`_.                                                                                                                                                      | Error code ``0xC1`` on checksum error.                                                                                            |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
-    | ``0x12``   | FLASH_DEFL_END       | `End compressed flash download <#writing-data>`__              | One 32-bit word: ``0`` to reboot, ``1`` to "run user code". Not necessary to send this command if you wish to stay in the loader.                                                                                                              |                                                                                                                                   |
+    | ``0x12``   | FLASH_DEFL_END       | `End compressed flash download <#writing-data>`__              | One 32-bit word: ``0`` to reboot, ``1`` to run user code. Not necessary to send this command if you wish to stay in the loader.                                                                                                                |                                                                                                                                   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
     | ``0x13``   | SPI_FLASH_MD5        | `Calculate MD5 of flash region <#verifying-uploaded-data>`__   | Four 32-bit words: address, size, ``0``, ``0``                                                                                                                                                                                                 | Body contains 16 raw bytes of MD5 followed by 2 status bytes (stub loader) or 32 hex-coded ASCII (ROM loader) of calculated MD5   |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
 
-Supported by software loader only
-"""""""""""""""""""""""""""""""""
+.. only:: not esp8266 and not esp32
+
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | Byte       | Name                 | Description                                                    | Input Data                                                                                                                                                                                                                                     | Output Data                                                                                                                       |
+    +============+======================+================================================================+================================================================================================================================================================================================================================================+===================================================================================================================================+
+    | ``0x02``   | FLASH_BEGIN          | `Begin Flash Download <#writing-data>`__                       | Four 32-bit words: size to erase, number of data packets, data size in one packet, flash offset. A fifth 32-bit word passed to ROM loader only: ``1`` to begin encrypted flash, ``0`` to not.                                                  |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x03``   | FLASH_DATA           | `Flash Download Data <#writing-data>`__                        | Four 32-bit words: data size, sequence number, ``0``, ``0``, then data. Uses `Checksum`_.                                                                                                                                                      |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x04``   | FLASH_END            | `Finish Flash Download <#writing-data>`__                      | One 32-bit word: ``0`` to reboot, ``1`` to run user code. Not necessary to send this command if you wish to stay in the loader                                                                                                                 |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x05``   | MEM_BEGIN            | `Begin RAM Download Start <#writing-data>`__                   | Total size, number of data packets, data size in one packet, memory offset                                                                                                                                                                     |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x06``   | MEM_END              | `Finish RAM Download <#writing-data>`__                        | Two 32-bit words: execute flag, entry point address                                                                                                                                                                                            |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x07``   | MEM_DATA             | `RAM Download Data <#writing-data>`__                          | Four 32-bit words: data size, sequence number, ``0``, ``0``, then data. Uses `Checksum`_.                                                                                                                                                      |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x08``   | SYNC                 | `Sync Frame <#initial-synchronisation>`__                      | 36 bytes: ``0x07 0x07 0x12 0x20``, followed by 32 x ``0x55``                                                                                                                                                                                   |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x09``   | WRITE_REG            | `Write 32-bit memory address <#32-bit-readwrite>`__            | Four 32-bit words: address, value, mask and delay (in microseconds)                                                                                                                                                                            |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x0a``   | READ_REG             | `Read 32-bit memory address <#32-bit-readwrite>`__             | Address as 32-bit word                                                                                                                                                                                                                         | Read data as 32-bit word in ``value`` field.                                                                                      |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x0b``   | SPI_SET_PARAMS       | `Configure SPI flash <#spi-set-parameters>`__                  | Six 32-bit words: id, total size in bytes, block size, sector size, page size, status mask.                                                                                                                                                    |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x0d``   | SPI_ATTACH           | `Attach SPI flash <#spi-attach-command>`__                     | 32-bit word: Zero for normal SPI flash. A second 32-bit word (should be ``0``) is passed to ROM loader only.                                                                                                                                   |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x0f``   | CHANGE_BAUDRATE      | `Change Baud rate <#initial-synchronisation>`__                | Two 32-bit words: new baud rate, ``0`` if we are talking to the ROM loader or the current/old baud rate if we are talking to the stub loader.                                                                                                  |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x10``   | FLASH_DEFL_BEGIN     | `Begin compressed flash download <#writing-data>`__            | Four 32-bit words: uncompressed size, number of data packets, data packet size, flash offset. With stub loader the uncompressed size is exact byte count to be written, whereas on ROM bootloader it is rounded up to flash erase block size.  |                                                                                                                                   |
+    |            |                      |                                                                | A fifth 32-bit word passed to ROM loader only: ``1`` to begin encrypted flash, ``0`` to not.                                                                                                                                                   |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x11``   | FLASH_DEFL_DATA      | `Compressed flash download data <#writing-data>`__             | Four 32-bit words: data size, sequence number, ``0``, ``0``, then data. Uses `Checksum`_.                                                                                                                                                      | Error code ``0xC1`` on checksum error.                                                                                            |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x12``   | FLASH_DEFL_END       | `End compressed flash download <#writing-data>`__              | One 32-bit word: ``0`` to reboot, ``1`` to run user code. Not necessary to send this command if you wish to stay in the loader.                                                                                                                |                                                                                                                                   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x13``   | SPI_FLASH_MD5        | `Calculate MD5 of flash region <#verifying-uploaded-data>`__   | Four 32-bit words: address, size, ``0``, ``0``                                                                                                                                                                                                 | Body contains 16 raw bytes of MD5 followed by 2 status bytes (stub loader) or 32 hex-coded ASCII (ROM loader) of calculated MD5   |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+    | ``0x14``   | GET_SECURITY_INFO    | Read chip security info                                        |                                                                                                                                                                                                                                                | {IDF_TARGET_SECURITY_INFO}    |
+    +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
+
+Supported by stub loader only
+"""""""""""""""""""""""""""""
 
 ROM loaders will not recognise these commands.
 
@@ -247,13 +304,13 @@ Initial Synchronisation
     :esp8266: *  The ESP chip is reset into UART bootloader mode. The host starts by sending SYNC commands. These commands have a large data payload which is also used by the ESP chip to detect the configured baud rate. The ESP8266 will initialise at 74800bps with a 26MHz crystal and 115200bps with a 40MHz crystal. However the sync packets can be sent at any baud rate, and the UART peripheral will detect this.
     :not esp8266: *  The ESP chip is reset into UART bootloader mode. The host starts by sending SYNC commands. These commands have a large data payload which is also used by the ESP chip to detect the configured baud rate. {IDF_TARGET_NAME} always initialises at 115200bps. However the sync packets can be sent at any baud rate, and the UART peripheral will detect this.
     *  The host should wait until it sees a valid response to a SYNC command, indicating the ESP chip is correctly communicating.
-    *  esptool then (by default) uses the "RAM Download" sequence to upload software :ref:`stub loader <stub>` code to IRAM of the chip. The MEM_END command contains the entry-point address to run the software loader.
-       The software loader then sends a custom SLIP packet of the sequence OHAI (``0xC0 0x4F 0x48 0x41 0x49 0xC0``), indicating that it is now running. This is the only unsolicited packet ever sent by the ESP.
+    *  Esptool then (by default) uses the "RAM Download" sequence to upload :ref:`stub loader <stub>` code to IRAM of the chip. The MEM_END command contains the entry-point address to run the stub loader.
+       The stub loader then sends a custom SLIP packet of the sequence OHAI (``0xC0 0x4F 0x48 0x41 0x49 0xC0``), indicating that it is now running. This is the only unsolicited packet ever sent by the ESP.
        If the ``--no-stub`` argument is supplied to esptool, this entire step is skipped.
     *  esptool then uses READ_REG commands to read various addresses on the chip, to identify chip subtype, revision, etc.
-    :not esp8266: *  For commands which need to use the flash, the {IDF_TARGET_NAME} ROM loader requires (and software loader on both chips support) the SPI_ATTACH and SPI_SET_PARAMS commands. See `SPI Configuration Commands`_.
-    :esp8266: *  For software loader, the host can send a CHANGE_BAUD command to set the baud rate to an explicit value. Compared to auto-detecting during the SYNC pulse, this can be more reliable for setting very high baud rate. Esptool tries to sync at (maximum) 115200bps and then sends this command to go to a higher baud rate, if requested.
-    :not esp8266: *  For software loader and/or {IDF_TARGET_NAME} ROM loader, the host can send a CHANGE_BAUD command to set the baud rate to an explicit value. Compared to auto-detecting during the SYNC pulse, this can be more reliable for setting very high baud rate. Esptool tries to sync at (maximum) 115200bps and then sends this command to go to a higher baud rate, if requested.
+    :not esp8266: *  For commands which need to use the flash, the {IDF_TARGET_NAME} ROM an stub loader requires the SPI_ATTACH and SPI_SET_PARAMS commands. See `SPI Configuration Commands`_.
+    :esp8266: *  For stub loader, the host can send a CHANGE_BAUD command to set the baud rate to an explicit value. Compared to auto-detecting during the SYNC pulse, this can be more reliable for setting very high baud rate. Esptool tries to sync at (maximum) 115200bps and then sends this command to go to a higher baud rate, if requested.
+    :not esp8266: *  For stub loader and/or {IDF_TARGET_NAME} ROM loader, the host can send a CHANGE_BAUD command to set the baud rate to an explicit value. Compared to auto-detecting during the SYNC pulse, this can be more reliable for setting very high baud rate. Esptool tries to sync at (maximum) 115200bps and then sends this command to go to a higher baud rate, if requested.
 
 Writing Data
 ^^^^^^^^^^^^
@@ -269,24 +326,24 @@ Writing Data
 
 All three of these sequences follow a similar pattern:
 
-*  A _BEGIN command (FLASH_BEGIN, etc) is sent which contains basic parameters for the flash erase size, start address to write to, etc.The uploader also needs to specify how many "blocks" of data (ie individual data packets) will be sent, and how big each packet is.
+*  A _BEGIN command (FLASH_BEGIN, etc) is sent which contains basic parameters for the flash erase size, start address to write to, etc. The uploader also needs to specify how many "blocks" of data (ie individual data packets) will be sent, and how big each packet is.
 *  One or more _DATA commands (FLASH_DATA, etc) is sent where the data payload contains the actual data to write to flash/RAM. In the case of Compressed Flash Downloads, the data is compressed using the gzip deflate algorithm. The number of _DATA commands is specified in the _BEGIN command, as is the size of each _DATA payload.
    The last data block should be padded to the block size with 0xFF bytes.
 *  An _END command (FLASH_END, etc) is sent to exit the bootloader and optionally reset the chip (or jump to an address in RAM, in the case of MEM_END). Not necessary to send after flashing if you wish to continue sending other or different commands.
 
 It's not necessary to send flash erase commands before sending commands to write to flash, etc. The ROM loaders erase the to-be-written region in response to the FLASH_BEGIN command.
-The software loaders do just-in-time erasing as they write data, to maximise overall flashing performance (each block of data is read into RAM via serial while the previous block is simultaneously being written to flash, and 4KB and 64KB erases are done as needed before writing to flash).
+The stub loader does just-in-time erasing as it writes data, to maximise overall flashing performance (each block of data is read into RAM via serial while the previous block is simultaneously being written to flash, and 4KB and 64KB erases are done as needed before writing to flash).
 
-The block size chosen should be small enough to fit into RAM of the device. esptool uses 16KB which gives good performance when used with the stub loader.
+The block size chosen should be small enough to fit into RAM of the device. Esptool uses 16KB which gives good performance when used with the stub loader.
 
 .. only:: esp8266
 
     Erase Size Bug
     """"""""""""""
 
-    On ESP8266 ROM loader only (not software loader), there is a bug in the interpretation of the FLASH_BEGIN "erase size" parameter. Consult the ``ESP8266ROM.get_erase_size()`` function in esptool for the algorithm which works around this bug and provides the correct erase size parameter to send to the ESP8266.
+    On ESP8266 ROM loader only (not stub loader), there is a bug in the interpretation of the FLASH_BEGIN "erase size" parameter. Consult the ``ESP8266ROM.get_erase_size()`` function in esptool for the algorithm which works around this bug and provides the correct erase size parameter to send to the ESP8266.
 
-    This workaround is not needed if the ESP8266 is running the software loader.
+    This workaround is not needed if the ESP8266 is running the stub loader.
 
 Verifying Uploaded Data
 """""""""""""""""""""""
@@ -303,7 +360,7 @@ The SPI_FLASH_MD5 command passes the start address in flash and the size of data
 
 .. only:: not esp8266
 
-    Note that the {IDF_TARGET_NAME} ROM loader returns the md5sum as 32 hex encoded ASCII bytes, whereas the software loader returns the md5sum as 16 raw data bytes of MD5 followed by 2 status bytes.
+    Note that the {IDF_TARGET_NAME} ROM loader returns the md5sum as 32 hex encoded ASCII bytes, whereas the stub loader returns the md5sum as 16 raw data bytes of MD5 followed by 2 status bytes.
 
 SPI Configuration Commands
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -315,7 +372,7 @@ The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data 
 
 .. only:: esp8266
 
-    On the ESP8266 software loader sending this command before interacting with SPI flash is optional. On ESP8266 ROM loader this command is not supported (SPI flash is enabled when the FLASH_BEGIN command is sent).
+    On the ESP8266 stub loader sending this command before interacting with SPI flash is optional. On ESP8266 ROM loader this command is not supported (SPI flash is enabled when the FLASH_BEGIN command is sent).
 
     +------------------+----------------------------------------------------------------------------------------------------------------------------------+
     | Value            | Meaning                                                                                                                          |
@@ -327,7 +384,7 @@ The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data 
 
 .. only:: not esp8266
 
-    On the {IDF_TARGET_NAME} software loader, it is required to send this command before interacting with SPI flash.
+    On the {IDF_TARGET_NAME} stub loader, it is required to send this command before interacting with SPI flash.
 
     +------------------+----------------------------------------------------------------------------------------------------------------------------------+
     | Value            | Meaning                                                                                                                          |
@@ -351,13 +408,12 @@ The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data 
 
 SPI Set Parameters
 """"""""""""""""""
-.. only: esp8266
 
-    The SPI_SET_PARAMS command sets some parameters of the attached SPI flash chip (sizes, etc). This command is not supported by the ESP8266 ROM loader.
+The SPI_SET_PARAMS command sets some parameters of the attached SPI flash chip (sizes, etc).
 
-.. only: not esp8266
+.. only:: esp8266
 
-    The SPI_SET_PARAMS command sets some parameters of the attached SPI flash chip (sizes, etc).
+    This command is not supported by the ESP8266 ROM loader.
 
 All the values which are passed except total size are hardcoded, and most are not used when writing to flash. See `flash_set_parameters function <https://github.com/espressif/esptool/blob/da31d9d7a1bb496995f8e30a6be259689948e43e/esptool.py#L655>`__ in esptool for the values which it sends.
 
@@ -371,16 +427,16 @@ These commands can be used to manipulate peripherals in arbitrary ways. For exam
 Reading Flash
 ^^^^^^^^^^^^^
 
-The software loader implements a READ_FLASH command. This command behaves differently to other commands, including the ROM loader's READ_FLASH command:
+The stub loader implements a READ_FLASH command. This command behaves differently to other commands, including the ROM loader's READ_FLASH command:
 
 *  The host sends the READ_FLASH command and the data payload contains the offset, read size, size of each individual packet of data, and the maximum number of "un-acknowledged" data packets which can be in flight at one time.
-*  The software loader will send a standard response packet, with no additional data payload.
-*  Now the software loader will start sending SLIP packets with raw data (of the size requested in the command). There is no metadata included with these SLIP packets.
+*  The stub loader will send a standard response packet, with no additional data payload.
+*  Now the stub loader will start sending SLIP packets with raw data (of the size requested in the command). There is no metadata included with these SLIP packets.
 *  After each SLIP packet is received, the host should send back a 4 byte raw SLIP acknowledgement packet with the total number of bytes which have been received. There is no header or other metadata included with these SLIP packets.
-*  The software loader may send up to a maximum number (specified by the host in the READ_FLASH commands) of data packets before waiting for the first acknowledgement packet. No more than this "max in flight" limit can be un-acknowledged at any one time.
-*  After all data packets are acknowledged received, the software loader sends a 16 byte MD5 digest of all the data which was read from flash. This is also sent as a raw SLIP packet, with no metadata.
+*  The stub loader may send up to a maximum number (specified by the host in the READ_FLASH commands) of data packets before waiting for the first acknowledgement packet. No more than this "max in flight" limit can be un-acknowledged at any one time.
+*  After all data packets are acknowledged received, the stub loader sends a 16 byte MD5 digest of all the data which was read from flash. This is also sent as a raw SLIP packet, with no metadata.
 
-After the read flash process is complete, the software loader goes back to normal command/response operation.
+After the read flash process is complete, the stub loader goes back to normal command/response operation.
 
 The ROM loader read flash command is more normal but also much slower to read data.
 
