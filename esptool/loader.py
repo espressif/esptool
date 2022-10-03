@@ -1428,6 +1428,38 @@ def slip_reader(port, trace_function):
     Designed to avoid too many calls to serial.read(1), which can bog
     down on slow systems.
     """
+
+    def detect_panic_handler(input):
+        """
+        Checks the input bytes for panic handler messages.
+        Raises a FatalError if Guru Meditation or Fatal Exception is found, as both
+        of these are used between different ROM versions.
+        Tries to also parse the error cause (e.g. IllegalInstruction).
+        """
+
+        guru_meditation = (
+            rb"G?uru Meditation Error: (?:Core \d panic'ed \(([a-zA-Z]*)\))?"
+        )
+        fatal_exception = rb"F?atal exception \(\d+\): (?:([a-zA-Z]*)?.*epc)?"
+
+        # Search either for Guru Meditation or Fatal Exception
+        data = re.search(
+            rb"".join([rb"(?:", guru_meditation, rb"|", fatal_exception, rb")"]),
+            input,
+            re.DOTALL,
+        )
+        if data is not None:
+            msg = "Guru Meditation Error detected {}".format(
+                " ".join(
+                    [
+                        "({})".format(i.decode("utf-8"))
+                        for i in [data.group(1), data.group(2)]
+                        if i is not None
+                    ]
+                )
+            )
+            raise FatalError(msg)
+
     partial_packet = None
     in_escape = False
     successful_slip = False
@@ -1455,10 +1487,12 @@ def slip_reader(port, trace_function):
                     partial_packet = b""
                 else:
                     trace_function("Read invalid data: %s", HexFormatter(read_bytes))
+                    remaining_data = port.read(port.inWaiting())
                     trace_function(
                         "Remaining data in serial buffer: %s",
-                        HexFormatter(port.read(port.inWaiting())),
+                        HexFormatter(remaining_data),
                     )
+                    detect_panic_handler(read_bytes + remaining_data)
                     raise FatalError(
                         "Invalid head of packet (0x%s): "
                         "Possible serial noise or corruption." % hexify(b)
@@ -1471,10 +1505,12 @@ def slip_reader(port, trace_function):
                     partial_packet += b"\xdb"
                 else:
                     trace_function("Read invalid data: %s", HexFormatter(read_bytes))
+                    remaining_data = port.read(port.inWaiting())
                     trace_function(
                         "Remaining data in serial buffer: %s",
-                        HexFormatter(port.read(port.inWaiting())),
+                        HexFormatter(remaining_data),
                     )
+                    detect_panic_handler(read_bytes + remaining_data)
                     raise FatalError("Invalid SLIP escape (0xdb, 0x%s)" % (hexify(b)))
             elif b == b"\xdb":  # start of escape sequence
                 in_escape = True
