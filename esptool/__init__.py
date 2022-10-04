@@ -65,12 +65,14 @@ from esptool.cmds import (
     write_mem,
 )
 from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, ESPLoader, list_ports
-from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM, ESP8266ROM
+from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
     NotImplementedInROMError,
     flash_size_bytes,
 )
+
+import serial
 
 
 def main(argv=None, esp=None):
@@ -1023,8 +1025,20 @@ def _main():
     try:
         main()
     except FatalError as e:
-        print("\nA fatal error occurred: %s" % e)
+        print(f"\nA fatal error occurred: {e}")
         sys.exit(2)
+    except serial.serialutil.SerialException as e:
+        print(f"\nA serial exception error occurred: {e}")
+        print(
+            "Note: This error originates from pySerial. "
+            "It is likely not a problem with esptool, "
+            "but with the hardware connection or drivers."
+        )
+        print(
+            "For troubleshooting steps visit: "
+            "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -105,7 +105,7 @@ Early Stage Crash
 Serial Terminal Programs
 ------------------------
 
-There are many serial terminal programs suitable for debugging & serial interaction. The pyserial module (which is required for ``esptool``) includes one such command line terminal program - miniterm.py. For more details `see the related pyserial documentation <https://pyserial.readthedocs.io/en/latest/tools.html#module-serial.tools.miniterm>`_ or run ``miniterm -h``.
+There are many serial terminal programs suitable for debugging & serial interaction. The pySerial module (which is required for ``esptool``) includes one such command line terminal program - miniterm.py. For more details `see the related pySerial documentation <https://pyserial.readthedocs.io/en/latest/tools.html#module-serial.tools.miniterm>`_ or run ``miniterm -h``.
 For exact serial port configuration values, see :ref:`serial-port-settings`.
 
 .. only:: esp8266
@@ -172,3 +172,25 @@ Other things to try:
    * Try skipping chip autodetection by specifying the chip type, run ``esptool.py --chip {IDF_TARGET_NAME} ...``.
 
 If none of the above mentioned fixes help and your problem persists, please `open a new issue <https://github.com/espressif/esptool/issues/new/choose>`_.
+
+A serial exception error occurred
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``esptool.py`` uses the `pySerial <https://pyserial.readthedocs.io/en/latest/>`_ Python module for accessing the serial port.
+If pySerial cannot operate normally, it raises an error and terminates. Some of the most common pySerial error causes are:
+
+.. list::
+
+   * You don't have permission to access the port.
+   * The port is being already used by other software.
+   * The port doesn't exist.
+   * The device gets unexpectedly disconnected.
+   * The necessary serial port drivers are not installed or are faulty.
+
+An example of a pySerial error:
+
+.. code-block:: none
+
+   A serial exception error occurred: read failed: [Errno 6] Device not configured
+
+Errors originating from pySerial are, therefore, not a problem with ``esptool.py``, but are usually caused by a problem with hardware or drivers.
