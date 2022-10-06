@@ -49,4 +49,8 @@ void stub_io_set_baudrate(uint32_t current_baud, uint32_t new_baud);
  */
 void stub_io_idle_hook(void);
 
-
+/* Checks if USB-Serial/JTAG is being currently used.
+ */
+#if WITH_USB_JTAG_SERIAL
+bool stub_uses_usb_jtag_serial(void);
+#endif

@@ -40,7 +40,7 @@ void uart_isr(void *arg) {
 }
 
 #if WITH_USB_JTAG_SERIAL
-static bool stub_uses_usb_jtag_serial(void)
+bool stub_uses_usb_jtag_serial(void)
 {
   UartDevice *uart = GetUartDevice();
 
