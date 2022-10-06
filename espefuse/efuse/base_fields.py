@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import binascii
-import re
 import sys
 
 from bitstring import BitArray, BitStream, CreationError
@@ -570,16 +569,11 @@ class EfuseFieldBase(EfuseProtectBase):
         self.efuse_type = param.type
         self.description = param.description
         self.dict_value = param.dictionary
+        self.bit_len = param.bit_len
+        self.alt_names = param.alt_names
         self.fail = False
         self.num_errors = 0
-        if self.efuse_type.startswith("bool"):
-            field_len = 1
-        else:
-            field_len = int(re.search(r"\d+", self.efuse_type).group())
-            if self.efuse_type.startswith("bytes"):
-                field_len *= 8
-        self.bitarray = BitStream(field_len)
-        self.bit_len = field_len
+        self.bitarray = BitStream(self.bit_len)
         self.bitarray.set(0)
         self.update(self.parent.blocks[self.block].bitarray)
 

@@ -184,7 +184,7 @@ class TestReadCommands(EfuseTestCase):
         self.espefuse_py("get_custom_mac -h")
         if arg_chip == "esp32":
             right_msg = "Custom MAC Address is not set in the device."
-        elif arg_chip == "esp32h2beta1":
+        elif arg_chip in ["esp32h2", "esp32h2beta1"]:
             right_msg = "Custom MAC Address: 00:00:00:00:00:00:00:00 (OK)"
         else:
             right_msg = "Custom MAC Address: 00:00:00:00:00:00 (OK)"
@@ -346,7 +346,7 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            XTS_KEY_LENGTH_256 UART_PRINT_CONTROL"""
             efuse_lists2 = "RD_DIS DIS_DOWNLOAD_ICACHE"
         else:
-            efuse_lists = """RD_DIS DIS_ICACHE DIS_DOWNLOAD_ICACHE DIS_FORCE_DOWNLOAD
+            efuse_lists = """RD_DIS DIS_ICACHE DIS_FORCE_DOWNLOAD
                            DIS_CAN SOFT_DIS_JTAG DIS_DOWNLOAD_MANUAL_ENCRYPT
                            USB_EXCHG_PINS WDT_DELAY_SEL SPI_BOOT_CRYPT_CNT
                            SECURE_BOOT_KEY_REVOKE0 SECURE_BOOT_KEY_REVOKE1
@@ -354,14 +354,18 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            KEY_PURPOSE_2 KEY_PURPOSE_3 KEY_PURPOSE_4 KEY_PURPOSE_5
                            SECURE_BOOT_EN SECURE_BOOT_AGGRESSIVE_REVOKE FLASH_TPUW
                            DIS_DOWNLOAD_MODE
-                           ENABLE_SECURITY_DOWNLOAD
-                           UART_PRINT_CONTROL MAC SPI_PAD_CONFIG_CLK SPI_PAD_CONFIG_Q
-                           SPI_PAD_CONFIG_D SPI_PAD_CONFIG_CS SPI_PAD_CONFIG_HD
-                           SPI_PAD_CONFIG_WP SPI_PAD_CONFIG_DQS SPI_PAD_CONFIG_D4
-                           SPI_PAD_CONFIG_D5 SPI_PAD_CONFIG_D6 SPI_PAD_CONFIG_D7
-                           OPTIONAL_UNIQUE_ID
+                           ENABLE_SECURITY_DOWNLOAD UART_PRINT_CONTROL
+                           MAC OPTIONAL_UNIQUE_ID
                            BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1
                            BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5"""
+            if arg_chip not in ["esp32h2", "esp32h2beta1"] and arg_chip not in [
+                "esp32c6"
+            ]:
+                efuse_lists += """ DIS_DOWNLOAD_ICACHE
+                            SPI_PAD_CONFIG_CLK SPI_PAD_CONFIG_Q
+                            SPI_PAD_CONFIG_D SPI_PAD_CONFIG_CS SPI_PAD_CONFIG_HD
+                            SPI_PAD_CONFIG_WP SPI_PAD_CONFIG_DQS SPI_PAD_CONFIG_D4
+                            SPI_PAD_CONFIG_D5 SPI_PAD_CONFIG_D6 SPI_PAD_CONFIG_D7"""
             efuse_lists2 = "RD_DIS DIS_ICACHE"
         self.espefuse_py(f"write_protect_efuse {efuse_lists}")
         output = self.espefuse_py(f"write_protect_efuse {efuse_lists2}")
@@ -391,7 +395,7 @@ class TestBurnCustomMacCommands(EfuseTestCase):
         else:
             mac_custom = (
                 "aa:cd:ef:11:22:33:00:00"
-                if arg_chip == "esp32h2beta1"
+                if arg_chip in ["esp32h2", "esp32h2beta1"]
                 else "aa:cd:ef:11:22:33"
             )
             self.espefuse_py(cmd, check_msg=f"Custom MAC Address: {mac_custom} (OK)")
@@ -641,7 +645,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
             ret_code=2,
         )
         self.espefuse_py("burn_efuse CUSTOM_MAC AA:CD:EF:01:02:03")
-        if arg_chip in ["esp32h2beta2", "esp32h2beta1"]:
+        if arg_chip in ["esp32h2", "esp32h2beta1"]:
             self.espefuse_py(
                 "get_custom_mac", check_msg=f"aa:cd:ef:01:02:03:00:00 {crc_msg}"
             )
@@ -688,14 +692,13 @@ class TestBurnEfuseCommands(EfuseTestCase):
             efuse_from_blk2 = "BLK_VERSION_MAJOR"
             if arg_chip == "esp32s2":
                 efuse_from_blk2 = "BLK_VERSION_MINOR"
-            if arg_chip == "esp32h2beta1":
-                efuse_from_blk2 = "BLOCK2_VERSION"
-            self.espefuse_py(
-                f"burn_efuse {efuse_from_blk2} 1",
-                check_msg="Burn into BLOCK_SYS_DATA is forbidden "
-                "(RS coding scheme does not allow this).",
-                ret_code=2,
-            )
+            if arg_chip != "esp32c6":
+                self.espefuse_py(
+                    f"burn_efuse {efuse_from_blk2} 1",
+                    check_msg="Burn into BLOCK_SYS_DATA is forbidden "
+                    "(RS coding scheme does not allow this).",
+                    ret_code=2,
+                )
             blk1 = "BLOCK_KEY1"
             blk2 = "BLOCK_KEY2"
         output = self.espefuse_py(
@@ -880,7 +883,10 @@ class TestBurnKeyCommands(EfuseTestCase):
                BLOCK_KEY0 {IMAGES_DIR}/256bit   XTS_AES_256_KEY_1 \
                BLOCK_KEY1 {IMAGES_DIR}/256bit_1 XTS_AES_256_KEY_2 \
                BLOCK_KEY2 {IMAGES_DIR}/256bit_2 XTS_AES_128_KEY"
-        if arg_chip in ["esp32c3", "esp32c6", "esp32h2"]:
+        if arg_chip in ["esp32c3", "esp32c6"] or arg_chip in [
+            "esp32h2",
+            "esp32h2beta1",
+        ]:
             cmd = cmd.replace("XTS_AES_256_KEY_1", "XTS_AES_128_KEY")
             cmd = cmd.replace("XTS_AES_256_KEY_2", "XTS_AES_128_KEY")
         self.espefuse_py(cmd + " --no-read-protect --no-write-protect")

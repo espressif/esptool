@@ -16,7 +16,8 @@ class ESP32C6BETAROM(ESP32C3ROM):
 
     def get_chip_description(self):
         chip_name = {
-            0: "ESP32-C6",
+            0: "ESP32-C6 (QFN40)",
+            1: "ESP32-C6FH4 (QFN32)",
         }.get(self.get_pkg_version(), "unknown ESP32-C6")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()

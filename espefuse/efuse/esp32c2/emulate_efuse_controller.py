@@ -124,8 +124,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 else:
                     block.set(0)
             else:
-                for e in self.Fields.EFUSES:
-                    field = self.Fields.get(e)
+                for field in self.Fields.EFUSES:
                     if (
                         blk.id == field.block
                         and field.read_disable_bit is not None

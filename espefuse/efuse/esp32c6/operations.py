@@ -167,7 +167,8 @@ def add_commands(subparsers, efuses):
     p.add_argument(
         "mac",
         help="Custom MAC Address to burn given in hexadecimal format with bytes "
-        "separated by colons (e.g. AA:CD:EF:01:02:03).",
+        "separated by colons (e.g. AA:CD:EF:01:02:03). "
+        "Final CUSTOM_MAC = CUSTOM_MAC[48] + MAC_EXT[16]",
         type=fields.base_fields.CheckArgValue(efuses, "CUSTOM_MAC"),
     )
     add_force_write_always(p)
@@ -194,38 +195,29 @@ def set_flash_voltage(esp, efuses, args):
 def adc_info(esp, efuses, args):
     print("")
     # fmt: off
-    if efuses["BLK_VERSION_MAJOR"].get() == 1:
-        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_SENSOR_CAL"].get()))
+    if efuses["BLK_VERSION_MINOR"].get() == 1:
+        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_CALIB"].get()))
 
         print("")
-        print("ADC1 readings stored in efuse BLOCK2:")
-        print("    MODE0 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE0_D1"].get()))
-        print("    MODE0 D2 reading  (600mV):  {}".format(efuses["ADC1_MODE0_D2"].get()))
-
-        print("    MODE1 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE1_D1"].get()))
-        print("    MODE1 D2 reading  (800mV):  {}".format(efuses["ADC1_MODE1_D2"].get()))
-
-        print("    MODE2 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE2_D1"].get()))
-        print("    MODE2 D2 reading  (1000mV): {}".format(efuses["ADC1_MODE2_D2"].get()))
-
-        print("    MODE3 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE3_D1"].get()))
-        print("    MODE3 D2 reading  (2000mV): {}".format(efuses["ADC1_MODE3_D2"].get()))
-
-        print("")
-        print("ADC2 readings stored in efuse BLOCK2:")
-        print("    MODE0 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE0_D1"].get()))
-        print("    MODE0 D2 reading  (600mV):  {}".format(efuses["ADC2_MODE0_D2"].get()))
-
-        print("    MODE1 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE1_D1"].get()))
-        print("    MODE1 D2 reading  (800mV):  {}".format(efuses["ADC2_MODE1_D2"].get()))
-
-        print("    MODE2 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE2_D1"].get()))
-        print("    MODE2 D2 reading  (1000mV): {}".format(efuses["ADC2_MODE2_D2"].get()))
-
-        print("    MODE3 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE3_D1"].get()))
-        print("    MODE3 D2 reading  (2000mV): {}".format(efuses["ADC2_MODE3_D2"].get()))
+        print("ADC1 Calibration data stored in efuse BLOCK2:")
+        print(f"OCODE: {efuses['OCODE'].get()}")
+        print(f"INIT_CODE_ATTEN0: {efuses['ADC1_INIT_CODE_ATTEN0'].get()}")
+        print(f"INIT_CODE_ATTEN1: {efuses['ADC1_INIT_CODE_ATTEN1'].get()}")
+        print(f"INIT_CODE_ATTEN2: {efuses['ADC1_INIT_CODE_ATTEN2'].get()}")
+        print(f"INIT_CODE_ATTEN3: {efuses['ADC1_INIT_CODE_ATTEN3'].get()}")
+        print(f"CAL_VOL_ATTEN0: {efuses['ADC1_CAL_VOL_ATTEN0'].get()}")
+        print(f"CAL_VOL_ATTEN1: {efuses['ADC1_CAL_VOL_ATTEN1'].get()}")
+        print(f"CAL_VOL_ATTEN2: {efuses['ADC1_CAL_VOL_ATTEN2'].get()}")
+        print(f"CAL_VOL_ATTEN3: {efuses['ADC1_CAL_VOL_ATTEN3'].get()}")
+        print(f"INIT_CODE_ATTEN0_CH0: {efuses['ADC1_INIT_CODE_ATTEN0_CH0'].get()}")
+        print(f"INIT_CODE_ATTEN0_CH1: {efuses['ADC1_INIT_CODE_ATTEN0_CH1'].get()}")
+        print(f"INIT_CODE_ATTEN0_CH2: {efuses['ADC1_INIT_CODE_ATTEN0_CH2'].get()}")
+        print(f"INIT_CODE_ATTEN0_CH3: {efuses['ADC1_INIT_CODE_ATTEN0_CH3'].get()}")
+        print(f"INIT_CODE_ATTEN0_CH4: {efuses['ADC1_INIT_CODE_ATTEN0_CH4'].get()}")
+        print(f"INIT_CODE_ATTEN0_CH5: {efuses['ADC1_INIT_CODE_ATTEN0_CH5'].get()}")
+        print(f"INIT_CODE_ATTEN0_CH6: {efuses['ADC1_INIT_CODE_ATTEN0_CH6'].get()}")
     else:
-        print("BLK_VERSION_MAJOR = {}".format(efuses["BLK_VERSION_MAJOR"].get_meaning()))
+        print("BLK_VERSION_MINOR = {}".format(efuses["BLK_VERSION_MINOR"].get_meaning()))
     # fmt: on
 
 

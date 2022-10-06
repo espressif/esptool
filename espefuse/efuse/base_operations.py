@@ -71,7 +71,8 @@ def add_common_commands(subparsers, efuses):
         metavar="[EFUSE_NAME VALUE] [{} VALUE".format(
             " VALUE] [".join([e.name for e in efuses.efuses])
         ),
-        efuse_choices=[e.name for e in efuses.efuses],
+        efuse_choices=[e.name for e in efuses.efuses]
+        + [name for e in efuses.efuses for name in e.alt_names if name != ""],
         efuses=efuses,
     )
 
@@ -83,7 +84,14 @@ def add_common_commands(subparsers, efuses):
         "efuse_name",
         help="Name of efuse register to burn",
         nargs="+",
-        choices=[e.name for e in efuses.efuses if e.read_disable_bit is not None],
+        choices=[e.name for e in efuses.efuses if e.read_disable_bit is not None]
+        + [
+            name
+            for e in efuses.efuses
+            if e.read_disable_bit is not None
+            for name in e.alt_names
+            if name != ""
+        ],
     )
 
     write_protect_efuse = subparsers.add_parser(
@@ -94,7 +102,14 @@ def add_common_commands(subparsers, efuses):
         "efuse_name",
         help="Name of efuse register to burn",
         nargs="+",
-        choices=[e.name for e in efuses.efuses if e.write_disable_bit is not None],
+        choices=[e.name for e in efuses.efuses if e.write_disable_bit is not None]
+        + [
+            name
+            for e in efuses.efuses
+            if e.write_disable_bit is not None
+            for name in e.alt_names
+            if name != ""
+        ],
     )
 
     burn_block_data = subparsers.add_parser(

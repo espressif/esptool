@@ -126,6 +126,7 @@ setup(
         "ecdsa>=0.16.0",
         "pyserial>=3.0",
         "reedsolo>=1.5.3,<1.8",
+        "PyYAML>=5.1",
     ],
     packages=find_packages(),
     include_package_data=True,

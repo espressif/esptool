@@ -84,59 +84,43 @@ class EspEfuses(base_fields.EspEfusesBase):
         ]
         if not skip_connect:
             self.get_coding_scheme_warnings()
-        self.efuses = [
-            EfuseField.from_tuple(
-                self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
-            )
-            for efuse in self.Fields.EFUSES
-        ]
+        self.efuses = [EfuseField.convert(self, efuse) for efuse in self.Fields.EFUSES]
         self.efuses += [
-            EfuseField.from_tuple(
-                self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
-            )
-            for efuse in self.Fields.KEYBLOCKS
+            EfuseField.convert(self, efuse) for efuse in self.Fields.KEYBLOCKS
         ]
         if skip_connect:
             self.efuses += [
-                EfuseField.from_tuple(
-                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
-                )
+                EfuseField.convert(self, efuse)
                 for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
             ]
         else:
-            if self["BLK_VERSION_MAJOR"].get() == 1:
+            if self["BLK_VERSION_MINOR"].get() == 1:
                 self.efuses += [
-                    EfuseField.from_tuple(
-                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
-                    )
+                    EfuseField.convert(self, efuse)
                     for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
                 ]
             self.efuses += [
-                EfuseField.from_tuple(
-                    self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
-                )
-                for efuse in self.Fields.CALC
+                EfuseField.convert(self, efuse) for efuse in self.Fields.CALC
             ]
 
     def __getitem__(self, efuse_name):
         """Return the efuse field with the given name"""
         for e in self.efuses:
-            if efuse_name == e.name:
+            if efuse_name == e.name or any(x == efuse_name for x in e.alt_names):
                 return e
         new_fields = False
         for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES:
-            e = self.Fields.get(efuse)
-            if e.name == efuse_name:
+            if efuse.name == efuse_name or any(
+                x == efuse_name for x in efuse.alt_names
+            ):
                 self.efuses += [
-                    EfuseField.from_tuple(
-                        self, self.Fields.get(efuse), self.Fields.get(efuse).class_type
-                    )
+                    EfuseField.convert(self, efuse)
                     for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
                 ]
                 new_fields = True
         if new_fields:
             for e in self.efuses:
-                if efuse_name == e.name:
+                if efuse_name == e.name or any(x == efuse_name for x in e.alt_names):
                     return e
         raise KeyError
 
@@ -257,6 +241,8 @@ class EspEfuses(base_fields.EspEfusesBase):
 
     def get_coding_scheme_warnings(self, silent=False):
         """Check if the coding scheme has detected any errors."""
+        old_addr_reg = 0
+        reg_value = 0
         ret_fail = False
         for block in self.blocks:
             if block.id == 0:
@@ -270,20 +256,16 @@ class EspEfuses(base_fields.EspEfusesBase):
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
-                addr_reg_f, fail_bit = self.REGS.BLOCK_FAIL_BIT[block.id]
-                if fail_bit is None:
-                    block.fail = False
-                else:
-                    block.fail = self.read_reg(addr_reg_f) & (1 << fail_bit) != 0
-
-                addr_reg_n, num_mask, num_offs = self.REGS.BLOCK_NUM_ERRORS[block.id]
-                if num_mask is None or num_offs is None:
-                    block.num_errors = 0
-                else:
-                    block.num_errors = (
-                        self.read_reg(addr_reg_n) >> num_offs
-                    ) & num_mask
-
+                addr_reg, err_num_mask, err_num_offs, fail_bit = self.REGS.BLOCK_ERRORS[
+                    block.id
+                ]
+                if err_num_mask is None or err_num_offs is None or fail_bit is None:
+                    continue
+                if addr_reg != old_addr_reg:
+                    old_addr_reg = addr_reg
+                    reg_value = self.read_reg(addr_reg)
+                block.fail = reg_value & (1 << fail_bit) != 0
+                block.num_errors = (reg_value >> err_num_offs) & err_num_mask
             ret_fail |= block.fail
             if not silent and (block.fail or block.num_errors):
                 print(
@@ -301,20 +283,22 @@ class EspEfuses(base_fields.EspEfusesBase):
 
 class EfuseField(base_fields.EfuseFieldBase):
     @staticmethod
-    def from_tuple(parent, efuse_tuple, type_class):
+    def convert(parent, efuse):
         return {
             "mac": EfuseMacField,
             "keypurpose": EfuseKeyPurposeField,
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
             "wafer": EfuseWafer,
-        }.get(type_class, EfuseField)(parent, efuse_tuple)
+        }.get(efuse.class_type, EfuseField)(parent, efuse)
 
 
 class EfuseWafer(EfuseField):
     def get(self, from_read=True):
         hi_bits = self.parent["WAFER_VERSION_MINOR_HI"].get(from_read)
+        assert self.parent["WAFER_VERSION_MINOR_HI"].bit_len == 1
         lo_bits = self.parent["WAFER_VERSION_MINOR_LO"].get(from_read)
+        assert self.parent["WAFER_VERSION_MINOR_LO"].bit_len == 3
         return (hi_bits << 3) + lo_bits
 
     def save(self, new_value):

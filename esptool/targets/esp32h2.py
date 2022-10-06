@@ -21,11 +21,16 @@ class ESP32H2ROM(ESP32C6ROM):
     }
 
     def get_pkg_version(self):
+        num_word = 4
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x07
+
+    def get_minor_chip_version(self):
         num_word = 3
-        block1_addr = self.EFUSE_BASE + 0x044
-        word3 = self.read_reg(block1_addr + (4 * num_word))
-        pkg_version = (word3 >> 21) & 0x0F
-        return pkg_version
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 18) & 0x07
+
+    def get_major_chip_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x03
 
     def get_chip_description(self):
         chip_name = {

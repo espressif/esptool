@@ -4,7 +4,17 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegistersBase
+import copy
+import os
+
+import yaml
+
+from ..mem_definition_base import (
+    EfuseBlocksBase,
+    EfuseFieldsBase,
+    EfuseRegistersBase,
+    Field,
+)
 
 
 class EfuseDefineRegisters(EfuseRegistersBase):
@@ -56,11 +66,10 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_RD_CHIP_VER_REV2 = 1 << 20
 
 
-# fmt: off
 class EfuseDefineBlocks(EfuseBlocksBase):
-
     __base_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE
     # List of efuse blocks
+    # fmt: off
     BLOCKS = [
         # Name, Alias, Index, Read address, Write address, Write protect bit, Read protect bit, Len, key_purpose
         ("BLOCK0",    [],                                     0, __base_regs + 0x000, __base_regs + 0x01C, None, None, 7, None),
@@ -68,6 +77,7 @@ class EfuseDefineBlocks(EfuseBlocksBase):
         ("BLOCK2",    ["secure_boot_v1", "secure_boot_v2"],   2, __base_regs + 0x058, __base_regs + 0x0B8, 8,    1,    8, None),
         ("BLOCK3",    [],                                     3, __base_regs + 0x078, __base_regs + 0x0D8, 9,    2,    8, None),
     ]
+    # fmt: on
 
     def get_burn_block_data_names(self):
         list_of_names = []
@@ -79,87 +89,91 @@ class EfuseDefineBlocks(EfuseBlocksBase):
 
 
 class EfuseDefineFields(EfuseFieldsBase):
+    def __init__(self) -> None:
+        self.EFUSES = []
+        # if MAC_VERSION is set "1", these efuse fields are in BLOCK3:
+        self.CUSTOM_MAC = []
+        # The len of fields depends on coding scheme: for CODING_SCHEME_NONE
+        self.KEYBLOCKS_256 = []
+        # The len of fields depends on coding scheme: for CODING_SCHEME_34
+        self.KEYBLOCKS_192 = []
+        # if BLK3_PART_RESERVE is set, these efuse fields are in BLOCK3:
+        self.ADC_CALIBRATION = []
 
-    # Lists of efuse fields
-    EFUSES = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('WR_DIS',               "efuse",       0, 0, 0,   "uint:16",   1,    None, None,       "Efuse write disable mask", None),
-        ('RD_DIS',               "efuse",       0, 0, 16,  "uint:4",    0,    None, None,       "Efuse read disable mask", None),
-        ('CODING_SCHEME',        "efuse",       0, 6, 0,   "uint:2",    10,   3,    None,       "Efuse variable block length scheme",
-            {0: "NONE (BLK1-3 len=256 bits)",
-             1: "3/4 (BLK1-3 len=192 bits)",
-             2: "REPEAT (BLK1-3 len=128 bits) not supported",
-             3: "NONE (BLK1-3 len=256 bits)"}),
-        ('KEY_STATUS',           "efuse",       0, 6, 10,  "bool",      10,   3,    None,       "Usage of efuse block 3 (reserved)", None),
-        ('MAC',                  "identity",    0, 1, 0,   "bytes:6",   3,    None, "mac",      "Factory MAC Address", None),
-        ('MAC_CRC',              "identity",    0, 2, 16,  "uint:8",    3,    None, None,       "CRC8 for factory MAC address", None),
-        ('CHIP_VER_REV1',        "identity",    0, 3, 15,  "bool",      3,    None, None,       "Silicon Revision 1", None),
-        ('CHIP_VER_REV2',        "identity",    0, 5, 20,  "bool",      6,    None, None,       "Silicon Revision 2", None),
-        ("WAFER_VERSION_MINOR",  "identity",    0, 5, 24,  "uint:2",    6,    None, None,       "WAFER VERSION MINOR", None),
-        ('CHIP_PACKAGE',         "identity",    0, 3, 9,   "uint:3",    3,    None, None,       "Chip package identifier", None),
-        ('CHIP_PACKAGE_4BIT',    "identity",    0, 3, 2,   "uint:1",    3,    None, None,       "Chip package identifier #4bit", None),
-        ('XPD_SDIO_FORCE',       "config",      0, 4, 16,  "bool",      5,    None, None,       "Ignore MTDI pin (GPIO12) for VDD_SDIO on reset", None),
-        ('XPD_SDIO_REG',         "config",      0, 4, 14,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE, enable VDD_SDIO reg on reset", None),
-        ('XPD_SDIO_TIEH',        "config",      0, 4, 15,  "bool",      5,    None, None,       "If XPD_SDIO_FORCE & XPD_SDIO_REG",
-         {1: "3.3V",
-          0: "1.8V"}),
-        ('CLK8M_FREQ',           "config",      0, 4, 0,   "uint:8",    None, None, None,       "8MHz clock freq override", None),
-        ('SPI_PAD_CONFIG_CLK',   "config",      0, 5, 0,   "uint:5",    6,    None, "spipin",   "Override SD_CLK pad (GPIO6/SPICLK)", None),
-        ('SPI_PAD_CONFIG_Q',     "config",      0, 5, 5,   "uint:5",    6,    None, "spipin",   "Override SD_DATA_0 pad (GPIO7/SPIQ)", None),
-        ('SPI_PAD_CONFIG_D',     "config",      0, 5, 10,  "uint:5",    6,    None, "spipin",   "Override SD_DATA_1 pad (GPIO8/SPID)", None),
-        ('SPI_PAD_CONFIG_HD',    "config",      0, 3, 4,   "uint:5",    6,    None, "spipin",   "Override SD_DATA_2 pad (GPIO9/SPIHD)", None),
-        ('SPI_PAD_CONFIG_CS0',   "config",      0, 5, 15,  "uint:5",    6,    None, "spipin",   "Override SD_CMD pad (GPIO11/SPICS0)", None),
-        ('DISABLE_SDIO_HOST',    "config",      0, 6, 3,   "bool",      None, None, None,       "Disable SDIO host", None),
-        ('FLASH_CRYPT_CNT',      "security",    0, 0, 20,  "uint:7",    2,    None, "bitcount", "Flash encryption mode counter", None),
-        ('UART_DOWNLOAD_DIS',    "security",    0, 0, 27,  "bool",      2,    None, None,       "Disable UART download mode (ESP32 rev3 only)", None),
-        ('FLASH_CRYPT_CONFIG',    "security",   0, 5, 28,  "uint:4",    10,   3,    None,       "Flash encryption config (key tweak bits)", None),
-        ('CONSOLE_DEBUG_DISABLE', "security",   0, 6, 2,   "bool",      15,   None, None,       "Disable ROM BASIC interpreter fallback", None),
-        ('ABS_DONE_0',           "security",    0, 6, 4,   "bool",      12,   None, None,       "Secure boot V1 is enabled for bootloader image", None),
-        ('ABS_DONE_1',           "security",    0, 6, 5,   "bool",      13,   None, None,       "Secure boot V2 is enabled for bootloader image", None),
-        ('JTAG_DISABLE',         "security",    0, 6, 6,   "bool",      14,   None, None,       "Disable JTAG", None),
-        ('DISABLE_DL_ENCRYPT',   "security",    0, 6, 7,   "bool",      15,   None, None,       "Disable flash encryption in UART bootloader", None),
-        ('DISABLE_DL_DECRYPT',   "security",    0, 6, 8,   "bool",      15,   None, None,       "Disable flash decryption in UART bootloader", None),
-        ('DISABLE_DL_CACHE',     "security",    0, 6, 9,   "bool",      15,   None, None,       "Disable flash cache in UART bootloader", None),
-        ('BLK3_PART_RESERVE',    "calibration", 0, 3, 14,  "bool",      10,   3,    None,       "BLOCK3 partially served for ADC calibration data", None),
-        ('ADC_VREF',             "calibration", 0, 4, 8,   "uint:5",    0,    None, "vref",     "Voltage reference calibration", None),
-        ('MAC_VERSION',          "identity",    3, 5, 24,  "uint:8",    9,    2,    None,       "Version of the MAC field",
-         {1: "Custom MAC in BLOCK3"}),
-    ]
+        self.CALC = []
 
-    # if MAC_VERSION is set "1", these efuse fields are in BLOCK3:
-    CUSTOM_MAC = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('CUSTOM_MAC',           "identity",    3, 0, 8,   "bytes:6",   9,    2,   "mac",       "Custom MAC", None),
-        ('CUSTOM_MAC_CRC',       "identity",    3, 0, 0,   "uint:8",    9,    2,    None,       "CRC of custom MAC", None),
-    ]
+        dir_name = os.path.dirname(os.path.abspath(__file__))
+        dir_name, file_name = os.path.split(dir_name)
+        file_name = file_name + ".yaml"
+        dir_name, _ = os.path.split(dir_name)
+        efuse_file = os.path.join(dir_name, "efuse_defs", file_name)
+        with open(f"{efuse_file}", "r") as r_file:
+            e_desc = yaml.safe_load(r_file)
+        super().__init__(e_desc)
 
-    # The len of fields depends on coding scheme: for CODING_SCHEME_NONE
-    KEYBLOCKS_256 = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('BLOCK1',                 "security",    1, 0, 0,   "bytes:32", 7,    0,    "keyblock", "Flash encryption key", None),
-        ('BLOCK2',                 "security",    2, 0, 0,   "bytes:32", 8,    1,    "keyblock", "Secure boot key", None),
-        ('BLOCK3',                 "security",    3, 0, 0,   "bytes:32", 9,    2,    "keyblock", "Variable Block 3", None),
-    ]
+        for i, efuse in enumerate(self.ALL_EFUSES):
+            if efuse.name == "BLOCK1" or efuse.name == "BLOCK2":
+                self.KEYBLOCKS_256.append(efuse)
+                BLOCK = copy.deepcopy(efuse)
+                BLOCK.type = "bytes:24"
+                BLOCK.bit_len = 24 * 8
+                self.KEYBLOCKS_192.append(BLOCK)
+                self.ALL_EFUSES[i] = None
 
-    # The len of fields depends on coding scheme: for CODING_SCHEME_34
-    KEYBLOCKS_192 = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('BLOCK1',                 "security",    1, 0, 0,   "bytes:24", 7,    0,    "keyblock", "Flash encryption key", None),
-        ('BLOCK2',                 "security",    2, 0, 0,   "bytes:24", 8,    1,    "keyblock", "Secure boot key", None),
-        ('BLOCK3',                 "security",    3, 0, 0,   "bytes:24", 9,    2,    "keyblock", "Variable Block 3", None),
-    ]
+            elif efuse.name == "MAC_VERSION":
+                # A field from BLOCK3, It is used as a template
+                BLOCK3 = copy.deepcopy(efuse)
+                BLOCK3.name = "BLOCK3"
+                BLOCK3.block = 3
+                BLOCK3.word = 0
+                BLOCK3.pos = 0
+                BLOCK3.bit_len = 32 * 8
+                BLOCK3.type = "bytes:32"
+                BLOCK3.category = "security"
+                BLOCK3.class_type = "keyblock"
+                BLOCK3.description = "Variable Block 3"
+                self.KEYBLOCKS_256.append(BLOCK3)
 
-    # if BLK3_PART_RESERVE is set, these efuse fields are in BLOCK3:
-    ADC_CALIBRATION = [
-        # Name                   Category  Block Word Pos  Type:len   WR_DIS RD_DIS Class       Description                Dictionary
-        ('ADC1_TP_LOW',          "calibration", 3, 3, 0,   "uint:7",    9,    2,    "adc_tp",   "ADC1 150mV reading", None),
-        ('ADC1_TP_HIGH',         "calibration", 3, 3, 7,   "uint:9",    9,    2,    "adc_tp",   "ADC1 850mV reading", None),
-        ('ADC2_TP_LOW',          "calibration", 3, 3, 16,  "uint:7",    9,    2,    "adc_tp",   "ADC2 150mV reading", None),
-        ('ADC2_TP_HIGH',         "calibration", 3, 3, 23,  "uint:9",    9,    2,    "adc_tp",   "ADC2 850mV reading", None),
-    ]
+                BLOCK3 = copy.deepcopy(BLOCK3)
+                BLOCK3.type = "bytes:24"
+                BLOCK3.bit_len = 24 * 8
+                self.KEYBLOCKS_192.append(BLOCK3)
 
-    CALC = [
-        ("WAFER_VERSION_MAJOR",  "identity",  0, None, None, "uint:3",  None,    None, "wafer", "calc WAFER VERSION MAJOR from CHIP_VER_REV1 and CHIP_VER_REV2 and apb_ctl_date (read only)", None),
-        ('PKG_VERSION',          "identity",  0, None, None, "uint:4",  None,    None, "pkg",   "calc Chip package = CHIP_PACKAGE_4BIT << 3 + CHIP_PACKAGE (read only)", None),
-    ]
-# fmt: on
+            elif efuse.category == "calibration" and efuse.block == 3:
+                self.ADC_CALIBRATION.append(efuse)
+                self.ALL_EFUSES[i] = None
+
+            elif efuse.name in ["CUSTOM_MAC_CRC", "CUSTOM_MAC"]:
+                self.CUSTOM_MAC.append(efuse)
+                self.ALL_EFUSES[i] = None
+
+            elif efuse.category == "spi pad":
+                efuse.class_type = "spipin"
+
+        f = Field()
+        f.name = "WAFER_VERSION_MAJOR"
+        f.block = 0
+        f.bit_len = 3
+        f.type = f"uint:{f.bit_len}"
+        f.category = "identity"
+        f.class_type = "wafer"
+        f.description = "calc WAFER VERSION MAJOR from CHIP_VER_REV1 and CHIP_VER_REV2 and apb_ctl_date (read only)"
+        self.CALC.append(f)
+
+        f = Field()
+        f.name = "PKG_VERSION"
+        f.block = 0
+        f.bit_len = 4
+        f.type = f"uint:{f.bit_len}"
+        f.category = "identity"
+        f.class_type = "pkg"
+        f.description = (
+            "calc Chip package = CHIP_PACKAGE_4BIT << 3 + CHIP_PACKAGE (read only)"
+        )
+        self.CALC.append(f)
+
+        for efuse in self.ALL_EFUSES:
+            if efuse is not None:
+                self.EFUSES.append(efuse)
+
+        self.ALL_EFUSES = []

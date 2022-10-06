@@ -98,7 +98,7 @@ class ESP32C6ROM(ESP32C3ROM):
 
     def get_pkg_version(self):
         num_word = 3
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 29) & 0x07
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x07
 
     def get_minor_chip_version(self):
         num_word = 3
@@ -110,7 +110,8 @@ class ESP32C6ROM(ESP32C3ROM):
 
     def get_chip_description(self):
         chip_name = {
-            0: "ESP32-C6",
+            0: "ESP32-C6 (QFN40)",
+            1: "ESP32-C6FH4 (QFN32)",
         }.get(self.get_pkg_version(), "unknown ESP32-C6")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()

@@ -109,8 +109,7 @@ class EmulateEfuseControllerBase(object):
                 self.write_reg(wr_addr, 0)
 
     def read_field(self, name, bitstring=True):
-        for e in self.Fields.EFUSES:
-            field = self.Fields.get(e)
+        for field in self.Fields.EFUSES:
             if field.name == name:
                 self.read_block(field.block)
                 block = self.read_block(field.block)
@@ -166,8 +165,7 @@ class EmulateEfuseControllerBase(object):
         ):
             mask_wr_data.set(1)
         else:
-            for e in self.Fields.EFUSES:
-                field = self.Fields.get(e)
+            for field in self.Fields.EFUSES:
                 if blk.id == field.block and field.block == num_blk:
                     if field.write_disable_bit is not None and write_disable_bit & (
                         1 << field.write_disable_bit
@@ -193,8 +191,7 @@ class EmulateEfuseControllerBase(object):
             ):
                 block.set(0)
             else:
-                for e in self.Fields.EFUSES:
-                    field = self.Fields.get(e)
+                for field in self.Fields.EFUSES:
                     if (
                         blk.id == field.block
                         and field.read_disable_bit is not None

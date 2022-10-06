@@ -155,9 +155,8 @@ def add_commands(subparsers, efuses):
     p = subparsers.add_parser(
         "set_flash_voltage",
         help="Permanently set the internal flash voltage regulator "
-        "to either 1.8V, 3.3V or OFF. "
-        "This means GPIO45 can be high or low at reset without "
-        "changing the flash voltage.",
+        "to either 1.8V, 3.3V or OFF. This means GPIO45 can be high or low "
+        "at reset without changing the flash voltage.",
     )
     p.add_argument("voltage", help="Voltage selection", choices=["1.8V", "3.3V", "OFF"])
 
@@ -167,7 +166,8 @@ def add_commands(subparsers, efuses):
     p.add_argument(
         "mac",
         help="Custom MAC Address to burn given in hexadecimal format with bytes "
-        "separated by colons (e.g. AA:CD:EF:01:02:03).",
+        "separated by colons (e.g. AA:CD:EF:01:02:03). "
+        "Final CUSTOM_MAC = CUSTOM_MAC[48] + MAC_EXT[16]",
         type=fields.base_fields.CheckArgValue(efuses, "CUSTOM_MAC"),
     )
     add_force_write_always(p)
