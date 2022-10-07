@@ -49,12 +49,26 @@ static uint8_t calculate_checksum(uint8_t *buf, int length)
 }
 
 #if USE_MAX_CPU_FREQ
+static bool can_use_max_cpu_freq()
+{
+  /* Check if any of available USB modes are being used. */
+  #if WITH_USB_OTG && !WITH_USB_JTAG_SERIAL
+  return stub_uses_usb_otg();
+  #elif !WITH_USB_OTG && WITH_USB_JTAG_SERIAL
+  return stub_uses_usb_jtag_serial();
+  #elif WITH_USB_OTG && WITH_USB_JTAG_SERIAL
+  return stub_uses_usb_otg() || stub_uses_usb_jtag_serial();
+  #else
+  return false;
+  #endif
+}
+
 static uint32_t cpu_per_conf_reg = 0;
 static uint32_t sysclk_conf_reg = 0;
 
 static void set_max_cpu_freq()
 {
-  if (stub_uses_usb_jtag_serial())
+  if (can_use_max_cpu_freq())
   {
     /* Set CPU frequency to max. This also increases SPI speed. */
     cpu_per_conf_reg = READ_REG(SYSTEM_CPU_PER_CONF_REG);
@@ -68,7 +82,7 @@ static void reset_cpu_freq()
 {
   /* Restore saved sysclk_conf and cpu_per_conf registers.
      Use only if set_max_cpu_freq() has been called. */
-  if (stub_uses_usb_jtag_serial() && sysclk_conf_reg != 0 && cpu_per_conf_reg != 0)
+  if (can_use_max_cpu_freq() && sysclk_conf_reg != 0 && cpu_per_conf_reg != 0)
   {
     WRITE_REG(SYSTEM_CPU_PER_CONF_REG, (READ_REG(SYSTEM_CPU_PER_CONF_REG) & ~SYSTEM_CPUPERIOD_SEL_M) | (cpu_per_conf_reg & SYSTEM_CPUPERIOD_SEL_M));
     WRITE_REG(SYSTEM_SYSCLK_CONF_REG, (READ_REG(SYSTEM_SYSCLK_CONF_REG) & ~SYSTEM_SOC_CLK_SEL_M) | (sysclk_conf_reg & SYSTEM_SOC_CLK_SEL_M));
@@ -444,8 +458,10 @@ void stub_main()
   cmd_loop();
 
   /* if cmd_loop returns, it's due to ESP_RUN_USER_CODE command. */
+
   #if USE_MAX_CPU_FREQ
     reset_cpu_freq();
   #endif // USE_MAX_CPU_FREQ
+
   return;
 }

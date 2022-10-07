@@ -54,3 +54,9 @@ void stub_io_idle_hook(void);
 #if WITH_USB_JTAG_SERIAL
 bool stub_uses_usb_jtag_serial(void);
 #endif
+
+/* Checks if USB-OTG is being currently used.
+ */
+#if WITH_USB_OTG
+bool stub_uses_usb_otg(void);
+#endif

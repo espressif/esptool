@@ -116,7 +116,7 @@ static void stub_cdcacm_write_char(char ch)
     }
 }
 
-static bool stub_uses_usb_otg(void)
+bool stub_uses_usb_otg(void)
 {
   UartDevice *uart = GetUartDevice();
 
