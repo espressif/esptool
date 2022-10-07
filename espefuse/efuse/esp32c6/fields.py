@@ -54,16 +54,15 @@ class EspEfuses(base_fields.EspEfusesBase):
     Wrapper object to manage the efuse fields in a connected ESP bootloader
     """
 
-    Blocks = EfuseDefineBlocks()
-    Fields = EfuseDefineFields()
-    REGS = EfuseDefineRegisters
-    BURN_BLOCK_DATA_NAMES = Blocks.get_burn_block_data_names()
-    BLOCKS_FOR_KEYS = Blocks.get_blocks_for_keys()
-
     debug = False
     do_not_confirm = False
 
     def __init__(self, esp, skip_connect=False, debug=False, do_not_confirm=False):
+        self.Blocks = EfuseDefineBlocks()
+        self.Fields = EfuseDefineFields()
+        self.REGS = EfuseDefineRegisters
+        self.BURN_BLOCK_DATA_NAMES = self.Blocks.get_burn_block_data_names()
+        self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         self._esp = esp
         self.debug = debug
         self.do_not_confirm = do_not_confirm

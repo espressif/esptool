@@ -16,11 +16,11 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     CHIP_NAME = "ESP32"
     mem = None
     debug = False
-    Blocks = EfuseDefineBlocks
-    Fields = EfuseDefineFields
-    REGS = EfuseDefineRegisters
 
     def __init__(self, efuse_file=None, debug=False):
+        self.Blocks = EfuseDefineBlocks
+        self.Fields = EfuseDefineFields()
+        self.REGS = EfuseDefineRegisters
         super(EmulateEfuseController, self).__init__(efuse_file, debug)
 
     """ esptool method start >> """
