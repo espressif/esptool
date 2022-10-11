@@ -900,6 +900,9 @@ class ESPLoader(object):
 
     @classmethod
     def parse_flash_freq_arg(cls, arg):
+        if arg is None:
+            # The encoding of the default flash frequency in FLASH_FREQUENCY is always 0
+            return 0
         try:
             return cls.FLASH_FREQUENCY[arg]
         except KeyError:

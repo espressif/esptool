@@ -247,7 +247,7 @@ def main(argv=None, esp=None):
                 "15m",
                 "12m",
             ],
-            default=os.environ.get("ESPTOOL_FF", "keep" if allow_keep else "40m"),
+            default=os.environ.get("ESPTOOL_FF", "keep" if allow_keep else None),
         )
         parent.add_argument(
             "--flash_mode",
