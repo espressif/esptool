@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-#
-# Tests for espsecure.py
+# Tests for espsecure.py using the pytest framework
 #
 # Assumes openssl binary is in the PATH
 
@@ -11,11 +9,12 @@ import os.path
 import subprocess
 import sys
 import tempfile
-import unittest
 from collections import namedtuple
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 os.chdir(TEST_DIR)
+
+ESPSECURE_PY = os.path.join(TEST_DIR, "..", "espsecure/__init__.py")
 
 try:
     import espsecure
@@ -25,10 +24,10 @@ except ImportError:
 
 import esptool
 
-from test_esptool import ESPSECURE_PY
+import pytest
 
 
-class EspSecureTestCase(unittest.TestCase):
+class EspSecureTestCase:
     def run_espsecure(self, args):
         """
         Run espsecure.py with the specified arguments
@@ -37,32 +36,34 @@ class EspSecureTestCase(unittest.TestCase):
         raises an exception if espsecure.py fails
         """
         cmd = [sys.executable, ESPSECURE_PY] + args.split(" ")
-        print("Running %s..." % (" ".join(cmd)))
+        print("\nExecuting {}...".format(" ".join(cmd)))
 
         try:
             output = subprocess.check_output(
                 [str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT
             )
-            print(output)
+            print(output.decode("utf-8"))
             return output.decode("utf-8")
         except subprocess.CalledProcessError as e:
-            print(e.output)
+            print(e.output.decode("utf-8"))
             raise e
 
-    def setUp(self):
+    @classmethod
+    def setup_class(self):
         self.cleanup_files = []  # keep a list of files _open()ed by each test case
 
-    def tearDown(self):
+    @classmethod
+    def teardown_class(self):
         for f in self.cleanup_files:
             f.close()
 
     def _open(self, image_file):
-        f = open(os.path.join("secure_images", image_file), "rb")
+        f = open(os.path.join(TEST_DIR, "secure_images", image_file), "rb")
         self.cleanup_files.append(f)
         return f
 
 
-class ESP32SecureBootloaderTests(EspSecureTestCase):
+class TestESP32SecureBootloader(EspSecureTestCase):
     def test_digest_bootloader(self):
         DBArgs = namedtuple(
             "digest_bootloader_args", ["keyfile", "output", "iv", "image"]
@@ -82,7 +83,7 @@ class ESP32SecureBootloaderTests(EspSecureTestCase):
 
             with open(output_file.name, "rb") as of:
                 with self._open("bootloader_digested.bin") as ef:
-                    self.assertEqual(ef.read(), of.read())
+                    assert ef.read() == of.read()
         finally:
             os.unlink(output_file.name)
 
@@ -100,12 +101,12 @@ class ESP32SecureBootloaderTests(EspSecureTestCase):
 
             with open(output_file.name, "rb") as of:
                 with self._open("rsa_public_key_digest.bin") as ef:
-                    self.assertEqual(ef.read(), of.read())
+                    assert ef.read() == of.read()
         finally:
             os.unlink(output_file.name)
 
 
-class SigningTests(EspSecureTestCase):
+class TestSigning(EspSecureTestCase):
 
     VerifyArgs = namedtuple("verify_signature_args", ["version", "keyfile", "datafile"])
 
@@ -121,29 +122,18 @@ class SigningTests(EspSecureTestCase):
     GenerateKeyArgs = namedtuple("generate_key_args", ["version", "scheme", "keyfile"])
 
     def test_key_generation_v1(self):
-        # tempfile.TemporaryDirectory() would be better
-        # but we need compatibility with old Pythons
-        keydir = tempfile.mkdtemp()
-        self.addCleanup(os.rmdir, keydir)
-
-        # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
-        # cannot be used for keyfile
-        keyfile_name = os.path.join(keydir, "key.pem")
-        self.addCleanup(os.remove, keyfile_name)
-        self.run_espsecure("generate_signing_key --version 1 {}".format(keyfile_name))
+        with tempfile.TemporaryDirectory() as keydir:
+            # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
+            # cannot be used for keyfile
+            keyfile_name = os.path.join(keydir, "key.pem")
+            self.run_espsecure(f"generate_signing_key --version 1 {keyfile_name}")
 
     def test_key_generation_v2(self):
-        # tempfile.TemporaryDirectory() would be better
-        # but we need compatibility with old Pythons
-        keydir = tempfile.mkdtemp()
-        self.addCleanup(os.rmdir, keydir)
-
-        # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
-        # cannot be used for keyfile
-        keyfile_name = os.path.join(keydir, "key.pem")
-        self.addCleanup(os.remove, keyfile_name)
-
-        self.run_espsecure("generate_signing_key --version 2 {}".format(keyfile_name))
+        with tempfile.TemporaryDirectory() as keydir:
+            # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
+            # cannot be used for keyfile
+            keyfile_name = os.path.join(keydir, "key.pem")
+            self.run_espsecure(f"generate_signing_key --version 2 {keyfile_name}")
 
     def _test_sign_v1_data(self, key_name):
         try:
@@ -163,7 +153,7 @@ class SigningTests(EspSecureTestCase):
 
             with open(output_file.name, "rb") as of:
                 with self._open("bootloader_signed.bin") as ef:
-                    self.assertEqual(ef.read(), of.read())
+                    assert ef.read() == of.read()
 
         finally:
             os.unlink(output_file.name)
@@ -337,9 +327,9 @@ class SigningTests(EspSecureTestCase):
             self._open("ecdsa_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn("Signature is not valid", str(cm.exception))
+        assert "Signature is not valid" in str(cm.value)
 
         # wrong key v2
         args = self.VerifyArgs(
@@ -347,11 +337,9 @@ class SigningTests(EspSecureTestCase):
             self._open("rsa_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed_v2.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
         # right key, wrong scheme (ecdsa256, v2)
         args = self.VerifyArgs(
@@ -359,9 +347,9 @@ class SigningTests(EspSecureTestCase):
             self._open("ecdsa_secure_boot_signing_key.pem"),
             self._open("bootloader_signed.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn("Invalid datafile", str(cm.exception))
+        assert "Invalid datafile" in str(cm.value)
 
         # wrong key v2 (ecdsa256)
         args = self.VerifyArgs(
@@ -369,11 +357,9 @@ class SigningTests(EspSecureTestCase):
             self._open("ecdsa_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed_v2_ecdsa256.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
         # wrong key v2 (ecdsa192)
         args = self.VerifyArgs(
@@ -381,11 +367,9 @@ class SigningTests(EspSecureTestCase):
             self._open("ecdsa192_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed_v2_ecdsa192.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
         # multi-signed wrong key v2
         args = self.VerifyArgs(
@@ -393,11 +377,9 @@ class SigningTests(EspSecureTestCase):
             self._open("rsa_secure_boot_signing_key4.pem"),
             self._open("bootloader_multi_signed_v2.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
     def test_verify_signature_public_key(self):
         # correct key v1
@@ -438,9 +420,9 @@ class SigningTests(EspSecureTestCase):
             self._open("ecdsa_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn("Signature is not valid", str(cm.exception))
+        assert "Signature is not valid" in str(cm.value)
 
         # wrong key v2
         args = self.VerifyArgs(
@@ -448,11 +430,9 @@ class SigningTests(EspSecureTestCase):
             self._open("rsa_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed_v2.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
         # wrong key v2 (ecdsa256)
         args = self.VerifyArgs(
@@ -460,11 +440,9 @@ class SigningTests(EspSecureTestCase):
             self._open("ecdsa_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed_v2_ecdsa256.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
         # wrong key v2 (ecdsa192)
         args = self.VerifyArgs(
@@ -472,11 +450,9 @@ class SigningTests(EspSecureTestCase):
             self._open("ecdsa192_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed_v2_ecdsa192.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
         # multi-signed wrong key v2
         args = self.VerifyArgs(
@@ -484,11 +460,9 @@ class SigningTests(EspSecureTestCase):
             self._open("rsa_secure_boot_signing_pubkey4.pem"),
             self._open("bootloader_multi_signed_v2.bin"),
         )
-        with self.assertRaises(esptool.FatalError) as cm:
+        with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
-        self.assertIn(
-            "Signature could not be verified with the provided key.", str(cm.exception)
-        )
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
     def test_extract_binary_public_key(self):
 
@@ -516,36 +490,32 @@ class SigningTests(EspSecureTestCase):
             args = self.VerifyArgs(
                 "1", pub_keyfile2, self._open("bootloader_signed.bin")
             )
-            with self.assertRaises(esptool.FatalError) as cm:
+            with pytest.raises(esptool.FatalError) as cm:
                 espsecure.verify_signature(args)
-            self.assertIn("Signature is not valid", str(cm.exception))
+            assert "Signature is not valid" in str(cm.value)
 
     def test_generate_and_extract_key_v2(self):
-        # tempfile.TemporaryDirectory() would be better
-        # but we need compatibility with old Pythons
-        keydir = tempfile.mkdtemp()
-        self.addCleanup(os.rmdir, keydir)
+        with tempfile.TemporaryDirectory() as keydir:
+            # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
+            # cannot be used for keyfile
+            keyfile_name = os.path.join(keydir, "key.pem")
 
-        # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
-        # cannot be used for keyfile
-        keyfile_name = os.path.join(keydir, "key.pem")
+            # We need to manually delete the keyfile as we are iterating over
+            # different schemes with the same keyfile so instead of using addCleanup,
+            # we remove it using os.remove at the end of each pass
+            for scheme in ["rsa3072", "ecdsa192", "ecdsa256"]:
+                args = self.GenerateKeyArgs("2", scheme, keyfile_name)
+                espsecure.generate_signing_key(args)
 
-        # We need to manually delete the keyfile as we are iterating over
-        # different schemes with the same keyfile so instead of using addCleanup,
-        # we remove it using os.remove at the end of each pass
-        for scheme in ["rsa3072", "ecdsa192", "ecdsa256"]:
-            args = self.GenerateKeyArgs("2", scheme, keyfile_name)
-            espsecure.generate_signing_key(args)
-
-            with tempfile.NamedTemporaryFile() as pub_keyfile, open(
-                keyfile_name, "rb"
-            ) as keyfile:
-                args = self.ExtractKeyArgs("2", keyfile, pub_keyfile)
-                espsecure.extract_public_key(args)
-            os.remove(keyfile_name)
+                with tempfile.NamedTemporaryFile() as pub_keyfile, open(
+                    keyfile_name, "rb"
+                ) as keyfile:
+                    args = self.ExtractKeyArgs("2", keyfile, pub_keyfile)
+                    espsecure.extract_public_key(args)
+                os.remove(keyfile_name)
 
 
-class FlashEncryptionTests(EspSecureTestCase):
+class TestFlashEncryption(EspSecureTestCase):
 
     EncryptArgs = namedtuple(
         "encrypt_flash_data_args",
@@ -591,9 +561,9 @@ class FlashEncryptionTests(EspSecureTestCase):
         espsecure.encrypt_flash_data(args)
 
         original_plaintext.seek(0)
-        self.assertNotEqual(original_plaintext.read(), ciphertext.getvalue())
+        assert original_plaintext.read() != ciphertext.getvalue()
         with self._open(expected_ciphertext) as f:
-            self.assertEqual(f.read(), ciphertext.getvalue())
+            assert f.read() == ciphertext.getvalue()
 
         ciphertext.seek(0)
         keyfile.seek(0)
@@ -604,10 +574,10 @@ class FlashEncryptionTests(EspSecureTestCase):
         espsecure.decrypt_flash_data(args)
 
         original_plaintext.seek(0)
-        self.assertEqual(original_plaintext.read(), plaintext.getvalue())
+        assert original_plaintext.read() == plaintext.getvalue()
 
 
-class ESP32FlashEncryptionTests(FlashEncryptionTests):
+class TestESP32FlashEncryption(TestFlashEncryption):
     def test_encrypt_decrypt_bootloader(self):
         self._test_encrypt_decrypt(
             "bootloader.bin", "bootloader-encrypted.bin", "256bit_key.bin", 0x1000, 0xF
@@ -627,14 +597,14 @@ class ESP32FlashEncryptionTests(FlashEncryptionTests):
         for conf in [0x0, 0x3, 0x9, 0xC]:
             self._test_encrypt_decrypt(
                 "bootloader.bin",
-                "bootloader-encrypted-conf%x.bin" % conf,
+                f"bootloader-encrypted-conf{conf:x}.bin",
                 "256bit_key.bin",
                 0x1000,
                 conf,
             )
 
 
-class AesXtsFlashEncryptionTests(FlashEncryptionTests):
+class TestAesXtsFlashEncryption(TestFlashEncryption):
     def test_encrypt_decrypt_bootloader(self):
         self._test_encrypt_decrypt(
             "bootloader.bin",
@@ -721,42 +691,29 @@ class AesXtsFlashEncryptionTests(FlashEncryptionTests):
 
                 espsecure.encrypt_flash_data(encrypt_args)
 
-            self.assertEqual(ciphertext_full_block.getvalue(), ciphertext.getvalue())
+            assert ciphertext_full_block.getvalue() == ciphertext.getvalue()
 
 
-class DigestTests(EspSecureTestCase):
+class TestDigest(EspSecureTestCase):
     def test_digest_private_key(self):
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            self.addCleanup(os.remove, f.name)
+        with tempfile.NamedTemporaryFile() as f:
             outfile_name = f.name
 
         self.run_espsecure(
             "digest_private_key "
             "--keyfile secure_images/ecdsa_secure_boot_signing_key.pem "
-            "{}".format(outfile_name)
+            f"{outfile_name}"
         )
 
         with open(outfile_name, "rb") as f:
-            self.assertEqual(
-                f.read(),
-                binascii.unhexlify(
-                    "7b7b53708fc89d5e0b2df2571fb8f9d778f61a422ff1101a22159c4b34aad0aa"
-                ),
+            assert f.read() == binascii.unhexlify(
+                "7b7b53708fc89d5e0b2df2571fb8f9d778f61a422ff1101a22159c4b34aad0aa"
             )
 
-    def test_digest_private_key_with_invalid_output(self):
+    def test_digest_private_key_with_invalid_output(self, capsys):
         fname = "secure_images/ecdsa_secure_boot_signing_key.pem"
 
-        with self.assertRaises(subprocess.CalledProcessError):
-            self.run_espsecure(
-                "digest_private_key --keyfile {} {}".format(fname, fname)
-            )
-
-
-if __name__ == "__main__":
-    print("Running espsecure tests...")
-    print(
-        "Using espsecure %s at %s"
-        % (esptool.__version__, os.path.abspath(espsecure.__file__))
-    )
-    unittest.main(buffer=True)
+        with pytest.raises(subprocess.CalledProcessError):
+            self.run_espsecure(f"digest_private_key --keyfile {fname} {fname}")
+        output = capsys.readouterr().out
+        assert "should not be the same!" in output

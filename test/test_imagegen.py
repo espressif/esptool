@@ -1,12 +1,9 @@
-#!/usr/bin/env python
-
 import hashlib
 import os
 import os.path
 import struct
 import subprocess
 import sys
-import unittest
 
 from elftools.elf.elffile import ELFFile
 
@@ -20,6 +17,8 @@ except KeyError:
 # import the version of esptool we are testing with
 sys.path.append(os.path.dirname(ESPTOOL_PY))
 import esptool
+
+import pytest
 
 
 def try_delete(path):
@@ -39,7 +38,7 @@ def segment_matches_section(segment, section):
     return section.header.sh_addr == segment.addr and sh_size == len(segment.data)
 
 
-class BaseTestCase(unittest.TestCase):
+class BaseTestCase:
     def assertEqualHex(self, expected, actual, message=None):
         try:
             expected = hex(expected)
@@ -49,7 +48,7 @@ class BaseTestCase(unittest.TestCase):
             actual = hex(actual)
         except TypeError:  # if actual is character
             actual = hex(ord(actual))
-        self.assertEqual(expected, actual, message)
+        assert expected == actual, message
 
     def assertImageDoesNotContainSection(self, image, elf, section_name):
         """
@@ -59,19 +58,17 @@ class BaseTestCase(unittest.TestCase):
         with open(elf, "rb") as f:
             e = ELFFile(f)
             section = e.get_section_by_name(section_name)
-            self.assertTrue(section, "%s should be in the ELF" % section_name)
+            assert section, f"{section_name} should be in the ELF"
             sh_addr = section.header.sh_addr
             data = section.data()
             # no section should start at the same address as the ELF section.
             for seg in sorted(image.segments, key=lambda s: s.addr):
                 print(
-                    "comparing seg 0x%x sec 0x%x len 0x%x"
-                    % (seg.addr, sh_addr, len(data))
+                    f"comparing seg {seg.addr:#x} sec {sh_addr:#x} len {len(data):#x}"
                 )
-                self.assertFalse(
-                    seg.addr == sh_addr,
-                    "%s should not be in the binary image" % section_name,
-                )
+                assert (
+                    seg.addr != sh_addr
+                ), f"{section_name} should not be in the binary image"
 
     def assertImageContainsSection(self, image, elf, section_name):
         """
@@ -81,7 +78,7 @@ class BaseTestCase(unittest.TestCase):
         with open(elf, "rb") as f:
             e = ELFFile(f)
             section = e.get_section_by_name(section_name)
-            self.assertTrue(section, "%s should be in the ELF" % section_name)
+            assert section, f"{section_name} should be in the ELF"
             sh_addr = section.header.sh_addr
             data = section.data()
             # section contents may be smeared across multiple image segments,
@@ -90,26 +87,20 @@ class BaseTestCase(unittest.TestCase):
             # all be accounted for
             for seg in sorted(image.segments, key=lambda s: s.addr):
                 print(
-                    "comparing seg 0x%x sec 0x%x len 0x%x"
-                    % (seg.addr, sh_addr, len(data))
+                    f"comparing seg {seg.addr:#x} sec {sh_addr:#x} len {len(data):#x}"
                 )
                 if seg.addr == sh_addr:
                     overlap_len = min(len(seg.data), len(data))
-                    self.assertEqual(
-                        data[:overlap_len],
-                        seg.data[:overlap_len],
-                        "ELF '%s' section has mis-matching binary image data"
-                        % section_name,
-                    )
+                    assert (
+                        data[:overlap_len] == seg.data[:overlap_len]
+                    ), f"ELF '{section_name}' section has mis-matching bin image data"
                     sh_addr += overlap_len
                     data = data[overlap_len:]
 
             # no bytes in 'data' should be left unmatched
-            self.assertEqual(
-                0,
-                len(data),
-                "ELF %s section '%s' has no encompassing segment(s) in binary image "
-                "(image segments: %s)" % (elf, section_name, image.segments),
+            assert len(data) == 0, (
+                f"ELF {elf} section '{section_name}' has no encompassing"
+                f" segment(s) in bin image (image segments: {image.segments})"
             )
 
     def assertImageInfo(self, binpath, chip="esp8266"):
@@ -124,10 +115,10 @@ class BaseTestCase(unittest.TestCase):
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise
-        self.assertFalse("invalid" in output, "Checksum calculation should be valid")
-        self.assertFalse(
-            "warning" in output.lower(), "Should be no warnings in image_info output"
-        )
+        assert "invalid" not in output, "Checksum calculation should be valid"
+        assert (
+            "warning" not in output.lower()
+        ), "Should be no warnings in image_info output"
 
     def run_elf2image(self, chip, elf_path, version=None, extra_args=[]):
         """Run elf2image on elf_path"""
@@ -135,27 +126,29 @@ class BaseTestCase(unittest.TestCase):
         if version is not None:
             cmd += ["--version", str(version)]
         cmd += [elf_path] + extra_args
-        print("Executing %s" % (" ".join(cmd)))
+        print("\nExecuting {}".format(" ".join(cmd)))
         try:
             output = str(subprocess.check_output(cmd))
             print(output)
-            self.assertFalse(
-                "warning" in output.lower(), "elf2image should not output warnings"
-            )
+            assert (
+                "warning" not in output.lower()
+            ), "elf2image should not output warnings"
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise
 
 
-class ESP8266V1ImageTests(BaseTestCase):
+class TestESP8266V1Image(BaseTestCase):
     ELF = "esp8266-nonosssdk20-iotdemo.elf"
     BIN_LOAD = "esp8266-nonosssdk20-iotdemo.elf-0x00000.bin"
     BIN_IROM = "esp8266-nonosssdk20-iotdemo.elf-0x10000.bin"
 
-    def setUp(self):
-        self.run_elf2image("esp8266", self.ELF, 1)
+    @classmethod
+    def setup_class(self):
+        self.run_elf2image(self, "esp8266", self.ELF, 1)
 
-    def tearDown(self):
+    @classmethod
+    def teardown_class(self):
         try_delete(self.BIN_LOAD)
         try_delete(self.BIN_IROM)
 
@@ -163,17 +156,15 @@ class ESP8266V1ImageTests(BaseTestCase):
         with open(self.ELF, "rb") as f:
             e = ELFFile(f)
             irom_section = e.get_section_by_name(".irom0.text")
-            self.assertEqual(
-                irom_section.header.sh_size,
-                os.stat(self.BIN_IROM).st_size,
-                "IROM raw binary file should be same length as .irom0.text section",
-            )
+            assert (
+                irom_section.header.sh_size == os.stat(self.BIN_IROM).st_size
+            ), "IROM raw binary file should be same length as .irom0.text section"
 
     def test_loaded_sections(self):
         image = esptool.bin_image.LoadFirmwareImage("esp8266", self.BIN_LOAD)
         # Adjacent sections are now merged, len(image.segments) should
         # equal 2 (instead of 3).
-        self.assertEqual(2, len(image.segments))
+        assert len(image.segments) == 2
         self.assertImageContainsSection(image, self.ELF, ".data")
         self.assertImageContainsSection(image, self.ELF, ".text")
         # Section .rodata is merged in the binary with the previous one,
@@ -181,7 +172,7 @@ class ESP8266V1ImageTests(BaseTestCase):
         self.assertImageDoesNotContainSection(image, self.ELF, ".rodata")
 
 
-class ESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
+class TestESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
     """Ref https://github.com/espressif/esptool/issues/197 -
     this ELF image has the section header not at the end of the file"""
 
@@ -189,26 +180,27 @@ class ESP8266V12SectionHeaderNotAtEnd(BaseTestCase):
     BIN_LOAD = ELF + "-0x00000.bin"
     BIN_IROM = ELF + "-0x40000.bin"
 
+    @classmethod
+    def teardown_class(self):
+        try_delete(self.BIN_LOAD)
+        try_delete(self.BIN_IROM)
+
     def test_elf_section_header_not_at_end(self):
         self.run_elf2image("esp8266", self.ELF)
         image = esptool.bin_image.LoadFirmwareImage("esp8266", self.BIN_LOAD)
-        self.assertEqual(3, len(image.segments))
+        assert len(image.segments) == 3
         self.assertImageContainsSection(image, self.ELF, ".data")
         self.assertImageContainsSection(image, self.ELF, ".text")
         self.assertImageContainsSection(image, self.ELF, ".rodata")
 
-    def tearDown(self):
-        try_delete(self.BIN_LOAD)
-        try_delete(self.BIN_IROM)
 
-
-class ESP8266V2ImageTests(BaseTestCase):
+class TestESP8266V2Image(BaseTestCase):
     def _test_elf2image(self, elfpath, binpath, mergedsections=[]):
         try:
             self.run_elf2image("esp8266", elfpath, 2)
             image = esptool.bin_image.LoadFirmwareImage("esp8266", binpath)
             print("In test_elf2image", len(image.segments))
-            self.assertEqual(4 - len(mergedsections), len(image.segments))
+            assert 4 - len(mergedsections) == len(image.segments)
             sections = [".data", ".text", ".rodata"]
             # Remove the merged sections from the `sections` list
             sections = [sec for sec in sections if sec not in mergedsections]
@@ -218,19 +210,15 @@ class ESP8266V2ImageTests(BaseTestCase):
                 self.assertImageDoesNotContainSection(image, elfpath, sec)
 
             irom_segment = image.segments[0]
-            self.assertEqual(
-                0, irom_segment.addr, "IROM segment 'load address' should be zero"
-            )
+            assert irom_segment.addr == 0, "IROM segment 'load address' should be zero"
             with open(elfpath, "rb") as f:
                 e = ELFFile(f)
                 sh_size = (
                     e.get_section_by_name(".irom0.text").header.sh_size + 15
                 ) & ~15
-                self.assertEqual(
-                    len(irom_segment.data),
-                    sh_size,
-                    "irom segment (0x%x) should be same size (16 padded) "
-                    "as .irom0.text section (0x%x)" % (len(irom_segment.data), sh_size),
+                assert len(irom_segment.data) == sh_size, (
+                    f"irom segment ({len(irom_segment.data):#x}) should be same size "
+                    f"(16 padded) as .irom0.text section ({sh_size:#x})"
                 )
 
             # check V2 CRC (for ESP8266 SDK bootloader)
@@ -240,7 +228,7 @@ class ESP8266V2ImageTests(BaseTestCase):
                 crc_stored = struct.unpack("<I", f.read(4))[0]
                 f.seek(0)
                 crc_calc = esptool.bin_image.esp8266_crc32(f.read(image_len))
-                self.assertEqual(crc_stored, crc_calc)
+                assert crc_stored == crc_calc
 
             # test imageinfo doesn't fail
             self.assertImageInfo(binpath)
@@ -260,7 +248,7 @@ class ESP8266V2ImageTests(BaseTestCase):
         self._test_elf2image(ELF, BIN, [".rodata"])
 
 
-class ESP32ImageTests(BaseTestCase):
+class TestESP32Image(BaseTestCase):
     def _test_elf2image(self, elfpath, binpath, extra_args=[]):
         try:
             self.run_elf2image("esp32", elfpath, extra_args=extra_args)
@@ -274,7 +262,7 @@ class ESP32ImageTests(BaseTestCase):
         ELF = "esp32-bootloader.elf"
         BIN = "esp32-bootloader.bin"
         image = self._test_elf2image(ELF, BIN)
-        self.assertEqual(3, len(image.segments))
+        assert len(image.segments) == 3
         for section in [".iram1.text", ".iram_pool_1.text", ".dram0.rodata"]:
             self.assertImageContainsSection(image, ELF, section)
 
@@ -284,7 +272,7 @@ class ESP32ImageTests(BaseTestCase):
         image = self._test_elf2image(ELF, BIN)
         # Adjacent sections are now merged, len(image.segments) should
         # equal 5 (instead of 6).
-        self.assertEqual(5, len(image.segments))
+        assert len(image.segments) == 5
         # the other segment is a padding or merged segment
         for section in [
             ".iram0.vectors",
@@ -297,14 +285,14 @@ class ESP32ImageTests(BaseTestCase):
         for mergedsection in [".iram0.text"]:
             self.assertImageDoesNotContainSection(image, ELF, mergedsection)
 
-    def test_too_many_sections(self):
+    def test_too_many_sections(self, capsys):
         ELF = "esp32-too-many-sections.elf"
         BIN = "esp32-too-many-sections.bin"
-        with self.assertRaises(subprocess.CalledProcessError) as e:
+        with pytest.raises(subprocess.CalledProcessError):
             self._test_elf2image(ELF, BIN)
-        output = e.exception.output
-        self.assertIn(b"max 16", output)
-        self.assertIn(b"linker script", output)
+        output = capsys.readouterr().out
+        assert "max 16" in output
+        assert "linker script" in output
 
     def test_use_segments(self):
         ELF = "esp32-zephyr.elf"
@@ -314,14 +302,14 @@ class ESP32ImageTests(BaseTestCase):
         image = self._test_elf2image(ELF, BIN)
         # Adjacent sections are now merged, len(image.segments) should
         # equal 4 (instead of 8).
-        self.assertEqual(4, len(image.segments))
+        assert len(image.segments) == 4
 
         # --use_segments uses ELF segments(phdrs), produces just 2 segments in the bin
         image = self._test_elf2image(ELF, BIN, ["--use_segments"])
-        self.assertEqual(2, len(image.segments))
+        assert len(image.segments) == 2
 
 
-class ESP8266FlashHeaderTests(BaseTestCase):
+class TestESP8266FlashHeader(BaseTestCase):
     def test_2mb(self):
         ELF = "esp8266-nonossdkv20-at-v2.elf"
         BIN = "esp8266-nonossdkv20-at-v2-0x01000.bin"
@@ -334,7 +322,7 @@ class ESP8266FlashHeaderTests(BaseTestCase):
             )
             with open(BIN, "rb") as f:
                 header = f.read(4)
-                print("header %r" % header)
+                print(f"header {header}")
                 self.assertEqualHex(0xEA, header[0])
                 self.assertEqualHex(0x02, header[2])
                 self.assertEqualHex(0x30, header[3])
@@ -342,7 +330,7 @@ class ESP8266FlashHeaderTests(BaseTestCase):
             try_delete(BIN)
 
 
-class ESP32FlashHeaderTests(BaseTestCase):
+class TestESP32FlashHeader(BaseTestCase):
     def test_16mb(self):
         ELF = "esp32-app-template.elf"
         BIN = "esp32-app-template.bin"
@@ -369,7 +357,7 @@ class ESP32FlashHeaderTests(BaseTestCase):
             try_delete(BIN)
 
 
-class ELFSHA256Tests(BaseTestCase):
+class TestELFSHA256(BaseTestCase):
     ELF = "esp32-app-cust-ver-info.elf"
     SHA_OFFS = 0xB0  # absolute offset of the SHA in the .bin file
     BIN = "esp32-app-cust-ver-info.bin"
@@ -425,7 +413,7 @@ class ELFSHA256Tests(BaseTestCase):
             self.run_elf2image(
                 "esp32",
                 self.ELF,
-                extra_args=["--elf-sha256-offset", "0x%x" % self.SHA_OFFS],
+                extra_args=["--elf-sha256-offset", f"{self.SHA_OFFS:#x}"],
             )
             image = esptool.bin_image.LoadFirmwareImage("esp32", self.BIN)
             rodata_segment = image.segments[0]
@@ -440,32 +428,35 @@ class ELFSHA256Tests(BaseTestCase):
                 f.seek(self.SHA_OFFS)
                 bin_sha256_raw = f.read(len(elf_computed_sha256))
 
-            self.assertSequenceEqual(elf_computed_sha256, bin_sha256)
-            self.assertSequenceEqual(elf_computed_sha256, bin_sha256_raw)
+            assert elf_computed_sha256 == bin_sha256
+            assert elf_computed_sha256 == bin_sha256_raw
         finally:
             try_delete(self.BIN)
 
-    def test_no_overwrite_data(self):
-        with self.assertRaises(subprocess.CalledProcessError) as e:
+    def test_no_overwrite_data(self, capsys):
+        with pytest.raises(subprocess.CalledProcessError):
             self.run_elf2image(
                 "esp32",
                 "esp32-bootloader.elf",
                 extra_args=["--elf-sha256-offset", "0xb0"],
             )
-        output = e.exception.output
-        self.assertIn(b"SHA256", output)
-        self.assertIn(b"zero", output)
+        output = capsys.readouterr().out
+        assert "SHA256" in output
+        assert "zero" in output
 
 
-class HashAppendTests(BaseTestCase):
+class TestHashAppend(BaseTestCase):
     ELF = "esp32-bootloader.elf"
     BIN = "esp32-bootloader.bin"
 
     # 15th byte of the extended header after the 8-byte image header
     HASH_APPEND_OFFSET = 15 + 8
 
+    @classmethod
+    def teardown_class(self):
+        try_delete(self.BIN)
+
     def test_hash_append(self):
-        self.addCleanup(os.remove, self.BIN)
         self.run_elf2image(
             "esp32",
             self.ELF,
@@ -474,7 +465,7 @@ class HashAppendTests(BaseTestCase):
         with open(self.BIN, "rb") as f:
             bin_with_hash = f.read()
 
-        self.assertEqual(bin_with_hash[self.HASH_APPEND_OFFSET], 1)
+        assert bin_with_hash[self.HASH_APPEND_OFFSET] == 1
 
         # drop the last 32 bytes (SHA256 digest)
         expected_bin_without_hash = bytearray(bin_with_hash[:-32])
@@ -491,10 +482,5 @@ class HashAppendTests(BaseTestCase):
         with open(self.BIN, "rb") as f:
             bin_without_hash = f.read()
 
-        self.assertEqual(bin_without_hash[self.HASH_APPEND_OFFSET], 0)
-        self.assertSequenceEqual(bytes(expected_bin_without_hash), bin_without_hash)
-
-
-if __name__ == "__main__":
-    print("Running image generation tests...")
-    unittest.main(buffer=True)
+        assert bin_without_hash[self.HASH_APPEND_OFFSET] == 0
+        assert bytes(expected_bin_without_hash) == bin_without_hash

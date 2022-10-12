@@ -1,12 +1,9 @@
-#!/usr/bin/env python
-
 import itertools
 import os
 import os.path
 import subprocess
 import sys
 import tempfile
-import unittest
 
 IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images")
 try:
@@ -20,13 +17,15 @@ sys.path.append(os.path.dirname(ESPTOOL_PY))
 
 from esptool.util import byte
 
+import pytest
+
 
 def read_image(filename):
     with open(os.path.join(IMAGES_DIR, filename), "rb") as f:
         return f.read()
 
 
-class MergeBinTests(unittest.TestCase):
+class TestMergeBin:
     def run_merge_bin(self, chip, offsets_names, options=[]):
         """Run merge_bin on a list of (offset, filename) tuples
         with output to a named temporary file.
@@ -50,15 +49,15 @@ class MergeBinTests(unittest.TestCase):
             ] + options
             for (offset, name) in offsets_names:
                 cmd += [hex(offset), name]
-            print("Executing %s" % (" ".join(cmd)))
+            print("\nExecuting {}".format(" ".join(cmd)))
 
             output = str(
                 subprocess.check_output(cmd, cwd=IMAGES_DIR, stderr=subprocess.STDOUT)
             )
             print(output)
-            self.assertFalse(
-                "warning" in output.lower(), "merge_bin should not output warnings"
-            )
+            assert (
+                "warning" not in output.lower()
+            ), "merge_bin should not output warnings"
 
             with open(output_file.name, "rb") as f:
                 return f.read()
@@ -71,7 +70,7 @@ class MergeBinTests(unittest.TestCase):
     def assertAllFF(self, some_bytes):
         # this may need some improving as the failed assert messages may be
         # very long and/or useless!
-        self.assertEqual(b"\xFF" * len(some_bytes), some_bytes)
+        assert b"\xFF" * len(some_bytes) == some_bytes
 
     def test_simple_merge(self):
         merged = self.run_merge_bin(
@@ -80,12 +79,12 @@ class MergeBinTests(unittest.TestCase):
         )
         one_kb = read_image("one_kb.bin")
 
-        self.assertEqual(0x400, len(one_kb))
+        assert len(one_kb) == 0x400
 
-        self.assertEqual(0x10400, len(merged))
-        self.assertEqual(one_kb, merged[:0x400])
-        self.assertEqual(one_kb, merged[0x1000:0x1400])
-        self.assertEqual(one_kb, merged[0x10000:])
+        assert len(merged) == 0x10400
+        assert merged[:0x400] == one_kb
+        assert merged[0x1000:0x1400] == one_kb
+        assert merged[0x10000:] == one_kb
 
         self.assertAllFF(merged[0x400:0x1000])
         self.assertAllFF(merged[0x1400:0x10000])
@@ -98,19 +97,20 @@ class MergeBinTests(unittest.TestCase):
             for perm_args in itertools.permutations(args)
         ]
         for m in merged_orders:
-            self.assertEqual(merged_orders[0], m)
+            assert m == merged_orders[0]
 
-    def test_error_overlap(self):
+    def test_error_overlap(self, capsys):
         args = [(0x1000, "one_mb.bin"), (0x20000, "one_kb.bin")]
         for perm_args in itertools.permutations(args):
-            with self.assertRaises(subprocess.CalledProcessError) as fail:
+            with pytest.raises(subprocess.CalledProcessError):
                 self.run_merge_bin("esp32", perm_args)
-            self.assertIn(b"overlap", fail.exception.output)
+            output = capsys.readouterr().out
+            assert "overlap" in output
 
     def test_leading_padding(self):
         merged = self.run_merge_bin("esp32c3", [(0x100000, "one_mb.bin")])
         self.assertAllFF(merged[:0x100000])
-        self.assertEqual(read_image("one_mb.bin"), merged[0x100000:])
+        assert read_image("one_mb.bin") == merged[0x100000:]
 
     def test_update_bootloader_params(self):
         merged = self.run_merge_bin(
@@ -129,24 +129,21 @@ class MergeBinTests(unittest.TestCase):
         # test the bootloader is unchanged apart from the header
         # (updating the header doesn't change CRC,
         # and doesn't update the SHA although it will invalidate it!)
-        self.assertEqual(merged[0x1010 : 0x1000 + len(bootloader)], bootloader[0x10:])
+        assert merged[0x1010 : 0x1000 + len(bootloader)] == bootloader[0x10:]
 
         # check the individual bytes in the header are as expected
         merged_hdr = merged[0x1000:0x1010]
         bootloader_hdr = bootloader[:0x10]
-        self.assertEqual(bootloader_hdr[:2], merged_hdr[:2])
-        self.assertEqual(3, byte(merged_hdr, 2))  # flash mode dout
-        self.assertEqual(0x10, byte(merged_hdr, 3) & 0xF0)  # flash size 2MB (ESP32)
-        self.assertEqual(
-            byte(bootloader_hdr, 3) & 0x0F, byte(merged_hdr, 3) & 0x0F
-        )  # flash speed is unchanged
-        self.assertEqual(
-            bootloader_hdr[4:], merged_hdr[4:]
-        )  # remaining field are unchanged
+        assert bootloader_hdr[:2] == merged_hdr[:2]
+        assert byte(merged_hdr, 2) == 3  # flash mode dout
+        assert byte(merged_hdr, 3) & 0xF0 == 0x10  # flash size 2MB (ESP32)
+        # flash freq is unchanged
+        assert byte(bootloader_hdr, 3) & 0x0F == byte(merged_hdr, 3) & 0x0F
+        assert bootloader_hdr[4:] == merged_hdr[4:]  # remaining field are unchanged
 
         # check all the padding is as expected
         self.assertAllFF(merged[0x1000 + len(bootloader) : 0x10000])
-        self.assertEqual(merged[0x10000 : 0x10000 + len(helloworld)], helloworld)
+        assert merged[0x10000 : 0x10000 + len(helloworld)], helloworld
 
     def test_target_offset(self):
         merged = self.run_merge_bin(
@@ -160,8 +157,8 @@ class MergeBinTests(unittest.TestCase):
 
         bootloader = read_image("bootloader_esp32.bin")
         helloworld = read_image("ram_helloworld/helloworld-esp32.bin")
-        self.assertEqual(bootloader, merged[: len(bootloader)])
-        self.assertEqual(helloworld, merged[0xF000 : 0xF000 + len(helloworld)])
+        assert bootloader == merged[: len(bootloader)]
+        assert helloworld == merged[0xF000 : 0xF000 + len(helloworld)]
         self.assertAllFF(merged[0x1000 + len(bootloader) : 0xF000])
 
     def test_fill_flash_size(self):
@@ -170,8 +167,8 @@ class MergeBinTests(unittest.TestCase):
         )
         bootloader = read_image("bootloader_esp32c3.bin")
 
-        self.assertEqual(0x400000, len(merged))
-        self.assertEqual(bootloader, merged[: len(bootloader)])
+        assert len(merged) == 0x400000
+        assert bootloader == merged[: len(bootloader)]
         self.assertAllFF(merged[len(bootloader) :])
 
     def test_fill_flash_size_w_target_offset(self):
@@ -184,16 +181,11 @@ class MergeBinTests(unittest.TestCase):
             ["--target-offset", "0x1000", "--fill-flash-size", "2MB"],
         )
 
-        self.assertEqual(
-            0x200000 - 0x1000, len(merged)
-        )  # full length is without target-offset arg
+        # full length is without target-offset arg
+        assert len(merged) == 0x200000 - 0x1000
 
         bootloader = read_image("bootloader_esp32.bin")
         helloworld = read_image("ram_helloworld/helloworld-esp32.bin")
-        self.assertEqual(bootloader, merged[: len(bootloader)])
-        self.assertEqual(helloworld, merged[0xF000 : 0xF000 + len(helloworld)])
+        assert bootloader == merged[: len(bootloader)]
+        assert helloworld == merged[0xF000 : 0xF000 + len(helloworld)]
         self.assertAllFF(merged[0xF000 + len(helloworld) :])
-
-
-if __name__ == "__main__":
-    unittest.main(buffer=True)

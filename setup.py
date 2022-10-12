@@ -114,6 +114,7 @@ setup(
             "coverage~=6.0",
             "black",
             "pre-commit",
+            "pytest",
         ],
     },
     install_requires=[

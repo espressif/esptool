@@ -23,11 +23,11 @@ jobs:
       run: |
         python setup.py build
         pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev]
-        python test/test_imagegen.py
-        python test/test_espsecure.py
-        python test/test_merge_bin.py
-        python test/test_image_info.py
-        python test/test_modules.py
+        pytest test/test_imagegen.py
+        pytest test/test_espsecure.py
+        pytest test/test_merge_bin.py
+        pytest test/test_image_info.py
+        pytest test/test_modules.py
 
     - name: Check the installed versions can run
       run: |
