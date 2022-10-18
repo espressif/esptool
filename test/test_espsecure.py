@@ -42,8 +42,9 @@ class EspSecureTestCase:
             output = subprocess.check_output(
                 [str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT
             )
-            print(output.decode("utf-8"))
-            return output.decode("utf-8")
+            output = output.decode("utf-8")
+            print(output)
+            return output
         except subprocess.CalledProcessError as e:
             print(e.output.decode("utf-8"))
             raise e

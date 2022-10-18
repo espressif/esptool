@@ -110,7 +110,8 @@ class BaseTestCase:
         """
         cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "image_info", binpath]
         try:
-            output = subprocess.check_output(cmd).decode("utf-8")
+            output = subprocess.check_output(cmd)
+            output = output.decode("utf-8")
             print(output)
         except subprocess.CalledProcessError as e:
             print(e.output)
@@ -128,7 +129,8 @@ class BaseTestCase:
         cmd += [elf_path] + extra_args
         print("\nExecuting {}".format(" ".join(cmd)))
         try:
-            output = str(subprocess.check_output(cmd))
+            output = subprocess.check_output(cmd)
+            output = output.decode("utf-8")
             print(output)
             assert (
                 "warning" not in output.lower()

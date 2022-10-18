@@ -109,12 +109,11 @@ setup(
             "flake8-import-order",
             "flake8-gl-codeclimate",
             "pyelftools",
-            # the replacement of the old xmlrunner package
-            "unittest-xml-reporting",
             "coverage~=6.0",
             "black",
             "pre-commit",
             "pytest",
+            "pytest-rerunfailures",
         ],
     },
     install_requires=[

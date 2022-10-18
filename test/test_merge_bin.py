@@ -51,9 +51,10 @@ class TestMergeBin:
                 cmd += [hex(offset), name]
             print("\nExecuting {}".format(" ".join(cmd)))
 
-            output = str(
-                subprocess.check_output(cmd, cwd=IMAGES_DIR, stderr=subprocess.STDOUT)
+            output = subprocess.check_output(
+                cmd, cwd=IMAGES_DIR, stderr=subprocess.STDOUT
             )
+            output = output.decode("utf-8")
             print(output)
             assert (
                 "warning" not in output.lower()

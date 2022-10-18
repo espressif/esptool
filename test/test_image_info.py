@@ -43,8 +43,9 @@ class TestImageInfo:
         print("\nExecuting {}".format(" ".join(cmd)))
 
         try:
-            output = str(subprocess.check_output(cmd))
-            print(output)
+            output = subprocess.check_output(cmd)
+            output = output.decode("utf-8")
+            print(output)  # for more complete stdout logs on failure
             assert (
                 "warning" not in output.lower()
             ), "image_info should not output warnings"
