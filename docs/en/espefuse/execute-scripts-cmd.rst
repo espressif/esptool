@@ -30,7 +30,7 @@ If you want to use other libs in the script you can add them manually.
 Inside this script, you can call all commands which are available in CLI, see ``espefuse.py --help``. To run a efuse command you need to call ``espefuse(esp, efuses, args, 'burn_efuse DISABLE_DL_DECRYPT 1')``. This command will not burn eFuses immediately, the burn occurs at the end of all scripts.
 If necessary, you can call ``efuses.burn_all()`` which prompts ``Type 'BURN' (all capitals) to continue.``. To skip this check and go without confirmation just add the ``--do-not-confirm`` flag to the ``execute_scripts`` command.
 
-This command supports nesting. This means that one script can be called from another script (see the test case ``test_execute_scripts_nesting`` in ``esptool/test/test_espefuse_host.py``).
+This command supports nesting. This means that one script can be called from another script (see the test case ``test_execute_scripts_nesting`` in ``esptool/test/test_espefuse.py``).
 
 .. code-block:: none
 
@@ -70,7 +70,7 @@ See how it is done (for ESP32) for ``CODING_SCHEME`` when ``get_meaning()`` is c
 After ``efuses.burn_all()``, all needed efuses will be burnt to chip in order ``BLK_MAX`` to ``BLK_0``. This order prevents cases when protection is set before the value goes to a block. Please note this while developing your scripts.
 Upon completion, the new eFuses will be read back, and will be done some checks of written eFuses by ``espefuse.py``. In production, you might need to check that all written efuses are set properly, see the example below.
 
-The script `test_efuse_script.py <https://github.com/espressif/esptool/blob/master/test/efuse_scripts/esp32xx/test_efuse_script.py>`__ burns some efuses and checks them after reading back. To check read and write protection, ``is_readable()`` and ``is_writeable()`` are called.
+The script `execute_efuse_script.py <https://github.com/espressif/esptool/blob/master/test/efuse_scripts/esp32xx/execute_efuse_script.py>`__ burns some efuses and checks them after reading back. To check read and write protection, ``is_readable()`` and ``is_writeable()`` are called.
 
 Burn Unique Data Per Chip
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -104,7 +104,7 @@ The example of a script to burn custom_mac address that generated right in the s
 
 .. code:: python
 
-    # efuse_script2.py 
+    # efuse_script2.py
 
     step = 4
     base_mac = '0xAABBCCDD0000'

@@ -11,7 +11,7 @@
 # where  - --port       - a serial port for esptool.py operation
 #        - --chip       - ESP chip name
 #        - --baud       - baud rate
-#        - --with_trace - trace all interactions (True or False)
+#        - --with-trace - trace all interactions (True or False)
 
 import os
 import os.path
@@ -25,7 +25,7 @@ import time
 from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
 
-# Make command line options --port, --chip, --baud, and --trace available
+# Make command line options --port, --chip, --baud, and --with-trace available
 from conftest import arg_baud, arg_chip, arg_port, arg_trace
 
 sys.path.append("..")
