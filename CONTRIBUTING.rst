@@ -104,25 +104,50 @@ When you submit a Pull Request, the GitHub Actions automated build system will r
 Automated Integration Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The test directory contains an integration suite with some integration tests for ``esptool.py``:
+The test directory contains a `pytest <https://docs.pytest.org/>`_ integration suite with some integration tests for ``esptool.py``, ``espefuse.py``, and ``espsecure.py``.
 
-*  ``test_imagegen.py`` tests the elf2image command and is run automatically by GitHub Actions for each Pull Request. You can run this command locally to check for regressions in the elf2image functionality.
+The following tests run automatically by GitHub Actions for each Pull Request. You can run them locally to check for regressions in the respective functionality:
 
-*  ``test_esptool.py`` is a `Python unittest <https://docs.python.org/3/library/unittest.html>`_ file that contains integration tests to be run against real Espressif hardware. These tests need real hardware so are not run automatically by GitHub Actions, they need to be run locally in a command line with the following format:
+*  ``test_imagegen.py`` tests the ``elf2image`` command
+*  ``test_image_info.py`` tests the ``image_info`` command
+*  ``test_mergebin.py`` tests the ``merge_bin`` command
+*  ``test_modules.py`` tests the modules used by ``esptool.py`` for regressions
+*  ``test_espsecure.py`` tests ``espsecure.py`` functionality
 
-   ``./test_esptool.py <serial port> <name of chip> <baud rate> [optional test name(s)]``
+The following tests are not run automatically by GitHub Actions, because they need real connected hardware. Therefore, they need to be run locally in a command line:
+
+*  ``test_esptool.py`` contains integration tests for ``esptool.py`` and needs to be run against real Espressif hardware with the following format:
+
+   ``pytest test_esptool.py --port <serial port> --chip <name of chip> --baud <baud rate>``
 
    For example, to run all tests on an ESP32 board connected to /dev/ttyUSB0, at 230400bps:
 
-   ``./test_esptool.py /dev/ttyUSB0 esp32 230400``
+   ``pytest test_esptool.py --port /dev/ttyUSB0 --chip esp32 --baud 230400``
 
-   Or to run the TestFlashing suite only on an ESP8266 board connected to /dev/ttyUSB2, at 460800bps:
+   Or to run the TestFlashing suite only (using the pytest ``-k`` option to select tests based on their name) on an ESP8266 board connected to /dev/ttyUSB2, at 460800bps:
 
-   ``./test_esptool.py /dev/ttyUSB2 esp8266 460800 TestFlashing``
+   ``pytest test_esptool.py --port /dev/ttyUSB2 --chip esp8266 --baud 460800 -k TestFlashing``
 
    .. note::
 
       Some tests might fail at higher baud rates on some hardware.
+
+The following tests are not run automatically by GitHub Actions, but can be run locally in a command line:
+
+*  ``test_espefuse.py`` tests ``espefuse.py`` functionality. To run it:
+
+   ``pytest test_espefuse.py --chip <name of chip>``
+
+   These test use the ``--virt`` virtual mode of ``espefuse.py`` to safely test the functionality without a connection to a chip and without the possibility of affecting the actual eFuses in a real hardware.
+
+   .. warning::
+
+      Do not attempt to run these tests on real hardware! You risk damaging or destroying the ESP chip!
+
+The whole test suite (without the tests needing an actual hardware) can be easily run with the following command in the esptool root folder:
+
+``pytest --ignore=test/test_esptool.py``
+
 
 Pull Request Process
 --------------------
