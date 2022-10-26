@@ -5,20 +5,18 @@ import struct
 import subprocess
 import sys
 
+from conftest import need_to_install_package_err
+
 from elftools.elf.elffile import ELFFile
 
-TEST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "elf2image")
-os.chdir(TEST_DIR)
-try:
-    ESPTOOL_PY = os.environ["ESPTOOL_PY"]
-except KeyError:
-    ESPTOOL_PY = os.path.join(TEST_DIR, "../..", "esptool/__init__.py")
-
-# import the version of esptool we are testing with
-sys.path.append(os.path.dirname(ESPTOOL_PY))
-import esptool
-
 import pytest
+
+TEST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "elf2image")
+
+try:
+    import esptool
+except ImportError:
+    need_to_install_package_err()
 
 
 def try_delete(path):
@@ -39,6 +37,17 @@ def segment_matches_section(segment, section):
 
 
 class BaseTestCase:
+    @classmethod
+    def setup_class(self):
+        # Save the current working directory to be resotred later
+        self.stored_dir = os.getcwd()
+        os.chdir(TEST_DIR)
+
+    @classmethod
+    def teardown_class(self):
+        # Restore the stored working directory
+        os.chdir(self.stored_dir)
+
     def assertEqualHex(self, expected, actual, message=None):
         try:
             expected = hex(expected)
@@ -108,7 +117,7 @@ class BaseTestCase:
         Run esptool.py image_info on a binary file,
         assert no red flags about contents.
         """
-        cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "image_info", binpath]
+        cmd = [sys.executable, "-m", "esptool", "--chip", chip, "image_info", binpath]
         try:
             output = subprocess.check_output(cmd)
             output = output.decode("utf-8")
@@ -123,7 +132,7 @@ class BaseTestCase:
 
     def run_elf2image(self, chip, elf_path, version=None, extra_args=[]):
         """Run elf2image on elf_path"""
-        cmd = [sys.executable, ESPTOOL_PY, "--chip", chip, "elf2image"]
+        cmd = [sys.executable, "-m", "esptool", "--chip", chip, "elf2image"]
         if version is not None:
             cmd += ["--version", str(version)]
         cmd += [elf_path] + extra_args
@@ -147,10 +156,12 @@ class TestESP8266V1Image(BaseTestCase):
 
     @classmethod
     def setup_class(self):
+        super(TestESP8266V1Image, self).setup_class()
         self.run_elf2image(self, "esp8266", self.ELF, 1)
 
     @classmethod
     def teardown_class(self):
+        super(TestESP8266V1Image, self).teardown_class()
         try_delete(self.BIN_LOAD)
         try_delete(self.BIN_IROM)
 

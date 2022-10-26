@@ -3,17 +3,16 @@ import os.path
 import subprocess
 import sys
 
+from conftest import need_to_install_package_err
+
 import pytest
 
-IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images/")
-os.chdir(IMAGES_DIR)
 try:
-    ESPTOOL_PY = os.environ["ESPTOOL_PY"]
-except KeyError:
-    ESPTOOL_PY = os.path.join(IMAGES_DIR, "../..", "esptool/__init__.py")
+    import esptool  # noqa: F401
+except ImportError:
+    need_to_install_package_err()
 
-# import the version of esptool we are testing with
-sys.path.append(os.path.dirname(ESPTOOL_PY))
+IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images/")
 
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
 
@@ -32,7 +31,8 @@ class TestImageInfo:
 
         cmd = [
             sys.executable,
-            ESPTOOL_PY,
+            "-m",
+            "esptool",
             "--chip",
             chip,
             "image_info",

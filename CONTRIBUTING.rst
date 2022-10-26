@@ -106,6 +106,8 @@ Automated Integration Tests
 
 The test directory contains a `pytest <https://docs.pytest.org/>`_ integration suite with some integration tests for ``esptool.py``, ``espefuse.py``, and ``espsecure.py``.
 
+It is necessary to have ``esptool.py`` installed (see `Development Setup`_) in your environment in order to run these tests.
+
 The following tests run automatically by GitHub Actions for each Pull Request. You can run them locally to check for regressions in the respective functionality:
 
 *  ``test_imagegen.py`` tests the ``elf2image`` command
@@ -144,9 +146,7 @@ The following tests are not run automatically by GitHub Actions, but can be run 
 
       Do not attempt to run these tests on real hardware! You risk damaging or destroying the ESP chip!
 
-The whole test suite (without the tests needing an actual hardware) can be easily run with the following command in the esptool root folder:
-
-``pytest --ignore=test/test_esptool.py``
+The whole test suite (without the tests needing an actual hardware) can be easily run with the following command in the esptool root folder: ``pytest --ignore=test/test_esptool.py``
 
 
 Pull Request Process

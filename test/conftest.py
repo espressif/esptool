@@ -1,3 +1,6 @@
+import pytest
+
+
 def pytest_addoption(parser):
     # test_esptool.py and test_espefuse.py
     parser.addoption(
@@ -29,3 +32,11 @@ def pytest_configure(config):
     # test_espefuse.py only
     global arg_reset_port
     arg_reset_port = config.getoption("--reset-port")
+
+
+def need_to_install_package_err():
+    pytest.exit(
+        "To run the tests, install esptool in development mode. "
+        "Instructions: https://docs.espressif.com/projects/esptool/en/latest/"
+        "contributing.html#development-setup"
+    )

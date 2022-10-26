@@ -33,21 +33,21 @@ import time
 from bitstring import BitStream
 
 # Make command line options --port, --reset-port and --chip available
-from conftest import arg_chip, arg_port, arg_reset_port
+from conftest import arg_chip, arg_port, arg_reset_port, need_to_install_package_err
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 IMAGES_DIR = os.path.join(TEST_DIR, "images/efuse/")
 S_IMAGES_DIR = os.path.join(TEST_DIR, "secure_images/")
 EFUSE_S_DIR = os.path.join(TEST_DIR, "efuse_scripts/")
-ESPEFUSE_PY = os.path.abspath(os.path.join(TEST_DIR, "..", "espefuse/__init__.py"))
-ESPEFUSE_DIR = os.path.abspath(os.path.join(TEST_DIR, ".."))
-sys.path.insert(0, os.path.join(TEST_DIR, ".."))
-
-from espefuse import SUPPORTED_CHIPS
-
-SUPPORTED_CHIPS = list(SUPPORTED_CHIPS.keys())
 
 import pytest
+
+try:
+    from espefuse import SUPPORTED_CHIPS
+except ImportError:
+    need_to_install_package_err()
+
+SUPPORTED_CHIPS = list(SUPPORTED_CHIPS.keys())
 
 import serial
 
@@ -68,12 +68,12 @@ class EfuseTestCase:
         if reset_port is None:
             self.efuse_file = tempfile.NamedTemporaryFile()
             self.base_cmd = (
-                f"{sys.executable} {ESPEFUSE_PY} --chip {arg_chip} "
+                f"{sys.executable} -m espefuse --chip {arg_chip} "
                 f"--virt --path-efuse-file {self.efuse_file.name} -d"
             )
         else:
             self.base_cmd = (
-                f"{sys.executable} {ESPEFUSE_PY} --chip {arg_chip} "
+                f"{sys.executable} -m espefuse --chip {arg_chip} "
                 f"--port {arg_port} -d"
             )
             self.reset_efuses()
@@ -122,7 +122,7 @@ class EfuseTestCase:
             assert repeat == log.count(hex_blk)
 
     def espefuse_not_virt_py(self, cmd, check_msg=None, ret_code=0):
-        full_cmd = " ".join((f"{sys.executable} {ESPEFUSE_PY}", cmd))
+        full_cmd = " ".join((f"{sys.executable} -m espefuse", cmd))
         return self._run_command(full_cmd, check_msg, ret_code)
 
     def espefuse_py(self, cmd, do_not_confirm=True, check_msg=None, ret_code=0):
@@ -161,11 +161,11 @@ class EfuseTestCase:
 
 class TestReadCommands(EfuseTestCase):
     def test_help(self):
-        self.espefuse_not_virt_py("--help", check_msg="usage: __init__.py [-h]")
+        self.espefuse_not_virt_py("--help", check_msg="usage: __main__.py [-h]")
         self.espefuse_not_virt_py(f"--chip {arg_chip} --help")
 
     def test_help2(self):
-        self.espefuse_not_virt_py("", check_msg="usage: __init__.py [-h]", ret_code=1)
+        self.espefuse_not_virt_py("", check_msg="usage: __main__.py [-h]", ret_code=1)
 
     def test_dump(self):
         self.espefuse_py("dump -h")
@@ -1708,17 +1708,17 @@ class TestMultipleCommands(EfuseTestCase):
 
         self.espefuse_py(
             f"-h {command1} {command2}",
-            check_msg="usage: __init__.py [-h]",
+            check_msg="usage: __main__.py [-h]",
         )
 
         self.espefuse_py(
             f"{command1} -h {command2}",
-            check_msg="usage: __init__.py burn_key_digest [-h]",
+            check_msg="usage: __main__.py burn_key_digest [-h]",
         )
 
         self.espefuse_py(
             f"{command1} {command2} -h",
-            check_msg="usage: __init__.py burn_key [-h]",
+            check_msg="usage: __main__.py burn_key [-h]",
         )
 
     @pytest.mark.skipif(

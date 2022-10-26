@@ -26,14 +26,22 @@ from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
 
 # Make command line options --port, --chip, --baud, and --with-trace available
-from conftest import arg_baud, arg_chip, arg_port, arg_trace
+from conftest import (
+    arg_baud,
+    arg_chip,
+    arg_port,
+    arg_trace,
+    need_to_install_package_err,
+)
 
-sys.path.append("..")
-import espefuse
-
-import esptool
 
 import pytest
+
+try:
+    import esptool
+    import espefuse
+except ImportError:
+    need_to_install_package_err()
 
 import serial
 
@@ -52,13 +60,6 @@ BL_IMAGES = {
 }
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-os.chdir(os.path.dirname(__file__))
-try:
-    ESPTOOL_PY = os.environ["ESPTOOL_PY"]
-except KeyError:
-    ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool/__init__.py")
-ESPSECURE_PY = os.path.join(TEST_DIR, "..", "espsecure/__init__.py")
-ESPRFC2217SERVER_PY = os.path.join(TEST_DIR, "..", "esp_rfc2217_server.py")
 
 RETURN_CODE_FATAL_ERROR = 2
 
@@ -75,12 +76,12 @@ class ESPRFC2217Server(object):
         self.port = rfc2217_port or self.get_free_port()
         self.cmd = [
             sys.executable,
-            ESPRFC2217SERVER_PY,
+            os.path.join(TEST_DIR, "..", "esp_rfc2217_server.py"),
             "-p",
             str(self.port),
             arg_port,
         ]
-        self.server_output_file = open(str(arg_chip) + "_server.out", "a")
+        self.server_output_file = open(f"{TEST_DIR}/{str(arg_chip)}_server.out", "a")
         self.server_output_file.write("************************************")
         self.p = None
         self.wait_for_server_starts(attempts_count=5)
@@ -130,7 +131,7 @@ class ESPRFC2217Server(object):
 class EsptoolTestCase:
     def run_espsecure(self, args):
 
-        cmd = [sys.executable, ESPSECURE_PY] + args.split(" ")
+        cmd = [sys.executable, "-m", "espsecure"] + args.split(" ")
         print("\nExecuting {}...".format(" ".join(cmd)))
         try:
             output = subprocess.check_output(
@@ -154,8 +155,14 @@ class EsptoolTestCase:
         Returns output from esptool.py as a string if there is any.
         Raises an exception if esptool.py fails.
         """
+        try:
+            # Used for flasher_stub/run_tests_with_stub.sh
+            esptool = [os.environ["ESPTOOL_PY"]]
+        except KeyError:
+            # Run the installed esptool module
+            esptool = ["-m", "esptool"]
         trace_args = ["--trace"] if arg_trace else []
-        cmd = [sys.executable, ESPTOOL_PY] + trace_args
+        cmd = [sys.executable] + esptool + trace_args
         if chip_name or arg_chip is not None and chip_name != "auto":
             cmd += ["--chip", chip_name or arg_chip]
         if rfc2217_port or arg_port is not None:
@@ -192,6 +199,14 @@ class EsptoolTestCase:
     def setup_class(self):
         print()
         print(50 * "*")
+        # Save the current working directory to be resotred later
+        self.stored_dir = os.getcwd()
+        os.chdir(TEST_DIR)
+
+    @classmethod
+    def teardown_class(self):
+        # Restore the stored working directory
+        os.chdir(self.stored_dir)
 
     def readback(self, offset, length):
         """Read contents of flash back, return to caller."""

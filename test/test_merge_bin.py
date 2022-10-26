@@ -6,18 +6,15 @@ import sys
 import tempfile
 
 IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images")
-try:
-    ESPTOOL_PY = os.environ["ESPTOOL_PY"]
-except KeyError:
-    ESPTOOL_PY = os.path.join(IMAGES_DIR, "../..", "esptool/__init__.py")
 
-# import the version of esptool we are testing with
-sys.path.append(os.path.dirname(ESPTOOL_PY))
-
-
-from esptool.util import byte
+from conftest import need_to_install_package_err
 
 import pytest
+
+try:
+    from esptool.util import byte
+except ImportError:
+    need_to_install_package_err()
 
 
 def read_image(filename):
@@ -40,7 +37,8 @@ class TestMergeBin:
 
             cmd = [
                 sys.executable,
-                ESPTOOL_PY,
+                "-m",
+                "esptool",
                 "--chip",
                 chip,
                 "merge_bin",

@@ -11,20 +11,17 @@ import sys
 import tempfile
 from collections import namedtuple
 
-TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-os.chdir(TEST_DIR)
-
-ESPSECURE_PY = os.path.join(TEST_DIR, "..", "espsecure/__init__.py")
-
-try:
-    import espsecure
-except ImportError:
-    sys.path.insert(0, os.path.join(TEST_DIR, ".."))
-    import espsecure
-
-import esptool
+from conftest import need_to_install_package_err
 
 import pytest
+
+try:
+    import esptool
+    import espsecure
+except ImportError:
+    need_to_install_package_err()
+
+TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class EspSecureTestCase:
@@ -35,7 +32,7 @@ class EspSecureTestCase:
         Returns output as a string if there is any,
         raises an exception if espsecure.py fails
         """
-        cmd = [sys.executable, ESPSECURE_PY] + args.split(" ")
+        cmd = [sys.executable, "-m", "espsecure"] + args.split(" ")
         print("\nExecuting {}...".format(" ".join(cmd)))
 
         try:

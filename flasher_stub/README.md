@@ -38,4 +38,4 @@ To test the built stub, you can run `make embed`, which will update the stubs in
 
 * Running `esptool_test_stub.py` is the same as running `esptool.py`, only it uses the just-compiled stubs from the build directory.
 
-* Running `run_tests_with_stub.py` is the same as running `test/test_esptool.py`, only it uses the just-compiled stubs from the build directory.
+* Running `run_tests_with_stub.sh` is the same as running `pytest test/test_esptool.py`, only it uses the just-compiled stubs from the build directory. See the [Automated Integration Tests](https://docs.espressif.com/projects/esptool/en/latest/contributing.html#automated-integration-tests) docs for more information.
