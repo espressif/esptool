@@ -25,9 +25,9 @@ jobs:
       STUBS_DIR: /esptool/targets/stub_flasher/
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@master
       - name: Set up Python 3.8
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@master
         with:
           python-version: 3.8
       - name: Install dependencies
@@ -63,7 +63,7 @@ jobs:
         shell: bash
         run: mv LICENSE README.md ./${{ env.DISTPATH }}
       - name: Archive artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@master
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
@@ -104,7 +104,7 @@ jobs:
       DISTPATH: esptool-${{ needs.create_release.outputs.VERSION }}-${{ matrix.TARGET }}
     steps:
       - name: Download built binaries
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@master
       - name: Rename and package binaries
         run: |
           mv esptool-${{ matrix.TARGET }} ${{ env.DISTPATH }}

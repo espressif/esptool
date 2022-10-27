@@ -12,10 +12,10 @@ jobs:
 
     steps:
     - name: Checkout ref commit
-      uses: actions/checkout@v2
+      uses: actions/checkout@master
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@master
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -56,7 +56,7 @@ jobs:
       runs-on: ubuntu-latest
       steps:
         - name: Checkout
-          uses: actions/checkout@v2
+          uses: actions/checkout@master
 
         - name: Lint with flake8
           run: |
