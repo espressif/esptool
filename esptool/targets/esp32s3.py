@@ -44,6 +44,7 @@ class ESP32S3ROM(ESP32ROM):
     # todo: use espefuse APIs to get this info
     EFUSE_BASE = 0x60007000  # BLOCK0 read base address
     EFUSE_BLOCK1_ADDR = EFUSE_BASE + 0x44
+    EFUSE_BLOCK2_ADDR = EFUSE_BASE + 0x5C
     MAC_EFUSE_REG = EFUSE_BASE + 0x044
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
@@ -112,9 +113,28 @@ class ESP32S3ROM(ESP32ROM):
         low = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * low_num_word)) >> 18) & 0x07
         return (hi << 3) + low
 
+    def get_blk_version_major(self):
+        num_word = 4
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 0) & 0x03
+
+    def get_blk_version_minor(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x07
+
     def get_major_chip_version(self):
         num_word = 5
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
+        rev = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
+
+        # Workaround: The major version field was allocated to other purposes
+        # when block version is v1.1.
+        # Luckily only chip v0.0 have this kind of block version and efuse usage.
+        if (
+            self.get_minor_chip_version() == 0
+            and self.get_blk_version_major() == 1
+            and self.get_blk_version_minor() == 1
+        ):
+            rev = 0
+        return rev
 
     def get_chip_description(self):
         major_rev = self.get_major_chip_version()
