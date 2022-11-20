@@ -6,7 +6,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from bitstring import BitString
+from bitstring import BitStream
 
 import reedsolo
 
@@ -138,5 +138,5 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                         block.pos = block.length - (
                             field.word * 32 + field.pos + raw_data.length
                         )
-                        block.overwrite(BitString(raw_data.length))
+                        block.overwrite(BitStream(raw_data.length))
             self.overwrite_mem_from_block(blk, block)

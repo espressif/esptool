@@ -10,7 +10,7 @@ import argparse
 import json
 import sys
 
-from bitstring import BitString
+from bitstring import BitStream
 
 import esptool
 
@@ -627,7 +627,7 @@ def burn_bit(esp, efuses, args):
     efuses.force_write_always = args.force_write_always
     num_block = efuses.get_index_block_by_name(args.block)
     block = efuses.blocks[num_block]
-    data_block = BitString(block.get_block_len() * 8)
+    data_block = BitStream(block.get_block_len() * 8)
     data_block.set(0)
     try:
         data_block.set(True, args.bit_number)

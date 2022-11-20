@@ -30,7 +30,7 @@ import sys
 import tempfile
 import time
 
-from bitstring import BitString
+from bitstring import BitStream
 
 # Make command line options --port, --reset-port and --chip available
 from conftest import arg_chip, arg_port, arg_reset_port
@@ -115,7 +115,7 @@ class EfuseTestCase:
         self, log, file_path, repeat=1, reverse_order=False, offset=0
     ):
         with open(file_path, "rb") as f:
-            data = BitString("0x00") * offset + BitString(f)
+            data = BitStream("0x00") * offset + BitStream(f)
             blk = data.readlist(f"{data.len // 8}*uint:8")
             blk = blk[::-1] if reverse_order else blk
             hex_blk = " ".join(f"{num:02x}" for num in blk)
