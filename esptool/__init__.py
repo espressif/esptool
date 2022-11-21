@@ -30,7 +30,7 @@ __all__ = [
     "write_mem",
 ]
 
-__version__ = "4.4"
+__version__ = "4.5-dev"
 
 import argparse
 import inspect
