@@ -117,7 +117,7 @@ setup(
         ],
     },
     install_requires=[
-        "bitstring>=3.1.6",
+        "bitstring>=3.1.6,<4",
         "cryptography>=2.1.4",
         "ecdsa>=0.16.0",
         "pyserial>=3.0",
