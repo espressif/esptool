@@ -433,7 +433,7 @@ class TestBurnCustomMacCommands(EfuseTestCase):
 
 
 @pytest.mark.skipif(
-    arg_chip in ["esp32c2", "esp32h2beta1", "esp32c3", "esp32c6"],
+    arg_chip in ["esp32c2", "esp32h2beta1", "esp32c3", "esp32c6", "esp32h2"],
     reason=f"TODO: add support set_flash_voltage for {arg_chip}",
 )
 class TestSetFlashVoltageCommands(EfuseTestCase):
@@ -639,7 +639,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
             ret_code=2,
         )
         self.espefuse_py("burn_efuse CUSTOM_MAC AA:CD:EF:01:02:03")
-        if arg_chip in ["esp32h2", "esp32h2beta1"]:
+        if arg_chip in ["esp32h2beta2", "esp32h2beta1"]:
             self.espefuse_py(
                 "get_custom_mac", check_msg=f"aa:cd:ef:01:02:03:00:00 {crc_msg}"
             )
@@ -849,9 +849,10 @@ class TestBurnKeyCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2",
+            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
+            "esp32h2",
         ],
         reason="Only chips with 6 keys",
     )
@@ -860,7 +861,7 @@ class TestBurnKeyCommands(EfuseTestCase):
                BLOCK_KEY0 {IMAGES_DIR}/256bit   XTS_AES_256_KEY_1 \
                BLOCK_KEY1 {IMAGES_DIR}/256bit_1 XTS_AES_256_KEY_2 \
                BLOCK_KEY2 {IMAGES_DIR}/256bit_2 XTS_AES_128_KEY"
-        if arg_chip in ["esp32c3", "esp32c6"]:
+        if arg_chip in ["esp32c3", "esp32c6", "esp32h2"]:
             cmd = cmd.replace("XTS_AES_256_KEY_1", "XTS_AES_128_KEY")
             cmd = cmd.replace("XTS_AES_256_KEY_2", "XTS_AES_128_KEY")
         self.espefuse_py(cmd + " --no-read-protect --no-write-protect")
@@ -1079,9 +1080,10 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2",
+            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
+            "esp32h2",
         ],
         reason="Only chip with 6 keys",
     )
@@ -1212,9 +1214,10 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2",
+            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
+            "esp32h2",
         ],
         reason="Only chips with 6 keys",
     )
@@ -1397,9 +1400,10 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         "esp32s3",
         "esp32s3beta1",
         "esp32c3",
-        "esp32h2",
+        "esp32h2beta2",
         "esp32h2beta1",
         "esp32c6",
+        "esp32h2",
     ],
     reason="Supports 6 key blocks",
 )
@@ -1508,9 +1512,10 @@ class TestBurnBitCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2",
+            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
+            "esp32h2",
         ],
         reason="Only chip with 6 keys",
     )

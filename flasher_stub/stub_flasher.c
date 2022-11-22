@@ -453,7 +453,7 @@ void stub_main()
 
         spi_flash_attach();
 #else
-#if !ESP32C2 && !ESP32C6
+#if !ESP32C2 && !ESP32C6 && !ESP32H2
         uint32_t spiconfig = ets_efuse_get_spiconfig();
 #else
         // ESP32C2/ESP32C6 doesn't support get spiconfig.

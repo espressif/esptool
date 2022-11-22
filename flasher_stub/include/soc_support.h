@@ -105,7 +105,15 @@
 #define GPIO_BASE_REG       0x60004000
 #endif
 
-#ifdef ESP32H2
+#ifdef ESP32H2BETA1
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x60004000
+#define RTCCNTL_BASE_REG    0x60008000
+#endif
+
+#ifdef ESP32H2BETA2
 #define UART_BASE_REG       0x60000000 /* UART0 */
 #define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
@@ -126,6 +134,13 @@
 #define GPIO_BASE_REG       0x60091000
 #define USB_DEVICE_BASE_REG 0x6000F000
 #define DR_REG_PCR_BASE     0x60096000
+#endif
+
+#ifdef ESP32H2
+#define UART_BASE_REG      0x60000000 /* UART0 */
+#define SPI_BASE_REG       0x60003000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG      0x60002000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG      0x60091000
 #endif
 
 /**********************************************************
@@ -149,7 +164,7 @@
 #define UART_INT_CLR(X)    (UART_BASE_REG + 0x10)
 #define UART_STATUS(X)     (UART_BASE_REG + 0x1C)
 
-#if ESP32S2_OR_LATER && !ESP32C6
+#if ESP32S2_OR_LATER && !ESP32C6 && !ESP32H2
 #define UART_RXFIFO_CNT_M 0x3FF
 #else
 #define UART_RXFIFO_CNT_M 0xFF

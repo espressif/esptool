@@ -19,6 +19,7 @@ from .targets import (
     ESP32C6ROM,
     ESP32H2BETA1ROM,
     ESP32H2BETA2ROM,
+    ESP32H2ROM,
     ESP32ROM,
     ESP32S2ROM,
     ESP32S3BETA2ROM,
@@ -59,6 +60,7 @@ def LoadFirmwareImage(chip, image_file):
                 "esp32h2beta2": ESP32H2BETA2FirmwareImage,
                 "esp32c2": ESP32C2FirmwareImage,
                 "esp32c6": ESP32C6FirmwareImage,
+                "esp32h2": ESP32H2FirmwareImage,
             }[chip](f)
         else:  # Otherwise, ESP8266 so look at magic to determine the image type
             magic = ord(f.read(1))
@@ -1048,6 +1050,15 @@ class ESP32C6FirmwareImage(ESP32FirmwareImage):
 
 
 ESP32C6ROM.BOOTLOADER_IMAGE = ESP32C6FirmwareImage
+
+
+class ESP32H2FirmwareImage(ESP32C6FirmwareImage):
+    """ESP32H2 Firmware Image almost exactly the same as ESP32FirmwareImage"""
+
+    ROM_LOADER = ESP32H2ROM
+
+
+ESP32H2ROM.BOOTLOADER_IMAGE = ESP32H2FirmwareImage
 
 
 class ELFFile(object):
