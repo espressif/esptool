@@ -17,6 +17,13 @@
 int uart_rx_one_char(uint8_t *ch);
 uint8_t uart_rx_one_char_block();
 int uart_tx_one_char(char ch);
+
+#if ESP32C6
+/* uart_tx_one_char doesn't send data to USB device serial, needs to be replaced */
+int uart_tx_one_char2(char ch);
+#define uart_tx_one_char(ch) uart_tx_one_char2(ch)
+#endif // ESP32C6
+
 void uart_div_modify(uint32_t uart_no, uint32_t baud_div);
 
 int SendMsg(uint8_t *msg, uint8_t size);

@@ -64,12 +64,12 @@ static void stub_configure_rx_uart(void)
   /* All UART reads come via uart_isr or jtag_serial_isr */
 #if WITH_USB_JTAG_SERIAL
   if (stub_uses_usb_jtag_serial()) {
-    #if ESP32C3
-      WRITE_REG(INTERRUPT_CORE0_USB_INTR_MAP_REG, ETS_USB_INUM);
+    #if IS_RISCV
+      WRITE_REG(INTERRUPT_CORE0_USB_INTR_MAP_REG, ETS_USB_INUM);  // Route USB interrupt to CPU
       esprv_intc_int_set_priority(ETS_USB_INUM, 1);
     #else
       WRITE_REG(INTERRUPT_CORE0_USB_DEVICE_INT_MAP_REG, ETS_USB_INUM);
-    #endif
+    #endif // IS_RISCV
     ets_isr_attach(ETS_USB_INUM, jtag_serial_isr, NULL);
     REG_SET_MASK(USB_DEVICE_INT_ENA_REG, USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_ENA);
     ets_isr_unmask(1 << ETS_USB_INUM);
