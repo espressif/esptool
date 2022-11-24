@@ -110,7 +110,15 @@ class TestSigning(EspSecureTestCase):
 
     SignArgs = namedtuple(
         "sign_data_args",
-        ["version", "keyfile", "output", "append_signatures", "datafile"],
+        [
+            "version",
+            "keyfile",
+            "output",
+            "append_signatures",
+            "pub_key",
+            "signature",
+            "datafile",
+        ],
     )
 
     ExtractKeyArgs = namedtuple(
@@ -145,6 +153,8 @@ class TestSigning(EspSecureTestCase):
                 [self._open(key_name)],
                 output_file.name,
                 None,
+                None,
+                None,
                 self._open("bootloader.bin"),
             )
             espsecure.sign_data(args)
@@ -162,6 +172,25 @@ class TestSigning(EspSecureTestCase):
     def test_sign_v1_data_pkcs8(self):
         self._test_sign_v1_data("ecdsa_secure_boot_signing_key_pkcs8.pem")
 
+    def test_sign_v1_with_pre_calculated_signature(self):
+        # Sign using pre-calculated signature + Verify
+        signing_pubkey = "ecdsa_secure_boot_signing_pubkey.pem"
+        pre_calculated_signature = "pre_calculated_bootloader_signature.bin"
+        with tempfile.NamedTemporaryFile() as output_file:
+            args = self.SignArgs(
+                "1",
+                None,
+                output_file.name,
+                False,
+                [self._open(signing_pubkey)],
+                [self._open(pre_calculated_signature)],
+                self._open("bootloader.bin"),
+            )
+            espsecure.sign_data(args)
+
+            args = self.VerifyArgs("1", self._open(signing_pubkey), output_file)
+            espsecure.verify_signature(args)
+
     def test_sign_v2_data(self):
         signing_keys = [
             "rsa_secure_boot_signing_key.pem",
@@ -175,6 +204,8 @@ class TestSigning(EspSecureTestCase):
                     [self._open(key)],
                     output_file.name,
                     False,
+                    None,
+                    None,
                     self._open("bootloader_unsigned_v2.bin"),
                 )
                 espsecure.sign_data(args)
@@ -194,6 +225,8 @@ class TestSigning(EspSecureTestCase):
                 ],
                 output_file.name,
                 False,
+                None,
+                None,
                 self._open("bootloader_unsigned_v2.bin"),
             )
             espsecure.sign_data(args)
@@ -227,6 +260,8 @@ class TestSigning(EspSecureTestCase):
                 ],
                 output_file.name,
                 True,
+                None,
+                None,
                 self._open("bootloader_signed_v2.bin"),
             )
             espsecure.sign_data(args)
@@ -256,6 +291,8 @@ class TestSigning(EspSecureTestCase):
                 [self._open("rsa_secure_boot_signing_key2.pem")],
                 output_file1.name,
                 True,
+                None,
+                None,
                 self._open("bootloader_signed_v2.bin"),
             )
             espsecure.sign_data(args)
@@ -265,6 +302,8 @@ class TestSigning(EspSecureTestCase):
                 [self._open("rsa_secure_boot_signing_key3.pem")],
                 output_file2.name,
                 True,
+                None,
+                None,
                 output_file1,
             )
             espsecure.sign_data(args)
@@ -284,6 +323,61 @@ class TestSigning(EspSecureTestCase):
             args = self.VerifyArgs(
                 "2", self._open("rsa_secure_boot_signing_key3.pem"), output_file2
             )
+            espsecure.verify_signature(args)
+
+    def test_sign_v2_with_pre_calculated_signature(self):
+        # Sign using pre-calculated signature + Verify
+        signing_keys = [
+            "rsa_secure_boot_signing_pubkey.pem",
+            "ecdsa192_secure_boot_signing_pubkey.pem",
+            "ecdsa_secure_boot_signing_pubkey.pem",
+        ]
+        pre_calculated_signatures = [
+            "pre_calculated_bootloader_signature_rsa.bin",
+            "pre_calculated_bootloader_signature_ecdsa192.bin",
+            "pre_calculated_bootloader_signature_ecdsa256.bin",
+        ]
+        for pub_key, signature in zip(signing_keys, pre_calculated_signatures):
+            with tempfile.NamedTemporaryFile() as output_file:
+                args = self.SignArgs(
+                    "2",
+                    None,
+                    output_file.name,
+                    False,
+                    [self._open(pub_key)],
+                    [self._open(signature)],
+                    self._open("bootloader_unsigned_v2.bin"),
+                )
+                espsecure.sign_data(args)
+
+                args = self.VerifyArgs("2", self._open(pub_key), output_file)
+                espsecure.verify_signature(args)
+
+    def test_sign_v2_with_multiple_pre_calculated_signatures(self):
+        # Sign using multiple pre-calculated signatures + Verify
+        signing_pubkeys = [
+            "rsa_secure_boot_signing_pubkey.pem",
+            "rsa_secure_boot_signing_pubkey.pem",
+            "rsa_secure_boot_signing_pubkey.pem",
+        ]
+        pre_calculated_signatures = [
+            "pre_calculated_bootloader_signature_rsa.bin",
+            "pre_calculated_bootloader_signature_rsa.bin",
+            "pre_calculated_bootloader_signature_rsa.bin",
+        ]
+        with tempfile.NamedTemporaryFile() as output_file:
+            args = self.SignArgs(
+                "2",
+                None,
+                output_file.name,
+                False,
+                [self._open(pub_key) for pub_key in signing_pubkeys],
+                [self._open(signature) for signature in pre_calculated_signatures],
+                self._open("bootloader_unsigned_v2.bin"),
+            )
+            espsecure.sign_data(args)
+
+            args = self.VerifyArgs("2", self._open(signing_pubkeys[0]), output_file)
             espsecure.verify_signature(args)
 
     def test_verify_signature_signing_key(self):

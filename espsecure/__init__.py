@@ -35,6 +35,11 @@ SIG_BLOCK_VERSION_ECDSA = 0x03
 CURVE_ID_P192 = 1
 CURVE_ID_P256 = 2
 
+SECTOR_SIZE = 4096
+SIG_BLOCK_SIZE = (
+    1216  # Refer to secure boot v2 signature block format for more details.
+)
+
 
 def get_chunks(source, chunk_len):
     """Returns an iterator over 'chunk_len' chunks of 'source'"""
@@ -202,9 +207,20 @@ def _load_ecdsa_signing_key(keyfile):
     if sk.curve != ecdsa.NIST256p:
         raise esptool.FatalError(
             "Signing key uses incorrect curve. ESP32 Secure Boot only supports "
-            "NIST256p (openssl calls this curve 'prime256v1"
+            "NIST256p (openssl calls this curve 'prime256v1')"
         )
     return sk
+
+
+def _load_ecdsa_verifying_key(keyfile):
+    """Load ECDSA verifying key for Secure Boot V1 only"""
+    vk = ecdsa.VerifyingKey.from_pem(keyfile.read())
+    if vk.curve != ecdsa.NIST256p:
+        raise esptool.FatalError(
+            "Signing key uses incorrect curve. ESP32 Secure Boot only supports "
+            "NIST256p (openssl calls this curve 'prime256v1')"
+        )
+    return vk
 
 
 def _load_sbv2_signing_key(keydata):
@@ -303,7 +319,8 @@ def _microecc_format(a, b, curve_len):
 
 
 def sign_data(args):
-    _check_output_is_not_input(args.keyfile, args.output)
+    if args.keyfile:
+        _check_output_is_not_input(args.keyfile, args.output)
     _check_output_is_not_input(args.datafile, args.output)
     if args.version == "1":
         return sign_secure_boot_v1(args)
@@ -315,18 +332,26 @@ def sign_secure_boot_v1(args):
     """
     Sign a data file with a ECDSA private key, append binary signature to file contents
     """
-    if len(args.keyfile) > 1:
-        raise esptool.FatalError("Secure Boot V1 only supports one signing key")
-    sk = _load_ecdsa_signing_key(args.keyfile[0])
-
-    # calculate signature of binary data
     binary_content = args.datafile.read()
-    signature = sk.sign_deterministic(binary_content, hashlib.sha256)
+    if args.signature:
+        print("Pre-calculated signatures")
+        if len(args.pub_key) > 1:
+            raise esptool.FatalError("Secure Boot V1 only supports one signing key")
+        signature = args.signature[0].read()
+        # get verifying/public key
+        vk = _load_ecdsa_verifying_key(args.pub_key[0])
+    else:
+        if len(args.keyfile) > 1:
+            raise esptool.FatalError("Secure Boot V1 only supports one signing key")
+        sk = _load_ecdsa_signing_key(args.keyfile[0])
+
+        # calculate signature of binary data
+        signature = sk.sign_deterministic(binary_content, hashlib.sha256)
+        # get verifying/public key
+        vk = sk.get_verifying_key()
 
     # back-verify signature
-    vk = sk.get_verifying_key()
     vk.verify(signature, binary_content, hashlib.sha256)  # throws exception on failure
-
     if args.output is None or os.path.abspath(args.output) == os.path.abspath(
         args.datafile.name
     ):  # append signature to input file
@@ -340,10 +365,7 @@ def sign_secure_boot_v1(args):
     )  # Version indicator, allow for different curves/formats later
     outfile.write(signature)
     outfile.close()
-    print(
-        "Signed %d bytes of data from %s with key %s"
-        % (len(binary_content), args.datafile.name, args.keyfile[0].name)
-    )
+    print("Signed %d bytes of data from %s" % (len(binary_content), args.datafile.name))
 
 
 def sign_secure_boot_v2(args):
@@ -353,12 +375,20 @@ def sign_secure_boot_v2(args):
 
     Write output file with a Secure Boot V2 header appended.
     """
-    SECTOR_SIZE = 4096
-    SIG_BLOCK_SIZE = 1216
     SIG_BLOCK_MAX_COUNT = 3
 
+    if args.signature:
+        print("Pre-calculated signatures")
+        key_count = len(args.pub_key)
+        if len(args.signature) != key_count:
+            raise esptool.FatalError(
+                f"Number of public keys {key_count}) not equal to "
+                f"the number of signatures {len(args.signature)}."
+            )
+    else:
+        key_count = len(args.keyfile)
+
     signature_sector = b""
-    key_count = len(args.keyfile)
     contents = args.datafile.read()
 
     if key_count > SIG_BLOCK_MAX_COUNT:
@@ -387,7 +417,8 @@ def sign_secure_boot_v2(args):
             )
             sig_block_num += 1
 
-        assert len(signature_sector) % SIG_BLOCK_SIZE == 0
+        if len(signature_sector) % SIG_BLOCK_SIZE != 0:
+            raise esptool.FatalError("Incorrect signature sector size")
 
         if sig_block_num == 0:
             print(
@@ -416,7 +447,108 @@ def sign_secure_boot_v2(args):
     digest.update(contents)
     digest = digest.digest()
 
-    for keyfile in args.keyfile:
+    # Generate signature block using pre-calculated signatures
+    if args.signature:
+        signature_block = generate_signature_block_using_pre_calculated_signature(
+            args.signature, args.pub_key, digest
+        )
+    # Generate signature block by signing using private keys
+    else:
+        signature_block = generate_signature_block_using_private_key(
+            args.keyfile, digest
+        )
+
+    signature_sector += signature_block
+
+    if (
+        len(signature_sector) < 0
+        and len(signature_sector) > SIG_BLOCK_SIZE * 3
+        and len(signature_sector) % SIG_BLOCK_SIZE != 0
+    ):
+        raise esptool.FatalError("Incorrect signature sector generation")
+
+    total_sig_blocks = len(signature_sector) // SIG_BLOCK_SIZE
+
+    # Pad signature_sector to sector
+    signature_sector = signature_sector + (
+        b"\xff" * (SECTOR_SIZE - len(signature_sector))
+    )
+    if len(signature_sector) != SECTOR_SIZE:
+        raise esptool.FatalError("Incorrect signature sector size")
+
+    # Write to output file, or append to existing file
+    if args.output is None:
+        args.datafile.close()
+        args.output = args.datafile.name
+    with open(args.output, "wb") as f:
+        f.write(contents + signature_sector)
+    print(
+        f"Signed {len(contents)} bytes of data from {args.datafile.name}. "
+        f"Signature sector now has {total_sig_blocks} signature blocks."
+    )
+
+
+def generate_signature_block_using_pre_calculated_signature(signature, pub_key, digest):
+    signature_blocks = b""
+    for sig, pk in zip(signature, pub_key):
+        try:
+            public_key = serialization.load_pem_public_key(pk.read())
+            signature = sig.read()
+            if isinstance(public_key, rsa.RSAPublicKey):
+                # RSA signature
+                rsa_primitives = _get_sbv2_rsa_primitives(public_key)
+
+                # Verify the signature
+                public_key.verify(
+                    signature,
+                    digest,
+                    padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=32),
+                    utils.Prehashed(hashes.SHA256()),
+                )
+
+                signature_block = generate_rsa_signature_block(
+                    digest, rsa_primitives, signature
+                )
+            else:
+                # ECDSA signature
+                numbers = public_key.public_numbers()
+                if isinstance(numbers.curve, ec.SECP192R1):
+                    curve_len = 192
+                    curve_id = CURVE_ID_P192
+                elif isinstance(numbers.curve, ec.SECP256R1):
+                    curve_len = 256
+                    curve_id = CURVE_ID_P256
+                else:
+                    raise esptool.FatalError("Invalid ECDSA curve instance.")
+
+                # Verify the signature
+                public_key.verify(
+                    signature, digest, ec.ECDSA(utils.Prehashed(hashes.SHA256()))
+                )
+
+                pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
+                r, s = utils.decode_dss_signature(signature)
+                signature_rs = _microecc_format(r, s, curve_len)
+                signature_block = generate_ecdsa_signature_block(
+                    digest, curve_id, pubkey_point, signature_rs
+                )
+        except exceptions.InvalidSignature:
+            raise esptool.FatalError(
+                "Signature %s not signed with %s." % (sig.name, pk.name)
+            )
+        signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xFFFFFFFF)
+        signature_block += b"\x00" * 16  # padding
+
+        if len(signature_block) != SIG_BLOCK_SIZE:
+            raise esptool.FatalError("Incorrect signature block size")
+
+        signature_blocks += signature_block
+    return signature_blocks
+
+
+def generate_signature_block_using_private_key(keyfiles, digest):
+    signature_blocks = b""
+    for keyfile in keyfiles:
         private_key = _load_sbv2_signing_key(keyfile.read())
 
         # Sign
@@ -431,23 +563,8 @@ def sign_secure_boot_v2(args):
                 utils.Prehashed(hashes.SHA256()),
             )
             rsa_primitives = _get_sbv2_rsa_primitives(private_key.public_key())
-
-            # Encode in signature block format
-            #
-            # Note: the [::-1] is to byte swap all of the bignum
-            # values (signatures, coefficients) to little endian
-            # for use with the RSA peripheral, rather than big endian
-            # which is conventionally used for RSA.
-            signature_block = struct.pack(
-                "<BBxx32s384sI384sI384s",
-                SIG_BLOCK_MAGIC,
-                SIG_BLOCK_VERSION_RSA,
-                digest,
-                int_to_bytes(rsa_primitives.n)[::-1],
-                rsa_primitives.e,
-                int_to_bytes(rsa_primitives.rinv)[::-1],
-                rsa_primitives.m & 0xFFFFFFFF,
-                signature[::-1],
+            signature_block = generate_rsa_signature_block(
+                digest, rsa_primitives, signature
             )
         else:
             # ECDSA signature
@@ -459,56 +576,70 @@ def sign_secure_boot_v2(args):
             if isinstance(private_key.curve, ec.SECP192R1):
                 curve_len = 192
                 curve_id = CURVE_ID_P192
-            else:
+            elif isinstance(numbers.curve, ec.SECP256R1):
                 curve_len = 256
                 curve_id = CURVE_ID_P256
+            else:
+                raise esptool.FatalError("Invalid ECDSA curve instance.")
 
             pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
 
             r, s = utils.decode_dss_signature(signature)
             signature_rs = _microecc_format(r, s, curve_len)
-
-            # block is padded out to the much larger size
-            # of the RSA version of this structure
-            signature_block = struct.pack(
-                "<BBxx32sB64s64s1031x",
-                SIG_BLOCK_MAGIC,
-                SIG_BLOCK_VERSION_ECDSA,
-                digest,
-                curve_id,
-                pubkey_point,
-                signature_rs,
+            signature_block = generate_ecdsa_signature_block(
+                digest, curve_id, pubkey_point, signature_rs
             )
 
         signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xFFFFFFFF)
         signature_block += b"\x00" * 16  # padding
 
-        assert len(signature_block) == SIG_BLOCK_SIZE
-        signature_sector += signature_block
+        if len(signature_block) != SIG_BLOCK_SIZE:
+            raise esptool.FatalError("Incorrect signature block size")
 
-    assert (
-        len(signature_sector) > 0
-        and len(signature_sector) <= SIG_BLOCK_SIZE * 3
-        and len(signature_sector) % SIG_BLOCK_SIZE == 0
-    )
-    total_sig_blocks = len(signature_sector) // SIG_BLOCK_SIZE
+        signature_blocks += signature_block
+    return signature_blocks
 
-    # Pad signature_sector to sector
-    signature_sector = signature_sector + (
-        b"\xff" * (SECTOR_SIZE - len(signature_sector))
-    )
-    assert len(signature_sector) == SECTOR_SIZE
 
-    # Write to output file, or append to existing file
-    if args.output is None:
-        args.datafile.close()
-        args.output = args.datafile.name
-    with open(args.output, "wb") as f:
-        f.write(contents + signature_sector)
-    print(
-        "Signed %d bytes of data from %s. Signature sector now has %d signature blocks."
-        % (len(contents), args.datafile.name, total_sig_blocks)
+def generate_rsa_signature_block(digest, rsa_primitives, signature):
+    """
+    Encode in rsa signature block format
+
+    Note: the [::-1] is to byte swap all of the bignum
+    values (signatures, coefficients) to little endian
+    for use with the RSA peripheral, rather than big endian
+    which is conventionally used for RSA.
+    """
+    signature_block = struct.pack(
+        "<BBxx32s384sI384sI384s",
+        SIG_BLOCK_MAGIC,
+        SIG_BLOCK_VERSION_RSA,
+        digest,
+        int_to_bytes(rsa_primitives.n)[::-1],
+        rsa_primitives.e,
+        int_to_bytes(rsa_primitives.rinv)[::-1],
+        rsa_primitives.m & 0xFFFFFFFF,
+        signature[::-1],
     )
+    return signature_block
+
+
+def generate_ecdsa_signature_block(digest, curve_id, pubkey_point, signature_rs):
+    """
+    Encode in rsa signature block format
+
+    # block is padded out to the much larger size
+    # of the RSA version of this structure
+    """
+    signature_block = struct.pack(
+        "<BBxx32sB64s64s1031x",
+        SIG_BLOCK_MAGIC,
+        SIG_BLOCK_VERSION_ECDSA,
+        digest,
+        curve_id,
+        pubkey_point,
+        signature_rs,
+    )
+    return signature_block
 
 
 def verify_signature(args):
@@ -559,10 +690,6 @@ def verify_signature_v1(args):
 
 
 def validate_signature_block(image_content, sig_blk_num):
-    SECTOR_SIZE = 4096
-    SIG_BLOCK_SIZE = (
-        1216  # Refer to secure boot v2 signature block format for more details.
-    )
 
     offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
     sig_blk = image_content[offset : offset + SIG_BLOCK_SIZE]
@@ -593,7 +720,6 @@ def validate_signature_block(image_content, sig_blk_num):
 
 def verify_signature_v2(args):
     """Verify a previously signed binary image, using the RSA or ECDSA public key"""
-    SECTOR_SIZE = 4096
 
     vk = _get_sbv2_pub_key(args.keyfile)
 
@@ -715,11 +841,7 @@ def signature_info_v2(args):
     Validates the signature block and prints the RSA/ECDSA public key
     digest for valid blocks
     """
-    SECTOR_SIZE = 4096
     SIG_BLOCK_MAX_COUNT = 3
-    SIG_BLOCK_SIZE = (
-        1216  # Refer to secure boot v2 signature block format for more details.
-    )
 
     image_content = args.datafile.read()
     if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
@@ -1280,15 +1402,29 @@ def main(custom_commandline=None):
         "-k",
         help="Private key file for signing. Key is in PEM format.",
         type=argparse.FileType("rb"),
-        required=True,
         nargs="+",
     )
     p.add_argument(
         "--append_signatures",
         "-a",
-        help="Append signature block(s) to already signed image"
+        help="Append signature block(s) to already signed image. "
         "Valid only for ESP32-S2.",
         action="store_true",
+    )
+    p.add_argument(
+        "--pub-key",
+        help="Public key files corresponding to the private key used to generate "
+        "the pre-calculated signatures. Keys should be in PEM format.",
+        type=argparse.FileType("rb"),
+        nargs="+",
+    )
+    p.add_argument(
+        "--signature",
+        help="Pre-calculated signatures. "
+        "Signatures generated using external private keys e.g. keys stored in HSM.",
+        type=argparse.FileType("rb"),
+        nargs="+",
+        default=None,
     )
     p.add_argument(
         "--output",
