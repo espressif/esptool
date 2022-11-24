@@ -867,6 +867,10 @@ class ESPLoader(object):
         SPIFLASH_RDID = 0x9F
         return self.run_spiflash_command(SPIFLASH_RDID, b"", 24)
 
+    def flash_type(self):
+        """Read flash type bit field from eFuse. Returns 0, 1, None (not present)"""
+        return None  # not implemented for all chip targets
+
     def get_security_info(self):
         res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
         esp32s2 = True if len(res) == 12 else False

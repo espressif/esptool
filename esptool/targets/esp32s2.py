@@ -68,6 +68,9 @@ class ESP32S2ROM(ESP32ROM):
     EFUSE_SECURE_BOOT_EN_REG = EFUSE_BASE + 0x038
     EFUSE_SECURE_BOOT_EN_MASK = 1 << 20
 
+    EFUSE_RD_REPEAT_DATA3_REG = EFUSE_BASE + 0x3C
+    EFUSE_RD_REPEAT_DATA3_REG_FLASH_TYPE_MASK = 1 << 9
+
     PURPOSE_VAL_XTS_AES256_KEY_1 = 2
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
@@ -183,6 +186,14 @@ class ESP32S2ROM(ESP32ROM):
         mac1 = self.read_reg(self.MAC_EFUSE_REG + 4)  # only bottom 16 bits are MAC
         bitstring = struct.pack(">II", mac1, mac0)[2:]
         return tuple(bitstring)
+
+    def flash_type(self):
+        return (
+            1
+            if self.read_reg(self.EFUSE_RD_REPEAT_DATA3_REG)
+            & self.EFUSE_RD_REPEAT_DATA3_REG_FLASH_TYPE_MASK
+            else 0
+        )
 
     def get_flash_crypt_config(self):
         return None  # doesn't exist on ESP32-S2
