@@ -929,7 +929,8 @@ def elf2image(args):
 
     # ELFSection is a subclass of ImageSegment, so can use interchangeably
     image.segments = e.segments if args.use_segments else e.sections
-
+    if args.pad_to_size:
+        image.pad_to_size = flash_size_bytes(args.pad_to_size)
     image.flash_size_freq = image.ROM_LOADER.parse_flash_size_arg(args.flash_size)
     image.flash_size_freq += image.ROM_LOADER.parse_flash_freq_arg(args.flash_freq)
 

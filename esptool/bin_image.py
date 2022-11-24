@@ -151,6 +151,7 @@ class BaseFirmwareImage(object):
         self.entrypoint = 0
         self.elf_sha256 = None
         self.elf_sha256_offset = 0
+        self.pad_to_size = 0
 
     def load_common_header(self, load_file, expected_magic):
         (
@@ -748,6 +749,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 digest = hashlib.sha256()
                 digest.update(f.read(image_length))
                 f.write(digest.digest())
+
+            if self.pad_to_size:
+                image_length = f.tell()
+                if image_length % self.pad_to_size != 0:
+                    pad_by = self.pad_to_size - (image_length % self.pad_to_size)
+                    f.write(b"\xff" * pad_by)
 
             with open(filename, "wb") as real_file:
                 real_file.write(f.getvalue())

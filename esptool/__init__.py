@@ -469,6 +469,12 @@ def main(argv=None, esp=None):
         help="Change flash MMU page size.",
         choices=["64KB", "32KB", "16KB", "8KB"],
     )
+    parser_elf2image.add_argument(
+        "--pad-to-size",
+        help="The block size with which the final binary image after padding "
+        "must be aligned to. Value 0xFF is used for padding, similar to erase_flash",
+        default=None,
+    )
 
     add_spi_flash_subparsers(parser_elf2image, allow_keep=False, auto_detect=False)
 
