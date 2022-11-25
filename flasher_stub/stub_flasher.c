@@ -63,18 +63,27 @@ static bool can_use_max_cpu_freq()
   #endif
 }
 
+#if ESP32C6
+static uint32_t pcr_sysclk_conf_reg = 0;
+#else
 static uint32_t cpu_per_conf_reg = 0;
 static uint32_t sysclk_conf_reg = 0;
+#endif
 
 static void set_max_cpu_freq()
 {
   if (can_use_max_cpu_freq())
   {
     /* Set CPU frequency to max. This also increases SPI speed. */
+    #if ESP32C6
+    pcr_sysclk_conf_reg = READ_REG(PCR_SYSCLK_CONF_REG);
+    WRITE_REG(PCR_SYSCLK_CONF_REG, (pcr_sysclk_conf_reg & ~PCR_SOC_CLK_SEL_M) | (PCR_SOC_CLK_MAX << PCR_SOC_CLK_SEL_S));
+    #else
     cpu_per_conf_reg = READ_REG(SYSTEM_CPU_PER_CONF_REG);
     sysclk_conf_reg = READ_REG(SYSTEM_SYSCLK_CONF_REG);
     WRITE_REG(SYSTEM_CPU_PER_CONF_REG, (cpu_per_conf_reg & ~SYSTEM_CPUPERIOD_SEL_M) | (SYSTEM_CPUPERIOD_MAX << SYSTEM_CPUPERIOD_SEL_S));
     WRITE_REG(SYSTEM_SYSCLK_CONF_REG, (sysclk_conf_reg & ~SYSTEM_SOC_CLK_SEL_M) | (SYSTEM_SOC_CLK_MAX << SYSTEM_SOC_CLK_SEL_S));
+    #endif
   }
 }
 
@@ -82,11 +91,18 @@ static void reset_cpu_freq()
 {
   /* Restore saved sysclk_conf and cpu_per_conf registers.
      Use only if set_max_cpu_freq() has been called. */
+  #if ESP32C6
+  if (can_use_max_cpu_freq() && pcr_sysclk_conf_reg != 0)
+  {
+    WRITE_REG(PCR_SYSCLK_CONF_REG, (READ_REG(PCR_SYSCLK_CONF_REG) & ~PCR_SOC_CLK_SEL_M) | (pcr_sysclk_conf_reg & PCR_SOC_CLK_SEL_M));
+  }
+  #else
   if (can_use_max_cpu_freq() && sysclk_conf_reg != 0 && cpu_per_conf_reg != 0)
   {
     WRITE_REG(SYSTEM_CPU_PER_CONF_REG, (READ_REG(SYSTEM_CPU_PER_CONF_REG) & ~SYSTEM_CPUPERIOD_SEL_M) | (cpu_per_conf_reg & SYSTEM_CPUPERIOD_SEL_M));
     WRITE_REG(SYSTEM_SYSCLK_CONF_REG, (READ_REG(SYSTEM_SYSCLK_CONF_REG) & ~SYSTEM_SOC_CLK_SEL_M) | (sysclk_conf_reg & SYSTEM_SOC_CLK_SEL_M));
   }
+  #endif
 }
 #endif // USE_MAX_CPU_FREQ
 
