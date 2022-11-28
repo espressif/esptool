@@ -120,7 +120,8 @@ setup(
         ],
     },
     install_requires=[
-        'bitstring>=3.1.6,<4',
+        'bitstring>=3.1.6; python_version>="3.7"',
+        'bitstring>=3.1.6,<4; python_version<"3.7"',
         'cryptography>=2.1.4',
         'ecdsa>=0.16.0',
         'pyserial>=3.0',

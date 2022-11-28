@@ -11,7 +11,7 @@ import binascii
 import re
 import sys
 
-from bitstring import BitArray, BitString, CreationError
+from bitstring import BitArray, BitStream, CreationError
 
 import esptool
 
@@ -125,14 +125,14 @@ class EfuseBlockBase(EfuseProtectBase):
         self.len = param.len
         self.key_purpose_name = param.key_purpose
         bit_block_len = self.get_block_len() * 8
-        self.bitarray = BitString(bit_block_len)
+        self.bitarray = BitStream(bit_block_len)
         self.bitarray.set(0)
-        self.wr_bitarray = BitString(bit_block_len)
+        self.wr_bitarray = BitStream(bit_block_len)
         self.wr_bitarray.set(0)
         self.fail = False
         self.num_errors = 0
         if self.id == 0:
-            self.err_bitarray = BitString(bit_block_len)
+            self.err_bitarray = BitStream(bit_block_len)
             self.err_bitarray.set(0)
         else:
             self.err_bitarray = None
@@ -263,7 +263,7 @@ class EfuseBlockBase(EfuseProtectBase):
         # in reg format     = [3][2][1][0] ... [N][][][]    (as it will be in the device)
         # in bitstring      = [N] ... [2][1][0]             (to get a correct bitstring need to reverse new_data)
         # *[x] - means a byte.
-        data = BitString(bytes=new_data[::-1], length=len(new_data) * 8)
+        data = BitStream(bytes=new_data[::-1], length=len(new_data) * 8)
         if self.parent.debug:
             print("\twritten : {} ->\n\tto write: {}".format(self.get_bitstring(), data))
         self.wr_bitarray.overwrite(self.wr_bitarray | data, pos=0)
@@ -451,7 +451,7 @@ class EfuseFieldBase(EfuseProtectBase):
             field_len = int(re.search(r'\d+', self.efuse_type).group())
             if self.efuse_type.startswith("bytes"):
                 field_len *= 8
-        self.bitarray = BitString(field_len)
+        self.bitarray = BitStream(field_len)
         self.bit_len = field_len
         self.bitarray.set(0)
         self.update(self.parent.blocks[self.block].bitarray)

@@ -9,7 +9,13 @@ from __future__ import division, print_function
 
 import re
 
-from bitstring import BitString
+from bitstring import BitStream
+
+try:
+    FileNotFoundError
+except NameError:
+    # Python 2.7 compatibility
+    FileNotFoundError = IOError
 
 
 class EmulateEfuseControllerBase(object):
@@ -28,15 +34,18 @@ class EmulateEfuseControllerBase(object):
         self.efuse_file = efuse_file
         if self.efuse_file:
             try:
-                self.mem = BitString(open(self.efuse_file, 'a+b'), length=self.REGS.EFUSE_MEM_SIZE * 8)
-            except ValueError:
+                self.mem = BitStream(
+                    bytes=open(self.efuse_file, "rb").read(),
+                    length=self.REGS.EFUSE_MEM_SIZE * 8,
+                )
+            except (ValueError, FileNotFoundError):
                 # the file is empty or does not fit the length.
-                self.mem = BitString(length=self.REGS.EFUSE_MEM_SIZE * 8)
+                self.mem = BitStream(length=self.REGS.EFUSE_MEM_SIZE * 8)
                 self.mem.set(0)
                 self.mem.tofile(open(self.efuse_file, 'a+b'))
         else:
             # efuse_file is not provided it means we do not want to keep the result of efuse operations
-            self.mem = BitString(self.REGS.EFUSE_MEM_SIZE * 8)
+            self.mem = BitStream(self.REGS.EFUSE_MEM_SIZE * 8)
             self.mem.set(0)
 
     """ esptool method start >> """
@@ -146,7 +155,7 @@ class EmulateEfuseControllerBase(object):
         # checks fields which have the write protection bit.
         # if the write protection bit is set then we need to protect that area from changes.
         write_disable_bit = self.read_field("WR_DIS", bitstring=False)
-        mask_wr_data = BitString(len(wr_data))
+        mask_wr_data = BitStream(len(wr_data))
         mask_wr_data.set(0)
         blk = self.Blocks.get(self.Blocks.BLOCKS[num_blk])
         if blk.write_disable_bit is not None and write_disable_bit & (1 << blk.write_disable_bit):
@@ -179,7 +188,7 @@ class EmulateEfuseControllerBase(object):
                         raw_data = self.read_field(field.name)
                         raw_data.set(0)
                         block.pos = block.length - (field.word * 32 + field.pos + raw_data.length)
-                        block.overwrite(BitString(raw_data.length))
+                        block.overwrite(BitStream(raw_data.length))
             self.overwrite_mem_from_block(blk, block)
 
     def clean_mem(self):

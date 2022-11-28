@@ -31,7 +31,7 @@ import tempfile
 import time
 import unittest
 
-from bitstring import BitString
+from bitstring import BitStream
 
 import serial
 
@@ -97,7 +97,7 @@ class EfuseTestCase(unittest.TestCase):
 
     def check_data_block_in_log(self, log, file_path, repeat=1, reverse_order=False, offset=0):
         with open(file_path, 'rb') as f:
-            data = BitString('0x00') * offset + BitString(f)
+            data = BitStream('0x00') * offset + BitStream(f)
             blk = data.readlist("%d*uint:8" % (data.len // 8))
             blk = blk[::-1] if reverse_order else blk
             hex_blk = " ".join("{:02x}".format(num) for num in blk)
