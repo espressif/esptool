@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2016-2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -10,6 +10,7 @@ import operator
 import os
 import struct
 import sys
+import tempfile
 import zlib
 from collections import namedtuple
 
@@ -24,6 +25,9 @@ from cryptography.utils import int_to_bytes
 import ecdsa
 
 import esptool
+
+if "--hsm" in sys.argv:
+    import espsecure.esp_hsm_sign as hsm
 
 SIG_BLOCK_MAGIC = 0xE7
 
@@ -337,8 +341,15 @@ def sign_secure_boot_v1(args):
     Sign a data file with a ECDSA private key, append binary signature to file contents
     """
     binary_content = args.datafile.read()
+
+    if args.hsm:
+        raise esptool.FatalError(
+            "Secure Boot V1 does not support signing using an "
+            "external Hardware Security Module (HSM)"
+        )
+
     if args.signature:
-        print("Pre-calculated signatures")
+        print("Pre-calculated signatures found")
         if len(args.pub_key) > 1:
             raise esptool.FatalError("Secure Boot V1 only supports one signing key")
         signature = args.signature[0].read()
@@ -380,9 +391,38 @@ def sign_secure_boot_v2(args):
     Write output file with a Secure Boot V2 header appended.
     """
     SIG_BLOCK_MAX_COUNT = 3
+    contents = args.datafile.read()
+
+    if len(contents) % SECTOR_SIZE != 0:
+        if args.signature:
+            raise esptool.FatalError(
+                "Secure Boot V2 requires the signature block to start "
+                "from a 4KB aligned sector "
+                "but the datafile supplied is not sector aligned."
+            )
+        else:
+            pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
+            print(
+                f"Padding data contents by {pad_by} bytes "
+                "so signature sector aligns at sector boundary"
+            )
+            contents += b"\xff" * pad_by
+
+    if args.hsm:
+        if args.hsm_config is None:
+            raise esptool.FatalError(
+                "Config file is required to generate signature using an external HSM."
+            )
+        try:
+            config = hsm.read_hsm_config(args.hsm_config)
+        except Exception as e:
+            raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
+        if args.pub_key is None:
+            args.pub_key = extract_pubkey_from_hsm(config)
+        args.signature = generate_signature_using_hsm(config, contents)
 
     if args.signature:
-        print("Pre-calculated signatures")
+        print("Pre-calculated signatures found")
         key_count = len(args.pub_key)
         if len(args.signature) != key_count:
             raise esptool.FatalError(
@@ -393,20 +433,24 @@ def sign_secure_boot_v2(args):
         key_count = len(args.keyfile)
 
     signature_sector = b""
-    contents = args.datafile.read()
 
     if key_count > SIG_BLOCK_MAX_COUNT:
         print(
-            "WARNING: Upto %d signing keys are supported for ESP32-S2. "
-            "For ESP32-ECO3 only 1 signing key is supported",
-            SIG_BLOCK_MAX_COUNT,
+            f"WARNING: Upto {SIG_BLOCK_MAX_COUNT} signing keys are supported "
+            "for ESP32-S2. For ESP32-ECO3 only 1 signing key is supported"
         )
 
     if len(contents) % SECTOR_SIZE != 0:
+        if args.signature:
+            raise esptool.FatalError(
+                "Secure Boot V2 requires the signature block to start "
+                "from a 4KB aligned sector "
+                "but the datafile supplied is not sector aligned."
+            )
         pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
         print(
-            "Padding data contents by %d bytes "
-            "so signature sector aligns at sector boundary" % pad_by
+            f"Padding data contents by {pad_by} bytes "
+            "so signature sector aligns at sector boundary"
         )
         contents += b"\xff" * pad_by
     elif args.append_signatures:
@@ -431,21 +475,21 @@ def sign_secure_boot_v2(args):
             )
         else:
             print(
-                "%d valid signature block(s) already present in the signature sector."
-                % sig_block_num
+                f"{sig_block_num} valid signature block(s) already present "
+                "in the signature sector."
             )
 
             empty_signature_blocks = SIG_BLOCK_MAX_COUNT - sig_block_num
             if key_count > empty_signature_blocks:
                 raise esptool.FatalError(
-                    "Number of keys(%d) more than the empty signature blocks.(%d)"
-                    % (key_count, empty_signature_blocks)
+                    f"Number of keys({key_count}) more than the empty signature blocks."
+                    f"({empty_signature_blocks})"
                 )
             # Signature stripped off the content
             # (the legitimate blocks are included in signature_sector)
             contents = contents[: len(contents) - SECTOR_SIZE]
 
-    print("%d signing key(s) found." % key_count)
+    print(f"{key_count} signing key(s) found.")
     # Calculate digest of data file
     digest = hashlib.sha256()
     digest.update(contents)
@@ -461,6 +505,9 @@ def sign_secure_boot_v2(args):
         signature_block = generate_signature_block_using_private_key(
             args.keyfile, digest
         )
+
+    if signature_block is None or len(signature_block) == 0:
+        raise esptool.FatalError("Signature Block generation failed")
 
     signature_sector += signature_block
 
@@ -492,16 +539,28 @@ def sign_secure_boot_v2(args):
     )
 
 
+def generate_signature_using_hsm(config, contents):
+    session = hsm.establish_session(config)
+    # get the private key
+    private_key = hsm.get_privkey_info(session, config)
+    # Sign payload
+    signature = hsm.sign_payload(private_key, contents)
+    hsm.close_connection(session)
+    temp_signature_file = tempfile.TemporaryFile()
+    temp_signature_file.write(signature)
+    temp_signature_file.seek(0)
+    return [temp_signature_file]
+
+
 def generate_signature_block_using_pre_calculated_signature(signature, pub_key, digest):
     signature_blocks = b""
     for sig, pk in zip(signature, pub_key):
         try:
-            public_key = serialization.load_pem_public_key(pk.read())
+            public_key = _get_sbv2_pub_key(pk)
             signature = sig.read()
             if isinstance(public_key, rsa.RSAPublicKey):
                 # RSA signature
                 rsa_primitives = _get_sbv2_rsa_primitives(public_key)
-
                 # Verify the signature
                 public_key.verify(
                     signature,
@@ -538,7 +597,9 @@ def generate_signature_block_using_pre_calculated_signature(signature, pub_key, 
                 )
         except exceptions.InvalidSignature:
             raise esptool.FatalError(
-                "Signature %s not signed with %s." % (sig.name, pk.name)
+                "Signature verification failed: Invalid Signature\n"
+                "The pre-calculated signature has not been signed "
+                "using the given public key"
             )
         signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xFFFFFFFF)
         signature_block += b"\x00" * 16  # padding
@@ -714,16 +775,25 @@ def validate_signature_block(image_content, sig_blk_num):
 
     if is_invalid_block or blk_crc != calc_crc & 0xFFFFFFFF:  # Signature block invalid
         return None
-
-    print(
-        "Signature block %d is valid (%s). "
-        % (sig_blk_num, "RSA" if version == SIG_BLOCK_VERSION_RSA else "ECDSA")
-    )
+    key_type = "RSA" if version == SIG_BLOCK_VERSION_RSA else "ECDSA"
+    print(f"Signature block {sig_blk_num} is valid ({key_type}).")
     return sig_blk
 
 
 def verify_signature_v2(args):
     """Verify a previously signed binary image, using the RSA or ECDSA public key"""
+
+    if args.hsm:
+        if args.hsm_config is None:
+            raise esptool.FatalError(
+                "Config file is required to extract public key from an external HSM."
+            )
+        try:
+            config = hsm.read_hsm_config(args.hsm_config)
+        except Exception as e:
+            raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
+        # get public key from HSM
+        args.keyfile = extract_pubkey_from_hsm(config)[0]
 
     vk = _get_sbv2_pub_key(args.keyfile)
 
@@ -747,14 +817,14 @@ def verify_signature_v2(args):
     for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
         sig_blk = validate_signature_block(image_content, sig_blk_num)
         if sig_blk is None:
-            print("Signature block %d invalid. Skipping." % sig_blk_num)
+            print(f"Signature block {sig_blk_num} invalid. Skipping.")
             continue
         _, version, blk_digest = struct.unpack("<BBxx32s", sig_blk[:36])
 
         if blk_digest != digest:
             raise esptool.FatalError(
                 "Signature block image digest does not match "
-                "the actual image digest %s. Expected %s." % (digest, blk_digest)
+                f"the actual image digest {digest}. Expected {blk_digest}."
             )
 
         try:
@@ -785,20 +855,19 @@ def verify_signature_v2(args):
                 signature = utils.encode_dss_signature(r, s)
 
                 vk.verify(signature, digest, ec.ECDSA(utils.Prehashed(hashes.SHA256())))
+
+            key_type = "RSA" if isinstance(vk, rsa.RSAPublicKey) else "ECDSA"
+
             print(
-                "Signature block %d verification successful with %s (%s)."
-                % (
-                    sig_blk_num,
-                    args.keyfile.name,
-                    "RSA" if isinstance(vk, rsa.RSAPublicKey) else "ECDSA",
-                )
+                f"Signature block {sig_blk_num} verification successful using "
+                f"the supplied key ({key_type})."
             )
             valid = True
 
         except exceptions.InvalidSignature:
             print(
-                "Signature block %d is not signed by %s. Checking the next block"
-                % (sig_blk_num, args.keyfile.name)
+                f"Signature block {sig_blk_num} is not signed by the supplied key. "
+                "Checking the next block"
             )
             continue
 
@@ -832,6 +901,22 @@ def extract_public_key(args):
     print(
         "%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name)
     )
+
+
+def extract_pubkey_from_hsm(config):
+    session = hsm.establish_session(config)
+    # get public key from HSM
+    public_key = hsm.get_pubkey(session, config)
+    hsm.close_connection(session)
+
+    pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    temp_pub_key_file = tempfile.TemporaryFile()
+    temp_pub_key_file.write(pem)
+    temp_pub_key_file.seek(0)
+    return [temp_pub_key_file]
 
 
 def _sha256_digest(data):
@@ -1416,6 +1501,18 @@ def main(custom_commandline=None):
         action="store_true",
     )
     p.add_argument(
+        "--hsm",
+        help="Use an external Hardware Security Module "
+        "to generate signature using PKCS#11 interface.",
+        action="store_true",
+    )
+    p.add_argument(
+        "--hsm-config",
+        help="Config file for the external Hardware Security Module "
+        "to be used to generate signature.",
+        default=None,
+    )
+    p.add_argument(
         "--pub-key",
         help="Public key files corresponding to the private key used to generate "
         "the pre-calculated signatures. Keys should be in PEM format.",
@@ -1455,12 +1552,23 @@ def main(custom_commandline=None):
         required=True,
     )
     p.add_argument(
+        "--hsm",
+        help="Use an external Hardware Security Module "
+        "to verify signature using PKCS#11 interface.",
+        action="store_true",
+    )
+    p.add_argument(
+        "--hsm-config",
+        help="Config file for the external Hardware Security Module "
+        "to be used to verify signature.",
+        default=None,
+    )
+    p.add_argument(
         "--keyfile",
         "-k",
         help="Public key file for verification. "
         "Can be private or public key in PEM format.",
         type=argparse.FileType("rb"),
-        required=True,
     )
     p.add_argument(
         "datafile",

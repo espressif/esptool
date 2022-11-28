@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2023 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -114,6 +114,9 @@ setup(
             "pre-commit",
             "pytest",
             "pytest-rerunfailures",
+        ],
+        "hsm": [
+            "python-pkcs11",
         ],
     },
     install_requires=[

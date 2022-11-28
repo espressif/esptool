@@ -106,7 +106,9 @@ class TestESP32SecureBootloader(EspSecureTestCase):
 
 class TestSigning(EspSecureTestCase):
 
-    VerifyArgs = namedtuple("verify_signature_args", ["version", "keyfile", "datafile"])
+    VerifyArgs = namedtuple(
+        "verify_signature_args", ["version", "hsm", "hsm_config", "keyfile", "datafile"]
+    )
 
     SignArgs = namedtuple(
         "sign_data_args",
@@ -115,6 +117,8 @@ class TestSigning(EspSecureTestCase):
             "keyfile",
             "output",
             "append_signatures",
+            "hsm",
+            "hsm_config",
             "pub_key",
             "signature",
             "datafile",
@@ -152,6 +156,8 @@ class TestSigning(EspSecureTestCase):
                 "1",
                 [self._open(key_name)],
                 output_file.name,
+                False,
+                False,
                 None,
                 None,
                 None,
@@ -182,13 +188,17 @@ class TestSigning(EspSecureTestCase):
                 None,
                 output_file.name,
                 False,
+                False,
+                None,
                 [self._open(signing_pubkey)],
                 [self._open(pre_calculated_signature)],
                 self._open("bootloader.bin"),
             )
             espsecure.sign_data(args)
 
-            args = self.VerifyArgs("1", self._open(signing_pubkey), output_file)
+            args = self.VerifyArgs(
+                "1", False, None, self._open(signing_pubkey), output_file
+            )
             espsecure.verify_signature(args)
 
     def test_sign_v2_data(self):
@@ -204,13 +214,15 @@ class TestSigning(EspSecureTestCase):
                     [self._open(key)],
                     output_file.name,
                     False,
+                    False,
+                    None,
                     None,
                     None,
                     self._open("bootloader_unsigned_v2.bin"),
                 )
                 espsecure.sign_data(args)
 
-                args = self.VerifyArgs("2", self._open(key), output_file)
+                args = self.VerifyArgs("2", False, None, self._open(key), output_file)
                 espsecure.verify_signature(args)
 
     def test_sign_v2_multiple_keys(self):
@@ -225,6 +237,8 @@ class TestSigning(EspSecureTestCase):
                 ],
                 output_file.name,
                 False,
+                False,
+                None,
                 None,
                 None,
                 self._open("bootloader_unsigned_v2.bin"),
@@ -232,19 +246,31 @@ class TestSigning(EspSecureTestCase):
             espsecure.sign_data(args)
 
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key3.pem"), output_file
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key3.pem"),
+                output_file,
             )
             espsecure.verify_signature(args)
 
             output_file.seek(0)
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key2.pem"), output_file
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key2.pem"),
+                output_file,
             )
             espsecure.verify_signature(args)
 
             output_file.seek(0)
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key.pem"), output_file
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key.pem"),
+                output_file,
             )
             espsecure.verify_signature(args)
 
@@ -260,6 +286,8 @@ class TestSigning(EspSecureTestCase):
                 ],
                 output_file.name,
                 True,
+                False,
+                None,
                 None,
                 None,
                 self._open("bootloader_signed_v2.bin"),
@@ -267,19 +295,31 @@ class TestSigning(EspSecureTestCase):
             espsecure.sign_data(args)
 
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key.pem"), output_file
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key.pem"),
+                output_file,
             )
             espsecure.verify_signature(args)
 
             output_file.seek(0)
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key2.pem"), output_file
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key2.pem"),
+                output_file,
             )
             espsecure.verify_signature(args)
 
             output_file.seek(0)
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key3.pem"), output_file
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key3.pem"),
+                output_file,
             )
             espsecure.verify_signature(args)
 
@@ -291,6 +331,8 @@ class TestSigning(EspSecureTestCase):
                 [self._open("rsa_secure_boot_signing_key2.pem")],
                 output_file1.name,
                 True,
+                False,
+                None,
                 None,
                 None,
                 self._open("bootloader_signed_v2.bin"),
@@ -302,6 +344,8 @@ class TestSigning(EspSecureTestCase):
                 [self._open("rsa_secure_boot_signing_key3.pem")],
                 output_file2.name,
                 True,
+                False,
+                None,
                 None,
                 None,
                 output_file1,
@@ -309,19 +353,31 @@ class TestSigning(EspSecureTestCase):
             espsecure.sign_data(args)
 
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key.pem"), output_file2
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key.pem"),
+                output_file2,
             )
             espsecure.verify_signature(args)
 
             output_file2.seek(0)
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key2.pem"), output_file2
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key2.pem"),
+                output_file2,
             )
             espsecure.verify_signature(args)
 
             output_file2.seek(0)
             args = self.VerifyArgs(
-                "2", self._open("rsa_secure_boot_signing_key3.pem"), output_file2
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key3.pem"),
+                output_file2,
             )
             espsecure.verify_signature(args)
 
@@ -344,13 +400,17 @@ class TestSigning(EspSecureTestCase):
                     None,
                     output_file.name,
                     False,
+                    False,
+                    None,
                     [self._open(pub_key)],
                     [self._open(signature)],
                     self._open("bootloader_unsigned_v2.bin"),
                 )
                 espsecure.sign_data(args)
 
-                args = self.VerifyArgs("2", self._open(pub_key), output_file)
+                args = self.VerifyArgs(
+                    "2", False, None, self._open(pub_key), output_file
+                )
                 espsecure.verify_signature(args)
 
     def test_sign_v2_with_multiple_pre_calculated_signatures(self):
@@ -371,19 +431,25 @@ class TestSigning(EspSecureTestCase):
                 None,
                 output_file.name,
                 False,
+                False,
+                None,
                 [self._open(pub_key) for pub_key in signing_pubkeys],
                 [self._open(signature) for signature in pre_calculated_signatures],
                 self._open("bootloader_unsigned_v2.bin"),
             )
             espsecure.sign_data(args)
 
-            args = self.VerifyArgs("2", self._open(signing_pubkeys[0]), output_file)
+            args = self.VerifyArgs(
+                "2", False, None, self._open(signing_pubkeys[0]), output_file
+            )
             espsecure.verify_signature(args)
 
     def test_verify_signature_signing_key(self):
         # correct key v1
         args = self.VerifyArgs(
             "1",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_key.pem"),
             self._open("bootloader_signed.bin"),
         )
@@ -392,6 +458,8 @@ class TestSigning(EspSecureTestCase):
         # correct key v2
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("rsa_secure_boot_signing_key.pem"),
             self._open("bootloader_signed_v2.bin"),
         )
@@ -400,6 +468,8 @@ class TestSigning(EspSecureTestCase):
         # correct key v2 (ecdsa256)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_key.pem"),
             self._open("bootloader_signed_v2_ecdsa256.bin"),
         )
@@ -408,6 +478,8 @@ class TestSigning(EspSecureTestCase):
         # correct key v2 (ecdsa192)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa192_secure_boot_signing_key.pem"),
             self._open("bootloader_signed_v2_ecdsa192.bin"),
         )
@@ -416,6 +488,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v1
         args = self.VerifyArgs(
             "1",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed.bin"),
         )
@@ -426,6 +500,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v2
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("rsa_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed_v2.bin"),
         )
@@ -436,6 +512,8 @@ class TestSigning(EspSecureTestCase):
         # right key, wrong scheme (ecdsa256, v2)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_key.pem"),
             self._open("bootloader_signed.bin"),
         )
@@ -446,6 +524,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v2 (ecdsa256)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed_v2_ecdsa256.bin"),
         )
@@ -456,6 +536,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v2 (ecdsa192)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa192_secure_boot_signing_key2.pem"),
             self._open("bootloader_signed_v2_ecdsa192.bin"),
         )
@@ -466,6 +548,8 @@ class TestSigning(EspSecureTestCase):
         # multi-signed wrong key v2
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("rsa_secure_boot_signing_key4.pem"),
             self._open("bootloader_multi_signed_v2.bin"),
         )
@@ -477,6 +561,8 @@ class TestSigning(EspSecureTestCase):
         # correct key v1
         args = self.VerifyArgs(
             "1",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_pubkey.pem"),
             self._open("bootloader_signed.bin"),
         )
@@ -485,6 +571,8 @@ class TestSigning(EspSecureTestCase):
         # correct key v2
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("rsa_secure_boot_signing_pubkey.pem"),
             self._open("bootloader_signed_v2.bin"),
         )
@@ -493,6 +581,8 @@ class TestSigning(EspSecureTestCase):
         # correct key v2 (ecdsa256)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_pubkey.pem"),
             self._open("bootloader_signed_v2_ecdsa256.bin"),
         )
@@ -501,6 +591,8 @@ class TestSigning(EspSecureTestCase):
         # correct key v2 (ecdsa192)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa192_secure_boot_signing_pubkey.pem"),
             self._open("bootloader_signed_v2_ecdsa192.bin"),
         )
@@ -509,6 +601,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v1
         args = self.VerifyArgs(
             "1",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed.bin"),
         )
@@ -519,6 +613,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v2
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("rsa_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed_v2.bin"),
         )
@@ -529,6 +625,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v2 (ecdsa256)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed_v2_ecdsa256.bin"),
         )
@@ -539,6 +637,8 @@ class TestSigning(EspSecureTestCase):
         # wrong key v2 (ecdsa192)
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("ecdsa192_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed_v2_ecdsa192.bin"),
         )
@@ -549,6 +649,8 @@ class TestSigning(EspSecureTestCase):
         # multi-signed wrong key v2
         args = self.VerifyArgs(
             "2",
+            False,
+            None,
             self._open("rsa_secure_boot_signing_pubkey4.pem"),
             self._open("bootloader_multi_signed_v2.bin"),
         )
@@ -574,13 +676,13 @@ class TestSigning(EspSecureTestCase):
 
             # use correct extracted public key to verify
             args = self.VerifyArgs(
-                "1", pub_keyfile, self._open("bootloader_signed.bin")
+                "1", False, None, pub_keyfile, self._open("bootloader_signed.bin")
             )
             espsecure.verify_signature(args)
 
             # use wrong extracted public key to try and verify
             args = self.VerifyArgs(
-                "1", pub_keyfile2, self._open("bootloader_signed.bin")
+                "1", False, None, pub_keyfile2, self._open("bootloader_signed.bin")
             )
             with pytest.raises(esptool.FatalError) as cm:
                 espsecure.verify_signature(args)
