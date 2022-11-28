@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test_esptool:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     strategy:
       matrix:
@@ -12,10 +12,10 @@ jobs:
 
     steps:
     - name: Checkout ref commit
-      uses: actions/checkout@v2
+      uses: actions/checkout@master
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@master
       with:
         python-version: ${{ matrix.python-version }}
 

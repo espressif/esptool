@@ -8,11 +8,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-20.04, windows-latest]
         include:
         - os: macos-latest
           TARGET: macos
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           TARGET: linux-amd64
         - os: windows-latest
           TARGET: win64
@@ -21,9 +21,9 @@ jobs:
       DISTPATH: esptool-${{ matrix.TARGET }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@master
       - name: Set up Python 3.8
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@master
         with:
           python-version: 3.8
       - name: Install dependencies
@@ -59,7 +59,7 @@ jobs:
         shell: bash
         run: mv LICENSE README.md ./${{ env.DISTPATH }}
       - name: Archive artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@master
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
@@ -68,7 +68,7 @@ jobs:
     name: Create GitHub release
     if: startsWith(github.ref, 'refs/tags/')
     needs: build-esptool-binaries
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       VERSION: ${{ steps.get_version.outputs.VERSION }}
@@ -92,7 +92,7 @@ jobs:
     name: Upload release assets
     if: startsWith(github.ref, 'refs/tags/')
     needs: create_release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         TARGET: [macos, linux-amd64, win64]
@@ -100,7 +100,7 @@ jobs:
       DISTPATH: esptool-${{ needs.create_release.outputs.VERSION }}-${{ matrix.TARGET }}
     steps:
       - name: Download built binaries
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@master
       - name: Rename and package binaries
         run: |
           mv esptool-${{ matrix.TARGET }} ${{ env.DISTPATH }}
