@@ -391,6 +391,32 @@ class TestFlashing(EsptoolTestCase):
         # writing flash the second time shouldn't have corrupted the first time
         self.verify_readback(0, 4096, "images/sector.bin")
 
+    @pytest.mark.skipif(
+        int(os.getenv("ESPTOOL_TEST_FLASH_SIZE", "0")) < 32, reason="needs 32MB flash"
+    )
+    def test_last_bytes_of_32M_flash(self):
+        flash_size = 32 * 1024 * 1024
+        image_size = 1024
+        offset = flash_size - image_size
+        self.run_esptool("write_flash {} images/one_kb.bin".format(hex(offset)))
+        # Some of the functons cannot handle 32-bit addresses - i.e. addresses accessing
+        # the higher 16MB will manipulate with the lower 16MB flash area.
+        offset2 = offset & 0xFFFFFF
+        self.run_esptool("write_flash {} images/one_kb_all_ef.bin".format(hex(offset2)))
+        self.verify_readback(offset, image_size, "images/one_kb.bin")
+
+    @pytest.mark.skipif(
+        int(os.getenv("ESPTOOL_TEST_FLASH_SIZE", "0")) < 32, reason="needs 32MB flash"
+    )
+    def test_write_larger_area_to_32M_flash(self):
+        offset = 18 * 1024 * 1024
+        self.run_esptool("write_flash {} images/one_mb.bin".format(hex(offset)))
+        # Some of the functons cannot handle 32-bit addresses - i.e. addresses accessing
+        # the higher 16MB will manipulate with the lower 16MB flash area.
+        offset2 = offset & 0xFFFFFF
+        self.run_esptool("write_flash {} images/one_kb_all_ef.bin".format(hex(offset2)))
+        self.verify_readback(offset, 1 * 1024 * 1024, "images/one_mb.bin")
+
     def test_correct_offset(self):
         """Verify writing at an offset actually writes to that offset."""
         self.run_esptool("write_flash 0x2000 images/sector.bin")

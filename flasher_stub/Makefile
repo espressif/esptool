@@ -106,7 +106,7 @@ $(STUB_ELF_32S2): $(SRCS) $(BUILD_DIR) ld/stub_32s2.ld
 
 $(STUB_ELF_32S3_BETA_2): $(SRCS) $(BUILD_DIR) ld/stub_32s3_beta_2.ld
 	@echo "  CC(32S3)   $^ -> $@"
-	$(Q) $(CROSS_32S3)gcc $(CFLAGS) -DESP32S3=1 -Tstub_32s3_beta_2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+	$(Q) $(CROSS_32S3)gcc $(CFLAGS) -DESP32S3=1 -DESP32S3BETA2=1 -Tstub_32s3_beta_2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 $(STUB_ELF_32S3): $(SRCS) $(BUILD_DIR) ld/stub_32s3.ld
 	@echo "  CC(32S3)   $^ -> $@"

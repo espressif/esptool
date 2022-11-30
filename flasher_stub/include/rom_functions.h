@@ -177,22 +177,8 @@ typedef struct {
 UartDevice * GetUartDevice();
 #endif // WITH_USB_JTAG_SERIAL || WITH_USB_OTG
 
-/* Enabling 32-bit flash memory addressing for ESP32S3 */
 #if defined(ESP32S3)
 #define BIT(nr)                 (1UL << (nr))
-
-// GigaDevice Flash read commands
-#define ROM_FLASH_CMD_RD4B_GD             0x13
-#define ROM_FLASH_CMD_FSTRD4B_GD          0x0C
-#define ROM_FLASH_CMD_FSTRD4B_OOUT_GD     0x7C
-#define ROM_FLASH_CMD_FSTRD4B_OIOSTR_GD   0xCC
-#define ROM_FLASH_CMD_FSTRD4B_OIODTR_GD   0xFD
-
-// GigaDevice Flash page program commands
-#define ROM_FLASH_CMD_PP4B_GD             0x12
-#define ROM_FLASH_CMD_PP4B_OOUT_GD        0x84
-#define ROM_FLASH_CMD_PP4B_OIOSTR_GD      0x8E
-
 #define ESP_ROM_OPIFLASH_SEL_CS0     (BIT(0))
 
 typedef enum {
@@ -216,7 +202,137 @@ typedef enum {
     ESP_ROM_SPIFLASH_RESULT_TIMEOUT
 } esp_rom_spiflash_result_t;
 
-/* Stub doesn't currently support OPI flash mode, following functions are used for 32-bit addressing only */
+#define CMD_RDID                    0x9F
+#define CMD_RDSR                    0x05
+#define CMD_WREN                    0x06
+#define CMD_SECTOR_ERASE_4B         0x21
+#define CMD_FSTRD4B                 0x0C
+#define CMD_LARGE_BLOCK_ERASE_4B    0xDC
+#define CMD_PROGRAM_PAGE_4B         0x12
+
+#define OPIFLASH_DRIVER() {   \
+    .rdid = {              \
+        .mode = SPI_FLASH_FASTRD_MODE, \
+        .cmd_bit_len = 8, \
+        .cmd = CMD_RDID, \
+        .addr = 0, \
+        .addr_bit_len = 32, \
+        .dummy_bit_len = 4*2, \
+        .data_bit_len = 32, \
+        .cs_sel = 0x1, \
+        .is_pe = 0, \
+    }, \
+    .rdsr = { \
+        .mode = SPI_FLASH_FASTRD_MODE, \
+        .cmd_bit_len = 8, \
+        .cmd = CMD_RDSR, \
+        .addr = 0, \
+        .addr_bit_len = 32, \
+        .dummy_bit_len = 4*2, \
+        .data_bit_len = 16, \
+        .cs_sel = 0x1, \
+        .is_pe = 0, \
+    }, \
+    .wren = { \
+        .mode = SPI_FLASH_FASTRD_MODE, \
+        .cmd_bit_len = 8, \
+        .cmd = CMD_WREN, \
+        .addr = 0, \
+        .addr_bit_len = 0, \
+        .dummy_bit_len = 0, \
+        .data_bit_len = 0, \
+        .cs_sel = 0x1, \
+        .is_pe = 0, \
+    }, \
+    .se = { \
+        .mode = SPI_FLASH_FASTRD_MODE, \
+        .cmd_bit_len = 8, \
+        .cmd = CMD_SECTOR_ERASE_4B, \
+        .addr = 0, \
+        .addr_bit_len = 32, \
+        .dummy_bit_len = 0, \
+        .data_bit_len = 0, \
+        .cs_sel = 0x1, \
+        .is_pe = 1, \
+    }, \
+    .be64k = { \
+        .mode = SPI_FLASH_FASTRD_MODE, \
+        .cmd_bit_len = 8, \
+        .cmd = CMD_LARGE_BLOCK_ERASE_4B, \
+        .addr = 0, \
+        .addr_bit_len = 32, \
+        .dummy_bit_len = 0, \
+        .data_bit_len = 0, \
+        .cs_sel = 0x1, \
+        .is_pe = 1, \
+    }, \
+    .read = { \
+        .mode = SPI_FLASH_FASTRD_MODE, \
+        .cmd_bit_len = 8, \
+        .cmd = CMD_FSTRD4B, \
+        .addr = 0, \
+        .addr_bit_len = 32, \
+        .dummy_bit_len = 20*2, \
+        .data_bit_len = 0, \
+        .cs_sel = 0x1, \
+        .is_pe = 0, \
+    }, \
+    .pp = { \
+        .mode = SPI_FLASH_FASTRD_MODE, \
+        .cmd_bit_len = 8, \
+        .cmd = CMD_PROGRAM_PAGE_4B, \
+        .addr = 0, \
+        .addr_bit_len = 32, \
+        .dummy_bit_len = 0, \
+        .data_bit_len = 0, \
+        .cs_sel = 0x1, \
+        .is_pe = 1, \
+    }, \
+    .cache_rd_cmd = { \
+        .addr_bit_len = 32, \
+        .dummy_bit_len = 20*2, \
+        .cmd = CMD_FSTRD4B, \
+        .cmd_bit_len = 16, \
+        .var_dummy_en = 1, \
+    } \
+}
+
+#ifndef ESP32S3BETA2
+typedef struct {
+    uint8_t mode;
+    uint8_t cmd_bit_len;
+    uint16_t cmd;
+    uint32_t addr;
+    uint8_t addr_bit_len;
+    uint8_t dummy_bit_len;
+    uint8_t data_bit_len;
+    uint8_t cs_sel: 4;
+    uint8_t is_pe: 4;
+} esp_rom_opiflash_cmd_t;
+
+typedef struct {
+    uint8_t addr_bit_len;
+    uint8_t dummy_bit_len;
+    uint16_t cmd;
+    uint8_t cmd_bit_len;
+    uint8_t var_dummy_en;
+} esp_rom_opiflash_spi0rd_t;
+
+typedef struct {
+    esp_rom_opiflash_cmd_t rdid;
+    esp_rom_opiflash_cmd_t rdsr;
+    esp_rom_opiflash_cmd_t wren;
+    esp_rom_opiflash_cmd_t se;
+    esp_rom_opiflash_cmd_t be64k;
+    esp_rom_opiflash_cmd_t read;
+    esp_rom_opiflash_cmd_t pp;
+    esp_rom_opiflash_spi0rd_t cache_rd_cmd;
+} esp_rom_opiflash_def_t;
+
+void esp_rom_opiflash_legacy_driver_init(const esp_rom_opiflash_def_t *flash_cmd_def);
+bool ets_efuse_flash_octal_mode(void);
+#endif //ESP32S3BETA2
+
 void esp_rom_opiflash_exec_cmd(int spi_num, SpiFlashRdMode mode,
     uint32_t cmd, int cmd_bit_len,
     uint32_t addr, int addr_bit_len,
@@ -226,11 +342,9 @@ void esp_rom_opiflash_exec_cmd(int spi_num, SpiFlashRdMode mode,
     uint32_t cs_mask,
     bool is_write_erase_operation);
 
-esp_rom_spiflash_result_t esp_rom_opiflash_wait_idle(int spi_num, SpiFlashRdMode mode);
-
-esp_rom_spiflash_result_t opi_flash_wren(int spi_num, SpiFlashRdMode mode);
-
-esp_rom_spiflash_result_t esp_rom_opiflash_erase_sector(int spi_num, uint32_t sector_num, SpiFlashRdMode mode);
-
-esp_rom_spiflash_result_t esp_rom_opiflash_erase_block_64k(int spi_num, uint32_t block_num, SpiFlashRdMode mode);
+esp_rom_spiflash_result_t esp_rom_opiflash_wait_idle();
+esp_rom_spiflash_result_t esp_rom_opiflash_wren();
+esp_rom_spiflash_result_t esp_rom_opiflash_erase_sector(uint32_t sector_num);
+esp_rom_spiflash_result_t esp_rom_opiflash_erase_block_64k(uint32_t block_num);
+SpiFlashOpResult SPI_write_enable(esp_rom_spiflash_chip_t *spi);
 #endif // ESP32S3

@@ -144,38 +144,24 @@ SpiFlashOpResult SPIUnlock(void)
 }
 #endif
 
-#if defined(ESP32S3)
-esp_rom_spiflash_result_t page_program_internal(int spi_num, SpiFlashRdMode mode, uint32_t spi_addr, uint8_t* addr_source, uint32_t byte_length)
+#if defined(ESP32S3) && !defined(ESP32S3BETA2)
+static esp_rom_spiflash_result_t page_program_internal(int spi_num, uint32_t spi_addr, uint8_t* addr_source, uint32_t byte_length)
 {
     uint32_t  temp_addr;
     int32_t  temp_bl;
-    esp_rom_opiflash_wait_idle(spi_num, SPI_FLASH_FASTRD_MODE);
+    esp_rom_opiflash_wait_idle();
     temp_addr = spi_addr;
     temp_bl = byte_length;
     uint32_t temp_len = 0;
 
-    uint16_t cmd = 0;
+    const uint16_t cmd = CMD_PROGRAM_PAGE_4B;
     uint8_t cmd_len = 8;
     int dummy = 0;
-    switch (mode) {
-        case SPI_FLASH_OOUT_MODE:
-            cmd = ROM_FLASH_CMD_PP4B_OOUT_GD;
-            break;
-        case SPI_FLASH_OIO_STR_MODE:
-            cmd = ROM_FLASH_CMD_PP4B_OIOSTR_GD;
-            break;
-        default:
-            mode = SPI_FLASH_FASTRD_MODE;
-        case SPI_FLASH_SLOWRD_MODE:
-        case SPI_FLASH_FASTRD_MODE:
-            cmd = ROM_FLASH_CMD_PP4B_GD;
-            break;
-    }
 
     while (temp_bl > 0 ) {
-        opi_flash_wren(spi_num, SPI_FLASH_FASTRD_MODE);
+        esp_rom_opiflash_wren();
         temp_len =  (temp_bl >= 32) ? 32 : temp_bl;   //32 = write_sub_len
-        esp_rom_opiflash_exec_cmd(spi_num, mode,
+        esp_rom_opiflash_exec_cmd(spi_num, SPI_FLASH_FASTRD_MODE,
                             cmd, cmd_len,
                             temp_addr, 32,
                             dummy,
@@ -183,7 +169,7 @@ esp_rom_spiflash_result_t page_program_internal(int spi_num, SpiFlashRdMode mode
                             NULL, 0,
                             ESP_ROM_OPIFLASH_SEL_CS0,
                             true);
-        esp_rom_opiflash_wait_idle(spi_num, SPI_FLASH_FASTRD_MODE);
+        esp_rom_opiflash_wait_idle();
         addr_source += temp_len;
         temp_addr += temp_len;
         temp_bl -= temp_len;
@@ -192,29 +178,29 @@ esp_rom_spiflash_result_t page_program_internal(int spi_num, SpiFlashRdMode mode
 }
 #endif // ESP32S3
 
-#if defined(ESP32S3)
-esp_rom_spiflash_result_t SPIWrite4B(int spi_num, SpiFlashRdMode mode, uint32_t target, uint8_t *src_addr, int32_t len)
+#if defined(ESP32S3) && !defined(ESP32S3BETA2)
+static esp_rom_spiflash_result_t SPIWrite4B(int spi_num, uint32_t target, uint8_t *src_addr, int32_t len)
 {
     uint32_t  page_size = 256;
     uint32_t  pgm_len, pgm_num;
     uint8_t    i;
 
-    esp_rom_opiflash_wait_idle(spi_num, SPI_FLASH_FASTRD_MODE);
+    esp_rom_opiflash_wait_idle();
     pgm_len = page_size - (target % page_size);
     if (len < pgm_len) {
-        page_program_internal(spi_num, mode, target, src_addr, len);
+        page_program_internal(spi_num, target, src_addr, len);
     } else {
-        page_program_internal(spi_num, mode, target, src_addr, pgm_len);
+        page_program_internal(spi_num, target, src_addr, pgm_len);
         //whole page program
         pgm_num = (len - pgm_len) / page_size;
         for (i = 0; i < pgm_num; i++) {
-            page_program_internal(spi_num, mode, target + pgm_len, (src_addr + pgm_len), page_size);
+            page_program_internal(spi_num, target + pgm_len, (src_addr + pgm_len), page_size);
             pgm_len += page_size;
         }
         //remain parts to program
-        page_program_internal(spi_num, mode, target + pgm_len, (src_addr + pgm_len), len - pgm_len);
+        page_program_internal(spi_num, target + pgm_len, (src_addr + pgm_len), len - pgm_len);
     }
-    esp_rom_opiflash_wait_idle(spi_num, SPI_FLASH_FASTRD_MODE);
+    esp_rom_opiflash_wait_idle();
     return  ESP_ROM_SPIFLASH_RESULT_OK;
 }
 #endif // ESP32S3
@@ -227,9 +213,19 @@ esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
   fs.remaining_erase_sector = ((offset % FLASH_SECTOR_SIZE) + total_size + FLASH_SECTOR_SIZE - 1) / FLASH_SECTOR_SIZE;
   fs.last_error = ESP_OK;
 
+#if defined(ESP32S3) && !defined(ESP32S3BETA2)
+  if (ets_efuse_flash_octal_mode()) {
+    esp_rom_opiflash_wait_idle();
+  } else {
+    if (SPIUnlock() != 0) {
+        return ESP_FAILED_SPI_UNLOCK;
+    }
+  }
+#else
   if (SPIUnlock() != 0) {
     return ESP_FAILED_SPI_UNLOCK;
   }
+#endif //defined(ESP32S3) and !defined(ESP32S3BETA2)
 
   return ESP_OK;
 }
@@ -269,21 +265,27 @@ static void start_next_erase(void)
 
   spi_write_enable();
   spi_wait_ready();
-  uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
-    if (addr > 0x00ffffff) {
-      #if defined(ESP32S3)
+  #if defined(ESP32S3) && !defined(ESP32S3BETA2)
+      if (ets_efuse_flash_octal_mode()) {
         if (block_erase)
-          esp_rom_opiflash_erase_block_64k(1, fs.next_erase_sector / SECTORS_PER_BLOCK, SPI_FLASH_FASTRD_MODE);
+          esp_rom_opiflash_erase_block_64k(fs.next_erase_sector / SECTORS_PER_BLOCK);
         else
-          esp_rom_opiflash_erase_sector(1, fs.next_erase_sector, SPI_FLASH_FASTRD_MODE);
-      #endif // ESP32S3
-    }
-    else {
-      uint32_t command = block_erase ? SPI_FLASH_BE : SPI_FLASH_SE; /* block erase, 64KB : sector erase, 4KB */
-      WRITE_REG(SPI_ADDR_REG, addr & 0xffffff);
-      WRITE_REG(SPI_CMD_REG, command);
-      while(READ_REG(SPI_CMD_REG) != 0) { }
-    }
+          esp_rom_opiflash_erase_sector(fs.next_erase_sector);
+      } else {
+          uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
+          uint32_t command = block_erase ? SPI_FLASH_BE : SPI_FLASH_SE; /* block erase, 64KB : sector erase, 4KB */
+          WRITE_REG(SPI_ADDR_REG, addr & 0xffffff);
+          WRITE_REG(SPI_CMD_REG, command);
+          while(READ_REG(SPI_CMD_REG) != 0) { }
+      }
+  #else
+    uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
+    uint32_t command = block_erase ? SPI_FLASH_BE : SPI_FLASH_SE; /* block erase, 64KB : sector erase, 4KB */
+    WRITE_REG(SPI_ADDR_REG, addr & 0xffffff);
+    WRITE_REG(SPI_CMD_REG, command);
+    while(READ_REG(SPI_CMD_REG) != 0) { }
+  #endif // defined(ESP32S3) && !defined(ESP32S3BETA2)
+
   uint32_t sectors_to_erase = block_erase ? SECTORS_PER_BLOCK : 1;
   fs.remaining_erase_sector -= sectors_to_erase;
   fs.next_erase_sector += sectors_to_erase;
@@ -319,11 +321,12 @@ void handle_flash_data(void *data_buf, uint32_t length) {
     {}
 
   /* do the actual write */
-  #if defined(ESP32S3)
-    if (fs.next_write + length > 0x01000000)
-      res = SPIWrite4B(1, SPI_FLASH_FASTRD_MODE, fs.next_write, data_buf, length);
-    else
-      res = SPIWrite(fs.next_write, data_buf, length);
+  #if defined(ESP32S3) && !defined(ESP32S3BETA2)
+      if (ets_efuse_flash_octal_mode()) {
+        res = SPIWrite4B(1, fs.next_write, data_buf, length);
+      } else {
+        res = SPIWrite(fs.next_write, data_buf, length);
+      }
   #else
     res = SPIWrite(fs.next_write, data_buf, length);
   #endif // ESP32S3

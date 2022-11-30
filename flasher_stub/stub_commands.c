@@ -12,22 +12,12 @@
 #include "soc_support.h"
 #include "stub_io.h"
 
-#if defined(ESP32S3)
-esp_rom_spiflash_result_t SPIRead4B(int spi_num, SpiFlashRdMode mode, uint32_t flash_addr, uint8_t* buf, int len)
+#if defined(ESP32S3) && !defined(ESP32S3BETA2)
+static esp_rom_spiflash_result_t SPIRead4B(int spi_num, uint32_t flash_addr, uint8_t* buf, int len)
 {
-    uint8_t cmd = mode == SPI_FLASH_FASTRD_MODE ? ROM_FLASH_CMD_FSTRD4B_GD :
-                  mode == SPI_FLASH_OOUT_MODE ? ROM_FLASH_CMD_FSTRD4B_OOUT_GD :
-                  mode == SPI_FLASH_OIO_STR_MODE ? ROM_FLASH_CMD_FSTRD4B_OIOSTR_GD :
-                  mode == SPI_FLASH_OIO_DTR_MODE ? ROM_FLASH_CMD_FSTRD4B_OIODTR_GD :
-                  mode == SPI_FLASH_SLOWRD_MODE ? ROM_FLASH_CMD_RD4B_GD : ROM_FLASH_CMD_RD4B_GD;
-    int dummy = mode == SPI_FLASH_FASTRD_MODE ? 8 :
-                  mode == SPI_FLASH_OOUT_MODE ? 8 :
-                  mode == SPI_FLASH_OIO_STR_MODE ? 16 :
-                  mode == SPI_FLASH_OIO_DTR_MODE ? 32 :
-                  mode == SPI_FLASH_SLOWRD_MODE ? 0 : 0;
     uint8_t cmd_len = 8;
 
-    esp_rom_opiflash_wait_idle(spi_num, SPI_FLASH_FASTRD_MODE);
+    esp_rom_opiflash_wait_idle();
     while (len > 0) {
         int rd_length;
         if (len > 16 ) {    //16 = read_sub_len
@@ -35,10 +25,10 @@ esp_rom_spiflash_result_t SPIRead4B(int spi_num, SpiFlashRdMode mode, uint32_t f
         } else {
             rd_length = len;
         }
-        esp_rom_opiflash_exec_cmd(spi_num, mode,
-                                cmd, cmd_len,
+        esp_rom_opiflash_exec_cmd(spi_num, SPI_FLASH_FASTRD_MODE,
+                                CMD_FSTRD4B, cmd_len,
                                 flash_addr, 32,
-                                dummy,
+                                8,
                                 NULL, 0,
                                 buf, 8 * rd_length,
                                 ESP_ROM_OPIFLASH_SEL_CS0,
@@ -58,11 +48,12 @@ int handle_flash_erase(uint32_t addr, uint32_t len) {
   if (SPIUnlock() != 0) return 0x34;
 
   while (len > 0 && (addr % FLASH_BLOCK_SIZE != 0)) {
-    #if defined(ESP32S3)
-      if (addr > 0x00ffffff) {
-        if (esp_rom_opiflash_erase_sector(1, addr / FLASH_SECTOR_SIZE, SPI_FLASH_FASTRD_MODE) != 0) return 0x35; }
-      else
-        if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x35;
+    #if defined(ESP32S3) && !defined(ESP32S3BETA2)
+        if (ets_efuse_flash_octal_mode()) {
+          if (esp_rom_opiflash_erase_sector(addr / FLASH_SECTOR_SIZE) != 0) return 0x35;
+        } else {
+          if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x35;
+        }
     #else
       if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x35;
     #endif // ESP32S3
@@ -71,11 +62,12 @@ int handle_flash_erase(uint32_t addr, uint32_t len) {
   }
 
   while (len > FLASH_BLOCK_SIZE) {
-    #if defined(ESP32S3)
-      if (addr > 0x00ffffff) {
-        if (esp_rom_opiflash_erase_block_64k(1, addr / FLASH_BLOCK_SIZE, SPI_FLASH_FASTRD_MODE) != 0) return 0x36; }
-      else
+    #if defined(ESP32S3) && !defined(ESP32S3BETA2)
+      if (ets_efuse_flash_octal_mode()) {
+        if (esp_rom_opiflash_erase_block_64k(addr / FLASH_BLOCK_SIZE) != 0) return 0x36;
+      } else {
         if (SPIEraseBlock(addr / FLASH_BLOCK_SIZE) != 0) return 0x36;
+      }
     #else
       if (SPIEraseBlock(addr / FLASH_BLOCK_SIZE) != 0) return 0x36;
     #endif // ESP32S3
@@ -84,11 +76,12 @@ int handle_flash_erase(uint32_t addr, uint32_t len) {
   }
 
   while (len > 0) {
-    #if defined(ESP32S3)
-      if (addr > 0x00ffffff) {
-        if (esp_rom_opiflash_erase_sector(1, addr / FLASH_SECTOR_SIZE, SPI_FLASH_FASTRD_MODE) != 0) return 0x37; }
-      else
+    #if defined(ESP32S3) && !defined(ESP32S3BETA2)
+      if (ets_efuse_flash_octal_mode()) {
+        if (esp_rom_opiflash_erase_sector(addr / FLASH_SECTOR_SIZE) != 0) return 0x37;
+      } else {
         if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x37;
+      }
     #else
       if (SPIEraseSector(addr / FLASH_SECTOR_SIZE) != 0) return 0x37;
     #endif // ESP32S3
@@ -118,11 +111,12 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
     while (num_sent < len && num_sent - num_acked < max_in_flight) {
       uint32_t n = len - num_sent;
       if (n > block_size) n = block_size;
-      #if defined(ESP32S3)
-        if (addr + n > 0x01000000)
-          res = SPIRead4B(1, SPI_FLASH_FASTRD_MODE, addr, buf, n);
-        else
+      #if defined(ESP32S3) && !defined(ESP32S3BETA2)
+        if (ets_efuse_flash_octal_mode()) {
+          res = SPIRead4B(1, addr, buf, n);
+        } else {
           res = SPIRead(addr, (uint32_t *)buf, n);
+        }
       #else
         res = SPIRead(addr, (uint32_t *)buf, n);
       #endif // ESP32S3
@@ -157,11 +151,12 @@ int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
     if (n > FLASH_SECTOR_SIZE) {
       n = FLASH_SECTOR_SIZE;
     }
-    #if defined(ESP32S3)
-      if (addr + n > 0x01000000)
-        res = SPIRead4B(1, SPI_FLASH_FASTRD_MODE, addr, buf, n);
-      else
+    #if defined(ESP32S3) && !defined(ESP32S3BETA2)
+      if (ets_efuse_flash_octal_mode()) {
+        res = SPIRead4B(1, addr, buf, n);
+      } else {
         res = SPIRead(addr, (uint32_t *)buf, n);
+      }
     #else
       res = SPIRead(addr, (uint32_t *)buf, n);
     #endif // ESP32S3

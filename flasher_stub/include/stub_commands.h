@@ -40,11 +40,6 @@ typedef struct {
 
 esp_command_error handle_write_reg(const write_reg_args_t *cmd_buf, uint32_t num_commands);
 
-/* Enabling 32-bit flash memory addressing for ESP32S3 */
-#if defined(ESP32S3)
-esp_rom_spiflash_result_t SPIRead4B(int spi_num, SpiFlashRdMode mode, uint32_t flash_addr, uint8_t* buf, int len);
-#endif // ESP32S3
-
 /* Get security info command only on ESP32S2 and later */
 #if ESP32S2_OR_LATER
 esp_command_error handle_get_security_info(void);
