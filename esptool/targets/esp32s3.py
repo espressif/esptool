@@ -110,7 +110,23 @@ class ESP32S3ROM(ESP32ROM):
         num_word = 3
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x07
 
+    def is_eco0(self, minor_raw):
+        # Workaround: The major version field was allocated to other purposes
+        # when block version is v1.1.
+        # Luckily only chip v0.0 have this kind of block version and efuse usage.
+        return (
+            (minor_raw & 0x7) == 0
+            and self.get_blk_version_major() == 1
+            and self.get_blk_version_minor() == 1
+        )
+
     def get_minor_chip_version(self):
+        minor_raw = self.get_raw_minor_chip_version()
+        if self.is_eco0(minor_raw):
+            return 0
+        return minor_raw
+
+    def get_raw_minor_chip_version(self):
         hi_num_word = 5
         hi = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * hi_num_word)) >> 23) & 0x01
         low_num_word = 3
@@ -126,19 +142,14 @@ class ESP32S3ROM(ESP32ROM):
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x07
 
     def get_major_chip_version(self):
-        num_word = 5
-        rev = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
+        minor_raw = self.get_raw_minor_chip_version()
+        if self.is_eco0(minor_raw):
+            return 0
+        return self.get_raw_major_chip_version()
 
-        # Workaround: The major version field was allocated to other purposes
-        # when block version is v1.1.
-        # Luckily only chip v0.0 have this kind of block version and efuse usage.
-        if (
-            self.get_minor_chip_version() == 0
-            and self.get_blk_version_major() == 1
-            and self.get_blk_version_minor() == 1
-        ):
-            rev = 0
-        return rev
+    def get_raw_major_chip_version(self):
+        num_word = 5
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
 
     def get_chip_description(self):
         major_rev = self.get_major_chip_version()
