@@ -20,7 +20,7 @@ The stub loader is already automatically integrated into esptool.py. You don't n
 
 If you want to build the stub to test modifications or updates, here's how:
 
-* You will need an ESP8266 gcc toolchain (xtensa-lx106-elf-) and toolchains for ESP32 and later chips (xtensa-esp32-elf-, riscv32-esp-elf-) on your PATH.
+* You will need an ESP8266 gcc toolchain (xtensa-lx106-elf-) and toolchains for ESP32 and later chips (xtensa-esp32-elf-, riscv32-esp-elf-) on your PATH. If you are developing the stub flasher and plan to send a pull request, please use the latest toolchains available.
 
 * Set the environment variables SDK_PATH to the path to an ESP8266 IoT NON-OS SDK directory (last stub was built with SDK v1.5.1).
 

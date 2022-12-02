@@ -305,6 +305,7 @@ build_docs:
   only:
     changes:
       - "docs/**/*"
+      - "CONTRIBUTING.rst"
   needs: []
   artifacts:
     when: always
@@ -327,6 +328,7 @@ build_docs:
   only:
     changes:
       - "docs/**/*"
+      - "CONTRIBUTING.rst"
   script:
     - source ${CI_PROJECT_DIR}/docs/utils.sh
     - add_doc_server_ssh_keys $DOCS_DEPLOY_PRIVATEKEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER

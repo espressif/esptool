@@ -152,6 +152,10 @@ The whole test suite (without the tests needing an actual hardware) can be easil
 Pull Request Process
 --------------------
 
+.. note::
+
+   If you are developing the stub flasher and plan to send a pull request, please use the latest toolchains available.
+
 After you open the Pull Request, there will probably be some discussion in the comments field of the request itself.
 
 Once the Pull Request is ready to merge, it will first be merged into our internal git system for in-house automated testing.
