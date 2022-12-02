@@ -6,6 +6,7 @@ stages:
   - report
   - build_docs
   - deploy_docs
+  - deploy_development_package
 
 # cache the pip download directory in all jobs
 variables:
@@ -366,3 +367,26 @@ deploy_docs_production:
     DOCS_DEPLOY_SERVER_USER: "$DOCS_PROD_SERVER_USER"
     DOCS_DEPLOY_PATH: "$DOCS_PROD_PATH"
     DOCS_DEPLOY_URL_BASE: "https://docs.espressif.com/projects/esptool"
+
+deploy_dev_package:
+  <<: *test_template
+  rules:
+    - if: $CI_DEV_PUBLISH != null
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  variables:
+    TWINE_NON_INTERACTIVE: "true"
+    TWINE_USERNAME: __token__
+    TWINE_PASSWORD: ${PYPI_ESPTOOL_TOKEN}
+  stage: deploy_development_package
+  dependencies: []
+  script:
+    - python -m pip install --upgrade pip
+    - python -m pip install twine setuptools
+    - python ci/patch_dev_release.py --dev-no ${CI_DEV_PUBLISH} esptool/__init__.py
+    # check what has been changed with git
+    - git diff
+    - python setup.py sdist
+    # skip release if it has already been released (with failure)
+    - python -m pip download esptool==$(python setup.py -V) && exit 1
+    - tar -ztvf dist/*
+    - python -m twine upload dist/*
