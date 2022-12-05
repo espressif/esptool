@@ -249,27 +249,28 @@ def main(custom_commandline=None):
     if there_are_multiple_burn_commands_in_args:
         efuses.batch_mode_cnt += 1
 
-    for rem_args in grouped_remaining_args:
-        args, unused_args = parser.parse_known_args(rem_args, namespace=common_args)
-        if args.operation is None:
-            parser.print_help()
-            parser.exit(1)
-        assert len(unused_args) == 0, 'Not all commands were recognized "{}"'.format(
-            unused_args
-        )
+    try:
+        for rem_args in grouped_remaining_args:
+            args, unused_args = parser.parse_known_args(rem_args, namespace=common_args)
+            if args.operation is None:
+                parser.print_help()
+                parser.exit(1)
+            assert (
+                len(unused_args) == 0
+            ), 'Not all commands were recognized "{}"'.format(unused_args)
 
-        operation_func = vars(efuse_operations)[args.operation]
-        # each 'operation' is a module-level function of the same name
-        print('\n=== Run "{}" command ==='.format(args.operation))
-        operation_func(esp, efuses, args)
+            operation_func = vars(efuse_operations)[args.operation]
+            # each 'operation' is a module-level function of the same name
+            print('\n=== Run "{}" command ==='.format(args.operation))
+            operation_func(esp, efuses, args)
 
-    if there_are_multiple_burn_commands_in_args:
-        efuses.batch_mode_cnt -= 1
-        if not efuses.burn_all(check_batch_mode=True):
-            raise esptool.FatalError("BURN was not done")
-
-    if common_args.virt is False:
-        esp._port.close()
+        if there_are_multiple_burn_commands_in_args:
+            efuses.batch_mode_cnt -= 1
+            if not efuses.burn_all(check_batch_mode=True):
+                raise esptool.FatalError("BURN was not done")
+    finally:
+        if not common_args.virt and esp._port:
+            esp._port.close()
 
 
 def _main():
