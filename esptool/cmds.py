@@ -334,6 +334,8 @@ def write_flash(esp, args):
                 image = LoadFirmwareImage(esp.CHIP_NAME, argfile)
             except (FatalError, struct.error, RuntimeError):
                 continue
+            finally:
+                argfile.seek(0)  # LoadFirmwareImage changes the file handle position
             if image.chip_id != esp.IMAGE_CHIP_ID:
                 raise FatalError(
                     f"{argfile.name} is not an {esp.CHIP_NAME} image. "

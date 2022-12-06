@@ -513,6 +513,11 @@ class TestFlashing(EsptoolTestCase):
         assert "or higher (this chip is revision" in output
         assert "Use --force to flash anyway." in output
 
+    def test_erase_before_write(self):
+        output = self.run_esptool("write_flash --erase-all 0x0 images/one_kb.bin")
+        assert "Chip erase completed successfully" in output
+        assert "Hash of data verified" in output
+
 
 class TestFlashSizes(EsptoolTestCase):
     def test_high_offset(self):
