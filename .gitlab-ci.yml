@@ -371,8 +371,7 @@ deploy_docs_production:
 deploy_dev_package:
   <<: *test_template
   rules:
-    - if: $CI_DEV_PUBLISH != null
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_DEV_PUBLISH != null && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   variables:
     TWINE_NON_INTERACTIVE: "true"
     TWINE_USERNAME: __token__
