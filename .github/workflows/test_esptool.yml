@@ -48,7 +48,7 @@ jobs:
 
         export PATH=$PATH:$ESP8266_BINDIR:$ESP32_BINDIR:$ESP32S2_BINDIR:$ESP32S3_BINDIR:$ESP32C3_BINDIR
 
-        ./test/ci/setup_ci_build_env.sh
+        ./ci/setup_ci_build_env.sh
         make -C flasher_stub V=1
         cd flasher_stub && python ./compare_stubs.py
 

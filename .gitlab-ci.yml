@@ -176,7 +176,7 @@ check_stub_build:
 
     TOOLCHAIN_PATHS: "${ESP8266_BINDIR}:${ESP32_BINDIR}:${ESP32S2_BINDIR}:${ESP32S3_BINDIR}:${ESP32C3_BINDIR}"
   script:
-    - ./test/ci/setup_ci_build_env.sh
+    - ./ci/setup_ci_build_env.sh
     - make -C flasher_stub V=1 PATH="${TOOLCHAIN_PATHS}:${PATH}"
     - cd flasher_stub && coverage run --parallel-mode ./compare_stubs.py
 
