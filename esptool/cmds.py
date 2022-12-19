@@ -346,11 +346,11 @@ def write_flash(esp, args):
             if image.max_rev_full == 0:  # image does not have max/min_rev_full fields
                 use_rev_full_fields = False
             elif image.max_rev_full == 65535:  # image has default value of max_rev_full
+                use_rev_full_fields = True
                 if (
                     image.min_rev_full == 0 and image.min_rev != 0
                 ):  # min_rev_full is not set, min_rev is used
                     use_rev_full_fields = False
-                use_rev_full_fields = True
             else:  # max_rev_full set to a version
                 use_rev_full_fields = True
 
