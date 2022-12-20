@@ -104,13 +104,13 @@ def detect_chip(
             # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip_id
             if chip_id == cls.IMAGE_CHIP_ID:
                 inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
-                inst._post_connect()
                 try:
                     inst.read_reg(
                         ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
                     )  # Dummy read to check Secure Download mode
                 except UnsupportedCommandError:
                     inst.secure_download_mode = True
+                inst._post_connect()
     except (UnsupportedCommandError, struct.error, FatalError) as e:
         # UnsupportedCommmanddError: ESP8266/ESP32 ROM
         # struct.error: ESP32-S2
