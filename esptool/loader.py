@@ -672,8 +672,17 @@ class ESPLoader(object):
                         )
             except UnsupportedCommandError:
                 self.secure_download_mode = True
+
+            try:
+                self.check_chip_id()
+            except UnsupportedCommandError:
+                # Fix for ROM not responding in SDM, reconnect and try again
+                if self.secure_download_mode:
+                    self._connect_attempt(mode, usb_jtag_serial, extra_delay)
+                    self.check_chip_id()
+                else:
+                    raise
             self._post_connect()
-            self.check_chip_id()
 
     def _post_connect(self):
         """
