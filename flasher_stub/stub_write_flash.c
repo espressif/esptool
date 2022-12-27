@@ -320,7 +320,7 @@ void handle_flash_data(void *data_buf, uint32_t length) {
 
   /* do the actual write */
   #if defined(ESP32S3)
-    if (fs.next_write + length > 0x00ffffff)
+    if (fs.next_write + length > 0x01000000)
       res = SPIWrite4B(1, SPI_FLASH_FASTRD_MODE, fs.next_write, data_buf, length);
     else
       res = SPIWrite(fs.next_write, data_buf, length);

@@ -119,7 +119,7 @@ void handle_flash_read(uint32_t addr, uint32_t len, uint32_t block_size,
       uint32_t n = len - num_sent;
       if (n > block_size) n = block_size;
       #if defined(ESP32S3)
-        if (addr + len > 0x00ffffff)
+        if (addr + n > 0x01000000)
           res = SPIRead4B(1, SPI_FLASH_FASTRD_MODE, addr, buf, n);
         else
           res = SPIRead(addr, (uint32_t *)buf, n);
@@ -158,7 +158,7 @@ int handle_flash_get_md5sum(uint32_t addr, uint32_t len) {
       n = FLASH_SECTOR_SIZE;
     }
     #if defined(ESP32S3)
-      if (addr + len > 0x00ffffff)
+      if (addr + n > 0x01000000)
         res = SPIRead4B(1, SPI_FLASH_FASTRD_MODE, addr, buf, n);
       else
         res = SPIRead(addr, (uint32_t *)buf, n);
