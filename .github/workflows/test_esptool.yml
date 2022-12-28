@@ -35,8 +35,8 @@ jobs:
         espefuse.py --help
         espsecure.py --help
 
-    - name: Build stub (Python 3.7 only)
-      if: matrix.python-version == 3.7
+    - name: Build stub (Python 3.8 only)
+      if: matrix.python-version == 3.8
       run: |
         export TOOLCHAIN_DIR=$HOME/toolchain
 

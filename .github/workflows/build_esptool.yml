@@ -1,6 +1,10 @@
 name: Build esptool
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+    - '.github/**' # Ignore changes towards the .github directory
 
 jobs:
   build-esptool-binaries:
@@ -8,9 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-10.15, ubuntu-latest, windows-latest]
         include:
-        - os: macos-latest
+        - os: macos-10.15
           TARGET: macos
           SEPARATOR: ':'
         - os: ubuntu-latest
@@ -35,23 +39,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
           pip install --user -e .
+      - name: Build stub
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          export TOOLCHAIN_DIR=$HOME/toolchain
+          export ESP8266_BINDIR=$TOOLCHAIN_DIR/xtensa-lx106-elf/bin
+          export ESP32_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32-elf/bin
+          export ESP32S2_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s2-elf/bin
+          export ESP32S3_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s3-elf/bin
+          export ESP32C3_BINDIR=$TOOLCHAIN_DIR/riscv32-esp-elf/bin
+          export PATH=$PATH:$ESP8266_BINDIR:$ESP32_BINDIR:$ESP32S2_BINDIR:$ESP32S3_BINDIR:$ESP32C3_BINDIR
+          ./ci/setup_ci_build_env.sh
+          make -C flasher_stub V=1
+      - name: Archive stubs artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@master
+        with:
+          name: stubs
+          path: /home/runner/work/esptool/esptool/flasher_stub/build
       - name: Build with PyInstaller
         run: |
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data=".${{ env.STUBS_DIR }}*.json${{ matrix.SEPARATOR }}${{ env.STUBS_DIR }}" esptool.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espefuse.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
-      - name: Sign binaries
-        if: matrix.os == 'windows-latest' && github.event_name != 'pull_request'
-        env:
-          CERTIFICATE: ${{ secrets.CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-        shell: pwsh
-        run: |
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esptool.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espefuse.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espsecure.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esp_rfc2217_server.exe
       - name: Test binaries
         shell: bash
         run: |
@@ -61,12 +72,55 @@ jobs:
           ./${{ env.DISTPATH }}/esp_rfc2217_server${{ matrix.EXTEN }} -h
       - name: Add license and readme
         shell: bash
-        run: mv LICENSE README.md ./${{ env.DISTPATH }}
+        run: cp LICENSE README.md ./${{ env.DISTPATH }}
       - name: Archive artifact
         uses: actions/upload-artifact@master
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
+
+  push_stubs:
+    name: Commit changed files
+    needs: build-esptool-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 0
+      - name: Download builded stubs
+        uses: actions/download-artifact@master
+        with:
+          name: stubs
+          path: ./mv_stubs
+      - name: Display structure of downloaded files
+        run: |
+          ls -R
+      - name: Move stubs in folder
+        run: |
+          rm ./esptool/targets/stub_flasher/*
+          cp -R ./mv_stubs/*.json ./esptool/targets/stub_flasher
+          ls -R ./esptool/targets/stub_flasher
+      - name: Init git
+        run: |
+          git config --local user.name "Github BUILD"
+          git config user.email github-actions@github.com
+          git add ./esptool/targets/stub_flasher/*
+          git diff --cached >> diff
+          echo $diff
+          echo "dif=$diff" >> $GITHUB_ENV
+          echo ${{ env.dif }}
+      - name: Check for changes in stub files
+        if: contains(${{ env.dif }}, 'json') == true
+        run: git commit --allow-empty -m "stubs updated"
+      - name: Get branch  
+        uses: jason2866/branch-name@master
+      - run: echo "brnch=${BRANCH_NAME}" >> $GITHUB_ENV
+      - name: Push to current branch
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ env.brnch }}
 
   create_release:
     name: Create GitHub release
