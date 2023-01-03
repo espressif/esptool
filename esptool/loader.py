@@ -19,6 +19,7 @@ from .reset import (
     DEFAULT_RESET_DELAY,
     HardReset,
     USBJTAGSerialReset,
+    UnixTightReset,
 )
 from .util import FatalError, NotImplementedInROMError, UnsupportedCommandError
 from .util import byte, hexify, mask_to_shift, pad_to
@@ -573,6 +574,14 @@ class ESPLoader(object):
             return (USBJTAGSerialReset(self._port),)
 
         # USB-to-Serial bridge
+        if os.name != "nt" and not self._port.name.startswith("rfc2217:"):
+            return (
+                UnixTightReset(self._port, delay),
+                UnixTightReset(self._port, extra_delay),
+                ClassicReset(self._port, delay),
+                ClassicReset(self._port, extra_delay),
+            )
+
         return (
             ClassicReset(self._port, delay),
             ClassicReset(self._port, extra_delay),
