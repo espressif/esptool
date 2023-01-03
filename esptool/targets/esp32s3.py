@@ -1,14 +1,14 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2023 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import os
 import struct
-import time
 
 from .esp32 import ESP32ROM
 from ..loader import ESPLoader
+from ..reset import HardReset
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -257,20 +257,12 @@ class ESP32S3ROM(ESP32ROM):
             raise SystemExit(1)
 
     def hard_reset(self):
-        if self.uses_usb_otg():
+        uses_usb_otg = self.uses_usb_otg()
+        if uses_usb_otg:
             self._check_if_can_reset()
 
         print("Hard resetting via RTS pin...")
-        self._setRTS(True)  # EN->LOW
-        if self.uses_usb_otg():
-            # Give the chip some time to come out of reset,
-            # to be able to handle further DTR/RTS transitions
-            time.sleep(0.2)
-            self._setRTS(False)
-            time.sleep(0.2)
-        else:
-            time.sleep(0.1)
-            self._setRTS(False)
+        HardReset(self._port, uses_usb_otg)()
 
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)
