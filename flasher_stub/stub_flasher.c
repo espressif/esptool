@@ -81,8 +81,9 @@ static void set_max_cpu_freq()
     #else
     cpu_per_conf_reg = READ_REG(SYSTEM_CPU_PER_CONF_REG);
     sysclk_conf_reg = READ_REG(SYSTEM_SYSCLK_CONF_REG);
-    WRITE_REG(SYSTEM_CPU_PER_CONF_REG, (cpu_per_conf_reg & ~SYSTEM_CPUPERIOD_SEL_M) | (SYSTEM_CPUPERIOD_MAX << SYSTEM_CPUPERIOD_SEL_S));
     WRITE_REG(SYSTEM_SYSCLK_CONF_REG, (sysclk_conf_reg & ~SYSTEM_SOC_CLK_SEL_M) | (SYSTEM_SOC_CLK_MAX << SYSTEM_SOC_CLK_SEL_S));
+    ets_delay_us(100);  /* Leave some time for the change to settle, needed for ESP32-S3 */
+    WRITE_REG(SYSTEM_CPU_PER_CONF_REG, (cpu_per_conf_reg & ~SYSTEM_CPUPERIOD_SEL_M) | (SYSTEM_CPUPERIOD_MAX << SYSTEM_CPUPERIOD_SEL_S));
     #endif
   }
 }
