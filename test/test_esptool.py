@@ -1124,3 +1124,28 @@ class TestConfigFile(EsptoolTestCase):
                 os.environ["ESPTOOL_CFGFILE"] = tmp
             else:
                 os.environ.pop("ESPTOOL_CFGFILE", None)
+
+    def test_custom_reset_sequence(self):
+        # This reset sequence will fail to reset the chip to bootloader,
+        # the flash_id operation should therefore fail.
+        # Also tests the number of connection attempts.
+        reset_seq_config = (
+            "[esptool]\n"
+            "custom_reset_sequence = D0|W0.1|R1|R0|W0.1|R1|R0\n"
+            "connect_attempts = 1\n"
+        )
+        config_file_path = os.path.join(os.getcwd(), "esptool.cfg")
+        with self.ConfigFile(config_file_path, reset_seq_config):
+            output = self.run_esptool_error("flash_id")
+            assert f"Loaded custom configuration from {config_file_path}" in output
+            assert "A fatal error occurred: Failed to connect to" in output
+            # Connection attempts are represented with dots,
+            # there are enough dots for two attempts here, but only one is executed
+            assert "Connecting............." not in output
+
+        # Test invalid custom_reset_sequence format is not accepted
+        invalid_reset_seq_config = "[esptool]\n" "custom_reset_sequence = F0|R1|C0|A5\n"
+        with self.ConfigFile(config_file_path, invalid_reset_seq_config):
+            output = self.run_esptool_error("flash_id")
+            assert f"Loaded custom configuration from {config_file_path}" in output
+            assert 'Invalid "custom_reset_sequence" option format:' in output

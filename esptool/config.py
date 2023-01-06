@@ -19,6 +19,7 @@ CONFIG_OPTIONS = [
     "connect_attempts",
     "write_block_attempts",
     "reset_delay",
+    "custom_reset_sequence",
 ]
 
 

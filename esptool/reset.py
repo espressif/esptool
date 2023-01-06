@@ -7,6 +7,8 @@ import os
 import struct
 import time
 
+from .util import FatalError
+
 # Used for resetting into bootloader on Unix-like systems
 if os.name != "nt":
     import fcntl
@@ -130,3 +132,47 @@ class HardReset(ResetStrategy):
         else:
             time.sleep(0.1)
             self._setRTS(False)
+
+
+class CustomReset(ResetStrategy):
+    """
+    Custom reset strategy defined with a string.
+
+    CustomReset object is created as "rst = CustomReset(port, seq_str)"
+    and can be later executed simply with "rst()"
+
+    The seq_str input string consists of individual commands divided by "|".
+    Commands (e.g. R0) are defined by a code (R) and an argument (0).
+
+    The commands are:
+    D: setDTR - 1=True / 0=False
+    R: setRTS - 1=True / 0=False
+    U: setDTRandRTS (Unix-only) - 0,0 / 0,1 / 1,0 / or 1,1
+    W: Wait (time delay) - positive float number
+
+    e.g.
+    "D0|R1|W0.1|D1|R0|W0.05|D0" represents the ClassicReset strategy
+    "U1,1|U0,1|W0.1|U1,0|W0.05|U0,0" represents the UnixTightReset strategy
+    """
+
+    format_dict = {
+        "D": "self.port.setDTR({})",
+        "R": "self.port.setRTS({})",
+        "W": "time.sleep({})",
+        "U": "self._setDTRandRTS({})",
+    }
+
+    def __call__(self):
+        exec(self.constructed_strategy)
+
+    def __init__(self, port, seq_str):
+        super().__init__(port)
+        self.constructed_strategy = self._parse_string_to_seq(seq_str)
+
+    def _parse_string_to_seq(self, seq_str):
+        try:
+            cmds = seq_str.split("|")
+            fn_calls_list = [self.format_dict[cmd[0]].format(cmd[1:]) for cmd in cmds]
+        except Exception as e:
+            raise FatalError(f'Invalid "custom_reset_sequence" option format: {e}')
+        return "\n".join(fn_calls_list)

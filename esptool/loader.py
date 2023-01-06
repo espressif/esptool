@@ -17,6 +17,7 @@ import time
 from .config import load_config_file
 from .reset import (
     ClassicReset,
+    CustomReset,
     DEFAULT_RESET_DELAY,
     HardReset,
     USBJTAGSerialReset,
@@ -570,7 +571,9 @@ class ESPLoader(object):
         used ESP chip, external settings, and environment variables.
         Returns a tuple of one or more reset strategies to be tried sequentially.
         """
-        # TODO: If config file defines custom reset sequence, parse it and return it
+        cfg_custom_reset_sequence = cfg.get("custom_reset_sequence")
+        if cfg_custom_reset_sequence is not None:
+            return (CustomReset(self._port, cfg_custom_reset_sequence),)
 
         cfg_reset_delay = cfg.getfloat("reset_delay")
         if cfg_reset_delay is not None:

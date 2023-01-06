@@ -107,3 +107,42 @@ Complete list configurable options:
 +------------------------------+-----------------------------------------------------------+----------+
 | reset_delay                  | Time to wait before the boot pin is released after reset  | 0.05 s   |
 +------------------------------+-----------------------------------------------------------+----------+
+| custom_reset_sequence        | Custom reset sequence for resetting into the bootloader   |          |
++------------------------------+-----------------------------------------------------------+----------+
+
+Custom Reset Sequence
+---------------------
+
+The ``custom_reset_sequence`` configuration option allows you to define a reset sequence which will get
+used when an :ref:`automatic reset into the serial bootloader <automatic-bootloader>` is performed.
+
+The sequence is defined with a string in the following format:
+
+- Consists of individual commands divided by ``|`` (e.g. ``R0|D1|W0.5``).
+- Commands (e.g. ``R0``) are defined by a code (``R``) and an argument (``0``).
+
++------+-----------------------------------------------------------+-----------------+
+| Code | Action                                                    | Argument        |
++======+===========================================================+=================+
+| D    | Set DTR control line                                      | ``1``/``0``     |
++------+-----------------------------------------------------------+-----------------+
+| R    | Set RTS control line                                      | ``1``/``0``     |
++------+-----------------------------------------------------------+-----------------+
+| U    | Set DTR and RTS control lines at the same time            | ``0,0``/``0,1`` |
+|      | (Unix-like systems only)                                  | ``1,0``/``1,1`` |
++------+-----------------------------------------------------------+-----------------+
+| W    | Wait for ``N`` seconds (where ``N`` is a float)           | ``N``           |
++------+-----------------------------------------------------------+-----------------+
+
+
+For example: ``D0|R1|W0.1|D1|R0|W0.5|D0`` represents the following classic reset sequence:
+
+.. code-block:: python
+
+    _setDTR(False)  # IO0=HIGH
+    _setRTS(True)   # EN=LOW, chip in reset
+    time.sleep(0.1)
+    _setDTR(True)   # IO0=LOW
+    _setRTS(False)  # EN=HIGH, chip out of reset
+    time.sleep(0.05)
+    _setDTR(False)  # IO0=HIGH, done
