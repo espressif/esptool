@@ -14,6 +14,7 @@ import struct
 import sys
 import time
 
+from .config import load_config_file
 from .reset import (
     ClassicReset,
     DEFAULT_RESET_DELAY,
@@ -69,18 +70,31 @@ except Exception:
         raise
 
 
-DEFAULT_TIMEOUT = 3  # timeout for most flash operations
-START_FLASH_TIMEOUT = 20  # timeout for starting flash (may perform erase)
-CHIP_ERASE_TIMEOUT = 120  # timeout for full chip erase
-MAX_TIMEOUT = CHIP_ERASE_TIMEOUT * 2  # longest any command can run
-SYNC_TIMEOUT = 0.1  # timeout for syncing with bootloader
-MD5_TIMEOUT_PER_MB = 8  # timeout (per megabyte) for calculating md5sum
-ERASE_REGION_TIMEOUT_PER_MB = 30  # timeout (per megabyte) for erasing a region
-ERASE_WRITE_TIMEOUT_PER_MB = 40  # timeout (per megabyte) for erasing and writing data
-MEM_END_ROM_TIMEOUT = 0.05  # short timeout for ESP_MEM_END, as it may never respond
-DEFAULT_SERIAL_WRITE_TIMEOUT = 10  # timeout for serial port write
-DEFAULT_CONNECT_ATTEMPTS = 7  # default number of times to try connection
-WRITE_BLOCK_ATTEMPTS = 3  # number of times to try writing a data block
+cfg, _ = load_config_file()
+cfg = cfg["esptool"]
+
+# Timeout for most flash operations
+DEFAULT_TIMEOUT = cfg.getfloat("timeout", 3)
+# Timeout for full chip erase
+CHIP_ERASE_TIMEOUT = cfg.getfloat("chip_erase_timeout", 120)
+# Longest any command can run
+MAX_TIMEOUT = cfg.getfloat("max_timeout", CHIP_ERASE_TIMEOUT * 2)
+# Timeout for syncing with bootloader
+SYNC_TIMEOUT = cfg.getfloat("sync_timeout", 0.1)
+# Timeout (per megabyte) for calculating md5sum
+MD5_TIMEOUT_PER_MB = cfg.getfloat("md5_timeout_per_mb", 8)
+# Timeout (per megabyte) for erasing a region
+ERASE_REGION_TIMEOUT_PER_MB = cfg.getfloat("erase_region_timeout_per_mb", 30)
+# Timeout (per megabyte) for erasing and writing data
+ERASE_WRITE_TIMEOUT_PER_MB = cfg.getfloat("erase_write_timeout_per_mb", 40)
+# Short timeout for ESP_MEM_END, as it may never respond
+MEM_END_ROM_TIMEOUT = cfg.getfloat("mem_end_rom_timeout", 0.05)
+# Timeout for serial port write
+DEFAULT_SERIAL_WRITE_TIMEOUT = cfg.getfloat("serial_write_timeout", 10)
+# Default number of times to try connection
+DEFAULT_CONNECT_ATTEMPTS = cfg.getint("connect_attempts", 7)
+# Number of times to try writing a data block
+WRITE_BLOCK_ATTEMPTS = cfg.getint("write_block_attempts", 3)
 
 STUBS_DIR = os.path.join(os.path.dirname(__file__), "./targets/stub_flasher/")
 
@@ -558,9 +572,12 @@ class ESPLoader(object):
         """
         # TODO: If config file defines custom reset sequence, parse it and return it
 
-        delay = DEFAULT_RESET_DELAY
-        extra_delay = DEFAULT_RESET_DELAY + 0.5
-        # TODO: If config file defines custom delay, parse it and set it
+        cfg_reset_delay = cfg.getfloat("reset_delay")
+        if cfg_reset_delay is not None:
+            delay = extra_delay = cfg_reset_delay
+        else:
+            delay = DEFAULT_RESET_DELAY
+            extra_delay = DEFAULT_RESET_DELAY + 0.5
 
         # This FPGA delay is for Espressif internal use
         if (

@@ -1046,3 +1046,81 @@ class TestMakeImage(EsptoolTestCase):
             )
         finally:
             os.remove("test0x00000.bin")
+
+
+@pytest.mark.skipif(arg_chip != "esp32", reason="Don't need to test multiple times")
+class TestConfigFile(EsptoolTestCase):
+    class ConfigFile:
+        """
+        A class-based context manager to create
+        a custom config file and delete it after usage.
+        """
+
+        def __init__(self, file_path, file_content):
+            self.file_path = file_path
+            self.file_content = file_content
+
+        def __enter__(self):
+            with open(self.file_path, "w") as cfg_file:
+                cfg_file.write(self.file_content)
+                return cfg_file
+
+        def __exit__(self, exc_type, exc_value, exc_tb):
+            os.unlink(self.file_path)
+            assert not os.path.exists(self.file_path)
+
+    dummy_config = (
+        "[esptool]\n"
+        "connect_attempts = 5\n"
+        "reset_delay = 1\n"
+        "serial_write_timeout = 12"
+    )
+
+    def test_load_config_file(self):
+        # Test a valid file is loaded
+        config_file_path = os.path.join(os.getcwd(), "esptool.cfg")
+        with self.ConfigFile(config_file_path, self.dummy_config):
+            output = self.run_esptool("version")
+            assert f"Loaded custom configuration from {config_file_path}" in output
+
+        # Test invalid files are ignored
+        # Wrong section header, no config gets loaded
+        with self.ConfigFile(config_file_path, "[wrong section name]"):
+            output = self.run_esptool("version")
+            assert f"Loaded custom configuration from {config_file_path}" not in output
+
+        # Correct header, but options are unparseable
+        faulty_config = "[esptool]\n" "connect_attempts = 5\n" "connect_attempts = 9\n"
+        with self.ConfigFile(config_file_path, faulty_config):
+            output = self.run_esptool("version")
+            assert f"Ignoring invalid config file {config_file_path}" in output
+            assert (
+                "option 'connect_attempts' in section 'esptool' already exists"
+                in output
+            )
+
+        # Test other config files (setup.cfg, tox.ini) are loaded
+        config_file_path = os.path.join(os.getcwd(), "tox.ini")
+        with self.ConfigFile(config_file_path, self.dummy_config):
+            output = self.run_esptool("version")
+            assert f"Loaded custom configuration from {config_file_path}" in output
+
+    def test_load_config_file_with_env_var(self):
+        config_file_path = os.path.join(TEST_DIR, "custom_file.ini")
+        with self.ConfigFile(config_file_path, self.dummy_config):
+            # Try first without setting the env var, check that no config gets loaded
+            output = self.run_esptool("version")
+            assert f"Loaded custom configuration from {config_file_path}" not in output
+
+            # Set the env var and try again, check that config was loaded
+            tmp = os.environ.get("ESPTOOL_CFGFILE")  # Save the env var if it is set
+
+            os.environ["ESPTOOL_CFGFILE"] = config_file_path
+            output = self.run_esptool("version")
+            assert f"Loaded custom configuration from {config_file_path}" in output
+            assert "(set with ESPTOOL_CFGFILE)" in output
+
+            if tmp is not None:  # Restore the env var or unset it
+                os.environ["ESPTOOL_CFGFILE"] = tmp
+            else:
+                os.environ.pop("ESPTOOL_CFGFILE", None)

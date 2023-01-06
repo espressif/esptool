@@ -62,6 +62,7 @@ from esptool.cmds import (
     write_flash_status,
     write_mem,
 )
+from esptool.config import load_config_file
 from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, ESPLoader, list_ports
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
@@ -627,6 +628,7 @@ def main(argv=None, esp=None):
 
     args = parser.parse_args(argv)
     print("esptool.py v%s" % __version__)
+    load_config_file(verbose=True)
 
     # operation function can take 1 arg (args), 2 args (esp, arg)
     # or be a member function of the ESPLoader class.

@@ -18,6 +18,7 @@ To see all options for a particular command, append ``-h`` to the command name. 
    Flash Modes <flash-modes>
    Entering the Bootloader <entering-bootloader>
    Serial Connection <serial-connection>
+   Configuration File <configuration-file>
    Remote Serial Ports <remote-serial-ports>
    Flashing Firmware <flashing-firmware>
    Scripting <scripting>

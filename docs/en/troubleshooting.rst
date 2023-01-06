@@ -119,6 +119,13 @@ Running ``esptool.py --trace`` will dump all serial interactions to the standard
 
 See :ref:`the related Advanced Topics page <tracing-communications>` for more information.
 
+Configuration File
+------------------
+
+Although ``esptool.py`` has been tuned to work in the widest possible range of environments, an incompatible combination of hardware, OS, and drivers might cause it to fail. If you suspect this is the case, a custom configuration of internal variables might be necessary.
+
+These variables and options can be specified in a configuration file. See :ref:`the related Configuration File page <config>` for more information.
+
 Common Errors
 -------------
 
