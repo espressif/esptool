@@ -69,6 +69,12 @@ class ESP32C6ROM(ESP32C3ROM):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
+    FLASH_FREQUENCY = {
+        "80m": 0x0,  # workaround for wrong mspi HS div value in ROM
+        "40m": 0x0,
+        "20m": 0x2,
+    }
+
     MEMORY_MAP = [
         [0x00000000, 0x00010000, "PADDING"],
         [0x42800000, 0x43000000, "DROM"],

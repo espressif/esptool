@@ -295,8 +295,8 @@ combine_reports:
     # all .coverage files in sub-directories are moved to the parent dir first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
     - coverage combine
-    - coverage report
-    - coverage html -d html_report
+    - coverage report --precision=2
+    - coverage html -d html_report --precision=2
     - coverage xml -o cobertura_report.xml
 
 build_docs:

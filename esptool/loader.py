@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2023 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -14,6 +14,13 @@ import struct
 import sys
 import time
 
+from .reset import (
+    ClassicReset,
+    DEFAULT_RESET_DELAY,
+    HardReset,
+    USBJTAGSerialReset,
+    UnixTightReset,
+)
 from .util import FatalError, NotImplementedInROMError, UnsupportedCommandError
 from .util import byte, hexify, mask_to_shift, pad_to
 
@@ -446,16 +453,6 @@ class ESPLoader(object):
             val, _ = self.command()
             self.sync_stub_detected &= val == 0
 
-    def _setDTR(self, state):
-        self._port.setDTR(state)
-
-    def _setRTS(self, state):
-        self._port.setRTS(state)
-        # Work-around for adapters on Windows using the usbser.sys driver:
-        # generate a dummy change to DTR so that the set-control-line-state
-        # request is sent with the updated RTS state and the same DTR state
-        self._port.setDTR(self._port.dtr)
-
     def _get_pid(self):
         if list_ports is None:
             print(
@@ -488,57 +485,7 @@ class ESPLoader(object):
             "using standard reset sequence.".format(active_port)
         )
 
-    def bootloader_reset(self, usb_jtag_serial=False, extra_delay=False):
-        """
-        Issue a reset-to-bootloader, with USB-JTAG-Serial custom reset sequence option
-        """
-        # RTS = either CH_PD/EN or nRESET (both active low = chip in reset)
-        # DTR = GPIO0 (active low = boot to flasher)
-        #
-        # DTR & RTS are active low signals,
-        # ie True = pin @ 0V, False = pin @ VCC.
-        if usb_jtag_serial:
-            # Custom reset sequence, which is required when the device
-            # is connecting via its USB-JTAG-Serial peripheral
-            self._setRTS(False)
-            self._setDTR(False)  # Idle
-            time.sleep(0.1)
-            self._setDTR(True)  # Set IO0
-            self._setRTS(False)
-            time.sleep(0.1)
-            self._setRTS(
-                True
-            )  # Reset. Note dtr/rts calls inverted to go through (1,1) instead of (0,0)
-            self._setDTR(False)
-            self._setRTS(
-                True
-            )  # Extra RTS set for RTS as Windows only propagates DTR on RTS setting
-            time.sleep(0.1)
-            self._setDTR(False)
-            self._setRTS(False)
-        else:
-            # This fpga delay is for Espressif internal use
-            fpga_delay = (
-                True
-                if self.FPGA_SLOW_BOOT
-                and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1"
-                else False
-            )
-            delay = (
-                7 if fpga_delay else 0.5 if extra_delay else 0.05
-            )  # 0.5 needed for ESP32 rev0 and rev1
-
-            self._setDTR(False)  # IO0=HIGH
-            self._setRTS(True)  # EN=LOW, chip in reset
-            time.sleep(0.1)
-            self._setDTR(True)  # IO0=LOW
-            self._setRTS(False)  # EN=HIGH, chip out of reset
-            time.sleep(delay)
-            self._setDTR(False)  # IO0=HIGH, done
-
-    def _connect_attempt(
-        self, mode="default_reset", usb_jtag_serial=False, extra_delay=False
-    ):
+    def _connect_attempt(self, reset_strategy, mode="default_reset"):
         """A single connection attempt"""
         last_error = None
         boot_log_detected = False
@@ -553,7 +500,8 @@ class ESPLoader(object):
             if not self.USES_RFC2217:  # Might block on rfc2217 ports
                 # Empty serial buffer to isolate boot log
                 self._port.reset_input_buffer()
-            self.bootloader_reset(usb_jtag_serial, extra_delay)
+
+            reset_strategy()  # Reset the chip to bootloader (download mode)
 
             # Detect the ROM boot log and check actual boot mode (ESP32 and later only)
             waiting = self._port.inWaiting()
@@ -602,6 +550,43 @@ class ESPLoader(object):
         except IndexError:
             return None
 
+    def _construct_reset_strategy_sequence(self, mode):
+        """
+        Constructs a sequence of reset strategies based on the OS,
+        used ESP chip, external settings, and environment variables.
+        Returns a tuple of one or more reset strategies to be tried sequentially.
+        """
+        # TODO: If config file defines custom reset sequence, parse it and return it
+
+        delay = DEFAULT_RESET_DELAY
+        extra_delay = DEFAULT_RESET_DELAY + 0.5
+        # TODO: If config file defines custom delay, parse it and set it
+
+        # This FPGA delay is for Espressif internal use
+        if (
+            self.FPGA_SLOW_BOOT
+            and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1"
+        ):
+            delay = extra_delay = 7
+
+        # USB-JTAG/Serial mode
+        if mode == "usb_reset" or self._get_pid() == self.USB_JTAG_SERIAL_PID:
+            return (USBJTAGSerialReset(self._port),)
+
+        # USB-to-Serial bridge
+        if os.name != "nt" and not self._port.name.startswith("rfc2217:"):
+            return (
+                UnixTightReset(self._port, delay),
+                UnixTightReset(self._port, extra_delay),
+                ClassicReset(self._port, delay),
+                ClassicReset(self._port, extra_delay),
+            )
+
+        return (
+            ClassicReset(self._port, delay),
+            ClassicReset(self._port, extra_delay),
+        )
+
     def connect(
         self,
         mode="default_reset",
@@ -620,18 +605,13 @@ class ESPLoader(object):
         sys.stdout.flush()
         last_error = None
 
-        usb_jtag_serial = (mode == "usb_reset") or (
-            self._get_pid() == self.USB_JTAG_SERIAL_PID
-        )
-
+        reset_sequence = self._construct_reset_strategy_sequence(mode)
         try:
-            for _, extra_delay in zip(
+            for _, reset_strategy in zip(
                 range(attempts) if attempts > 0 else itertools.count(),
-                itertools.cycle((False, True)),
+                itertools.cycle(reset_sequence),
             ):
-                last_error = self._connect_attempt(
-                    mode=mode, usb_jtag_serial=usb_jtag_serial, extra_delay=extra_delay
-                )
+                last_error = self._connect_attempt(reset_strategy, mode)
                 if last_error is None:
                     break
         finally:
@@ -678,7 +658,7 @@ class ESPLoader(object):
             except UnsupportedCommandError:
                 # Fix for ROM not responding in SDM, reconnect and try again
                 if self.secure_download_mode:
-                    self._connect_attempt(mode, usb_jtag_serial, extra_delay)
+                    self._connect_attempt(mode, reset_sequence[0])
                     self.check_chip_id()
                 else:
                     raise
@@ -1392,9 +1372,7 @@ class ESPLoader(object):
 
     def hard_reset(self):
         print("Hard resetting via RTS pin...")
-        self._setRTS(True)  # EN->LOW
-        time.sleep(0.1)
-        self._setRTS(False)
+        HardReset(self._port)()
 
     def soft_reset(self, stay_in_bootloader):
         if not self.IS_STUB:

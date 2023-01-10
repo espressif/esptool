@@ -279,7 +279,11 @@ def _load_sbv2_pub_key(keydata):
 
 def _get_sbv2_pub_key(keyfile):
     key_data = keyfile.read()
-    if b"-BEGIN RSA PRIVATE KEY" in key_data or b"-BEGIN EC PRIVATE KEY" in key_data:
+    if (
+        b"-BEGIN RSA PRIVATE KEY" in key_data
+        or b"-BEGIN EC PRIVATE KEY" in key_data
+        or b"-BEGIN PRIVATE KEY" in key_data
+    ):
         return _load_sbv2_signing_key(key_data).public_key()
     elif b"-BEGIN PUBLIC KEY" in key_data:
         vk = _load_sbv2_pub_key(key_data)

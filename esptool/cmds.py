@@ -346,11 +346,11 @@ def write_flash(esp, args):
             if image.max_rev_full == 0:  # image does not have max/min_rev_full fields
                 use_rev_full_fields = False
             elif image.max_rev_full == 65535:  # image has default value of max_rev_full
+                use_rev_full_fields = True
                 if (
                     image.min_rev_full == 0 and image.min_rev != 0
                 ):  # min_rev_full is not set, min_rev is used
                     use_rev_full_fields = False
-                use_rev_full_fields = True
             else:  # max_rev_full set to a version
                 use_rev_full_fields = True
 
@@ -885,6 +885,7 @@ def image_info(args):
 
 
 def make_image(args):
+    print("Creating {} image...".format(args.chip))
     image = ESP8266ROMFirmwareImage()
     if len(args.segfile) == 0:
         raise FatalError("No segments specified")
@@ -898,6 +899,7 @@ def make_image(args):
             image.segments.append(ImageSegment(addr, data))
     image.entrypoint = args.entrypoint
     image.save(args.output)
+    print("Successfully created {} image.".format(args.chip))
 
 
 def elf2image(args):
@@ -1105,7 +1107,7 @@ def write_flash_status(esp, args):
 
 def get_security_info(esp, args):
     si = esp.get_security_info()
-    # TODO: better display and tests
+    # TODO: better display
     print("Flags: {:#010x} ({})".format(si["flags"], bin(si["flags"])))
     print("Flash_Crypt_Cnt: {:#x}".format(si["flash_crypt_cnt"]))
     print("Key_Purposes: {}".format(si["key_purposes"]))

@@ -513,10 +513,42 @@ class TestFlashing(EsptoolTestCase):
         assert "or higher (this chip is revision" in output
         assert "Use --force to flash anyway." in output
 
+    @pytest.mark.skipif(
+        arg_chip != "esp32c3", reason="This check happens only on a valid image"
+    )
+    def test_flash_with_min_max_rev(self):
+        """Use min/max_rev_full field to specify chip revision"""
+        output = self.run_esptool_error(
+            "write_flash 0x0 images/one_kb.bin 0x1000 images/esp32c3_header_min_rev.bin"
+        )
+        assert (
+            "images/esp32c3_header_min_rev.bin "
+            "requires chip revision in range [v0.10 - max rev not set]" in output
+        )
+        assert "Use --force to flash anyway." in output
+
     def test_erase_before_write(self):
         output = self.run_esptool("write_flash --erase-all 0x0 images/one_kb.bin")
         assert "Chip erase completed successfully" in output
         assert "Hash of data verified" in output
+
+
+@pytest.mark.skipif(
+    arg_chip in ["esp8266", "esp32"],
+    reason="get_security_info command is supported on ESP32S2 and later",
+)
+class TestSecurityInfo(EsptoolTestCase):
+    def test_show_security_info(self):
+        res = self.run_esptool("get_security_info")
+        assert "Flags" in res
+        assert "Flash_Crypt_Cnt" in res
+        assert "Key_Purposes" in res
+        if arg_chip != "esp32s2":
+            esp = esptool.get_default_connected_device(
+                [arg_port], arg_port, 10, 115200, arg_chip
+            )
+            assert f"Chip_ID: {esp.IMAGE_CHIP_ID}" in res
+            assert "Api_Version" in res
 
 
 class TestFlashSizes(EsptoolTestCase):
@@ -574,6 +606,35 @@ class TestFlashDetection(EsptoolTestCase):
     def test_flash_id(self):
         """Test manufacturer and device response of flash detection."""
         res = self.run_esptool("flash_id")
+        assert "Manufacturer:" in res
+        assert "Device:" in res
+
+    def test_flash_id_expand_args(self):
+        """
+        Test manufacturer and device response of flash detection with expandable arg
+        """
+        with tempfile.NamedTemporaryFile() as tf:
+            tf.write(b"flash_id\n")
+            tf.seek(0)
+            res = self.run_esptool(f"@{tf.name}")
+            assert "Manufacturer:" in res
+            assert "Device:" in res
+
+    def test_flash_id_trace(self):
+        """Test trace functionality on flash detection, running without stub"""
+        res = self.run_esptool("--trace flash_id")
+        # read register command
+        assert re.search(r"TRACE \+\d.\d{3} command op=0x0a .*", res) is not None
+        # write register command
+        assert re.search(r"TRACE \+\d.\d{3} command op=0x09 .*", res) is not None
+        assert re.search(r"TRACE \+\d.\d{3} Read \d* bytes: .*", res) is not None
+        assert re.search(r"TRACE \+\d.\d{3} Write \d* bytes: .*", res) is not None
+        assert re.search(r"TRACE \+\d.\d{3} Received full packet: .*", res) is not None
+        # flasher stub handshake
+        assert (
+            re.search(r"TRACE \+\d.\d{3} Received full packet: 4f484149", res)
+            is not None
+        )
         assert "Manufacturer:" in res
         assert "Device:" in res
 
@@ -929,3 +990,59 @@ class TestReadWriteMemory(EsptoolTestCase):
         )
         esp = esp.run_stub()
         self._test_read_write(esp)
+
+    @pytest.mark.skipif(
+        arg_chip != "esp32", reason="Could be unsupported by different flash"
+    )
+    def test_read_write_flash_status(self):
+        """Read flash status and write back the same status"""
+        res = self.run_esptool("read_flash_status")
+        match = re.search(r"Status value: (0x[\d|a-f]*)", res)
+        assert match is not None
+        res = self.run_esptool(f"write_flash_status {match.group(1)}")
+        assert f"Initial flash status: {match.group(1)}" in res
+        assert f"Setting flash status: {match.group(1)}" in res
+        assert f"After flash status:   {match.group(1)}" in res
+
+    def test_read_chip_description(self):
+        esp = esptool.get_default_connected_device(
+            [arg_port], arg_port, 10, 115200, arg_chip
+        )
+        chip = esp.get_chip_description()
+        assert "unknown" not in chip.lower()
+
+
+@pytest.mark.skipif(
+    arg_chip != "esp8266", reason="Make image option is supported only on ESP8266"
+)
+class TestMakeImage(EsptoolTestCase):
+    def verify_image(self, offset, length, image, compare_to):
+        with open(image, "rb") as f:
+            f.seek(offset)
+            rb = f.read(length)
+        with open(compare_to, "rb") as f:
+            ct = f.read()
+        if len(rb) != len(ct):
+            print(
+                f"WARNING: Expected length {len(ct)} doesn't match comparison {len(rb)}"
+            )
+        print(f"Readback {len(rb)} bytes")
+        for rb_b, ct_b, offs in zip(rb, ct, range(len(rb))):
+            assert (
+                rb_b == ct_b
+            ), f"First difference at offset {offs:#x} Expected {ct_b} got {rb_b}"
+
+    def test_make_image(self):
+        output = self.run_esptool(
+            "make_image test"
+            " -a 0x0 -f images/sector.bin -a 0x1000 -f images/fifty_kb.bin"
+        )
+        try:
+            assert "Successfully created esp8266 image." in output
+            assert os.path.exists("test0x00000.bin")
+            self.verify_image(16, 4096, "test0x00000.bin", "images/sector.bin")
+            self.verify_image(
+                4096 + 24, 50 * 1024, "test0x00000.bin", "images/fifty_kb.bin"
+            )
+        finally:
+            os.remove("test0x00000.bin")
