@@ -72,6 +72,14 @@ class ESP32C3ROM(ESP32ROM):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
+    UARTDEV_BUF_NO = 0x3FCDF07C  # Variable in ROM .bss which indicates the port in use
+    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 3  # The above var when USB-JTAG/Serial is used
+
+    RTC_CNTL_WDT_WKEY = 0x50D83AA1
+    RTCCNTL_BASE_REG = 0x60008000
+    RTC_CNTL_WDTCONFIG0_REG = RTCCNTL_BASE_REG + 0x0090
+    RTC_CNTL_WDTWPROTECT_REG = RTCCNTL_BASE_REG + 0x00A8
+
     MEMORY_MAP = [
         [0x00000000, 0x00010000, "PADDING"],
         [0x3C000000, 0x3C800000, "DROM"],
@@ -158,6 +166,28 @@ class ESP32C3ROM(ESP32ROM):
 
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)
+
+    def uses_usb_jtag_serial(self, _cache=[]):
+        """
+        Check the UARTDEV_BUF_NO register to see if USB-JTAG/Serial is being used
+        """
+        if self.secure_download_mode:
+            return False  # Can't detect USB-JTAG/Serial in secure download mode
+        if not _cache:
+            buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
+            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL)
+        return _cache[0]
+
+    def disable_rtc_watchdog(self):
+        # When USB-JTAG/Serial is used, the RTC watchdog is not reset
+        # and can then reset the board during flashing. Disable it.
+        if self.uses_usb_jtag_serial():
+            self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)
+            self.write_reg(self.RTC_CNTL_WDTCONFIG0_REG, 0)
+            self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)
+
+    def _post_connect(self):
+        self.disable_rtc_watchdog()
 
 
 class ESP32C3StubLoader(ESP32C3ROM):

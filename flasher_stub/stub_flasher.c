@@ -107,6 +107,18 @@ static void reset_cpu_freq()
 }
 #endif // USE_MAX_CPU_FREQ
 
+#if WITH_USB_JTAG_SERIAL
+static void disable_rtc_watchdog()
+{
+  if (stub_uses_usb_jtag_serial())
+  {
+    WRITE_REG(RTC_CNTL_WDTWPROTECT_REG, RTC_CNTL_WDT_WKEY); // Disable write protection
+    WRITE_REG(RTC_CNTL_WDTCONFIG0_REG, 0x0);                // Disable RTC watchdog
+    WRITE_REG(RTC_CNTL_WDTWPROTECT_REG, 0x0);               // Re-enable write protection
+  }
+}
+#endif // WITH_USB_JTAG_SERIAL
+
 static void stub_handle_rx_byte(char byte)
 {
   int16_t r = SLIP_recv_byte(byte, (slip_state_t *)&ub.state);
@@ -436,6 +448,10 @@ void stub_main()
   #if USE_MAX_CPU_FREQ
     set_max_cpu_freq();
   #endif // USE_MAX_CPU_FREQ
+
+  #if WITH_USB_JTAG_SERIAL
+    disable_rtc_watchdog();
+  #endif // WITH_USB_JTAG_SERIAL
 
   /* zero bss */
   for(uint32_t *p = &_bss_start; p < &_bss_end; p++) {

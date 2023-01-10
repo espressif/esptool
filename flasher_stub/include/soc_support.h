@@ -94,6 +94,7 @@
 #define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x60004000
+#define RTCCNTL_BASE_REG    0x60008000 /* RTC Control */
 #define USB_DEVICE_BASE_REG 0x60043000
 #define SYSTEM_BASE_REG     0x600C0000
 #endif
@@ -134,6 +135,7 @@
 #define GPIO_BASE_REG       0x60091000
 #define USB_DEVICE_BASE_REG 0x6000F000
 #define DR_REG_PCR_BASE     0x60096000
+#define DR_REG_LP_WDT_BASE  0x600B1C00
 #endif
 
 #ifdef ESP32H2
@@ -304,8 +306,21 @@
 
 #ifdef ESP32S3
 #define RTC_CNTL_OPTION1_REG          (RTCCNTL_BASE_REG + 0x012C)
+#define RTC_CNTL_WDTCONFIG0_REG       (RTCCNTL_BASE_REG + 0x0090)  // RTC_CNTL_RTC_WDTCONFIG0_REG
+#define RTC_CNTL_WDTWPROTECT_REG      (RTCCNTL_BASE_REG + 0x00B0)  // RTC_CNTL_RTC_WDTWPROTECT_REG
 #endif
 
+#ifdef ESP32C3
+#define RTC_CNTL_WDTCONFIG0_REG       (RTCCNTL_BASE_REG + 0x0090)
+#define RTC_CNTL_WDTWPROTECT_REG      (RTCCNTL_BASE_REG + 0x00A8)
+#endif
+
+#ifdef ESP32C6
+#define RTC_CNTL_WDTCONFIG0_REG       (DR_REG_LP_WDT_BASE + 0x0)   // LP_WDT_RWDT_CONFIG0_REG
+#define RTC_CNTL_WDTWPROTECT_REG      (DR_REG_LP_WDT_BASE + 0x0018)  // LP_WDT_RWDT_WPROTECT_REG
+#endif
+
+#define RTC_CNTL_WDT_WKEY             0x50D83AA1
 #define RTC_CNTL_FORCE_DOWNLOAD_BOOT  (1 << 0)
 
 /**********************************************************

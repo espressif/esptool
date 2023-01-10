@@ -138,6 +138,9 @@ class ESP32H2BETA1ROM(ESP32C3ROM):
 
         return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
 
+    def _post_connect(self):
+        pass
+
 
 class ESP32H2BETA1StubLoader(ESP32H2BETA1ROM):
     """Access class for ESP32H2BETA1 stub loader, runs on top of ROM.

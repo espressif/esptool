@@ -80,7 +80,13 @@ class ESP32S3ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
     UARTDEV_BUF_NO = 0x3FCEF14C  # Variable in ROM .bss which indicates the port in use
-    UARTDEV_BUF_NO_USB_OTG = 3  # Value of the above indicating that USB-OTG is in use
+    UARTDEV_BUF_NO_USB_OTG = 3  # The above var when USB-OTG is used
+    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 4  # The above var when USB-JTAG/Serial is used
+
+    RTC_CNTL_WDT_WKEY = 0x50D83AA1
+    RTCCNTL_BASE_REG = 0x60008000
+    RTC_CNTL_WDTCONFIG0_REG = RTCCNTL_BASE_REG + 0x0090
+    RTC_CNTL_WDTWPROTECT_REG = RTCCNTL_BASE_REG + 0x00B0
 
     USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
 
@@ -227,9 +233,29 @@ class ESP32S3ROM(ESP32ROM):
             _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_OTG)
         return _cache[0]
 
+    def uses_usb_jtag_serial(self, _cache=[]):
+        """
+        Check the UARTDEV_BUF_NO register to see if USB-JTAG/Serial is being used
+        """
+        if self.secure_download_mode:
+            return False  # can't detect USB-JTAG/Serial in secure download mode
+        if not _cache:
+            buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
+            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL)
+        return _cache[0]
+
+    def disable_rtc_watchdog(self):
+        # When USB-JTAG/Serial is used, the RTC watchdog is not reset
+        # and can then reset the board during flashing. Disable it.
+        if self.uses_usb_jtag_serial():
+            self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)
+            self.write_reg(self.RTC_CNTL_WDTCONFIG0_REG, 0)
+            self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)
+
     def _post_connect(self):
         if self.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
+        self.disable_rtc_watchdog()
 
     def _check_if_can_reset(self):
         """

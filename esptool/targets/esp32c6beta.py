@@ -21,3 +21,6 @@ class ESP32C6BETAROM(ESP32C3ROM):
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
+
+    def _post_connect(self):
+        pass
