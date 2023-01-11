@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This file includes the operations with eFuses for ESP32S2 chip
 #

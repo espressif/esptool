@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # SPDX-FileCopyrightText: 2009-2015 Chris Liechti
 # SPDX-FileContributor: 2020-2022 Espressif Systems (Shanghai) CO LTD

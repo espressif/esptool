@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This file describes eFuses controller for ESP32-C3 chip
 #

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This file describes eFuses fields and registers for ESP32-C3 chip
 #
