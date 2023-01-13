@@ -99,7 +99,7 @@ class ESP32H2BETA1ROM(ESP32C3ROM):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["BLE/802.15.4"]
+        return ["BLE", "IEEE802.15.4"]
 
     def get_crystal_freq(self):
         return 32

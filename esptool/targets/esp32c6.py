@@ -120,7 +120,7 @@ class ESP32C6ROM(ESP32C3ROM):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["WiFi 6", "BT 5"]
+        return ["WiFi 6", "BT 5", "IEEE802.15.4"]
 
     def get_crystal_freq(self):
         # ESP32C6 XTAL is fixed to 40MHz
