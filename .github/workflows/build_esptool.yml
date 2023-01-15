@@ -101,26 +101,9 @@ jobs:
           rm ./esptool/targets/stub_flasher/*
           cp -R ./mv_stubs/*.json ./esptool/targets/stub_flasher
           ls -R ./esptool/targets/stub_flasher
-      - name: Init git
-        run: |
-          git config --local user.name "Github BUILD"
-          git config user.email github-actions@github.com
-          git add ./esptool/targets/stub_flasher/*
-          git diff --cached >> diff
-          echo $diff
-          echo "dif=$diff" >> $GITHUB_ENV
-          echo ${{ env.dif }}
-      - name: Check for changes in stub files
-        if: contains(${{ env.dif }}, 'json') == true
-        run: git commit --allow-empty -m "stubs updated"
-      - name: Get branch  
-        uses: jason2866/branch-name@master
-      - run: echo "brnch=${BRANCH_NAME}" >> $GITHUB_ENV
-      - name: Push to current branch
-        uses: ad-m/github-push-action@master
+      - uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ env.brnch }}
+          commit_message: Stubs updated
 
   create_release:
     name: Create GitHub release
