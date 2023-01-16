@@ -85,6 +85,7 @@ class UnixTightReset(ResetStrategy):
         self._setDTRandRTS(True, False)  # IO0=LOW & EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
         self._setDTRandRTS(False, False)  # IO0=HIGH, done
+        self._setDTR(False)  # Needed in some environments to ensure IO0=HIGH
 
 
 class USBJTAGSerialReset(ResetStrategy):
