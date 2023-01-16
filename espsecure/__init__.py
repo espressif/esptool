@@ -392,6 +392,8 @@ def sign_secure_boot_v2(args):
     """
     SIG_BLOCK_MAX_COUNT = 3
     contents = args.datafile.read()
+    sig_block_num = 0
+    signature_sector = b""
 
     if len(contents) % SECTOR_SIZE != 0:
         if args.signature:
@@ -407,6 +409,39 @@ def sign_secure_boot_v2(args):
                 "so signature sector aligns at sector boundary"
             )
             contents += b"\xff" * pad_by
+
+    elif args.append_signatures:
+        while sig_block_num < SIG_BLOCK_MAX_COUNT:
+            sig_block = validate_signature_block(contents, sig_block_num)
+            if sig_block is None:
+                break
+            signature_sector += (
+                sig_block  # Signature sector is populated with already valid blocks
+            )
+            sig_block_num += 1
+
+        if len(signature_sector) % SIG_BLOCK_SIZE != 0:
+            raise esptool.FatalError("Incorrect signature sector size")
+
+        if sig_block_num == 0:
+            print(
+                "No valid signature blocks found. "
+                "Discarding --append-signature and proceeding to sign the image afresh."
+            )
+        else:
+            print(
+                f"{sig_block_num} valid signature block(s) already present "
+                "in the signature sector."
+            )
+            if sig_block_num == SIG_BLOCK_MAX_COUNT:
+                raise esptool.FatalError(
+                    f"Upto {SIG_BLOCK_MAX_COUNT} signature blocks are supported. "
+                    "(For ESP32-ECO3 only 1 signature block is supported)"
+                )
+
+            # Signature stripped off the content
+            # (the legitimate blocks are included in signature_sector)
+            contents = contents[: len(contents) - SECTOR_SIZE]
 
     if args.hsm:
         if args.hsm_config is None:
@@ -432,62 +467,12 @@ def sign_secure_boot_v2(args):
     else:
         key_count = len(args.keyfile)
 
-    signature_sector = b""
-
-    if key_count > SIG_BLOCK_MAX_COUNT:
-        print(
-            f"WARNING: Upto {SIG_BLOCK_MAX_COUNT} signing keys are supported "
-            "for ESP32-S2. For ESP32-ECO3 only 1 signing key is supported"
+    empty_signature_blocks = SIG_BLOCK_MAX_COUNT - sig_block_num
+    if key_count > empty_signature_blocks:
+        raise esptool.FatalError(
+            f"Number of keys({key_count}) more than the empty signature blocks."
+            f"({empty_signature_blocks})"
         )
-
-    if len(contents) % SECTOR_SIZE != 0:
-        if args.signature:
-            raise esptool.FatalError(
-                "Secure Boot V2 requires the signature block to start "
-                "from a 4KB aligned sector "
-                "but the datafile supplied is not sector aligned."
-            )
-        pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
-        print(
-            f"Padding data contents by {pad_by} bytes "
-            "so signature sector aligns at sector boundary"
-        )
-        contents += b"\xff" * pad_by
-    elif args.append_signatures:
-        sig_block_num = 0
-
-        while sig_block_num < SIG_BLOCK_MAX_COUNT:
-            sig_block = validate_signature_block(contents, sig_block_num)
-            if sig_block is None:
-                break
-            signature_sector += (
-                sig_block  # Signature sector is populated with already valid blocks
-            )
-            sig_block_num += 1
-
-        if len(signature_sector) % SIG_BLOCK_SIZE != 0:
-            raise esptool.FatalError("Incorrect signature sector size")
-
-        if sig_block_num == 0:
-            print(
-                "No valid signature blocks found. "
-                "Discarding --append-signature and proceeding to sign the image afresh."
-            )
-        else:
-            print(
-                f"{sig_block_num} valid signature block(s) already present "
-                "in the signature sector."
-            )
-
-            empty_signature_blocks = SIG_BLOCK_MAX_COUNT - sig_block_num
-            if key_count > empty_signature_blocks:
-                raise esptool.FatalError(
-                    f"Number of keys({key_count}) more than the empty signature blocks."
-                    f"({empty_signature_blocks})"
-                )
-            # Signature stripped off the content
-            # (the legitimate blocks are included in signature_sector)
-            contents = contents[: len(contents) - SECTOR_SIZE]
 
     print(f"{key_count} signing key(s) found.")
     # Calculate digest of data file
