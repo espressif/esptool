@@ -50,16 +50,6 @@ import serial
 # point is this file is not 4 byte aligned in length
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
 
-BL_IMAGES = {
-    "esp8266": "images/bootloader_esp8266.bin",
-    "esp32": "images/bootloader_esp32.bin",
-    "esp32s2": "images/bootloader_esp32s2.bin",
-    "esp32s3beta2": "images/bootloader_esp32s3beta2.bin",
-    "esp32s3": "images/bootloader_esp32s3.bin",
-    "esp32c3": "images/bootloader_esp32c3.bin",
-    "esp32c2": "images/bootloader_esp32c2.bin",
-}
-
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 
 RETURN_CODE_FATAL_ERROR = 2
@@ -343,7 +333,6 @@ class TestFlashEncryption(EsptoolTestCase):
             os.remove("images/read_encrypted_flash.bin")
             os.remove("images/local_enc.bin")
 
-    @pytest.mark.xfail
     def test_blank_efuse_encrypt_write_continue2(self):
         """
         since ignore option is specified, write should happen even though flash crypt
@@ -373,8 +362,8 @@ class TestFlashEncryption(EsptoolTestCase):
             with open("images/local_enc.bin", "rb") as file2:
                 read_file2 = file2.read()
 
-            for rf1, rf2, i in zip(read_file1, read_file2, range(len(read_file2))):
-                assert rf1 == rf2, f"Files mismatch at byte position {i}"
+            mismatch = any(rf1 != rf2 for rf1, rf2 in zip(read_file1, read_file2))
+            assert mismatch, "Files should mismatch"
 
         finally:
             os.remove("images/read_encrypted_flash.bin")
@@ -621,13 +610,11 @@ class TestFlashSizes(EsptoolTestCase):
         assert "will not fit" in output
 
     def test_flash_size_keep(self):
-        assert arg_chip in BL_IMAGES.keys(), f"Unsupported chip for test: {arg_chip}"
-
         offset = 0x1000 if arg_chip in ["esp32", "esp32s2"] else 0x0
 
         # this image is configured for 2MB (512KB on ESP8266) flash by default.
         # assume this is not the flash size in use
-        image = BL_IMAGES[arg_chip]
+        image = f"images/bootloader_{arg_chip}.bin"
 
         with open(image, "rb") as f:
             f.seek(0, 2)
@@ -805,7 +792,7 @@ class TestKeepImageSettings(EsptoolTestCase):
     @classmethod
     def setup_class(self):
         super(TestKeepImageSettings, self).setup_class()
-        self.BL_IMAGE = BL_IMAGES[arg_chip]
+        self.BL_IMAGE = f"images/bootloader_{arg_chip}.bin"
         self.flash_offset = (
             0x1000 if arg_chip in ("esp32", "esp32s2") else 0
         )  # bootloader offset
@@ -918,11 +905,11 @@ class TestDeepSleepFlash(EsptoolTestCase):
 
 class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
     def test_flash_header_rewrite(self):
-        BL_OFFSET = 0x1000 if arg_chip in ("esp32", "esp32s2") else 0
-        bl_image = BL_IMAGES[arg_chip]
+        bl_offset = 0x1000 if arg_chip in ("esp32", "esp32s2") else 0
+        bl_image = f"images/bootloader_{arg_chip}.bin"
 
         output = self.run_esptool(
-            f"write_flash -fm dout -ff 20m {BL_OFFSET:#x} {bl_image}"
+            f"write_flash -fm dout -ff 20m {bl_offset:#x} {bl_image}"
         )
         if arg_chip in ["esp8266", "esp32"]:
             # There is no SHA256 digest so the header can be changed - ESP8266 doesn't
@@ -936,13 +923,13 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
     def test_flash_header_no_magic_no_rewrite(self):
         # first image doesn't start with magic byte, second image does
         # but neither are valid bootloader binary images for either chip
-        BL_OFFSET = 0x1000 if arg_chip in ("esp32", "esp32s2") else 0
+        bl_offset = 0x1000 if arg_chip in ("esp32", "esp32s2") else 0
         for image in ["images/one_kb.bin", "images/one_kb_all_ef.bin"]:
             output = self.run_esptool(
-                f"write_flash -fm dout -ff 20m {BL_OFFSET:#x} {image}"
+                f"write_flash -fm dout -ff 20m {bl_offset:#x} {image}"
             )
             "not changing any flash settings" in output
-            self.verify_readback(BL_OFFSET, 1024, image)
+            self.verify_readback(bl_offset, 1024, image)
 
 
 class TestAutoDetect(EsptoolTestCase):

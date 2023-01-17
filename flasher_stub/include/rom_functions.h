@@ -26,11 +26,6 @@ int uart_tx_one_char2(char ch);
 
 void uart_div_modify(uint32_t uart_no, uint32_t baud_div);
 
-int SendMsg(uint8_t *msg, uint8_t size);
-int send_packet(const void *packet, uint32_t size);
-
-void _putc1(char *ch);
-
 void ets_delay_us(uint32_t us);
 
 typedef enum { SPI_FLASH_RESULT_OK = 0,
@@ -49,11 +44,7 @@ uint32_t Wait_SPI_Idle();
 void spi_flash_attach();
 
 void SelectSpiFunction();
-void SPIFlashModeConfig(uint32_t a, uint32_t b);
-void SPIReadModeCnfig(uint32_t a);
 uint32_t SPIParamCfg(uint32_t deviceId, uint32_t chip_size, uint32_t block_size, uint32_t sector_size, uint32_t page_size, uint32_t status_mask);
-
-void ets_delay_us(uint32_t delay_micros);
 
 void ets_isr_mask(uint32_t ints);
 void ets_isr_unmask(uint32_t ints);
@@ -103,7 +94,6 @@ int_handler_t ets_isr_attach(uint32_t int_num, int_handler_t handler,
                              void *arg);
 /* Some ESP32-onwards ROM functions */
 #if ESP32_OR_LATER
-uint32_t ets_get_detected_xtal_freq(void);
 void uart_tx_flush(int uart);
 uint32_t ets_efuse_get_spiconfig(void);
 

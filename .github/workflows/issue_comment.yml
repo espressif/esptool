@@ -1,4 +1,4 @@
-name: Sync issue comments to JIRA
+name: Sync issue comments to Jira
 
 # This workflow will be triggered when new issue comment is created (including PR comments)
 on: issue_comment
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - name: Sync issue comments to JIRA
+      - name: Sync issue comments to Jira
         uses: espressif/github-actions/sync_issues_to_jira@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

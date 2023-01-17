@@ -31,13 +31,13 @@ version_check:
   only:
     - tags
   script:
-        - VERSION=$(esptool.py version | head -n 1)
-        - |
-          if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]]
-          then
-            echo "Version number and git tag do not match!"
-            exit 1
-          fi
+    - VERSION=$(esptool.py version | head -n 1)
+    - |
+      if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]]
+      then
+        echo "Version number and git tag do not match!"
+        exit 1
+      fi
 
 host_tests:
   <<: *test_template

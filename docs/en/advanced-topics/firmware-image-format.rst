@@ -61,7 +61,7 @@ The image header is 8 bytes long:
 
         TODO: Update flash frequency lists to be esp32c2 or esp32h2 specific
 
-``esptool.py`` overrides the 2nd and 3rd (start from 0) bytes according to the SPI flash info provided through command line option, but only if there is no SHA256 digest appended after the image. Therefore, if you would like to change SPI flash info during flashing, i.e. with the ``esptool.py write_flash`` command, then generate images without SHA256 digests. This can be achieved by running `esptool.py elf2image`` with the ``--dont-append-digest`` argument.
+``esptool.py`` overrides the 2nd and 3rd (start from 0) bytes according to the SPI flash info provided through command line option, but only if there is no SHA256 digest appended after the image. Therefore, if you would like to change SPI flash info during flashing, i.e. with the ``esptool.py write_flash`` command, then generate images without SHA256 digests. This can be achieved by running ``esptool.py elf2image`` with the ``--dont-append-digest`` argument.
 
 .. only:: esp8266
 
