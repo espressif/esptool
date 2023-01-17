@@ -955,6 +955,7 @@ class TestAutoDetect(EsptoolTestCase):
             "esp32s3": "ESP32-S3",
             "esp32c3": "ESP32-C3",
             "esp32c2": "ESP32-C2",
+            "esp32c6": "ESP32-C6",
         }[arg_chip]
         assert f"Detecting chip type... {expected_chip_name}" in output
         assert f"Chip is {expected_chip_name}" in output
