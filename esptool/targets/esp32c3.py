@@ -187,7 +187,8 @@ class ESP32C3ROM(ESP32ROM):
             self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)
 
     def _post_connect(self):
-        self.disable_rtc_watchdog()
+        if not self.sync_stub_detected:  # Don't run if stub is reused
+            self.disable_rtc_watchdog()
 
 
 class ESP32C3StubLoader(ESP32C3ROM):

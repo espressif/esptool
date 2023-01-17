@@ -11,6 +11,12 @@ def pytest_addoption(parser):
     # test_esptool.py only
     parser.addoption("--baud", action="store", default=115200, help="Baud rate")
     parser.addoption("--with-trace", action="store_true", default=False, help="Trace")
+    parser.addoption(
+        "--preload-port",
+        action="store",
+        default=False,
+        help="Port for dummy binary preloading for USB-JTAG/Serial tests",
+    )
 
     # test_espefuse.py only
     parser.addoption(
@@ -25,9 +31,10 @@ def pytest_configure(config):
     arg_chip = config.getoption("--chip")
 
     # test_esptool.py only
-    global arg_baud, arg_trace
+    global arg_baud, arg_trace, arg_preload_port
     arg_baud = config.getoption("--baud")
     arg_trace = config.getoption("--with-trace")
+    arg_preload_port = config.getoption("--preload-port")
 
     # test_espefuse.py only
     global arg_reset_port

@@ -7,27 +7,33 @@ CROSS_32 ?= xtensa-esp32-elf-
 CROSS_32S2 ?= xtensa-esp32s2-elf-
 CROSS_32S3 ?= xtensa-esp32s3-elf-
 CROSS_32C3 ?= riscv32-esp-elf-
+CROSS_32C2 ?= riscv32-esp-elf-
+CROSS_32C6 ?= riscv32-esp-elf-
 
 # Pass V=1 to see the commands being executed by make
 ifneq ("$(V)","1")
 Q = @
 endif
 
-APP = hello_world
+APP = helloworld
 SRCS = main.c
 
 BUILD_DIR = build
 
-APP_ELF_8266 = $(BUILD_DIR)/$(APP)_8266.elf
-APP_ELF_32 = $(BUILD_DIR)/$(APP)_32.elf
-APP_ELF_32S2 = $(BUILD_DIR)/$(APP)_32s2.elf
-APP_ELF_32S3_BETA_2 = $(BUILD_DIR)/$(APP)_32s3beta2.elf
-APP_ELF_32S3 = $(BUILD_DIR)/$(APP)_32s3.elf
-APP_ELF_32C3 = $(BUILD_DIR)/$(APP)_32c3.elf
+APP_ELF_8266 = $(BUILD_DIR)/$(APP)-esp8266.elf
+APP_ELF_32 = $(BUILD_DIR)/$(APP)-esp32.elf
+APP_ELF_32S2 = $(BUILD_DIR)/$(APP)-esp32s2.elf
+APP_ELF_32S3_BETA_2 = $(BUILD_DIR)/$(APP)-esp32s3beta2.elf
+APP_ELF_32S3 = $(BUILD_DIR)/$(APP)-esp32s3.elf
+APP_ELF_32C3 = $(BUILD_DIR)/$(APP)-esp32c3.elf
+APP_ELF_32C2 = $(BUILD_DIR)/$(APP)-esp32c2.elf
+APP_ELF_32C6 = $(BUILD_DIR)/$(APP)-esp32c6.elf
 
-.PHONY: all clean
+.PHONY: all esp32 clean
 
-all: $(APP_ELF_8266) $(APP_ELF_32) $(APP_ELF_32S2)
+all: $(APP_ELF_8266) $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6)
+
+esp32: $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6)
 
 $(BUILD_DIR):
 	$(Q) mkdir $@
@@ -35,7 +41,7 @@ $(BUILD_DIR):
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
-CFLAGS_ESP32C3 = -std=c99 -Wall -Werror -Os \
+CFLAGS_ESPRISCV32 = -std=c99 -Wall -Werror -Os \
 		 -march=rv32imc -msmall-data-limit=0 \
          -nostdlib -fno-builtin -flto \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
@@ -63,7 +69,15 @@ $(APP_ELF_32S3): $(SRCS) $(BUILD_DIR) ld/app_32s3.ld
 
 $(APP_ELF_32C3): $(SRCS) $(BUILD_DIR) ld/app_32c3.ld
 	@echo "  CC(32C3)   $^ -> $@"
-	$(Q) $(CROSS_32C3)gcc $(CFLAGS_ESP32C3) -DESP32C3=1 -Tapp_32c3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+	$(Q) $(CROSS_32C3)gcc $(CFLAGS_ESPRISCV32) -DESP32C3=1 -Tapp_32c3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(APP_ELF_32C2): $(SRCS) $(BUILD_DIR) ld/app_32c2.ld
+	@echo "  CC(32C2)   $^ -> $@"
+	$(Q) $(CROSS_32C2)gcc $(CFLAGS_ESPRISCV32) -DESP32C2=1 -Tapp_32c2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(APP_ELF_32C6): $(SRCS) $(BUILD_DIR) ld/app_32c6.ld
+	@echo "  CC(32C6)   $^ -> $@"
+	$(Q) $(CROSS_32C6)gcc $(CFLAGS_ESPRISCV32) -DESP32C6=1 -Tapp_32c6.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR)

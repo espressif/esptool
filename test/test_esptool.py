@@ -25,11 +25,12 @@ import time
 from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
 
-# Make command line options --port, --chip, --baud, and --with-trace available
+# Link command line options --port, --chip, --baud, --with-trace, and --preload-port
 from conftest import (
     arg_baud,
     arg_chip,
     arg_port,
+    arg_preload_port,
     arg_trace,
     need_to_install_package_err,
 )
@@ -128,6 +129,8 @@ class ESPRFC2217Server(object):
         self.p.terminate()
 
 
+# Re-run all tests at least once if failure happens in USB-JTAG/Serial
+@pytest.mark.flaky(reruns=1, condition=arg_preload_port is not False)
 class EsptoolTestCase:
     def run_espsecure(self, args):
 
@@ -144,43 +147,75 @@ class EsptoolTestCase:
             print(e.output)
             raise e
 
-    def run_esptool(self, args, baud=None, chip_name=None, rfc2217_port=None):
+    def run_esptool(self, args, baud=None, chip=None, port=None, preload=True):
         """
         Run esptool with the specified arguments. --chip, --port and --baud
         are filled in automatically from the command line.
-        (can override default baud rate with baud param.)
+        (These can be overriden with their respective params.)
 
         Additional args passed in args parameter as a string.
+
+        Preloads a dummy binary if --preload_port is specified.
+        This is needed in USB-JTAG/Serial mode to disable the
+        RTC watchdog, which causes the port to periodically disappear.
 
         Returns output from esptool.py as a string if there is any.
         Raises an exception if esptool.py fails.
         """
+
+        def run_esptool_process(cmd):
+            print("Executing {}...".format(" ".join(cmd)))
+            try:
+                output = subprocess.check_output(
+                    [str(s) for s in cmd],
+                    cwd=TEST_DIR,
+                    stderr=subprocess.STDOUT,
+                )
+                return output.decode("utf-8")
+            except subprocess.CalledProcessError as e:
+                print(e.output.decode("utf-8"))
+                raise e
+
         try:
             # Used for flasher_stub/run_tests_with_stub.sh
             esptool = [os.environ["ESPTOOL_PY"]]
         except KeyError:
             # Run the installed esptool module
             esptool = ["-m", "esptool"]
-        trace_args = ["--trace"] if arg_trace else []
-        cmd = [sys.executable] + esptool + trace_args
-        if chip_name or arg_chip is not None and chip_name != "auto":
-            cmd += ["--chip", chip_name or arg_chip]
-        if rfc2217_port or arg_port is not None:
-            cmd += ["--port", rfc2217_port or arg_port]
+        trace_arg = ["--trace"] if arg_trace else []
+        base_cmd = [sys.executable] + esptool + trace_arg
+        if chip or arg_chip is not None and chip != "auto":
+            base_cmd += ["--chip", chip or arg_chip]
+        if port or arg_port is not None:
+            base_cmd += ["--port", port or arg_port]
         if baud or arg_baud is not None:
-            cmd += ["--baud", str(baud or arg_baud)]
-        cmd += args.split(" ")
-        print("\nExecuting {}...".format(" ".join(cmd)))
-        try:
-            output = subprocess.check_output(
-                [str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT
-            )
-            output = output.decode("utf-8")
-            print(output)  # for more complete stdout logs on failure
-            return output
-        except subprocess.CalledProcessError as e:
-            print(e.output.decode("utf-8"))
-            raise e
+            base_cmd += ["--baud", str(baud or arg_baud)]
+        usb_jtag_serial_reset = ["--before", "usb_reset"] if arg_preload_port else []
+        full_cmd = base_cmd + usb_jtag_serial_reset + args.split(" ")
+
+        # Preload a dummy binary to disable the RTC watchdog, needed in USB-JTAG/Serial
+        if (
+            preload
+            and arg_preload_port
+            and arg_chip in ["esp32c3", "esp32s3", "esp32c6"]  # With USB-JTAG/Serial
+        ):
+            port_index = base_cmd.index("--port") + 1
+            base_cmd[port_index] = arg_preload_port  # Set the port to the preload one
+            preload_cmd = base_cmd + [
+                "--no-stub",
+                "load_ram",
+                f"{TEST_DIR}/images/ram_helloworld/helloworld-{arg_chip}.bin",
+            ]
+            print("\nPreloading dummy binary to disable RTC watchdog...")
+            run_esptool_process(preload_cmd)
+            print("Dummy binary preloaded successfully.")
+            time.sleep(0.3)  # Wait for the app to run and port to appear
+
+        # Run the command
+        print(f'\nRunning the "{args}" command...')
+        output = run_esptool_process(full_cmd)
+        print(output)  # for more complete stdout logs on failure
+        return output
 
     def run_esptool_error(self, args, baud=None):
         """
@@ -647,7 +682,8 @@ class TestStubReuse(EsptoolTestCase):
         )  # flasher stub keeps running after this
         assert "Manufacturer:" in res
         res = self.run_esptool(
-            "--before no_reset flash_id"
+            "--before no_reset flash_id",
+            preload=False,
         )  # do sync before (without reset it talks to the flasher stub)
         assert "Manufacturer:" in res
 
@@ -834,8 +870,8 @@ class TestKeepImageSettings(EsptoolTestCase):
 
 
 @pytest.mark.skipif(
-    arg_chip in ["esp32s2", "esp32s3", "esp32c3", "esp32c2"],
-    reason=f"TODO: write a IRAM test binary for {arg_chip}",
+    arg_chip in ["esp32s2", "esp32s3"],
+    reason="Not supported on targets with USB-CDC.",
 )
 class TestLoadRAM(EsptoolTestCase):
     # flashing an application not supporting USB-CDC will make
@@ -851,7 +887,10 @@ class TestLoadRAM(EsptoolTestCase):
         p.timeout = 5
         output = p.read(100)
         print(f"Output: {output}")
-        assert b"Hello world!" in output
+        assert (
+            b"Hello world!" in output  # xtensa
+            or b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04' in output  # RISC-V
+        )
         p.close()
 
 
@@ -921,18 +960,19 @@ class TestAutoDetect(EsptoolTestCase):
         assert f"Chip is {expected_chip_name}" in output
 
     def test_auto_detect(self):
-        output = self.run_esptool("chip_id", chip_name="auto")
+        output = self.run_esptool("chip_id", chip="auto")
         self._check_output(output)
 
 
 @pytest.mark.flaky(reruns=5)
+@pytest.mark.skipif(arg_preload_port is not False, reason="USB-to-UART bridge only")
 class TestVirtualPort(TestAutoDetect):
     def test_auto_detect_virtual_port(self):
         with ESPRFC2217Server() as server:
             output = self.run_esptool(
                 "chip_id",
-                chip_name="auto",
-                rfc2217_port=f"rfc2217://localhost:{str(server.port)}?ign_set_control",
+                chip="auto",
+                port=f"rfc2217://localhost:{str(server.port)}?ign_set_control",
             )
             self._check_output(output)
 
@@ -942,7 +982,7 @@ class TestVirtualPort(TestAutoDetect):
             self.run_esptool(
                 "write_flash 0x0 images/fifty_kb.bin",
                 baud=921600,
-                rfc2217_port=rfc2217_port,
+                port=rfc2217_port,
             )
         self.verify_readback(0, 50 * 1024, "images/fifty_kb.bin")
 

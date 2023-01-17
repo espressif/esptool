@@ -1,12 +1,13 @@
 /*
- * SPDX-FileCopyrightText: 2019-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
+
 MEMORY {
-  iram : org = 0x40380000, len = 0x100
-  dram : org = 0x3FCA0000, len = 0x100
+  iram : org = 0x40390000, len = 0x100
+  dram : org = 0x3FCD0000, len = 0x100
 }
 
 ENTRY(ram_main)
@@ -29,4 +30,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "../../../../flasher_stub/ld/rom_32s3.ld"
+INCLUDE "../../../../flasher_stub/ld/rom_32c2.ld"
