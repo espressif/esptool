@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # This file includes the operations with eFuses for ESP32-S3 chip
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD

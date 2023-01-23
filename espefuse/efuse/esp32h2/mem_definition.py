@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # This file describes eFuses fields and registers for ESP32-H2 chip
 #
 # SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD

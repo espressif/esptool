@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # This file describes the common eFuses structures for chips
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD

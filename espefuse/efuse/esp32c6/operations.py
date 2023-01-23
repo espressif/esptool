@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # This file includes the operations with eFuses for ESP32-C6 chip
 #
 # SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD

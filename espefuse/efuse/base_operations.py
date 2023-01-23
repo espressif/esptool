@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#
 # This file includes the common operations with eFuses for chips
 #
 # SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
