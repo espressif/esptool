@@ -69,6 +69,25 @@ Use the ``-e/--erase-all`` option to erase all flash sectors (not just the write
 
     This behavior can be overridden with the ``--force`` option. **Use this only at your own risk and only if you know what you are doing!**
 
+
+    Encrypted Flash Protection
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    .. only:: esp32
+
+        Overwriting the encrypted firmware (bootloader, application, etc.) without the ``--encrypt`` option is disabled, if `Flash Encryption <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/flash-encryption.html>`_ is enabled and Encrypted Download being disabled (efuse bit ``EFUSE_DISABLE_DL_ENCRYPT`` is set).
+
+    .. only:: not esp32
+
+        Overwriting the encrypted firmware (bootloader, application, etc.) without the ``--encrypt`` option is disabled, if:
+
+        *  `Flash Encryption <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/flash-encryption.html>`_ and Secure Download Mode are enabled or
+        *  `Flash Encryption <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/flash-encryption.html>`_ is enabled but Encrypted Download is disabled (efuse bit ``EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT`` is set).
+
+    This is a safety measure to prevent accidentally overwriting the encrypted firmware with a plaintext binary, which **can ultimately lead to bricking the device**.
+
+    This behavior can be overridden with the ``--force`` option. **Use this option provided that the flash encryption key is generated external to the device and you could perform the encryption on the host machine.**
+
     Flashing an Incompatible Image
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
