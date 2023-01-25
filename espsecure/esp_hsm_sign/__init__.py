@@ -4,6 +4,7 @@
 
 import binascii
 import configparser
+import os
 import sys
 
 try:
@@ -41,10 +42,15 @@ def read_hsm_config(configfile):
 def establish_session(config):
     print("Trying to establish a session with the HSM.")
     try:
-        lib = pkcs11.lib(config["pkcs11_lib"])
+        if os.path.exists(config["pkcs11_lib"]):
+            lib = pkcs11.lib(config["pkcs11_lib"])
+        else:
+            print(f'LIB file does not exist at {config["pkcs11_lib"]}')
+            sys.exit(1)
         for slot in lib.get_slots(token_present=True):
             if slot.slot_id == int(config["slot"]):
                 break
+
         token = slot.get_token()
         session = token.open(rw=True, user_pin=config["credentials"])
         print(f'Session creation successful with HSM slot {int(config["slot"])}.')

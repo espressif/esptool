@@ -24,9 +24,6 @@ import ecdsa
 
 import esptool
 
-if "--hsm" in sys.argv:
-    import espsecure.esp_hsm_sign as hsm
-
 SIG_BLOCK_MAGIC = 0xE7
 
 # Scheme used in Secure Boot V2
@@ -393,6 +390,9 @@ def sign_secure_boot_v2(args):
     sig_block_num = 0
     signature_sector = b""
 
+    signature = args.signature
+    pub_key = args.pub_key
+
     if len(contents) % SECTOR_SIZE != 0:
         if args.signature:
             raise esptool.FatalError(
@@ -446,21 +446,23 @@ def sign_secure_boot_v2(args):
             raise esptool.FatalError(
                 "Config file is required to generate signature using an external HSM."
             )
+        import espsecure.esp_hsm_sign as hsm
+
         try:
             config = hsm.read_hsm_config(args.hsm_config)
         except Exception as e:
             raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
-        if args.pub_key is None:
-            args.pub_key = extract_pubkey_from_hsm(config)
-        args.signature = generate_signature_using_hsm(config, contents)
+        if pub_key is None:
+            pub_key = extract_pubkey_from_hsm(config)
+        signature = generate_signature_using_hsm(config, contents)
 
-    if args.signature:
+    if signature:
         print("Pre-calculated signatures found")
-        key_count = len(args.pub_key)
-        if len(args.signature) != key_count:
+        key_count = len(pub_key)
+        if len(signature) != key_count:
             raise esptool.FatalError(
-                f"Number of public keys {key_count}) not equal to "
-                f"the number of signatures {len(args.signature)}."
+                f"Number of public keys ({key_count}) not equal to "
+                f"the number of signatures {len(signature)}."
             )
     else:
         key_count = len(args.keyfile)
@@ -479,9 +481,9 @@ def sign_secure_boot_v2(args):
     digest = digest.digest()
 
     # Generate signature block using pre-calculated signatures
-    if args.signature:
+    if signature:
         signature_block = generate_signature_block_using_pre_calculated_signature(
-            args.signature, args.pub_key, digest
+            signature, pub_key, digest
         )
     # Generate signature block by signing using private keys
     else:
@@ -523,6 +525,8 @@ def sign_secure_boot_v2(args):
 
 
 def generate_signature_using_hsm(config, contents):
+    import espsecure.esp_hsm_sign as hsm
+
     session = hsm.establish_session(config)
     # get the private key
     private_key = hsm.get_privkey_info(session, config)
@@ -765,19 +769,22 @@ def validate_signature_block(image_content, sig_blk_num):
 def verify_signature_v2(args):
     """Verify a previously signed binary image, using the RSA or ECDSA public key"""
 
+    keyfile = args.keyfile
     if args.hsm:
         if args.hsm_config is None:
             raise esptool.FatalError(
                 "Config file is required to extract public key from an external HSM."
             )
+        import espsecure.esp_hsm_sign as hsm
+
         try:
             config = hsm.read_hsm_config(args.hsm_config)
         except Exception as e:
             raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
         # get public key from HSM
-        args.keyfile = extract_pubkey_from_hsm(config)[0]
+        keyfile = extract_pubkey_from_hsm(config)[0]
 
-    vk = _get_sbv2_pub_key(args.keyfile)
+    vk = _get_sbv2_pub_key(keyfile)
 
     if isinstance(vk, rsa.RSAPublicKey):
         SIG_BLOCK_MAX_COUNT = 3
@@ -886,6 +893,8 @@ def extract_public_key(args):
 
 
 def extract_pubkey_from_hsm(config):
+    import espsecure.esp_hsm_sign as hsm
+
     session = hsm.establish_session(config)
     # get public key from HSM
     public_key = hsm.get_pubkey(session, config)
