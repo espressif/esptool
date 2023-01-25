@@ -89,7 +89,7 @@ ERASE_REGION_TIMEOUT_PER_MB = cfg.getfloat("erase_region_timeout_per_mb", 30)
 # Timeout (per megabyte) for erasing and writing data
 ERASE_WRITE_TIMEOUT_PER_MB = cfg.getfloat("erase_write_timeout_per_mb", 40)
 # Short timeout for ESP_MEM_END, as it may never respond
-MEM_END_ROM_TIMEOUT = cfg.getfloat("mem_end_rom_timeout", 0.05)
+MEM_END_ROM_TIMEOUT = cfg.getfloat("mem_end_rom_timeout", 0.2)
 # Timeout for serial port write
 DEFAULT_SERIAL_WRITE_TIMEOUT = cfg.getfloat("serial_write_timeout", 10)
 # Default number of times to try connection
@@ -947,10 +947,17 @@ class ESPLoader(object):
                     self.mem_block(field[from_offs:to_offs], seq)
         print("Running stub...")
         self.mem_finish(stub.entry)
+        try:
+            p = self.read()
+        except StopIteration:
+            raise FatalError(
+                "Failed to start stub. There was no response."
+                "\nTry increasing timeouts, for more information see: "
+                "https://docs.espressif.com/projects/esptool/en/latest/esptool/configuration-file.html"  # noqa E501
+            )
 
-        p = self.read()
         if p != b"OHAI":
-            raise FatalError("Failed to start stub. Unexpected response: %s" % p)
+            raise FatalError(f"Failed to start stub. Unexpected response: {p}")
         print("Stub running...")
         return self.STUB_CLASS(self)
 
@@ -1452,9 +1459,9 @@ def slip_reader(port, trace_function):
         """
 
         guru_meditation = (
-            rb"G?uru Meditation Error: (?:Core \d panic'ed \(([a-zA-Z]*)\))?"
+            rb"G?uru Meditation Error: (?:Core \d panic'ed \(([a-zA-Z ]*)\))?"
         )
-        fatal_exception = rb"F?atal exception \(\d+\): (?:([a-zA-Z]*)?.*epc)?"
+        fatal_exception = rb"F?atal exception \(\d+\): (?:([a-zA-Z ]*)?.*epc)?"
 
         # Search either for Guru Meditation or Fatal Exception
         data = re.search(
@@ -1463,15 +1470,13 @@ def slip_reader(port, trace_function):
             re.DOTALL,
         )
         if data is not None:
-            msg = "Guru Meditation Error detected {}".format(
-                " ".join(
-                    [
-                        "({})".format(i.decode("utf-8"))
-                        for i in [data.group(1), data.group(2)]
-                        if i is not None
-                    ]
-                )
-            )
+            cause = [
+                "({})".format(i.decode("utf-8"))
+                for i in [data.group(1), data.group(2)]
+                if i is not None
+            ]
+            cause = f" {cause[0]}" if len(cause) else ""
+            msg = f"Guru Meditation Error detected{cause}"
             raise FatalError(msg)
 
     partial_packet = None

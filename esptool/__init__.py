@@ -36,6 +36,7 @@ import os
 import shlex
 import sys
 import time
+import traceback
 
 from esptool.cmds import (
     chip_id,
@@ -797,17 +798,15 @@ def main(argv=None, esp=None):
                         "Try checking the chip connections or removing "
                         "any other hardware connected to IOs."
                     )
-            except Exception as e:
-                esp.trace("Unable to verify flash chip connection ({}).".format(e))
+            except FatalError as e:
+                raise FatalError(f"Unable to verify flash chip connection ({e}).")
 
         # Check if XMC SPI flash chip booted-up successfully, fix if not
         if not esp.secure_download_mode:
             try:
                 flash_xmc_startup()
-            except Exception as e:
-                esp.trace(
-                    "Unable to perform XMC flash chip startup sequence ({}).".format(e)
-                )
+            except FatalError as e:
+                esp.trace(f"Unable to perform XMC flash chip startup sequence ({e}).")
 
         if hasattr(args, "flash_size"):
             print("Configuring flash size...")
@@ -1045,6 +1044,10 @@ def _main():
             "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html"
         )
         sys.exit(1)
+    except StopIteration:
+        print(traceback.format_exc())
+        print("A fatal error occurred: The chip stopped responding.")
+        sys.exit(2)
 
 
 if __name__ == "__main__":
