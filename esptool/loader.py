@@ -871,10 +871,12 @@ class ESPLoader(object):
         self.flash_begin(0, 0)
         self.flash_finish(reboot)
 
-    def flash_id(self):
+    def flash_id(self, _cache=[]):
         """Read SPI flash manufacturer and device id"""
-        SPIFLASH_RDID = 0x9F
-        return self.run_spiflash_command(SPIFLASH_RDID, b"", 24)
+        if not _cache:
+            SPIFLASH_RDID = 0x9F
+            _cache.append(self.run_spiflash_command(SPIFLASH_RDID, b"", 24))
+        return _cache[0]
 
     def flash_type(self):
         """Read flash type bit field from eFuse. Returns 0, 1, None (not present)"""
@@ -893,13 +895,17 @@ class ESPLoader(object):
         }
 
     @esp32s3_or_newer_function_only
-    def get_chip_id(self):
-        res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
-        res = struct.unpack(
-            "<IBBBBBBBBI", res[:16]
-        )  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
-        chip_id = res[9]  # 2/4 status bytes invariant
-        return chip_id
+    def get_chip_id(self, _cache=[]):
+        if not _cache:
+            res = self.check_command(
+                "get security info", self.ESP_GET_SECURITY_INFO, b""
+            )
+            res = struct.unpack(
+                "<IBBBBBBBBI", res[:16]
+            )  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
+            chip_id = res[9]  # 2/4 status bytes invariant
+            _cache.append(chip_id)
+        return _cache[0]
 
     @classmethod
     def parse_flash_size_arg(cls, arg):

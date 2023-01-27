@@ -24,7 +24,7 @@ from .loader import (
     ESPLoader,
     timeout_per_mb,
 )
-from .targets import CHIP_DEFS, CHIP_LIST, ESP8266ROM, ROM_LIST
+from .targets import CHIP_DEFS, CHIP_LIST, ROM_LIST
 from .util import (
     FatalError,
     NotImplementedInROMError,
@@ -93,14 +93,10 @@ def detect_chip(
     detect_port.connect(connect_mode, connect_attempts, detecting=True)
     try:
         print("Detecting chip type...", end="")
-        res = detect_port.check_command(
-            "get security info", ESPLoader.ESP_GET_SECURITY_INFO, b""
-        )
-        # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
-        res = struct.unpack("<IBBBBBBBBI", res[:16])
-        chip_id = res[9]  # 2/4 status bytes invariant
-
-        for cls in ROM_LIST[3:]:
+        chip_id = detect_port.get_chip_id()
+        for cls in [
+            n for n in ROM_LIST if n.CHIP_NAME not in ("ESP8266", "ESP32", "ESP32S2")
+        ]:
             # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip_id
             if chip_id == cls.IMAGE_CHIP_ID:
                 inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
@@ -831,7 +827,7 @@ def image_info(args):
                     raise FatalError("Append digest field not 0 or 1")
 
                 chip_id = int.from_bytes(extended_header[4:5], "little")
-                for rom in [n for n in ROM_LIST if n != ESP8266ROM]:
+                for rom in [n for n in ROM_LIST if n.CHIP_NAME != "ESP8266"]:
                     if chip_id == rom.IMAGE_CHIP_ID:
                         args.chip = rom.CHIP_NAME
                         break

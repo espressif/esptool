@@ -153,13 +153,10 @@ class ESP32ROM(ESPLoader):
             return 0xF
 
     def get_encrypted_download_disabled(self):
-        if (
+        return (
             self.read_reg(self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG)
             & self.EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT
-        ):
-            return True
-        else:
-            return False
+        )
 
     def get_flash_encryption_enabled(self):
         flash_crypt_cnt = (
