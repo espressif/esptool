@@ -944,6 +944,8 @@ class TestAutoDetect(EsptoolTestCase):
             "esp32c2": "ESP32-C2",
             "esp32c6": "ESP32-C6",
         }[arg_chip]
+        if arg_chip not in ["esp8266", "esp32", "esp32s2"]:
+            assert "Unsupported detection protocol" not in output
         assert f"Detecting chip type... {expected_chip_name}" in output
         assert f"Chip is {expected_chip_name}" in output
 
@@ -1110,6 +1112,8 @@ class TestConfigFile(EsptoolTestCase):
         with self.ConfigFile(config_file_path, self.dummy_config):
             output = self.run_esptool("version")
             assert f"Loaded custom configuration from {config_file_path}" in output
+            assert "Ignoring unknown config file option" not in output
+            assert "Ignoring invalid config file" not in output
 
         # Test invalid files are ignored
         # Wrong section header, no config gets loaded
@@ -1126,6 +1130,12 @@ class TestConfigFile(EsptoolTestCase):
                 "option 'connect_attempts' in section 'esptool' already exists"
                 in output
             )
+
+        # Correct header, unknown option (or a typo)
+        faulty_config = "[esptool]\n" "connect_attempts = 9\n" "timout = 2\n" "bits = 2"
+        with self.ConfigFile(config_file_path, faulty_config):
+            output = self.run_esptool("version")
+            assert "Ignoring unknown config file options: timout, bits" in output
 
         # Test other config files (setup.cfg, tox.ini) are loaded
         config_file_path = os.path.join(os.getcwd(), "tox.ini")
