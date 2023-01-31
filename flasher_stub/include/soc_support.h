@@ -50,6 +50,11 @@
 #define IS_RISCV 1
 #endif // ESP32C6
 
+#ifdef ESP32H2
+#define WITH_USB_JTAG_SERIAL 1
+#define IS_RISCV 1
+#endif // ESP32H2
+
 // Increase CPU freq to speed up read/write operations over USB
 #define USE_MAX_CPU_FREQ (WITH_USB_JTAG_SERIAL || WITH_USB_OTG)
 
@@ -139,10 +144,13 @@
 #endif
 
 #ifdef ESP32H2
-#define UART_BASE_REG      0x60000000 /* UART0 */
-#define SPI_BASE_REG       0x60003000 /* SPI peripheral 1, used for SPI flash */
-#define SPI0_BASE_REG      0x60002000 /* SPI peripheral 0, inner state machine */
-#define GPIO_BASE_REG      0x60091000
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60003000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x60002000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x60091000
+#define USB_DEVICE_BASE_REG 0x6000F000
+#define DR_REG_PCR_BASE     0x60096000
+#define DR_REG_LP_WDT_BASE  0x600B1C00
 #endif
 
 /**********************************************************
@@ -277,10 +285,19 @@
 #define UART_USB_JTAG_SERIAL  3
 
 #define DR_REG_INTERRUPT_MATRIX_BASE            0x60010000
-#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_MATRIX_BASE + 0xC0) /* USB-JTAG-Serial, INTMTX_CORE0_USB_INT_MAP_REG */
+#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_MATRIX_BASE + 0xC0) /* USB-JTAG-Serial, INTMTX_CORE0_USB_INTR_MAP_REG */
 
 #define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
 #endif // ESP32C6
+
+#ifdef ESP32H2
+#define UART_USB_JTAG_SERIAL  3
+
+#define DR_REG_INTERRUPT_MATRIX_BASE            0x60010000
+#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_MATRIX_BASE + 0x94) /* USB-JTAG-Serial, INTMTX_CORE0_USB_INTR_MAP_REG */
+
+#define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
+#endif // ESP32H2
 
 #ifdef WITH_USB_JTAG_SERIAL
 #define USB_DEVICE_INT_ENA_REG          (USB_DEVICE_BASE_REG + 0x010)
@@ -316,6 +333,11 @@
 #endif
 
 #ifdef ESP32C6
+#define RTC_CNTL_WDTCONFIG0_REG       (DR_REG_LP_WDT_BASE + 0x0)   // LP_WDT_RWDT_CONFIG0_REG
+#define RTC_CNTL_WDTWPROTECT_REG      (DR_REG_LP_WDT_BASE + 0x0018)  // LP_WDT_RWDT_WPROTECT_REG
+#endif
+
+#ifdef ESP32H2
 #define RTC_CNTL_WDTCONFIG0_REG       (DR_REG_LP_WDT_BASE + 0x0)   // LP_WDT_RWDT_CONFIG0_REG
 #define RTC_CNTL_WDTWPROTECT_REG      (DR_REG_LP_WDT_BASE + 0x0018)  // LP_WDT_RWDT_WPROTECT_REG
 #endif
@@ -371,6 +393,14 @@
 
 #ifdef ESP32C6
 #define PCR_SYSCLK_CONF_REG          (DR_REG_PCR_BASE + 0x110)
+#define PCR_SOC_CLK_SEL_M            ((PCR_SOC_CLK_SEL_V)<<(PCR_SOC_CLK_SEL_S))
+#define PCR_SOC_CLK_SEL_V            0x3
+#define PCR_SOC_CLK_SEL_S            16
+#define PCR_SOC_CLK_MAX              1 // CPU_CLK frequency is 160 MHz (source is PLL_CLK)
+#endif // ESP32C6
+
+#ifdef ESP32H2
+#define PCR_SYSCLK_CONF_REG          (DR_REG_PCR_BASE + 0x10c)
 #define PCR_SOC_CLK_SEL_M            ((PCR_SOC_CLK_SEL_V)<<(PCR_SOC_CLK_SEL_S))
 #define PCR_SOC_CLK_SEL_V            0x3
 #define PCR_SOC_CLK_SEL_S            16
