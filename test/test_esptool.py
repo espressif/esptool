@@ -1135,7 +1135,7 @@ class TestConfigFile(EsptoolTestCase):
         faulty_config = "[esptool]\n" "connect_attempts = 9\n" "timout = 2\n" "bits = 2"
         with self.ConfigFile(config_file_path, faulty_config):
             output = self.run_esptool("version")
-            assert "Ignoring unknown config file options: timout, bits" in output
+            assert "Ignoring unknown config file options: bits, timout" in output
 
         # Test other config files (setup.cfg, tox.ini) are loaded
         config_file_path = os.path.join(os.getcwd(), "tox.ini")
