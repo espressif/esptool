@@ -889,7 +889,7 @@ def make_image(args):
         raise FatalError(
             "Number of specified files does not match number of specified addresses"
         )
-    for (seg, addr) in zip(args.segfile, args.segaddr):
+    for seg, addr in zip(args.segfile, args.segaddr):
         with open(seg, "rb") as f:
             data = f.read()
             image.segments.append(ImageSegment(addr, data))

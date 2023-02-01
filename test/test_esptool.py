@@ -123,7 +123,6 @@ class ESPRFC2217Server(object):
 @pytest.mark.flaky(reruns=1, condition=arg_preload_port is not False)
 class EsptoolTestCase:
     def run_espsecure(self, args):
-
         cmd = [sys.executable, "-m", "espsecure"] + args.split(" ")
         print("\nExecuting {}...".format(" ".join(cmd)))
         try:

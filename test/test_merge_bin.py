@@ -45,7 +45,7 @@ class TestMergeBin:
                 "-o",
                 output_file.name,
             ] + options
-            for (offset, name) in offsets_names:
+            for offset, name in offsets_names:
                 cmd += [hex(offset), name]
             print("\nExecuting {}".format(" ".join(cmd)))
 

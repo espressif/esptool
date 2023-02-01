@@ -105,7 +105,6 @@ class TestESP32SecureBootloader(EspSecureTestCase):
 
 
 class TestSigning(EspSecureTestCase):
-
     VerifyArgs = namedtuple(
         "verify_signature_args", ["version", "hsm", "hsm_config", "keyfile", "datafile"]
     )
@@ -659,7 +658,6 @@ class TestSigning(EspSecureTestCase):
         assert "Signature could not be verified with the provided key." in str(cm.value)
 
     def test_extract_binary_public_key(self):
-
         with tempfile.NamedTemporaryFile() as pub_keyfile, tempfile.NamedTemporaryFile() as pub_keyfile2:  # noqa E501
             args = self.ExtractKeyArgs(
                 "1", self._open("ecdsa_secure_boot_signing_key.pem"), pub_keyfile
@@ -710,7 +708,6 @@ class TestSigning(EspSecureTestCase):
 
 
 class TestFlashEncryption(EspSecureTestCase):
-
     EncryptArgs = namedtuple(
         "encrypt_flash_data_args",
         [
@@ -744,7 +741,6 @@ class TestFlashEncryption(EspSecureTestCase):
         flash_crypt_conf=0xF,
         aes_xts=None,
     ):
-
         original_plaintext = self._open(input_plaintext)
         keyfile = self._open(key_path)
         ciphertext = io.BytesIO()

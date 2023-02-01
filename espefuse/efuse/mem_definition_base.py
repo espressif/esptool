@@ -19,7 +19,6 @@ class EfuseRegistersBase(object):
 
 
 class EfuseBlocksBase(object):
-
     BLOCKS = None
     NamedtupleBlock = namedtuple(
         "Block",
@@ -45,7 +44,6 @@ class EfuseBlocksBase(object):
 
 
 class EfuseFieldsBase(object):
-
     NamedtupleField = namedtuple(
         "Efuse",
         "name category block word pos type write_disable_bit "

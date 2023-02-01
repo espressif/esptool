@@ -343,7 +343,6 @@ class ESPLoader(object):
         if self._trace_enabled:
             now = time.time()
             try:
-
                 delta = now - self._last_trace
             except AttributeError:
                 delta = 0.0
@@ -738,7 +737,7 @@ class ESPLoader(object):
             stub = StubFlasher(get_stub_json_path(self.CHIP_NAME))
             load_start = offset
             load_end = offset + size
-            for (start, end) in [
+            for start, end in [
                 (stub.data_start, stub.data_start + len(stub.data)),
                 (stub.text_start, stub.text_start + len(stub.text)),
             ]:

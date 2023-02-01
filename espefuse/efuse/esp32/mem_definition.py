@@ -8,7 +8,6 @@ from ..mem_definition_base import EfuseBlocksBase, EfuseFieldsBase, EfuseRegiste
 
 
 class EfuseDefineRegisters(EfuseRegistersBase):
-
     EFUSE_MEM_SIZE = 0x011C + 4
 
     # EFUSE registers & command/conf values

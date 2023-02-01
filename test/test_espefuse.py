@@ -950,7 +950,6 @@ class TestBurnKeyCommands(EfuseTestCase):
         reason="512 bit keys are only supported on ESP32-S2 and S3",
     )
     def test_burn_key_512bit_non_consecutive_blocks(self):
-
         # Burn efuses seperately to test different kinds
         # of "key used" detection criteria
         self.espefuse_py(
