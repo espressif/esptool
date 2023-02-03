@@ -1017,7 +1017,7 @@ def flash_id(esp, args):
     flash_type_dict = {0: "quad (4 data lines)", 1: "octal (8 data lines)"}
     flash_type_str = flash_type_dict.get(flash_type)
     if flash_type_str:
-        print(f"Flash type: {flash_type_str}")
+        print(f"Flash type set in eFuse: {flash_type_str}")
 
 
 def read_flash(esp, args):
