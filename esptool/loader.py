@@ -290,6 +290,13 @@ class ESPLoader(object):
         # True if esptool detects conditions which require the stub to be disabled
         self.stub_is_disabled = False
 
+        # Device-and-runtime-specific cache
+        self.cache = {
+            "flash_id": None,
+            "chip_id": None,
+            "uart_no": None,
+        }
+
         if isinstance(port, str):
             try:
                 self._port = serial.serial_for_url(port)
@@ -870,12 +877,12 @@ class ESPLoader(object):
         self.flash_begin(0, 0)
         self.flash_finish(reboot)
 
-    def flash_id(self, _cache=[]):
+    def flash_id(self):
         """Read SPI flash manufacturer and device id"""
-        if not _cache:
+        if self.cache["flash_id"] is None:
             SPIFLASH_RDID = 0x9F
-            _cache.append(self.run_spiflash_command(SPIFLASH_RDID, b"", 24))
-        return _cache[0]
+            self.cache["flash_id"] = self.run_spiflash_command(SPIFLASH_RDID, b"", 24)
+        return self.cache["flash_id"]
 
     def flash_type(self):
         """Read flash type bit field from eFuse. Returns 0, 1, None (not present)"""
@@ -894,17 +901,24 @@ class ESPLoader(object):
         }
 
     @esp32s3_or_newer_function_only
-    def get_chip_id(self, _cache=[]):
-        if not _cache:
+    def get_chip_id(self):
+        if self.cache["chip_id"] is None:
             res = self.check_command(
                 "get security info", self.ESP_GET_SECURITY_INFO, b""
             )
             res = struct.unpack(
                 "<IBBBBBBBBI", res[:16]
             )  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
-            chip_id = res[9]  # 2/4 status bytes invariant
-            _cache.append(chip_id)
-        return _cache[0]
+            self.cache["chip_id"] = res[9]  # 2/4 status bytes invariant
+        return self.cache["chip_id"]
+
+    def get_uart_no(self):
+        """
+        Read the UARTDEV_BUF_NO register to get the number of the currently used console
+        """
+        if self.cache["uart_no"] is None:
+            self.cache["uart_no"] = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
+        return self.cache["uart_no"]
 
     @classmethod
     def parse_flash_size_arg(cls, arg):

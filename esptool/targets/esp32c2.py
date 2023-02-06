@@ -158,6 +158,7 @@ class ESP32C2StubLoader(ESP32C2ROM):
         self.secure_download_mode = rom_loader.secure_download_mode
         self._port = rom_loader._port
         self._trace_enabled = rom_loader._trace_enabled
+        self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
 
 

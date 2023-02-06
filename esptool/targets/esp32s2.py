@@ -230,16 +230,13 @@ class ESP32S2ROM(ESP32ROM):
             p == self.PURPOSE_VAL_XTS_AES256_KEY_2 for p in purposes
         )
 
-    def uses_usb_otg(self, _cache=[]):
+    def uses_usb_otg(self):
         """
         Check the UARTDEV_BUF_NO register to see if USB-OTG console is being used
         """
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
-        if not _cache:
-            buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_OTG)
-        return _cache[0]
+        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_OTG
 
     def _post_connect(self):
         if self.uses_usb_otg():
@@ -297,6 +294,7 @@ class ESP32S2StubLoader(ESP32S2ROM):
         self.secure_download_mode = rom_loader.secure_download_mode
         self._port = rom_loader._port
         self._trace_enabled = rom_loader._trace_enabled
+        self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
 
         if rom_loader.uses_usb_otg():

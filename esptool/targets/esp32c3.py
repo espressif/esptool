@@ -167,16 +167,13 @@ class ESP32C3ROM(ESP32ROM):
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)
 
-    def uses_usb_jtag_serial(self, _cache=[]):
+    def uses_usb_jtag_serial(self):
         """
         Check the UARTDEV_BUF_NO register to see if USB-JTAG/Serial is being used
         """
         if self.secure_download_mode:
             return False  # Can't detect USB-JTAG/Serial in secure download mode
-        if not _cache:
-            buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL)
-        return _cache[0]
+        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL
 
     def disable_rtc_watchdog(self):
         # When USB-JTAG/Serial is used, the RTC watchdog is not reset
@@ -206,6 +203,7 @@ class ESP32C3StubLoader(ESP32C3ROM):
         self.secure_download_mode = rom_loader.secure_download_mode
         self._port = rom_loader._port
         self._trace_enabled = rom_loader._trace_enabled
+        self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
 
 

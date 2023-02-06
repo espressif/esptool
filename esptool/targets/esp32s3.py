@@ -222,27 +222,21 @@ class ESP32S3ROM(ESP32ROM):
             else 0
         )
 
-    def uses_usb_otg(self, _cache=[]):
+    def uses_usb_otg(self):
         """
         Check the UARTDEV_BUF_NO register to see if USB-OTG console is being used
         """
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
-        if not _cache:
-            buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_OTG)
-        return _cache[0]
+        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_OTG
 
-    def uses_usb_jtag_serial(self, _cache=[]):
+    def uses_usb_jtag_serial(self):
         """
         Check the UARTDEV_BUF_NO register to see if USB-JTAG/Serial is being used
         """
         if self.secure_download_mode:
             return False  # can't detect USB-JTAG/Serial in secure download mode
-        if not _cache:
-            buf_no = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-            _cache.append(buf_no == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL)
-        return _cache[0]
+        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL
 
     def disable_rtc_watchdog(self):
         # When USB-JTAG/Serial is used, the RTC watchdog is not reset
@@ -310,6 +304,7 @@ class ESP32S3StubLoader(ESP32S3ROM):
         self.secure_download_mode = rom_loader.secure_download_mode
         self._port = rom_loader._port
         self._trace_enabled = rom_loader._trace_enabled
+        self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
 
         if rom_loader.uses_usb_otg():
