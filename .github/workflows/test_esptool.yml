@@ -19,12 +19,22 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: SoftHSM2 setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y softhsm2
+        sudo chmod -R a+rx /etc/softhsm
+        sudo chmod a+r /etc/softhsm/softhsm2.conf
+        sudo chown -R $(whoami) /var/lib/softhsm
+        ./ci/setup_softhsm2.sh || exit 1
+
     - name: Test python components (fast)
       run: |
         python setup.py build
-        pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev]
+        pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev,hsm]
         pytest test/test_imagegen.py
         pytest test/test_espsecure.py
+        pytest test/test_espsecure_hsm.py
         pytest test/test_merge_bin.py
         pytest test/test_image_info.py
         pytest test/test_modules.py

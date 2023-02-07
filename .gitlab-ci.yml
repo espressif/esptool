@@ -39,7 +39,7 @@ version_check:
         exit 1
       fi
 
-host_tests:
+.host_tests_template: &host_tests_template
   <<: *test_template
   artifacts:
     when: always
@@ -47,6 +47,11 @@ host_tests:
       - "**/.coverage*"
       - ".coverage*"
     expire_in: 1 week
+    reports:
+      junit: test/report.xml
+
+host_tests:
+  <<: *host_tests_template
   variables:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
@@ -68,6 +73,23 @@ host_tests:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32h2
     # some .coverage files in sub-directories are not collected on some runners, move them first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
+
+# A new job "host_test_hsm" is created for the test "test_espsecure_hsm.py" which runs an ubuntu image,
+# because python-pkcs11 (v0.7.0) package is compiled using GLIBC_2.34 but docker image python:3.7-bullseye
+# support versions only upto GLIBC_2.31.
+host_tests_hsm:
+  <<: *host_tests_template
+  image: ubuntu:latest
+  variables:
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+    PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
+  before_script:
+    - apt-get update
+    - apt-get install -y python3 python3-pip softhsm2
+    - ./ci/setup_softhsm2.sh || exit 1
+    - pip3 install -e .[dev,hsm] --prefer-binary
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espsecure_hsm.py
 
 check_python_style:
   stage: test
