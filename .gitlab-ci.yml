@@ -123,8 +123,6 @@ check_python_style:
 check_install_coverage:
   <<: *test_template
   artifacts:
-    reports:
-      junit: test/report.xml
     when: always
     paths:
       - "**/.coverage*"
@@ -222,7 +220,7 @@ check_stub_build:
     expire_in: 1 week
 
 # ESP8266
-target_esptool_test_esp8266:
+target_esp8266:
   extends: .target_esptool_test
   tags:
     - esptool_esp8266_target
@@ -230,7 +228,7 @@ target_esptool_test_esp8266:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP8266 --chip esp8266 --baud 115200
 
 # ESP32
-target_esptool_test_esp32:
+target_esp32:
   extends: .target_esptool_test
   tags:
     - esptool_esp32_target
@@ -240,14 +238,14 @@ target_esptool_test_esp32:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32 --chip esp32 --baud 115200
 
 # ESP32S2
-target_esptool_test_esp32s2:
+target_esp32s2:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s2_target
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S2 --chip esp32s2 --baud 115200
 
-target_esptool_test_esp32s2_usbcdc:
+target_esp32s2_usbcdc:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s2_cdc_target
@@ -255,14 +253,14 @@ target_esptool_test_esp32s2_usbcdc:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S2_USBCDC --chip esp32s2 --baud 115200
 
 # ESP32C3
-target_esptool_test_esp32c3:
+target_esp32c3:
   extends: .target_esptool_test
   tags:
     - esptool_esp32c3_target
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C3 --chip esp32c3 --baud 115200
 
-target_esptool_test_esp32c3_jtag_serial:
+target_esp32c3_jtag_serial:
   extends: .target_esptool_test
   tags:
     - esptool_esp32c3_jtag_serial_target
@@ -270,14 +268,14 @@ target_esptool_test_esp32c3_jtag_serial:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C3_JTAG_SERIAL --preload-port /dev/serial_ports/ESP32C3_PRELOAD --chip esp32c3 --baud 115200
 
 # ESP32S3
-target_esptool_test_esp32s3:
+target_esp32s3:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s3_target
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3 --chip esp32s3 --baud 115200
 
-target_esptool_test_esp32s3_32MB:
+target_esp32s3_32MB:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s3_32MB_target
@@ -286,14 +284,14 @@ target_esptool_test_esp32s3_32MB:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3_32MB --chip esp32s3 --baud 115200
 
-target_esptool_test_esp32s3_usbcdc:
+target_esp32s3_usbcdc:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s3_cdc_target
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3_USBCDC --chip esp32s3 --baud 115200
 
-target_esptool_test_esp32s3_jtag_serial:
+target_esp32s3_jtag_serial:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s3_jtag_serial_target
@@ -301,14 +299,14 @@ target_esptool_test_esp32s3_jtag_serial:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3_JTAG_SERIAL --preload-port /dev/serial_ports/ESP32S3_PRELOAD --chip esp32s3 --baud 115200
 
 # ESP32C2
-target_esptool_test_esp32c2_40mhz:
+target_esp32c2_40mhz:
   extends: .target_esptool_test
   tags:
     - esptool_esp32c2_40mhz_target
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C2_40MHZ --chip esp32c2 --baud 115200
 
-target_esptool_test_esp32c2_26mhz:
+target_esp32c2_26mhz:
   extends: .target_esptool_test
   tags:
     - esptool_esp32c2_26mhz_target
@@ -316,14 +314,14 @@ target_esptool_test_esp32c2_26mhz:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C2_26MHZ --chip esp32c2 --baud 115200
 
 # ESP32C6
-target_esptool_test_esp32c6:
+target_esp32c6:
   extends: .target_esptool_test
   tags:
     - esptool_esp32c6_target
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C6 --chip esp32c6 --baud 115200
 
-target_esptool_test_esp32c6_jtag_serial:
+target_esp32c6_jtag_serial:
   extends: .target_esptool_test
   tags:
     - esptool_esp32c6_jtag_serial_target

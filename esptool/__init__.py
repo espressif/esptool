@@ -70,6 +70,7 @@ from esptool.util import (
     FatalError,
     NotImplementedInROMError,
     flash_size_bytes,
+    strip_chip_name,
 )
 
 import serial
@@ -100,7 +101,7 @@ def main(argv=None, esp=None):
         "--chip",
         "-c",
         help="Target chip type",
-        type=lambda c: c.lower().replace("-", ""),  # support ESP32-S2, etc.
+        type=strip_chip_name,
         choices=["auto"] + CHIP_LIST,
         default=os.environ.get("ESPTOOL_CHIP", "auto"),
     )

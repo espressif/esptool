@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import re
 import struct
 import sys
 
@@ -68,6 +69,22 @@ def print_overwrite(message, last_line=False):
         print("\r%s" % message, end="\n" if last_line else "")
     else:
         print(message)
+
+
+def expand_chip_name(chip_name):
+    """Change chip name to official form, e.g. `esp32s3beta2` -> `ESP32-S3(beta2)`"""
+    # Put "-" after "esp32"
+    chip_name = re.sub(r"(esp32)(?!$)", r"\1-", chip_name)
+    # Put "()" around "betaN"
+    chip_name = re.sub(r"(beta\d*)", r"(\1)", chip_name)
+    # Uppercase everything before "(betaN)"
+    chip_name = re.sub(r"^[^\(]+", lambda x: x.group(0).upper(), chip_name)
+    return chip_name
+
+
+def strip_chip_name(chip_name):
+    """Strip chip name to normalized form, e.g. `ESP32-S3(beta2)` -> `esp32s3beta2`"""
+    return re.sub(r"[-()]", "", chip_name.lower())
 
 
 class FatalError(RuntimeError):

@@ -24,7 +24,7 @@ from .reset import (
     UnixTightReset,
 )
 from .util import FatalError, NotImplementedInROMError, UnsupportedCommandError
-from .util import byte, hexify, mask_to_shift, pad_to
+from .util import byte, hexify, mask_to_shift, pad_to, strip_chip_name
 
 try:
     import serial
@@ -101,7 +101,7 @@ STUBS_DIR = os.path.join(os.path.dirname(__file__), "./targets/stub_flasher/")
 
 
 def get_stub_json_path(chip_name):
-    chip_name = re.sub(r"[-()]", "", chip_name.lower())
+    chip_name = strip_chip_name(chip_name)
     chip_name = chip_name.replace("esp", "")
     return STUBS_DIR + "stub_flasher_" + chip_name + ".json"
 

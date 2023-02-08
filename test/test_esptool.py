@@ -47,12 +47,7 @@ except ImportError:
 import serial
 
 
-# point is this file is not 4 byte aligned in length
-NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
-
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-
-RETURN_CODE_FATAL_ERROR = 2
 
 # esptool.py skips strapping mode check in USB-CDC case if this is set
 os.environ["ESPTOOL_TESTING"] = "1"
@@ -216,7 +211,7 @@ class EsptoolTestCase:
         with pytest.raises(subprocess.CalledProcessError) as fail:
             self.run_esptool(args, baud)
         failure = fail.value
-        assert RETURN_CODE_FATAL_ERROR == failure.returncode
+        assert failure.returncode == 2  # esptool.FatalError return code
         return failure.output.decode("utf-8")
 
     @classmethod
@@ -464,10 +459,10 @@ class TestFlashing(EsptoolTestCase):
     # test_compressed_nostub_flash() instead.
 
     def test_length_not_aligned_4bytes(self):
-        self.run_esptool(f"write_flash 0x0 images/{NODEMCU_FILE}")
+        self.run_esptool("write_flash 0x0 images/not_4_byte_aligned.bin")
 
     def test_length_not_aligned_4bytes_no_compression(self):
-        self.run_esptool(f"write_flash -u 0x0 images/{NODEMCU_FILE}")
+        self.run_esptool("write_flash -u 0x0 images/not_4_byte_aligned.bin")
 
     def test_write_overlap(self):
         output = self.run_esptool_error(
@@ -634,6 +629,10 @@ class TestFlashSizes(EsptoolTestCase):
         assert "File images/one_kb.bin" in output
         assert "will not fit" in output
 
+    @pytest.mark.skipif(
+        arg_chip not in ["esp8266", "esp32", "esp32c3"],
+        reason="Don't run on every chip, so other bootloader images are not needed",
+    )
     def test_flash_size_keep(self):
         offset = 0x1000 if arg_chip in ["esp32", "esp32s2"] else 0x0
 
@@ -771,8 +770,8 @@ class TestVerifyCommand(EsptoolTestCase):
         assert "first @ 0x00006000" in output
 
     def test_verify_unaligned_length(self):
-        self.run_esptool(f"write_flash 0x0 images/{NODEMCU_FILE}")
-        self.run_esptool(f"verify_flash 0x0 images/{NODEMCU_FILE}")
+        self.run_esptool("write_flash 0x0 images/not_4_byte_aligned.bin")
+        self.run_esptool("verify_flash 0x0 images/not_4_byte_aligned.bin")
 
 
 class TestReadIdentityValues(EsptoolTestCase):
@@ -824,6 +823,10 @@ class TestKeepImageSettings(EsptoolTestCase):
         with open(self.BL_IMAGE, "rb") as f:
             self.header = f.read(8)
 
+    @pytest.mark.skipif(
+        arg_chip not in ["esp8266", "esp32", "esp32c3"],
+        reason="Don't run on every chip, so other bootloader images are not needed",
+    )
     def test_keep_does_not_change_settings(self):
         # defaults should all be keep
         self.run_esptool(f"write_flash -fs keep {self.flash_offset:#x} {self.BL_IMAGE}")
@@ -839,6 +842,10 @@ class TestKeepImageSettings(EsptoolTestCase):
             f"verify_flash -fs keep {self.flash_offset:#x} {self.BL_IMAGE}"
         )
 
+    @pytest.mark.skipif(
+        arg_chip not in ["esp8266", "esp32", "esp32c3"],
+        reason="Don't run for every chip, so other bootloader images are not needed",
+    )
     def test_detect_size_changes_size(self):
         self.run_esptool(
             f"write_flash -fs detect {self.flash_offset:#x} {self.BL_IMAGE}"
@@ -929,6 +936,10 @@ class TestDeepSleepFlash(EsptoolTestCase):
 
 
 class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
+    @pytest.mark.skipif(
+        arg_chip not in ["esp8266", "esp32", "esp32c3"],
+        reason="Don't run on every chip, so other bootloader images are not needed",
+    )
     def test_flash_header_rewrite(self):
         bl_offset = 0x1000 if arg_chip in ("esp32", "esp32s2") else 0
         bl_image = f"images/bootloader_{arg_chip}.bin"
@@ -959,16 +970,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
 
 class TestAutoDetect(EsptoolTestCase):
     def _check_output(self, output):
-        expected_chip_name = {
-            "esp8266": "ESP8266",
-            "esp32": "ESP32",
-            "esp32s2": "ESP32-S2",
-            "esp32s3beta2": "ESP32-S3(beta2)",
-            "esp32s3": "ESP32-S3",
-            "esp32c3": "ESP32-C3",
-            "esp32c2": "ESP32-C2",
-            "esp32c6": "ESP32-C6",
-        }[arg_chip]
+        expected_chip_name = esptool.util.expand_chip_name(arg_chip)
         if arg_chip not in ["esp8266", "esp32", "esp32s2"]:
             assert "Unsupported detection protocol" not in output
         assert f"Detecting chip type... {expected_chip_name}" in output

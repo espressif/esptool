@@ -14,7 +14,7 @@ except ImportError:
 
 IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images/")
 
-NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
+ESP8266_BIN = "not_4_byte_aligned.bin"
 
 
 def read_image(filename):
@@ -65,13 +65,13 @@ class TestImageInfo:
         ), "Wrong segment info"
 
     def test_v1_esp8266(self):
-        out = self.run_image_info("esp8266", NODEMCU_FILE)
+        out = self.run_image_info("esp8266", ESP8266_BIN)
         assert "Image version: 1" in out, "Wrong image version"
         assert "Entry point: 40101844" in out, "Wrong entry point"
-        assert "Checksum: 2f (valid)" in out, "Invalid checksum"
-        assert "3 segments" in out, "Wrong number of segments"
+        assert "Checksum: 6b (valid)" in out, "Invalid checksum"
+        assert "1 segments" in out, "Wrong number of segments"
         assert (
-            "Segment 2: len 0x00894 load 0x3ffe8000 file_offs 0x00005ee4 [DRAM]" in out
+            "Segment 1: len 0x00014 load 0x40100000 file_offs 0x00000008 [IRAM]" in out
         ), "Wrong segment info"
 
     def test_v2_esp32c3(self):
@@ -114,22 +114,22 @@ class TestImageInfo:
             assert "Validation hash: 4faeab1bd3fd" in out, "Invalid hash"
 
     def test_v2_esp8266(self):
-        out = self.run_image_info("esp8266", NODEMCU_FILE, "2")
+        out = self.run_image_info("esp8266", ESP8266_BIN, "2")
         assert "Image version: 1" in out, "Wrong image version"
         assert "Entry point: 0x40101844" in out, "Wrong entry point"
         assert "Flash size: 512KB" in out, "Wrong flash size"
         assert "Flash freq: 40m" in out, "Wrong flash frequency"
         assert "Flash mode: QIO" in out, "Wrong flash mode"
-        assert "Checksum: 0x2f (valid)" in out, "Invalid checksum"
-        assert "Segments: 3" in out, "Wrong number of segments"
-        assert "2  0x00894  0x3ffe8000  0x00005ee4  DRAM" in out, "Wrong segment info"
+        assert "Checksum: 0x6b (valid)" in out, "Invalid checksum"
+        assert "Segments: 1" in out, "Wrong number of segments"
+        assert "1  0x00014  0x40100000  0x00000008  IRAM" in out, "Wrong segment info"
 
     def test_image_type_detection(self):
         # ESP8266, version 1 and 2
-        out = self.run_image_info("auto", NODEMCU_FILE, "1")
+        out = self.run_image_info("auto", ESP8266_BIN, "1")
         assert "Detected image type: ESP8266" in out
-        assert "Segment 1: len 0x05ed4" in out
-        out = self.run_image_info("auto", NODEMCU_FILE, "2")
+        assert "Segment 1: len 0x00014" in out
+        out = self.run_image_info("auto", ESP8266_BIN, "2")
         assert "Detected image type: ESP8266" in out
         assert "Flash freq: 40m" in out
         out = self.run_image_info("auto", "esp8266_deepsleep.bin", "2")
@@ -150,7 +150,7 @@ class TestImageInfo:
         assert "Detected image type: ESP32-C3" in out
 
         # ESP32-S3
-        out = self.run_image_info("auto", "bootloader_esp32s3.bin", "2")
+        out = self.run_image_info("auto", "esp32s3_header.bin", "2")
         assert "Detected image type: ESP32-S3" in out
 
     def test_invalid_image_type_detection(self, capsys):
@@ -176,5 +176,5 @@ class TestImageInfo:
         # No application info in image
         out = self.run_image_info("auto", "bootloader_esp32.bin", "2")
         assert "Application information" not in out
-        out = self.run_image_info("auto", NODEMCU_FILE, "2")
+        out = self.run_image_info("auto", ESP8266_BIN, "2")
         assert "Application information" not in out
