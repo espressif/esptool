@@ -486,11 +486,13 @@ void stub_main()
         spi_flash_attach(spiconfig, 0);
 #endif
 #if ESP32S3 && !ESP32S3BETA2
-        // OPI calls are used only for octal chips. However, driver is initialized in all cases in order to avoid
-        // potentional misterious errors originating from ROM assertions.
-        static const esp_rom_opiflash_def_t flash_driver = OPIFLASH_DRIVER();
-        esp_rom_opiflash_legacy_driver_init(&flash_driver);
-        esp_rom_opiflash_wait_idle();
+        // Initialize OPI flash driver only when flash is detected octal. Otherwise, we don't need to
+        // initialize such a driver
+        if (ets_efuse_flash_octal_mode()) {
+          static const esp_rom_opiflash_def_t flash_driver = OPIFLASH_DRIVER();
+          esp_rom_opiflash_legacy_driver_init(&flash_driver);
+          esp_rom_opiflash_wait_idle();
+        }
 #endif //ESP32S3 && !ESP32S3BETA2
         SPIParamCfg(0, FLASH_MAX_SIZE, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
                     FLASH_PAGE_SIZE, FLASH_STATUS_MASK);

@@ -267,10 +267,42 @@ static void start_next_erase(void)
   spi_wait_ready();
   #if defined(ESP32S3) && !defined(ESP32S3BETA2)
       if (ets_efuse_flash_octal_mode()) {
-        if (block_erase)
-          esp_rom_opiflash_erase_block_64k(fs.next_erase_sector / SECTORS_PER_BLOCK);
-        else
-          esp_rom_opiflash_erase_sector(fs.next_erase_sector);
+        if (block_erase) {
+          if (fs.next_erase_sector * FLASH_SECTOR_SIZE < (1 << 24)) {
+            esp_rom_opiflash_wait_idle();
+            esp_rom_opiflash_wren();
+
+            esp_rom_opiflash_exec_cmd(1, SPI_FLASH_SLOWRD_MODE,
+                                CMD_LARGE_BLOCK_ERASE, 8, 
+                                fs.next_erase_sector * FLASH_SECTOR_SIZE, 24,
+                                0,
+                                NULL, 0,
+                                NULL, 0,
+                                1,
+                                true);
+            esp_rom_opiflash_wait_idle();
+          } else {
+            esp_rom_opiflash_erase_block_64k(fs.next_erase_sector / SECTORS_PER_BLOCK);
+          }
+        }
+        else {
+          if (fs.next_erase_sector * FLASH_SECTOR_SIZE < (1 << 24)) {
+            esp_rom_opiflash_wait_idle();
+            esp_rom_opiflash_wren();
+
+            esp_rom_opiflash_exec_cmd(1, SPI_FLASH_SLOWRD_MODE,
+                                CMD_SECTOR_ERASE, 8, 
+                                fs.next_erase_sector * FLASH_SECTOR_SIZE, 24,
+                                0,
+                                NULL, 0,
+                                NULL, 0,
+                                1,
+                                true);
+            esp_rom_opiflash_wait_idle();
+          } else {
+            esp_rom_opiflash_erase_sector(fs.next_erase_sector);
+          }
+        }
       } else {
           uint32_t addr = fs.next_erase_sector * FLASH_SECTOR_SIZE;
           uint32_t command = block_erase ? SPI_FLASH_BE : SPI_FLASH_SE; /* block erase, 64KB : sector erase, 4KB */

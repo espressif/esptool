@@ -205,8 +205,10 @@ typedef enum {
 #define CMD_RDID                    0x9F
 #define CMD_RDSR                    0x05
 #define CMD_WREN                    0x06
+#define CMD_SECTOR_ERASE            0x20
 #define CMD_SECTOR_ERASE_4B         0x21
 #define CMD_FSTRD4B                 0x0C
+#define CMD_LARGE_BLOCK_ERASE       0xD8
 #define CMD_LARGE_BLOCK_ERASE_4B    0xDC
 #define CMD_PROGRAM_PAGE_4B         0x12
 
@@ -216,9 +218,9 @@ typedef enum {
         .cmd_bit_len = 8, \
         .cmd = CMD_RDID, \
         .addr = 0, \
-        .addr_bit_len = 32, \
-        .dummy_bit_len = 4*2, \
-        .data_bit_len = 32, \
+        .addr_bit_len = 0, \
+        .dummy_bit_len = 0, \
+        .data_bit_len = 24, \
         .cs_sel = 0x1, \
         .is_pe = 0, \
     }, \
@@ -227,9 +229,9 @@ typedef enum {
         .cmd_bit_len = 8, \
         .cmd = CMD_RDSR, \
         .addr = 0, \
-        .addr_bit_len = 32, \
-        .dummy_bit_len = 4*2, \
-        .data_bit_len = 16, \
+        .addr_bit_len = 0, \
+        .dummy_bit_len = 0, \
+        .data_bit_len = 8, \
         .cs_sel = 0x1, \
         .is_pe = 0, \
     }, \
@@ -272,7 +274,7 @@ typedef enum {
         .cmd = CMD_FSTRD4B, \
         .addr = 0, \
         .addr_bit_len = 32, \
-        .dummy_bit_len = 20*2, \
+        .dummy_bit_len = 0, \
         .data_bit_len = 0, \
         .cs_sel = 0x1, \
         .is_pe = 0, \
