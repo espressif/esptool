@@ -2822,6 +2822,7 @@ class BaseFirmwareImage(object):
         self.entrypoint = 0
         self.elf_sha256 = None
         self.elf_sha256_offset = 0
+        self.pad_to_size = 0
 
     def load_common_header(self, load_file, expected_magic):
         (magic, segments, self.flash_mode, self.flash_size_freq, self.entrypoint) = struct.unpack('<BBBBI', load_file.read(8))
@@ -3288,6 +3289,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 digest = hashlib.sha256()
                 digest.update(f.read(image_length))
                 f.write(digest.digest())
+
+            if self.pad_to_size:
+                image_length = f.tell()
+                if image_length % self.pad_to_size != 0:
+                    pad_by = self.pad_to_size - (image_length % self.pad_to_size)
+                    f.write(b"\xff" * pad_by)
 
             with open(filename, 'wb') as real_file:
                 real_file.write(f.getvalue())
@@ -4279,6 +4286,9 @@ def elf2image(args):
     # ELFSection is a subclass of ImageSegment, so can use interchangeably
     image.segments = e.segments if args.use_segments else e.sections
 
+    if args.pad_to_size:
+        image.pad_to_size = flash_size_bytes(args.pad_to_size)
+
     image.flash_size_freq = image.ROM_LOADER.parse_flash_size_arg(args.flash_size)
     image.flash_size_freq += image.ROM_LOADER.parse_flash_freq_arg(args.flash_freq)
 
@@ -4655,7 +4665,11 @@ def main(argv=None, esp=None):
     parser_elf2image.add_argument('--use_segments', help='If set, ELF segments will be used instead of ELF sections to genereate the image.',
                                   action='store_true')
     parser_elf2image.add_argument('--flash-mmu-page-size', help="Change flash MMU page size.", choices=['64KB', '32KB', '16KB'])
-
+    parser_elf2image.add_argument(
+        "--pad-to-size",
+        help="The block size with which the final binary image after padding must be aligned to. Value 0xFF is used for padding, similar to erase_flash",
+        default=None,
+    )
     add_spi_flash_subparsers(parser_elf2image, allow_keep=False, auto_detect=False)
 
     subparsers.add_parser(
