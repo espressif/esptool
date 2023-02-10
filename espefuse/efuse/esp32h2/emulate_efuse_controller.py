@@ -33,7 +33,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
         return 0
 
     def get_crystal_freq(self):
-        return 40  # MHz (common for all chips)
+        return 32  # MHz
 
     def get_security_info(self):
         return {

@@ -244,9 +244,10 @@ class EspEfuses(base_fields.EspEfusesBase):
         """Set timing registers for burning efuses"""
         # Configure clock
         apb_freq = self.get_crystal_freq()
-        if apb_freq != 40:
+        # Based on `CONFIG_SOC_XTAL_SUPPORT_32M=y` for this target from ESP-IDF configuration
+        if apb_freq != 32:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=40M (xtal was %d)" % apb_freq
+                "The eFuse supports only xtal=32M (xtal was %d)" % apb_freq
             )
 
         self.update_reg(
