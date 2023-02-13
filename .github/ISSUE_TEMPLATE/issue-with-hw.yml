@@ -1,6 +1,6 @@
 name: Issue report - ESP chip operation fails (can't flash, can't connect, etc.)
 description: Report a problem working with attached hardware
-labels: ["operation-failure"]
+labels: ['Type: Bug']
 body:
   - type: markdown
     attributes:

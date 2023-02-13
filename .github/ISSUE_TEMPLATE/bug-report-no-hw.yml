@@ -1,6 +1,6 @@
 name: Bug report - no ESP chip involved
 description: Report bugs or crashes which don't use any attached hardware
-labels: ["bug"]
+labels: ['Type: Bug']
 body:
   - type: input
     id: os
