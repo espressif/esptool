@@ -25,20 +25,20 @@ Refer to `Signing using an External HSM <https://docs.espressif.com/projects/esp
 
 The following command should be used to get an image signed using an external HSM. ::
 
-    python espsecure.py sign_data --version 2 --hsm --hsm_config <hsm_config_file> --output <signed_image> <datafile>
+    python espsecure.py sign_data --version 2 --hsm --hsm-config <hsm_config_file> --output <signed_image> <datafile>
 
 The above command first extracts the public key from the HSM, generates a signature for an image using the HSM, and then creates a signature block and appends it to the image to generate a signed image.
 
 If the public key is not stored in the external HSM, you can specify the ``--pub-key`` argument to supply the public key. ::
 
-    python espsecure.py sign_data --version 2 --hsm --hsm_config <hsm_config_file> --pub-key <public_key> --output <signed_image> <datafile>
+    python espsecure.py sign_data --version 2 --hsm --hsm-config <hsm_config_file> --pub-key <public_key> --output <signed_image> <datafile>
 
 Verifying the Signed Image
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once the signed image is generated, we can verify it using the following command: ::
 
-    python espsecure.py verify_signature --version 2 --hsm --hsm_config <hsm_config_file> <signed_image>
+    python espsecure.py verify_signature --version 2 --hsm --hsm-config <hsm_config_file> <signed_image>
 
 If the public key is not stored in the external HSM, you can specify the ``--keyfile`` argument to supply the public key. ::
 
