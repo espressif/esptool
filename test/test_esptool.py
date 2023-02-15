@@ -465,18 +465,21 @@ class TestFlashing(EsptoolTestCase):
     def test_length_not_aligned_4bytes_no_compression(self):
         self.run_esptool("write_flash -u 0x0 images/not_4_byte_aligned.bin")
 
+    @pytest.mark.host_test
     def test_write_overlap(self):
         output = self.run_esptool_error(
             "write_flash 0x0 images/bootloader_esp32.bin 0x1000 images/one_kb.bin"
         )
         assert "Detected overlap at address: 0x1000 " in output
 
+    @pytest.mark.host_test
     def test_repeated_address(self):
         output = self.run_esptool_error(
             "write_flash 0x0 images/one_kb.bin 0x0 images/one_kb.bin"
         )
         assert "Detected overlap at address: 0x0 " in output
 
+    @pytest.mark.host_test
     def test_write_sector_overlap(self):
         # These two 1KB files don't overlap,
         # but they do both touch sector at 0x1000 so should fail
@@ -613,6 +616,7 @@ class TestFlashSizes(EsptoolTestCase):
         self.run_esptool("write_flash -u -fs 4MB 0x280000 images/one_mb.bin")
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
 
+    @pytest.mark.host_test
     def test_invalid_size_arg(self):
         self.run_esptool_error("write_flash -fs 10MB 0x6000 images/one_kb.bin")
 
@@ -1134,6 +1138,7 @@ class TestConfigFile(EsptoolTestCase):
         "serial_write_timeout = 12"
     )
 
+    @pytest.mark.host_test
     def test_load_config_file(self):
         # Test a valid file is loaded
         config_file_path = os.path.join(os.getcwd(), "esptool.cfg")
@@ -1171,6 +1176,7 @@ class TestConfigFile(EsptoolTestCase):
             output = self.run_esptool("version")
             assert f"Loaded custom configuration from {config_file_path}" in output
 
+    @pytest.mark.host_test
     def test_load_config_file_with_env_var(self):
         config_file_path = os.path.join(TEST_DIR, "custom_file.ini")
         with self.ConfigFile(config_file_path, self.dummy_config):

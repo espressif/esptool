@@ -24,6 +24,7 @@ except ImportError:
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
+@pytest.mark.host_test
 class EspSecureTestCase:
     def run_espsecure(self, args):
         """

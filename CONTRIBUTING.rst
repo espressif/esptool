@@ -115,6 +115,7 @@ The following tests run automatically by GitHub Actions for each Pull Request. Y
 *  ``test_mergebin.py`` tests the ``merge_bin`` command
 *  ``test_modules.py`` tests the modules used by ``esptool.py`` for regressions
 *  ``test_espsecure.py`` tests ``espsecure.py`` functionality
+*  ``test_espsecure_hsm.py`` tests support of extarnal HSM signing in ``espsecure.py``. These tests require additional prerequisites, see ``SoftHSM2 setup`` in the `tests workflow definition <https://github.com/espressif/esptool/blob/master/.github/workflows/test_esptool.yml>`_ for more information.
 
 The following tests are not run automatically by GitHub Actions, because they need real connected hardware. Therefore, they need to be run locally in a command line:
 
@@ -146,7 +147,7 @@ The following tests are not run automatically by GitHub Actions, but can be run 
 
       Do not attempt to run these tests on real hardware! You risk damaging or destroying the ESP chip!
 
-The whole test suite (without the tests needing an actual hardware) can be easily run with the following command in the esptool root folder: ``pytest --ignore=test/test_esptool.py``
+The whole test suite (without the tests needing an actual hardware or installation of additional prerequisites) can be easily run with the following command in the esptool root folder: ``pytest -m host_test``
 
 
 Pull Request Process

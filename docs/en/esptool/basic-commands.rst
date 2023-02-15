@@ -163,7 +163,7 @@ Example output:
     Device: 4016
     Detected flash size: 4MB
 
-Refer to `flashrom source code <https://review.coreboot.org/plugins/gitiles/flashrom/+/refs/heads/master/flashchips.h>`__ for flash chip manufacturer name and part number.
+Refer to `flashrom source code <https://github.com/flashrom/flashrom/blob/master/include/flashchips.h>`__ for flash chip manufacturer name and part number.
 
 .. _elf-2-image:
 

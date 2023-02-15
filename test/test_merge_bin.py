@@ -22,6 +22,7 @@ def read_image(filename):
         return f.read()
 
 
+@pytest.mark.host_test
 class TestMergeBin:
     def run_merge_bin(self, chip, offsets_names, options=[]):
         """Run merge_bin on a list of (offset, filename) tuples

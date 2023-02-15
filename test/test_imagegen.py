@@ -36,6 +36,7 @@ def segment_matches_section(segment, section):
     return section.header.sh_addr == segment.addr and sh_size == len(segment.data)
 
 
+@pytest.mark.host_test
 class BaseTestCase:
     @classmethod
     def setup_class(self):

@@ -1,9 +1,12 @@
 # Tests for regressions in python modules
 # used by esptool.py, espefuse.py, and espsecure.py
 
+import pytest
+
 import reedsolo
 
 
+@pytest.mark.host_test
 def test_reed_solomon_encoding():
     # fmt: off
     pairs = [("a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf", "0404992ae0b12cb0ef0d4fd3"),

@@ -22,6 +22,7 @@ def read_image(filename):
         return f.read()
 
 
+@pytest.mark.host_test
 class TestImageInfo:
     def run_image_info(self, chip, file, version=None):
         """Runs image_info on a binary file.

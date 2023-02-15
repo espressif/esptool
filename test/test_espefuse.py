@@ -63,6 +63,7 @@ print(f"\nHost tests of espefuse.py for {arg_chip}:")
 print("Running espefuse.py tests...")
 
 
+@pytest.mark.host_test
 class EfuseTestCase:
     def setup_method(self):
         if reset_port is None:
