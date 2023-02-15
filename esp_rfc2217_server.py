@@ -30,10 +30,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import logging
+import os
 import socket
 import sys
 import threading
 import time
+
+from esptool.config import load_config_file
+from esptool.reset import ClassicReset, CustomReset, DEFAULT_RESET_DELAY, UnixTightReset
 
 import serial
 import serial.rfc2217
@@ -45,6 +49,9 @@ from serial.rfc2217 import (
     SET_CONTROL_RTS_OFF,
     SET_CONTROL_RTS_ON,
 )
+
+cfg, _ = load_config_file(verbose=True)
+cfg = cfg["esptool"]
 
 
 class EspPortManager(serial.rfc2217.PortManager):
@@ -78,16 +85,6 @@ class EspPortManager(serial.rfc2217.PortManager):
         # only in cases not handled above do the original implementation in PortManager
         super(EspPortManager, self)._telnet_process_subnegotiation(suboption)
 
-    def _setDTR(self, state):
-        self.serial.setDTR(state)
-
-    def _setRTS(self, state):
-        self.serial.setRTS(state)
-        # Work-around for adapters on Windows using the usbser.sys driver:
-        # generate a dummy change to DTR so that the set-control-line-state
-        # request is sent with the updated RTS state and the same DTR state
-        self.serial.setDTR(self.serial.dtr)
-
     def _reset_thread(self):
         """
         The reset logic is used from esptool.py because the RTS and DTR signals
@@ -95,17 +92,18 @@ class EspPortManager(serial.rfc2217.PortManager):
         """
         if self.logger:
             self.logger.info("Activating reset in thread")
-        self._setDTR(False)  # IO0=HIGH
-        self._setRTS(True)  # EN=LOW, chip in reset
-        time.sleep(0.1)
+
+        delay = DEFAULT_RESET_DELAY
         if self.esp32r0_delay:
-            time.sleep(1.2)
-        self._setDTR(True)  # IO0=LOW
-        self._setRTS(False)  # EN=HIGH, chip out of reset
-        if self.esp32r0_delay:
-            time.sleep(0.4)
-        time.sleep(0.05)
-        self._setDTR(False)  # IO0=HIGH, done
+            delay += 0.5
+
+        cfg_custom_reset_sequence = cfg.get("custom_reset_sequence")
+        if cfg_custom_reset_sequence is not None:
+            CustomReset(self.serial, cfg_custom_reset_sequence)()
+        elif os.name != "nt":
+            UnixTightReset(self.serial, delay)()
+        else:
+            ClassicReset(self.serial, delay)()
 
 
 class Redirector(object):
