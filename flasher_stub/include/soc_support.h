@@ -354,7 +354,8 @@
 #define SYSTEM_CPUPERIOD_SEL_M        ((SYSTEM_CPUPERIOD_SEL_V)<<(SYSTEM_CPUPERIOD_SEL_S))
 #define SYSTEM_CPUPERIOD_SEL_V        0x3
 #define SYSTEM_CPUPERIOD_SEL_S        0
-#define SYSTEM_CPUPERIOD_MAX          2  // CPU_CLK frequency is 240 MHz
+#define SYSTEM_CPUPERIOD_MAX          1  // CPU_CLK frequency is 160 MHz - not actually max possible frequency,
+// see https://github.com/espressif/esptool/issues/832 and https://github.com/espressif/esptool/issues/808
 
 #define SYSTEM_SYSCLK_CONF_REG        (SYSTEM_BASE_REG + 0x060)
 #define SYSTEM_SOC_CLK_SEL_M          ((SYSTEM_SOC_CLK_SEL_V)<<(SYSTEM_SOC_CLK_SEL_S))
