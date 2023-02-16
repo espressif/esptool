@@ -56,6 +56,7 @@ Optional General Arguments Of Commands
 - ``--virt`` - For host tests. The tool will work in the virtual mode (without connecting to a chip).
 - ``--path-efuse-file`` - For host tests. Use it together with ``--virt`` option. The tool will work in the virtual mode (without connecting to a chip) and save eFuse memory to a given file. If the file does not exists the tool creates it. To reset written eFuses just delete the file. Usage: ``--path-efuse-file efuse_memory.bin``.
 - ``--do-not-confirm`` - Do not pause for confirmation before permanently writing eFuses. Use with caution. If this option is not used, a manual confirmation step is required, you need to enter the word ``BURN`` to continue burning.
+- ``--text-key`` - Data input for the ``keyfile`` argument is a 32 character string representing the encryption key itself instead of a string to a file path containing the key. When using this option, key content is also hidden in terminal output while burning fuses. Combining ``--text-key`` and ``--do-not-confirm`` options, esptool can then be invoked in an automated way by another software for prodcution flashing of encrypted firmware. In this case, neither the raw binary of firmware or the encryption key data are exposed outside the development environment.
 
 Virtual mode
 ^^^^^^^^^^^^

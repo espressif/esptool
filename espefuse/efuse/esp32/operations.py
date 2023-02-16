@@ -225,12 +225,18 @@ def burn_key(esp, efuses, args):
         if efuse is None:
             raise esptool.FatalError("Unknown block name - %s" % (block_name))
         num_bytes = efuse.bit_len // 8
-        data = datafile.read()
+        if efuses.text_key is True:
+            data = bytearray.fromhex(datafile)
+        else:
+            data = datafile.read()
         revers_msg = None
         if block_name in ("flash_encryption", "secure_boot_v1"):
             revers_msg = "\tReversing the byte order"
             data = data[::-1]
-        print(" - %s -> [%s]" % (efuse.name, util.hexify(data, " ")))
+        if efuses.text_key is False:
+            print(" - %s -> [%s]" % (efuse.name, util.hexify(data, " ")))
+        else:
+            print(" - %s -> [%s]" % (efuse.name, "HIDDEN DATA"))
         if revers_msg:
             print(revers_msg)
         if len(data) != num_bytes:

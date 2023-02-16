@@ -49,6 +49,10 @@ def protect_options(p):
 
 
 def add_commands(subparsers, efuses):
+    if efuses.text_key is False:
+        key_type = argparse.FileType("rb")
+    else:
+        key_type = str
     add_common_commands(subparsers, efuses)
     burn_key = subparsers.add_parser(
         "burn_key", help="Burn the key block with the specified name"
@@ -65,7 +69,7 @@ def add_commands(subparsers, efuses):
         "keyfile",
         help="File containing 256 bits of binary key data",
         action="append",
-        type=argparse.FileType("rb"),
+        type=key_type,
     )
     burn_key.add_argument(
         "keypurpose",
@@ -88,7 +92,7 @@ def add_commands(subparsers, efuses):
             nargs="?",
             action="append",
             metavar="KEYFILE",
-            type=argparse.FileType("rb"),
+            type=key_type,
         )
         burn_key.add_argument(
             "keypurpose",
@@ -157,7 +161,6 @@ def add_commands(subparsers, efuses):
         "changing the flash voltage.",
     )
     p.add_argument("voltage", help="Voltage selection", choices=["1.8V", "3.3V", "OFF"])
-
     p = subparsers.add_parser(
         "burn_custom_mac", help="Burn a 48-bit Custom MAC Address to EFUSE BLOCK3."
     )
@@ -265,8 +268,10 @@ def burn_key(esp, efuses, args, digest=None):
 
         block_num = efuses.get_index_block_by_name(block_name)
         block = efuses.blocks[block_num]
-
-        if digest is None:
+        
+        if efuses.text_key is True:
+            data = bytearray.fromhex(datafile)
+        elif digest is None:
             data = datafile.read()
         else:
             data = datafile
@@ -276,7 +281,10 @@ def burn_key(esp, efuses, args, digest=None):
         if efuses[block.key_purpose_name].need_reverse(keypurpose):
             revers_msg = "\tReversing byte order for AES-XTS hardware peripheral"
             data = data[::-1]
-        print("-> [%s]" % (util.hexify(data, " ")))
+        if efuses.text_key is False:
+            print("-> [%s]" % (util.hexify(data, " ")))
+        else:
+            print("-> [%s]" % "HIDDEN CONTENT")
         if revers_msg:
             print(revers_msg)
         if len(data) != num_bytes:

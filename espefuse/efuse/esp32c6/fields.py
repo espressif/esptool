@@ -63,10 +63,11 @@ class EspEfuses(base_fields.EspEfusesBase):
     debug = False
     do_not_confirm = False
 
-    def __init__(self, esp, skip_connect=False, debug=False, do_not_confirm=False):
+    def __init__(self, esp, skip_connect=False, debug=False, do_not_confirm=False, text_key=False):
         self._esp = esp
         self.debug = debug
         self.do_not_confirm = do_not_confirm
+        self.text_key = text_key
         if esp.CHIP_NAME != "ESP32-C6":
             raise esptool.FatalError(
                 "Expected the 'esp' param for ESP32-C6 chip but got for '%s'."

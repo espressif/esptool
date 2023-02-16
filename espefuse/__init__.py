@@ -87,12 +87,12 @@ def get_esp(
     return esp
 
 
-def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
+def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False, text_key=False):
     for name in SUPPORTED_CHIPS:
         if SUPPORTED_CHIPS[name].chip_name == esp.CHIP_NAME:
             efuse = SUPPORTED_CHIPS[name].efuse_lib
             return (
-                efuse.EspEfuses(esp, skip_connect, debug_mode, do_not_confirm),
+                efuse.EspEfuses(esp, skip_connect, debug_mode, do_not_confirm, text_key),
                 efuse.operations,
             )
     else:
@@ -202,6 +202,11 @@ def main(custom_commandline=None):
         "Use with caution.",
         action="store_true",
     )
+    init_parser.add_argument(
+        "--text-key",
+        help="AES key input is text instead of file path.",
+        action="store_true",
+    )
 
     common_args, remaining_args = init_parser.parse_known_args(custom_commandline)
     debug_mode = common_args.debug or ("dump" in remaining_args)
@@ -229,7 +234,7 @@ def main(custom_commandline=None):
         )  # TODO: Require the --port argument in the next major release, ESPTOOL-490
 
     efuses, efuse_operations = get_efuses(
-        esp, just_print_help, debug_mode, common_args.do_not_confirm
+        esp, just_print_help, debug_mode, common_args.do_not_confirm, common_args.text_key
     )
 
     parser = argparse.ArgumentParser(parents=[init_parser])

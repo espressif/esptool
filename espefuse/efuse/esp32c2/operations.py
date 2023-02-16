@@ -211,7 +211,10 @@ def burn_key(esp, efuses, args, digest=None):
 
     print("Burn keys to blocks:")
     for datafile, keypurpose in zip(datafile_list, keypurpose_list):
-        data = datafile if isinstance(datafile, bytes) else datafile.read()
+        if efuses.text_key is True:
+            data = bytearray.fromhex(datafile)
+        else:
+            data = datafile if isinstance(datafile, bytes) else datafile.read()
 
         if keypurpose == "XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS":
             efuse = efuses["BLOCK_KEY0_LOW_128"]
@@ -239,7 +242,10 @@ def burn_key(esp, efuses, args, digest=None):
         if keypurpose.startswith("XTS_AES_"):
             revers_msg = "\tReversing byte order for AES-XTS hardware peripheral"
             data = data[::-1]
-        print("-> [%s]" % (util.hexify(data, " ")))
+        if efuses.text_key is False:
+            print("-> [%s]" % (util.hexify(data, " ")))
+        else:
+            print("-> [%s]" % "HIDDEN CONTENT")
         if revers_msg:
             print(revers_msg)
         if len(data) != num_bytes:

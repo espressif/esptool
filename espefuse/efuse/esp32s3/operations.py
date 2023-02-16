@@ -374,7 +374,9 @@ def burn_key(esp, efuses, args, digest=None):
         block_num = efuses.get_index_block_by_name(block_name)
         block = efuses.blocks[block_num]
 
-        if digest is None:
+        if efuses.text_key is True:
+            data = bytearray.fromhex(datafile)
+        elif digest is None:
             data = datafile.read()
         else:
             data = datafile
@@ -384,7 +386,10 @@ def burn_key(esp, efuses, args, digest=None):
         if efuses[block.key_purpose_name].need_reverse(keypurpose):
             revers_msg = "\tReversing byte order for AES-XTS hardware peripheral"
             data = data[::-1]
-        print("-> [%s]" % (util.hexify(data, " ")))
+        if efuses.text_key is False:
+            print("-> [%s]" % (util.hexify(data, " ")))
+        else:
+            print("-> [%s]" % "HIDDEN CONTENT")
         if revers_msg:
             print(revers_msg)
         if len(data) != num_bytes:
