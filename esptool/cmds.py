@@ -107,6 +107,9 @@ def detect_chip(
                 except UnsupportedCommandError:
                     inst.secure_download_mode = True
                 inst._post_connect()
+                break
+        else:
+            err_msg = f"Unexpected chip ID value {chip_id}."
     except (UnsupportedCommandError, struct.error, FatalError) as e:
         # UnsupportedCommmanddError: ESP8266/ESP32 ROM
         # struct.error: ESP32-S2
@@ -130,6 +133,9 @@ def detect_chip(
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst._post_connect()
                     inst.check_chip_id()
+                    break
+            else:
+                err_msg = f"Unexpected chip magic value {chip_magic_value:#010x}."
         except UnsupportedCommandError:
             raise FatalError(
                 "Unsupported Command Error received. "
@@ -145,8 +151,8 @@ def detect_chip(
             print("")  # end line
             return inst
     raise FatalError(
-        "Unexpected CHIP magic value 0x%08x. Failed to autodetect chip type."
-        % (chip_magic_value)
+        f"{err_msg} Failed to autodetect chip type."
+        "\nProbably it is unsupported by this version of esptool."
     )
 
 
