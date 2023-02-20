@@ -8,12 +8,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-20.04, windows-latest]
         include:
         - os: macos-latest
           TARGET: macos
           SEPARATOR: ':'
-        - os: ubuntu-latest
+        - os: ubuntu-20.04
           TARGET: linux-amd64
           SEPARATOR: ':'
         - os: windows-latest
