@@ -1665,8 +1665,13 @@ class ESP32ROM(ESPLoader):
         pkg_version += ((word3 >> 2) & 0x1) << 3
         return pkg_version
 
-    def get_chip_revision(self):
+    # Returns new version format based on major and minor versions
+    def get_chip_full_revision(self):
         return self.get_major_chip_version() * 100 + self.get_minor_chip_version()
+
+    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    def get_chip_revision(self):
+        return self.get_major_chip_version()
 
     def get_minor_chip_version(self):
         return (self.read_efuse(5) >> 24) & 0x3
@@ -1894,6 +1899,10 @@ class ESP32S2ROM(ESP32ROM):
                   [0x40070000, 0x40072000, "RTC_IRAM"],
                   [0x40080000, 0x40800000, "IROM"],
                   [0x50000000, 0x50002000, "RTC_DATA"]]
+
+    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    def get_chip_revision(self):
+        return self.get_major_chip_version()
 
     def get_pkg_version(self):
         num_word = 4
@@ -2131,6 +2140,10 @@ class ESP32S3ROM(ESP32ROM):
                   [0x42000000, 0x42800000, "IROM"],
                   [0x50000000, 0x50002000, "RTC_DATA"]]
 
+    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    def get_chip_revision(self):
+        return self.get_minor_chip_version()
+
     def get_pkg_version(self):
         num_word = 3
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x07
@@ -2348,6 +2361,10 @@ class ESP32C3ROM(ESP32ROM):
                   [0x50000000, 0x50002000, "RTC_DRAM"],
                   [0x600FE000, 0x60100000, "MEM_INTERNAL2"]]
 
+    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    def get_chip_revision(self):
+        return self.get_minor_chip_version()
+
     def get_pkg_version(self):
         num_word = 3
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x07
@@ -2472,6 +2489,10 @@ class ESP32H2BETA1ROM(ESP32ROM):
         '12m': 0x2,
     }
 
+    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    def get_chip_revision(self):
+        return 0
+
     def get_pkg_version(self):
         num_word = 4
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x07
@@ -2565,6 +2586,10 @@ class ESP32C2ROM(ESP32C3ROM):
         '15m': 0x2,
     }
 
+    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    def get_chip_revision(self):
+        return self.get_major_chip_version()
+
     def get_pkg_version(self):
         num_word = 1
         return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 22) & 0x07
@@ -2600,6 +2625,10 @@ class ESP32C6BETAROM(ESP32C3ROM):
     CHIP_DETECT_MAGIC_VALUE = [0x0da1806f]
 
     UART_DATE_REG_ADDR = 0x00000500
+
+    # Returns old version format (ECO number). Use the new one format get_chip_full_revision().
+    def get_chip_revision(self):
+        return 0
 
     def get_pkg_version(self):
         num_word = 3
