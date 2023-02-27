@@ -38,7 +38,7 @@ def find_version(*file_paths):
 
 
 if os.name != "nt":
-    scripts = ["esptool.py", "espefuse.py", "espsecure.py"]
+    scripts = ["esptool.py", "espefuse.py", "espsecure.py", "esp_rfc2217_server.py"]
     entry_points = {}
 else:
     scripts = []
@@ -47,6 +47,7 @@ else:
             "esptool.py=esptool.__init__:_main",
             "espsecure.py=espsecure.__init__:_main",
             "espefuse.py=espefuse.__init__:_main",
+            "esp_rfc2217_server.py=esp_rfc2217_server:main",
         ],
     }
 

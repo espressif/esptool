@@ -184,7 +184,7 @@ class Redirector(object):
             self.thread_poll.join()
 
 
-if __name__ == "__main__":
+def main():
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -282,3 +282,7 @@ if __name__ == "__main__":
             logging.error(str(msg))
 
     logging.info("--- exit ---")
+
+
+if __name__ == "__main__":
+    main()
