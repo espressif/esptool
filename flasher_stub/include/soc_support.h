@@ -56,7 +56,8 @@
 #endif // ESP32H2
 
 // Increase CPU freq to speed up read/write operations over USB
-#define USE_MAX_CPU_FREQ (WITH_USB_JTAG_SERIAL || WITH_USB_OTG)
+// Temporarily disabled on the S3 due to stability issues, will be fixed in the next minor release
+#define USE_MAX_CPU_FREQ ((WITH_USB_JTAG_SERIAL || WITH_USB_OTG) && !ESP32S3)
 
 /**********************************************************
  * Per-SOC based peripheral register base addresses
