@@ -220,6 +220,16 @@ def add_force_write_always(p):
     )
 
 
+def add_show_sensitive_info_option(p):
+    p.add_argument(
+        "--show-sensitive-info",
+        help="Show data to be burned (may expose sensitive data). "
+        "Enabled if --debug is used.",
+        action="store_true",
+        default=False,
+    )
+
+
 def summary(esp, efuses, args):
     """Print a human-readable summary of efuse contents"""
     ROW_FORMAT = "%-50s %-50s%s = %s %s %s"

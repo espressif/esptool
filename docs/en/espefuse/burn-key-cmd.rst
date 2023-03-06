@@ -37,6 +37,7 @@ Optional arguments:
     :not esp32: - ``--no-write-protect``. Disable write-protecting of the key. The key remains writable. The keys use the RS coding scheme that does not support post-write data changes. Forced write can damage RS encoding bits. The write-protecting of keypurposes does not depend on the option, it will be set anyway.
     :not esp32: - ``--no-read-protect``. Disable read-protecting of the key. The key remains readable software. The key with keypurpose [USER, RESERVED and .._DIGEST] will remain readable anyway, but for the rest keypurposes the read-protection will be defined by this option (Read-protect by default).
     - ``--force-write-always``. Write the eFuse key even if it looks like it is already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.
+    - ``--show-sensitive-info``. Show data to be burned (may expose sensitive data). Enabled if --debug is used. Use this option to see the byte order of the data being written.
 
 .. only:: esp32
 
@@ -150,8 +151,9 @@ Usage
         > espefuse.py burn_key flash_encryption  256bit_fe_key.bin 
 
         === Run "burn_key" command ===
+        Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
-        - BLOCK1 -> [1f 1e 1d 1c 1b 1a 19 18 17 16 15 14 13 12 11 10 0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00]
+        - BLOCK1 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 Reversing the byte order
                 Disabling read to key block
                 Disabling write to key block
@@ -192,8 +194,9 @@ Usage
         > espefuse.py burn_key flash_encryption  256bit_fe_key.bin --no-protect-key
 
         === Run "burn_key" command ===
+        Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
-        - BLOCK1 -> [1f 1e 1d 1c 1b 1a 19 18 17 16 15 14 13 12 11 10 0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00]
+        - BLOCK1 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 Reversing the byte order
 
         Key is left unprotected as per --no-protect-key argument.
@@ -238,14 +241,15 @@ Usage
         > espefuse.py burn_key BLOCK_KEY0 ~/esp/tests/efuse/512bits_0.bin  XTS_AES_256_KEY --no-read-protect
 
         === Run "burn_key" command ===
+        Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
-        - BLOCK_KEY0 -> [1f 1e 1d 1c 1b 1a 19 18 17 16 15 14 13 12 11 10 0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00]
+        - BLOCK_KEY0 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 Reversing byte order for AES-XTS hardware peripheral
                 'KEY_PURPOSE_0': 'USER' -> 'XTS_AES_256_KEY_1'.
                 Disabling write to 'KEY_PURPOSE_0'.
                 Disabling write to key block
 
-        - BLOCK_KEY1 -> [3f 3e 3d 3c 3b 3a 39 38 37 36 35 34 33 32 31 30 2f 2e 2d 2c 2b 2a 29 28 27 26 25 24 23 22 21 20]
+        - BLOCK_KEY1 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 Reversing byte order for AES-XTS hardware peripheral
                 'KEY_PURPOSE_1': 'USER' -> 'XTS_AES_256_KEY_2'.
                 Disabling write to 'KEY_PURPOSE_1'.
@@ -291,16 +295,18 @@ Usage
                                 burn_key BLOCK_KEY0 images/efuse/128bit_key.bin XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
 
         === Run "burn_key_digest" command ===
+        Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
-        - BLOCK_KEY0_HI_128 -> [bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04]
+        - BLOCK_KEY0_HI_128 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 Disabling write to key block
 
 
         Batch mode is enabled, the burn will be done at the end of the command.
 
         === Run "burn_key" command ===
+        Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
-        - BLOCK_KEY0_LOW_128 -> [0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00]
+        - BLOCK_KEY0_LOW_128 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 Reversing byte order for AES-XTS hardware peripheral
                 Disabling read to key block
                 Disabling write to key block

@@ -17,6 +17,7 @@ from .. import util
 from ..base_operations import (
     add_common_commands,
     add_force_write_always,
+    add_show_sensitive_info_option,
     burn_bit,
     burn_block_data,
     burn_efuse,
@@ -42,6 +43,7 @@ def add_commands(subparsers, efuses):
         action="store_true",
     )
     add_force_write_always(p)
+    add_show_sensitive_info_option(p)
     p.add_argument(
         "block",
         help='Key block to burn. "flash_encryption" (block1), '
@@ -89,6 +91,7 @@ def add_commands(subparsers, efuses):
         action="store_true",
     )
     add_force_write_always(burn_key_digest)
+    add_show_sensitive_info_option(burn_key_digest)
 
     p = subparsers.add_parser(
         "set_flash_voltage",
@@ -230,7 +233,14 @@ def burn_key(esp, efuses, args):
         if block_name in ("flash_encryption", "secure_boot_v1"):
             revers_msg = "\tReversing the byte order"
             data = data[::-1]
-        print(" - %s -> [%s]" % (efuse.name, util.hexify(data, " ")))
+        print(" - %s" % (efuse.name), end=" ")
+        print(
+            "-> [{}]".format(
+                util.hexify(data, " ")
+                if args.show_sensitive_info
+                else " ".join(["??"] * len(data))
+            )
+        )
         if revers_msg:
             print(revers_msg)
         if len(data) != num_bytes:
@@ -290,7 +300,14 @@ def burn_key_digest(esp, efuses, args):
             "Digest must be %d bytes (%d bits) of raw binary key data."
             % (len(digest), num_bytes, num_bytes * 8)
         )
-    print(" - %s -> [%s]" % (efuse.name, util.hexify(digest, " ")))
+    print(" - %s" % (efuse.name), end=" ")
+    print(
+        "-> [{}]".format(
+            util.hexify(digest, " ")
+            if args.show_sensitive_info
+            else " ".join(["??"] * len(digest))
+        )
+    )
 
     efuse.save(digest)
     if not args.no_protect_key:

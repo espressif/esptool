@@ -25,6 +25,7 @@ Optional arguments:
     :not esp32: - ``--no-write-protect``. Disable write-protecting of the key. The key remains writable. The keys use the RS coding scheme that does not support post-write data changes. Forced write can damage RS encoding bits. The write-protecting of keypurposes does not depend on the option, it will be set anyway.
     :not esp32: - ``--no-read-protect``. Disable read-protecting of the key. This option does not change anything, because Secure Boot keys are readable anyway.
     - ``--force-write-always``. Write the eFuse key even if it looks like it is already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.
+    - ``--show-sensitive-info``. Show data to be burned (may expose sensitive data). Enabled if --debug is used. Use this option to see the byte order of the data being written.
 
 .. only:: esp32
 
@@ -46,7 +47,8 @@ Usage
         > espefuse.py burn_key_digest secure_boot_key_v2_0.pem
 
         === Run "burn_key_digest" command ===
-        - BLOCK2 -> [a2 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d]
+        Sensitive data will be hidden (see --show-sensitive-info)
+        - BLOCK2 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
         Disabling write to efuse BLOCK2...
 
         Check all blocks for burn...
@@ -76,8 +78,9 @@ Usage
         > espefuse.py burn_key_digest secure_boot_v2_ecdsa192.pem 
 
         === Run "burn_key_digest" command ===
+        Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
-        - BLOCK_KEY0_HI_128 -> [02 c2 bd 9c 1a b4 b7 44 22 59 c6 d3 12 0b 79 1f]
+        - BLOCK_KEY0_HI_128 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 Disabling write to key block
 
         Check all blocks for burn...
@@ -117,18 +120,19 @@ Usage
                     BLOCK_KEY2 ~/esp/tests/efuse/secure_boot_key_v2_2.pem  SECURE_BOOT_DIGEST2
 
         === Run "burn_key_digest" command ===
+        Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
-        - BLOCK_KEY0 -> [a2 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d]
+        - BLOCK_KEY0 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 'KEY_PURPOSE_0': 'USER' -> 'SECURE_BOOT_DIGEST0'.
                 Disabling write to 'KEY_PURPOSE_0'.
                 Disabling write to key block
 
-        - BLOCK_KEY1 -> [a3 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d]
+        - BLOCK_KEY1 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 'KEY_PURPOSE_1': 'USER' -> 'SECURE_BOOT_DIGEST1'.
                 Disabling write to 'KEY_PURPOSE_1'.
                 Disabling write to key block
 
-        - BLOCK_KEY2 -> [a4 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d]
+        - BLOCK_KEY2 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
                 'KEY_PURPOSE_2': 'USER' -> 'SECURE_BOOT_DIGEST2'.
                 Disabling write to 'KEY_PURPOSE_2'.
                 Disabling write to key block

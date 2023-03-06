@@ -262,6 +262,13 @@ def main(custom_commandline=None):
             operation_func = vars(efuse_operations)[args.operation]
             # each 'operation' is a module-level function of the same name
             print('\n=== Run "{}" command ==='.format(args.operation))
+
+            if hasattr(args, "show_sensitive_info"):
+                if args.show_sensitive_info or args.debug:
+                    args.show_sensitive_info = True
+                else:
+                    print("Sensitive data will be hidden (see --show-sensitive-info)")
+
             operation_func(esp, efuses, args)
 
         if there_are_multiple_burn_commands_in_args:
