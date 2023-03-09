@@ -83,7 +83,7 @@ CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
 CFLAGS_ESPRISCV32 = -std=c99 -Wall -Werror -Os \
-		 -march=rv32imc -msmall-data-limit=0 \
+		 -march=rv32imc -mabi=ilp32 -msmall-data-limit=0 \
          -nostdlib -fno-builtin -flto \
          -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
 LDLIBS = -lgcc
