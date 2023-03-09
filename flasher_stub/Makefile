@@ -38,6 +38,10 @@ CROSS_32S2 ?= xtensa-esp32s2-elf-
 CROSS_32S3 ?= xtensa-esp32s3-elf-
 CROSS_ESPRISCV32 ?= riscv32-esp-elf-
 
+# extra CFLAGS to be passed on the compiler, in addition to the stock ones
+EXTRA_CFLAGS ?=
+EXTRA_CFLAGS_ESPRISCV32 ?=
+
 # Python command to invoke wrap_stub.py
 WRAP_STUB ?= ./wrap_stub.py
 
@@ -81,11 +85,13 @@ $(BUILD_DIR):
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
-         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
+         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld \
+         $(EXTRA_CFLAGS)
 CFLAGS_ESPRISCV32 = -std=c99 -Wall -Werror -Os \
 		 -march=rv32imc -mabi=ilp32 -msmall-data-limit=0 \
          -nostdlib -fno-builtin -flto \
-         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld
+         -Wl,-static -g -ffunction-sections -Wl,--gc-sections -Iinclude -Lld \
+         $(EXTRA_CFLAGS_ESPRISCV32)
 LDLIBS = -lgcc
 
 $(STUB_ELF_8266): $(SRCS) $(SRCS_8266) $(BUILD_DIR) ld/stub_8266.ld | Makefile
