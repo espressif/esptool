@@ -57,7 +57,7 @@ except Exception:
         raise
 
 
-__version__ = "3.3.3"
+__version__ = "3.3.4-dev"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
