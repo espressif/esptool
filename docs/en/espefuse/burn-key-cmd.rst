@@ -18,7 +18,8 @@ Positional arguments:
 
     - ``block`` - Name of key block.
     :esp32: - ``Keyfile``. It is a raw binary file. It must contain 256 bits of binary key if the coding scheme is ``None`` and 128 bits if ``3/4``.
-    :not esp32: - ``Keyfile``. It is a raw binary file. The length of binary key depends on the key purpose option.
+    :not esp32 and not esp32h2: - ``Keyfile``. It is a raw binary file. The length of binary key depends on the key purpose option.
+    :esp32h2: - ``Keyfile``. It is a raw binary file. The length of binary key depends on the key purpose option. For the ``ECDSA_KEY`` purpose use ``PEM`` file.
     :not esp32: - ``Key purpose``. The purpose of this key.
 
 .. only:: esp32
@@ -54,7 +55,7 @@ Optional arguments:
 
         Do not use the names ``BLOCK1`` and ``BLOCK2`` to burn flash encryption and secure boot v2 keys because byte order will be incorrect and read protection will not meet security requirements.
 
-.. only:: esp32c3 or esp32s2 or esp32s3
+.. only:: not esp32 and not esp32c2
 
     {IDF_TARGET_NAME} supportes eFuse key purposes. This means that each eFuse block has a special eFuse field that indicates which key is in the eFuse block. During the burn operation this eFuse key purpose is burned as well with write protection (the ``--no-write-protect`` flag has no effect on this field). The {IDF_TARGET_NAME} chip supports the following key purposes:
 
@@ -64,6 +65,7 @@ Optional arguments:
         - RESERVED.
         :esp32s2 or esp32s3: - XTS_AES_256_KEY_1. The first 256 bits of 512bit flash encryption key.
         :esp32s2 or esp32s3: - XTS_AES_256_KEY_2. The second 256 bits of 512bit flash encryption key.
+        :esp32h2: - ECDSA_KEY. It can be ECDSA private keys based on NIST192p or NIST256p curve. The private key is extracted from the given file and written into a eFuse block with write and read protection enabled. This private key shall be used by ECDSA accelerator for the signing purpose.
         - XTS_AES_128_KEY. 256 bit flash encryption key.
         - HMAC_DOWN_ALL.
         - HMAC_DOWN_JTAG.
@@ -73,6 +75,22 @@ Optional arguments:
         - SECURE_BOOT_DIGEST1. 2 secure boot key.
         - SECURE_BOOT_DIGEST2. 3 secure boot key.
         :esp32s2 or esp32s3: - XTS_AES_256_KEY. This is a virtual key purpose for flash encryption key. This allows you to write a whole 512-bit key into two blocks with ``XTS_AES_256_KEY_1`` and ``XTS_AES_256_KEY_2`` purposes without splitting the key file.
+
+.. only:: esp32h2
+
+    {IDF_TARGET_NAME} has the ECDSA accelerator for signature purposes and supports private keys based on the NIST192p or NIST256p curve. These two commands below can be used to generate such keys (``PEM`` file). The ``burn_key`` command with the ``ECDSA_KEY`` purpose takes the ``PEM`` file and writes the private key into a eFuse block. The key is written to the block in reverse byte order. 
+
+    For NIST192p, the private key is 192 bits long, so 8 padding bytes ("0x00") are added.
+
+    .. code-block:: none
+
+        > espsecure.py generate_signing_key -v 2 -s ecdsa192 ecdsa192.pem
+        ECDSA NIST192p private key in PEM format written to ecdsa192.pem
+
+    .. code-block:: none
+
+        > espsecure.py generate_signing_key -v 2 -s ecdsa256 ecdsa256.pem
+        ECDSA NIST256p private key in PEM format written to ecdsa256.pem
 
 .. only:: esp32c2
 

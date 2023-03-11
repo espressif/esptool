@@ -681,8 +681,8 @@ class TestBurnEfuseCommands(EfuseTestCase):
             output = self.espefuse_py("summary -d")
             assert (
                 "read_regs: d6eae168 8f843a26 c9145f69 2328ad5a "
-                "00000000 00000000 00000000 00000000" in output
-            )
+                "00000000 00000000 00000000 00000000"
+            ) in output
             assert "= 68 e1 ea d6 26 3a 84 8f 69 5f 14 c9 5a ad 28 23 R/W" in output
             efuse_from_blk2 = "BLK_VERSION_MAJOR"
             if arg_chip == "esp32s2":
@@ -708,12 +708,12 @@ class TestBurnEfuseCommands(EfuseTestCase):
         output = self.espefuse_py("summary -d")
         assert (
             "read_regs: 112233ff 11110000 11111111 11111111 "
-            "11111111 08091111 04050607 00010203" in output
-        )
+            "11111111 08091111 04050607 00010203"
+        ) in output
         assert (
             "= ff 33 22 11 00 00 11 11 11 11 11 11 11 11 11 11 "
-            "11 11 11 11 11 11 09 08 07 06 05 04 03 02 01 00 R/W" in output
-        )
+            "11 11 11 11 11 11 09 08 07 06 05 04 03 02 01 00 R/W"
+        ) in output
 
         if blk2 is not None:
             output = self.espefuse_py(
@@ -727,12 +727,12 @@ class TestBurnEfuseCommands(EfuseTestCase):
             output = self.espefuse_py("summary -d")
             assert (
                 "read_regs: 03020100 07060504 11110908 11111111 "
-                "11111111 11111111 00001111 ff332211" in output
-            )
+                "11111111 11111111 00001111 ff332211"
+            ) in output
             assert (
                 "= 00 01 02 03 04 05 06 07 08 09 11 11 11 11 11 11 "
-                "11 11 11 11 11 11 11 11 11 11 00 00 11 22 33 ff R/W" in output
-            )
+                "11 11 11 11 11 11 11 11 11 11 00 00 11 22 33 ff R/W"
+            ) in output
 
     @pytest.mark.skipif(
         arg_chip != "esp32", reason="3/4 coding scheme is only in esp32"
@@ -812,8 +812,10 @@ class TestBurnKeyCommands(EfuseTestCase):
 
         self.espefuse_py(f"burn_key BLOCK_KEY0 {IMAGES_DIR}/256bit XTS_AES_128_KEY")
         output = self.espefuse_py("summary -d")
-        assert "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
-        "00000000 00000000 00000000 00000000" in output
+        assert (
+            "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "00000000 00000000 00000000 00000000"
+        ) in output
 
     @pytest.mark.skipif(arg_chip != "esp32c2", reason="ESP32-C2-only")
     def test_burn_key_one_key_block_with_fe_and_sb_keys(self):
@@ -831,8 +833,10 @@ class TestBurnKeyCommands(EfuseTestCase):
             f"BLOCK_KEY0 {IMAGES_DIR}/128bit_key SECURE_BOOT_DIGEST --no-read-protect"
         )
         output = self.espefuse_py("summary -d")
-        assert "[3 ] read_regs: 0c0d0e0f 08090a0b 04050607 00010203 "
-        "03020100 07060504 0b0a0908 0f0e0d0c" in output
+        assert (
+            "[3 ] read_regs: 0c0d0e0f 08090a0b 04050607 00010203 "
+            "03020100 07060504 0b0a0908 0f0e0d0c"
+        ) in output
 
         self.espefuse_py(
             f"burn_key BLOCK_KEY0 {IMAGES_DIR}/128bit_key "
@@ -840,8 +844,10 @@ class TestBurnKeyCommands(EfuseTestCase):
             f"BLOCK_KEY0 {IMAGES_DIR}/128bit_key SECURE_BOOT_DIGEST"
         )
         output = self.espefuse_py("summary -d")
-        assert "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
-        "03020100 07060504 0b0a0908 0f0e0d0c" in output
+        assert (
+            "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "03020100 07060504 0b0a0908 0f0e0d0c"
+        ) in output
 
     @pytest.mark.skipif(
         arg_chip
@@ -850,7 +856,6 @@ class TestBurnKeyCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
             "esp32h2",
@@ -877,12 +882,18 @@ class TestBurnKeyCommands(EfuseTestCase):
 
         self.espefuse_py(cmd)
         output = self.espefuse_py("summary -d")
-        assert "[4 ] read_regs: 00000000 00000000 00000000 00000000 "
-        "00000000 00000000 00000000 00000000" in output
-        assert "[5 ] read_regs: 00000000 00000000 00000000 00000000 "
-        "00000000 00000000 00000000 00000000" in output
-        assert "[6 ] read_regs: 00000000 00000000 00000000 00000000 "
-        "00000000 00000000 00000000 00000000" in output
+        assert (
+            "[4 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "00000000 00000000 00000000 00000000"
+        ) in output
+        assert (
+            "[5 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "00000000 00000000 00000000 00000000"
+        ) in output
+        assert (
+            "[6 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "00000000 00000000 00000000 00000000"
+        ) in output
 
         self.espefuse_py(
             f"burn_key \
@@ -981,10 +992,14 @@ class TestBurnKeyCommands(EfuseTestCase):
             output, f"{IMAGES_DIR}/256bit_2", reverse_order=True
         )
 
-        assert "[5 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 "
-        "b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 11a1a2a3" in output
-        assert "[9 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 "
-        "b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 22a1a2a3" in output
+        assert (
+            "[5 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 "
+            "b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 11a1a2a3"
+        ) in output
+        assert (
+            "[9 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 "
+            "b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 22a1a2a3"
+        ) in output
 
     @pytest.mark.skipif(
         arg_chip not in ["esp32s2", "esp32s3"],
@@ -1010,10 +1025,65 @@ class TestBurnKeyCommands(EfuseTestCase):
             output, f"{IMAGES_DIR}/256bit_2", reverse_order=True
         )
 
-        assert "[5 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 b0b1b2b3 "
-        "acadaeaf a8a9aaab a4a5a6a7 11a1a2a3" in output
-        assert "[4 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 "
-        "acadaeaf a8a9aaab a4a5a6a7 22a1a2a3" in output
+        assert (
+            "[5 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 b0b1b2b3 "
+            "acadaeaf a8a9aaab a4a5a6a7 11a1a2a3"
+        ) in output
+        assert (
+            "[4 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 "
+            "acadaeaf a8a9aaab a4a5a6a7 22a1a2a3"
+        ) in output
+
+    @pytest.mark.skipif(arg_chip != "esp32h2", reason="Only for ESP32-H2 chips")
+    def test_burn_key_ecdsa_key(self):
+        self.espefuse_py(
+            f"burn_key \
+            BLOCK_KEY0 {S_IMAGES_DIR}/ecdsa192_secure_boot_signing_key_v2.pem \
+            ECDSA_KEY \
+            BLOCK_KEY1 {S_IMAGES_DIR}/ecdsa256_secure_boot_signing_key_v2.pem \
+            ECDSA_KEY"
+        )
+        output = self.espefuse_py("summary -d")
+        assert 2 == output.count(
+            "= ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? "
+            "?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? -/-"
+        )
+        assert (
+            "[4 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "00000000 00000000 00000000 00000000"
+        ) in output
+        assert (
+            "[5 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "00000000 00000000 00000000 00000000"
+        ) in output
+
+    @pytest.mark.skipif(arg_chip != "esp32h2", reason="Only for ESP32-H2 chips")
+    def test_burn_key_ecdsa_key_check_byte_order(self):
+        self.espefuse_py(
+            f"burn_key \
+            BLOCK_KEY0 {S_IMAGES_DIR}/ecdsa192_secure_boot_signing_key_v2.pem \
+            ECDSA_KEY \
+            BLOCK_KEY1 {S_IMAGES_DIR}/ecdsa256_secure_boot_signing_key_v2.pem \
+            ECDSA_KEY \
+            --no-read-protect"
+        )
+        output = self.espefuse_py("summary -d")
+        assert (
+            "= c8 c4 5d 62 9e 05 05 bd cb 04 a4 7c 06 f5 86 14 "
+            "cb 23 81 23 95 b7 71 4f 00 00 00 00 00 00 00 00 R/-"
+        ) in output
+        assert (
+            "= fc 6b ec 75 64 37 7d 3b 88 8d 34 05 ed 91 06 1b "
+            "38 c2 50 84 7a 08 9d c3 66 6a 06 90 23 8b 54 b4 R/-"
+        ) in output
+        assert (
+            "[4 ] read_regs: 625dc4c8 bd05059e 7ca404cb 1486f506 "
+            "238123cb 4f71b795 00000000 00000000"
+        ) in output
+        assert (
+            "[5 ] read_regs: 75ec6bfc 3b7d3764 05348d88 1b0691ed "
+            "8450c238 c39d087a 90066a66 b4548b23"
+        ) in output
 
 
 class TestBurnBlockDataCommands(EfuseTestCase):
@@ -1036,8 +1106,10 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK3 {IMAGES_DIR}/256bit"
         )
         output = self.espefuse_py("summary -d")
-        assert "[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
-        "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc" in output
+        assert (
+            "[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
+            "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc"
+        ) in output
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
 
         self.espefuse_py(
@@ -1068,10 +1140,14 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         output = self.espefuse_py("summary -d")
         assert "[0 ] read_regs: 00000001 0000000c" in output
         assert "[1 ] read_regs: 03020100 07060504 000a0908" in output
-        assert "[2 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
-        "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc" in output
-        assert "[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
-        "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc" in output
+        assert (
+            "[2 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
+            "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc"
+        ) in output
+        assert (
+            "[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
+            "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc"
+        ) in output
 
     @pytest.mark.skipif(
         arg_chip
@@ -1080,7 +1156,6 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
             "esp32h2",
@@ -1098,8 +1173,10 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             "[0 ] read_regs: 00000000 07060500 00000908 00000000 13000000 00161514"
             in output
         )
-        assert "[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
-        "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc" in output
+        assert (
+            "[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
+            "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc"
+        ) in output
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
 
         self.espefuse_py(
@@ -1196,8 +1273,10 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK2 {IMAGES_DIR}/192bit_1"
         )
         output = self.espefuse_py("summary -d")
-        assert "[2 ] read_regs: 00000000 00110000 05000000 09080706 "
-        "0d0c0b0a 11100f0e 15141312 00002116" in output
+        assert (
+            "[2 ] read_regs: 00000000 00110000 05000000 09080706 "
+            "0d0c0b0a 11100f0e 15141312 00002116"
+        ) in output
 
         offset = 8
         self.espefuse_py(
@@ -1214,7 +1293,6 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
             "esp32h2",
@@ -1310,8 +1388,10 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
                 f"burn_key_digest {S_IMAGES_DIR}/rsa_secure_boot_signing_key.pem"
             )
             output = self.espefuse_py("summary -d")
-            assert " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
-            "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-" in output
+            assert (
+                " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
+                "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"
+            ) in output
         else:
             self.espefuse_py(
                 f"burn_key_digest {S_IMAGES_DIR}/rsa_secure_boot_signing_key.pem",
@@ -1353,8 +1433,10 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         )
         output = self.espefuse_py("summary -d")
         assert " = 1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-" in output
-        assert " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
-        "1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-" in output
+        assert (
+            " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
+            "1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-"
+        ) in output
 
     def test_burn_key_digest2(self):
         # python espsecure.py generate_signing_key --version 2
@@ -1365,8 +1447,10 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         )
         output = self.espefuse_py("summary -d")
         assert " = bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-" in output
-        assert " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
-        "bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-" in output
+        assert (
+            " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
+            "bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-"
+        ) in output
 
     def test_burn_key_from_digest1(self):
         # python espsecure.py digest_sbv2_public_key --keyfile
@@ -1377,8 +1461,10 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
             f"{S_IMAGES_DIR}/ecdsa192_public_key_digest_v2.bin SECURE_BOOT_DIGEST"
         )
         output = self.espefuse_py("summary -d")
-        assert " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
-        "1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-" in output
+        assert (
+            " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
+            "1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-"
+        ) in output
 
     def test_burn_key_from_digest2(self):
         # python espsecure.py digest_sbv2_public_key --keyfile
@@ -1389,8 +1475,10 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
             f"{S_IMAGES_DIR}/ecdsa256_public_key_digest_v2.bin SECURE_BOOT_DIGEST"
         )
         output = self.espefuse_py("summary -d")
-        assert " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
-        "bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-" in output
+        assert (
+            " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
+            "bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-"
+        ) in output
 
 
 @pytest.mark.skipif(
@@ -1400,7 +1488,6 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         "esp32s3",
         "esp32s3beta1",
         "esp32c3",
-        "esp32h2beta2",
         "esp32h2beta1",
         "esp32c6",
         "esp32h2",
@@ -1512,7 +1599,6 @@ class TestBurnBitCommands(EfuseTestCase):
             "esp32s3",
             "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta2",
             "esp32h2beta1",
             "esp32c6",
             "esp32h2",
@@ -1592,12 +1678,18 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
                 secure_boot_v1    {IMAGES_DIR}/256bit_1"
             )
             output = self.espefuse_py("summary -d")
-            assert "[1 ] read_regs: 00000000 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
-            assert "[2 ] read_regs: 00000000 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
-            assert "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
+            assert (
+                "[1 ] read_regs: 00000000 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
+            assert (
+                "[2 ] read_regs: 00000000 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
+            assert (
+                "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
 
     def test_2_secure_boot_v1(self):
         if arg_chip == "esp32":
@@ -1620,8 +1712,10 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
                 secure_boot_v2 {IMAGES_DIR}/256bit_1"
             )
             output = self.espefuse_py("summary -d")
-            assert "[1 ] read_regs: 00000000 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
+            assert (
+                "[1 ] read_regs: 00000000 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
             self.check_data_block_in_log(
                 output, f"{IMAGES_DIR}/256bit_1", reverse_order=False
             )
@@ -1663,11 +1757,15 @@ class TestExecuteScriptsCommands(EfuseTestCase):
         self.espefuse_py(cmd)
         output = self.espefuse_py("summary -d")
         if arg_chip in ["esp32", "esp32c2"]:
-            assert "[3 ] read_regs: e00007ff 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
+            assert (
+                "[3 ] read_regs: e00007ff 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
         else:
-            assert "[8 ] read_regs: e00007ff 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
+            assert (
+                "[8 ] read_regs: e00007ff 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
 
     def test_execute_scripts_nesting(self):
         os.chdir(TEST_DIR)
@@ -1680,15 +1778,23 @@ class TestExecuteScriptsCommands(EfuseTestCase):
         self.espefuse_py(cmd)
         output = self.espefuse_py("summary -d")
         if arg_chip in ["esp32", "esp32c2"]:
-            assert "[2 ] read_regs: 10000000 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
-            assert "[3 ] read_regs: ffffffff 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
+            assert (
+                "[2 ] read_regs: 10000000 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
+            assert (
+                "[3 ] read_regs: ffffffff 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
         else:
-            assert "[7 ] read_regs: 10000000 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
-            assert "[8 ] read_regs: ffffffff 00000000 00000000 00000000 "
-            "00000000 00000000 00000000 00000000" in output
+            assert (
+                "[7 ] read_regs: 10000000 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
+            assert (
+                "[8 ] read_regs: ffffffff 00000000 00000000 00000000 "
+                "00000000 00000000 00000000 00000000"
+            ) in output
 
 
 class TestMultipleCommands(EfuseTestCase):
@@ -1737,8 +1843,10 @@ class TestMultipleCommands(EfuseTestCase):
             summary"
         )
         output = self.espefuse_py("summary -d")
-        assert "[3 ] read_regs: 0c0d0e0f 08090a0b 04050607 00010203 "
-        "f66a0fbf 8b6dd38b a9dab353 040af633" in output
+        assert (
+            "[3 ] read_regs: 0c0d0e0f 08090a0b 04050607 00010203 "
+            "f66a0fbf 8b6dd38b a9dab353 040af633"
+        ) in output
         assert " = 0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00 R/-" in output
         assert " = bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-" in output
 
@@ -1753,8 +1861,10 @@ class TestMultipleCommands(EfuseTestCase):
             summary"
         )
         output = self.espefuse_py("summary -d")
-        assert "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
-        "f66a0fbf 8b6dd38b a9dab353 040af633" in output
+        assert (
+            "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
+            "f66a0fbf 8b6dd38b a9dab353 040af633"
+        ) in output
         assert " = ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? -/-" in output
         assert " = bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-" in output
 

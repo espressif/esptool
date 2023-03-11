@@ -200,9 +200,17 @@ def generate_signing_key(args):
             )
 
 
+def load_ecdsa_signing_key(keyfile):
+    """Load ECDSA signing key"""
+    sk = ecdsa.SigningKey.from_pem(keyfile.read())
+    if sk.curve not in [ecdsa.NIST192p, ecdsa.NIST256p]:
+        raise esptool.FatalError("Supports NIST192p and NIST256p keys only")
+    return sk
+
+
 def _load_ecdsa_signing_key(keyfile):
     """Load ECDSA signing key for Secure Boot V1 only"""
-    sk = ecdsa.SigningKey.from_pem(keyfile.read())
+    sk = load_ecdsa_signing_key(keyfile)
     if sk.curve != ecdsa.NIST256p:
         raise esptool.FatalError(
             "Signing key uses incorrect curve. ESP32 Secure Boot only supports "

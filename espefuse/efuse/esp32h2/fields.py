@@ -415,7 +415,8 @@ class EfuseMacField(EfuseField):
 class EfuseKeyPurposeField(EfuseField):
     KEY_PURPOSES = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
-        ("RESERVED",                     1,  None,       None,      "no_need_rd_protect"),   # Reserved
+        ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key
+        ("RESERVED",                     2,  None,       None,      "no_need_rd_protect"),   # Reserved
         ("XTS_AES_128_KEY",              4,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_128_KEY (flash/PSRAM encryption)
         ("HMAC_DOWN_ALL",                5,  None,       None,      "need_rd_protect"),      # HMAC Downstream mode
         ("HMAC_DOWN_JTAG",               6,  None,       None,      "need_rd_protect"),      # JTAG soft enable key (uses HMAC Downstream mode)
