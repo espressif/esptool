@@ -271,7 +271,17 @@ def summary(esp, efuses, args):
             base_value = e.get_meaning()
             value = str(base_value)
             if not readable:
-                value = value.replace("0", "?")
+                count_read_disable_bits = e.get_count_read_disable_bits()
+                if count_read_disable_bits == 2:
+                    # On the C2 chip, BLOCK_KEY0 has two read protection bits [0, 1]
+                    # related to the lower and higher part of the block.
+                    v = [value[: (len(value) // 2)], value[(len(value) // 2) :]]
+                    for i in range(count_read_disable_bits):
+                        if not e.is_readable(blk_part=i):
+                            v[i] = v[i].replace("0", "?")
+                    value = "".join(v)
+                else:
+                    value = value.replace("0", "?")
             if human_output:
                 print(
                     ROW_FORMAT

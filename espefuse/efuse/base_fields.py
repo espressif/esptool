@@ -85,21 +85,34 @@ class CheckArgValue(object):
 class EfuseProtectBase(object):
     # This class is used by EfuseBlockBase and EfuseFieldBase
 
-    def get_read_disable_mask(self):
+    def get_read_disable_mask(self, blk_part=None):
+        """Returns mask of read protection bits
+        blk_part:
+            - None: Calculate mask for all read protection bits.
+            - a number: Calculate mask only for specific item in read protection list.
+        """
         mask = 0
         if isinstance(self.read_disable_bit, list):
-            for i in self.read_disable_bit:
-                mask |= 1 << i
+            if blk_part is None:
+                for i in self.read_disable_bit:
+                    mask |= 1 << i
+            else:
+                mask |= 1 << self.read_disable_bit[blk_part]
         else:
             mask = 1 << self.read_disable_bit
         return mask
 
-    def is_readable(self):
+    def get_count_read_disable_bits(self):
+        """Returns the number of read protection bits used by the field"""
+        # On the C2 chip, BLOCK_KEY0 has two read protection bits [0, 1].
+        return bin(self.get_read_disable_mask()).count("1")
+
+    def is_readable(self, blk_part=None):
         """Return true if the efuse is readable by software"""
         num_bit = self.read_disable_bit
         if num_bit is None:
             return True  # read cannot be disabled
-        return (self.parent["RD_DIS"].get() & (self.get_read_disable_mask())) == 0
+        return (self.parent["RD_DIS"].get() & self.get_read_disable_mask(blk_part)) == 0
 
     def disable_read(self):
         num_bit = self.read_disable_bit
