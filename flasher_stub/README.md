@@ -34,7 +34,7 @@ Activating an ESP-IDF environment takes care of most of these steps (only the ES
 
 # To Test
 
-To test the built stub, you can run `make embed` (or `make embed WITHOUT_ESP8266=1`), which will update the stubs in `esptool.py` to the newly compiled ones. Or there are some convenience wrappers to make testing quicker to iterate on:
+To test the built stub, you can run `make install` (or `make install WITHOUT_ESP8266=1`), which will update the stubs in `esptool.py` to the newly compiled ones. Or there are some convenience wrappers to make testing quicker to iterate on:
 
 * Running `esptool_test_stub.py` is the same as running `esptool.py`, only it uses the just-compiled stubs from the build directory.
 

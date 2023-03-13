@@ -18,7 +18,6 @@ import esptool  # noqa: E402
 
 THIS_DIR = os.path.dirname(__file__)
 BUILD_DIR = os.path.join(THIS_DIR, "./build/")
-STUBS_DIR = os.path.join(THIS_DIR, "../esptool/targets/stub_flasher/")
 
 
 def wrap_stub(elf_file):
@@ -67,8 +66,7 @@ def write_json_files(stubs_dict):
             return json.JSONEncoder.default(self, obj)
 
     for filename, stub_data in stubs_dict.items():
-        DIR = STUBS_DIR if args.embed else BUILD_DIR
-        with open(DIR + filename, "w") as outfile:
+        with open(BUILD_DIR + filename, "w") as outfile:
             json.dump(stub_data, outfile, cls=BytesEncoder, indent=4)
 
 
@@ -79,9 +77,6 @@ def stub_name(filename):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--embed", help="Embed stub json files into esptool.py", action="store_true"
-    )
     parser.add_argument("elf_files", nargs="+", help="Stub ELF files to convert")
     args = parser.parse_args()
 

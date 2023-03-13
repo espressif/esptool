@@ -1,7 +1,7 @@
 # Makefile to compile the flasher stub program
 #
 # Note that YOU DO NOT NEED TO COMPILE THIS IN ORDER TO JUST USE
-# esptool.py - a precompiled version is embedded in esptool.py,
+# esptool.py - a precompiled version is included in esptool.py,
 # so if you don't want to modify the stub code then you are good to go.
 #
 # See the comments in the top of the Makefile for parameters that
@@ -95,11 +95,11 @@ STUBS_ELF += \
   $(STUB_ELF_32H2)
 endif
 
-.PHONY: all clean embed
+.PHONY: all clean install
 
 all: $(STUBS_ELF:.elf=.json)
 
-embed: $(patsubst $(BUILD_DIR)/%.elf,$(ESPTOOL_STUBS_DIR)/%.json,$(STUBS_ELF))
+install: $(patsubst $(BUILD_DIR)/%.elf,$(ESPTOOL_STUBS_DIR)/%.json,$(STUBS_ELF))
 
 $(BUILD_DIR):
 	$(Q) mkdir $@
@@ -108,9 +108,9 @@ $(BUILD_DIR)/%.json: $(BUILD_DIR)/%.elf
 	@echo "  WRAP $^ -> $(BUILD_DIR)"
 	$(Q) $(WRAP_STUB) $^
 
-$(ESPTOOL_STUBS_DIR)/%.json: $(BUILD_DIR)/%.elf
-	@echo "  WRAP $^ -> $(ESPTOOL_STUBS_DIR)"
-	$(Q) $(WRAP_STUB) --embed $^
+$(ESPTOOL_STUBS_DIR)/%.json: $(BUILD_DIR)/%.json
+	@echo "  INSTALL $^ -> $@"
+	$(Q) cp $^ $@
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
