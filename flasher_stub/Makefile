@@ -97,12 +97,20 @@ endif
 
 .PHONY: all clean embed
 
-all: $(STUBS_ELF)
-	@echo "  WRAP $^ -> $(BUILD_DIR)"
-	$(Q) $(WRAP_STUB) $^
+all: $(STUBS_ELF:.elf=.json)
+
+embed: $(patsubst $(BUILD_DIR)/%.elf,$(ESPTOOL_STUBS_DIR)/%.json,$(STUBS_ELF))
 
 $(BUILD_DIR):
 	$(Q) mkdir $@
+
+$(BUILD_DIR)/%.json: $(BUILD_DIR)/%.elf
+	@echo "  WRAP $^ -> $(BUILD_DIR)"
+	$(Q) $(WRAP_STUB) $^
+
+$(ESPTOOL_STUBS_DIR)/%.json: $(BUILD_DIR)/%.elf
+	@echo "  WRAP $^ -> $(ESPTOOL_STUBS_DIR)"
+	$(Q) $(WRAP_STUB) --embed $^
 
 CFLAGS = -std=c99 -Wall -Werror -Os \
          -mtext-section-literals -mlongcalls -nostdlib -fno-builtin -flto \
@@ -162,10 +170,6 @@ $(STUB_ELF_32C6): $(SRCS) $(BUILD_DIR) ld/stub_32c6.ld
 $(STUB_ELF_32H2): $(SRCS) $(BUILD_DIR) ld/stub_32h2.ld
 	@echo "  CC(32H2)   $^ -> $@"
 	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32H2=1 -Tstub_32h2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
-
-embed: $(STUBS_ELF)
-	@echo "  WRAP $^ -> $(ESPTOOL_STUBS_DIR)"
-	$(Q) $(WRAP_STUB) --embed $^
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR)
