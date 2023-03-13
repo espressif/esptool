@@ -70,12 +70,22 @@ STUB_ELF_32C2 = $(BUILD_DIR)/$(STUB)_32c2.elf
 STUB_ELF_32C6 = $(BUILD_DIR)/$(STUB)_32c6.elf
 STUB_ELF_32H2 = $(BUILD_DIR)/$(STUB)_32h2.elf
 
-STUBS_ELF = \
-  $(STUB_ELF_8266) \
+STUBS_ELF =
+ifneq ($(WITHOUT_ESP8266),1)
+STUBS_ELF += \
+  $(STUB_ELF_8266)
+endif
+
+ifneq ($(WITHOUT_ESP32_XTENSA),1)
+STUBS_ELF += \
   $(STUB_ELF_32) \
   $(STUB_ELF_32S2) \
   $(STUB_ELF_32S3_BETA_2) \
-  $(STUB_ELF_32S3) \
+  $(STUB_ELF_32S3)
+endif
+
+ifneq ($(WITHOUT_ESP32_RISCV32),1)
+STUBS_ELF += \
   $(STUB_ELF_32C3) \
   $(STUB_ELF_32C6BETA) \
   $(STUB_ELF_32H2_BETA_1) \
@@ -83,14 +93,11 @@ STUBS_ELF = \
   $(STUB_ELF_32C2) \
   $(STUB_ELF_32C6) \
   $(STUB_ELF_32H2)
+endif
 
-.PHONY: all esp32 clean embed embed_esp32
+.PHONY: all clean embed
 
 all: $(STUBS_ELF)
-	@echo "  WRAP $^ -> $(BUILD_DIR)"
-	$(Q) $(WRAP_STUB) $^
-
-esp32: $(filter-out $(STUB_ELF_8266),$(STUBS_ELF))
 	@echo "  WRAP $^ -> $(BUILD_DIR)"
 	$(Q) $(WRAP_STUB) $^
 
@@ -157,10 +164,6 @@ $(STUB_ELF_32H2): $(SRCS) $(BUILD_DIR) ld/stub_32h2.ld
 	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32H2=1 -Tstub_32h2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 embed: $(STUBS_ELF)
-	@echo "  WRAP $^ -> $(ESPTOOL_STUBS_DIR)"
-	$(Q) $(WRAP_STUB) --embed $^
-
-embed_esp32: $(filter-out $(STUB_ELF_8266),$(STUBS_ELF))
 	@echo "  WRAP $^ -> $(ESPTOOL_STUBS_DIR)"
 	$(Q) $(WRAP_STUB) --embed $^
 
