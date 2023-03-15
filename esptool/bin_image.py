@@ -803,13 +803,6 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.min_rev_full = fields[6]
         self.max_rev_full = fields[7]
 
-        # reserved fields in the middle should all be zero
-        if any(f for f in fields[8:-1] if f != 0):
-            print(
-                "Warning: some reserved header fields have non-zero values. "
-                "This image may be from a newer esptool.py?"
-            )
-
         append_digest = fields[-1]  # last byte is append_digest
         if append_digest in [0, 1]:
             self.append_digest = append_digest == 1

@@ -850,9 +850,6 @@ def image_info(args):
         if args.chip == "auto":
             try:
                 extended_header = f.read(16)
-                # reserved fields, should all be zero
-                if int.from_bytes(extended_header[7:-1], "little") != 0:
-                    raise FatalError("Reserved fields not all zero")
 
                 # append_digest, either 0 or 1
                 if extended_header[-1] not in [0, 1]:
