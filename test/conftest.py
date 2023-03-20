@@ -47,6 +47,11 @@ def pytest_configure(config):
         "(don't require a real chip connected).",
     )
 
+    config.addinivalue_line(
+        "markers",
+        "quick_test: mark esptool tests checking basic functionality.",
+    )
+
 
 def need_to_install_package_err():
     pytest.exit(

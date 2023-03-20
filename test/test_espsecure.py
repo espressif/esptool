@@ -182,7 +182,9 @@ class TestSigning(EspSecureTestCase):
         # Sign using pre-calculated signature + Verify
         signing_pubkey = "ecdsa_secure_boot_signing_pubkey.pem"
         pre_calculated_signature = "pre_calculated_bootloader_signature.bin"
-        with tempfile.NamedTemporaryFile() as output_file:
+
+        try:
+            output_file = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
                 "1",
                 None,
@@ -200,6 +202,9 @@ class TestSigning(EspSecureTestCase):
                 "1", False, None, self._open(signing_pubkey), output_file
             )
             espsecure.verify_signature(args)
+        finally:
+            output_file.close()
+            os.unlink(output_file.name)
 
     def test_sign_v2_data(self):
         signing_keys = [
@@ -208,7 +213,8 @@ class TestSigning(EspSecureTestCase):
             "ecdsa_secure_boot_signing_key.pem",
         ]
         for key in signing_keys:
-            with tempfile.NamedTemporaryFile() as output_file:
+            try:
+                output_file = tempfile.NamedTemporaryFile(delete=False)
                 args = self.SignArgs(
                     "2",
                     [self._open(key)],
@@ -224,10 +230,14 @@ class TestSigning(EspSecureTestCase):
 
                 args = self.VerifyArgs("2", False, None, self._open(key), output_file)
                 espsecure.verify_signature(args)
+            finally:
+                output_file.close()
+                os.unlink(output_file.name)
 
     def test_sign_v2_multiple_keys(self):
         # 3 keys + Verify with 3rd key
-        with tempfile.NamedTemporaryFile() as output_file:
+        try:
+            output_file = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
                 "2",
                 [
@@ -273,11 +283,15 @@ class TestSigning(EspSecureTestCase):
                 output_file,
             )
             espsecure.verify_signature(args)
+        finally:
+            output_file.close()
+            os.unlink(output_file.name)
 
     def test_sign_v2_append_signatures(self):
         # Append signatures + Verify with an appended key
         # (bootloader_signed_v2.bin already signed with rsa_secure_boot_signing_key.pem)
-        with tempfile.NamedTemporaryFile() as output_file:
+        try:
+            output_file = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
                 "2",
                 [
@@ -322,10 +336,15 @@ class TestSigning(EspSecureTestCase):
                 output_file,
             )
             espsecure.verify_signature(args)
+        finally:
+            output_file.close()
+            os.unlink(output_file.name)
 
     def test_sign_v2_append_signatures_multiple_steps(self):
         # similar to previous test, but sign in two invocations
-        with tempfile.NamedTemporaryFile() as output_file1, tempfile.NamedTemporaryFile() as output_file2:  # noqa E501
+        try:
+            output_file1 = tempfile.NamedTemporaryFile(delete=False)
+            output_file2 = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
                 "2",
                 [self._open("rsa_secure_boot_signing_key2.pem")],
@@ -380,6 +399,11 @@ class TestSigning(EspSecureTestCase):
                 output_file2,
             )
             espsecure.verify_signature(args)
+        finally:
+            output_file1.close()
+            os.unlink(output_file1.name)
+            output_file2.close()
+            os.unlink(output_file2.name)
 
     def test_sign_v2_with_pre_calculated_signature(self):
         # Sign using pre-calculated signature + Verify
@@ -394,7 +418,8 @@ class TestSigning(EspSecureTestCase):
             "pre_calculated_bootloader_signature_ecdsa256.bin",
         ]
         for pub_key, signature in zip(signing_keys, pre_calculated_signatures):
-            with tempfile.NamedTemporaryFile() as output_file:
+            try:
+                output_file = tempfile.NamedTemporaryFile(delete=False)
                 args = self.SignArgs(
                     "2",
                     None,
@@ -412,6 +437,9 @@ class TestSigning(EspSecureTestCase):
                     "2", False, None, self._open(pub_key), output_file
                 )
                 espsecure.verify_signature(args)
+            finally:
+                output_file.close()
+                os.unlink(output_file.name)
 
     def test_sign_v2_with_multiple_pre_calculated_signatures(self):
         # Sign using multiple pre-calculated signatures + Verify
@@ -425,7 +453,8 @@ class TestSigning(EspSecureTestCase):
             "pre_calculated_bootloader_signature_rsa.bin",
             "pre_calculated_bootloader_signature_rsa.bin",
         ]
-        with tempfile.NamedTemporaryFile() as output_file:
+        try:
+            output_file = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
                 "2",
                 None,
@@ -443,6 +472,9 @@ class TestSigning(EspSecureTestCase):
                 "2", False, None, self._open(signing_pubkeys[0]), output_file
             )
             espsecure.verify_signature(args)
+        finally:
+            output_file.close()
+            os.unlink(output_file.name)
 
     def test_verify_signature_signing_key(self):
         # correct key v1

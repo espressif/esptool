@@ -343,6 +343,41 @@ target_esp32h2_jtag_serial:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32H2_JTAG_SERIAL --preload-port /dev/serial_ports/ESP32H2_PRELOAD --chip esp32h2 --baud 115200
 
+.windows_test:
+  stage: test
+  variables:
+    PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
+    PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+  before_script:
+    - pip install -e .[dev] --prefer-binary
+  artifacts:
+    reports:
+      junit: test/report.xml
+    when: always
+    paths:
+      - test/*.out
+      - "**/.coverage*"
+      - ".coverage*"
+    expire_in: 1 week
+  tags:
+    - windows-target
+
+host_tests_windows:
+  extends: .windows_test
+  script:
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espsecure.py
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_imagegen.py
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_image_info.py
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_modules.py
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_merge_bin.py
+
+target_tests_windows:
+  extends: .windows_test
+  script:
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port COM4 --chip esp32 --baud 115200 -m quick_test
+
 combine_reports:
   stage: report
   image: python:3.7-bullseye
@@ -362,6 +397,7 @@ combine_reports:
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   variables:
     LC_ALL: C.UTF-8
+    COVERAGE_RCFILE: "${CI_PROJECT_DIR}/test/.covconf"
   before_script:
     - pip install -e .[dev] --prefer-binary
   script:

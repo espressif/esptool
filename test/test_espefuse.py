@@ -67,7 +67,7 @@ print("Running espefuse.py tests...")
 class EfuseTestCase:
     def setup_method(self):
         if reset_port is None:
-            self.efuse_file = tempfile.NamedTemporaryFile()
+            self.efuse_file = tempfile.NamedTemporaryFile(delete=False)
             self.base_cmd = (
                 f"{sys.executable} -m espefuse --chip {arg_chip} "
                 f"--virt --path-efuse-file {self.efuse_file.name} -d"
@@ -82,6 +82,7 @@ class EfuseTestCase:
     def teardown_method(self):
         if reset_port is None:
             self.efuse_file.close()
+            os.unlink(self.efuse_file.name)
 
     def reset_efuses(self):
         # reset and zero efuses
