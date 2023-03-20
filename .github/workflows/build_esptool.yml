@@ -8,7 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-20.04, windows-latest]
+        os: [macos-latest, ubuntu-20.04, windows-latest, ARM, ARM64]
         include:
         - os: macos-latest
           TARGET: macos
@@ -20,6 +20,15 @@ jobs:
           TARGET: win64
           EXTEN: .exe
           SEPARATOR: ';'
+        - os: ARM
+          CONTAINER: python:3.8-bullseye
+          TARGET: arm
+          SEPARATOR: ':'
+        - os: ARM64
+          CONTAINER: python:3.8-bullseye
+          TARGET: arm64
+          SEPARATOR: ':'
+    container: ${{ matrix.CONTAINER }} # use python container on ARM
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
       STUBS_DIR: /esptool/targets/stub_flasher/
@@ -27,6 +36,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@master
       - name: Set up Python 3.8
+        # Skip setting python on ARM because of missing compatibility: https://github.com/actions/setup-python/issues/108
+        if: matrix.os != 'ARM' && matrix.os != 'ARM64'
         uses: actions/setup-python@master
         with:
           python-version: 3.8
@@ -99,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        TARGET: [macos, linux-amd64, win64]
+        TARGET: [macos, linux-amd64, win64, arm, arm64]
     env:
       DISTPATH: esptool-${{ needs.create_release.outputs.VERSION }}-${{ matrix.TARGET }}
     steps:
