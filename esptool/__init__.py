@@ -811,11 +811,17 @@ def main(argv=None, esp=None):
 
         if hasattr(args, "flash_size"):
             print("Configuring flash size...")
-            detect_flash_size(esp, args)
-            if args.flash_size != "keep":  # TODO: should set this even with 'keep'
-                esp.flash_set_parameters(flash_size_bytes(args.flash_size))
+            if args.flash_size == "detect":
+                flash_size = detect_flash_size(esp, args)
+            elif args.flash_size == "keep":
+                flash_size = detect_flash_size(esp, args=None)
+            else:
+                flash_size = args.flash_size
+
+            if flash_size is not None:  # Secure download mode
+                esp.flash_set_parameters(flash_size_bytes(flash_size))
                 # Check if stub supports chosen flash size
-                if esp.IS_STUB and args.flash_size in ("32MB", "64MB", "128MB"):
+                if esp.IS_STUB and flash_size in ("32MB", "64MB", "128MB"):
                     print(
                         "WARNING: Flasher stub doesn't fully support flash size larger "
                         "than 16MB, in case of failure use --no-stub."

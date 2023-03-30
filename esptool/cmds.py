@@ -208,24 +208,30 @@ def dump_mem(esp, args):
     print("Done!")
 
 
-def detect_flash_size(esp, args):
-    if args.flash_size == "detect":
-        if esp.secure_download_mode:
+def detect_flash_size(esp, args=None):
+    # TODO: Remove the dependency on args in the next major release (v5.0)
+    if esp.secure_download_mode:
+        if args is not None and args.flash_size == "detect":
             raise FatalError(
                 "Detecting flash size is not supported in secure download mode. "
                 "Need to manually specify flash size."
             )
-        flash_id = esp.flash_id()
-        size_id = flash_id >> 16
-        args.flash_size = DETECTED_FLASH_SIZES.get(size_id)
-        if args.flash_size is None:
-            print(
-                "Warning: Could not auto-detect Flash size (FlashID=0x%x, SizeID=0x%x),"
-                " defaulting to 4MB" % (flash_id, size_id)
-            )
-            args.flash_size = "4MB"
         else:
-            print("Auto-detected Flash size:", args.flash_size)
+            return None
+    flash_id = esp.flash_id()
+    size_id = flash_id >> 16
+    flash_size = DETECTED_FLASH_SIZES.get(size_id)
+    if args is not None and args.flash_size == "detect":
+        if flash_size is None:
+            flash_size = "4MB"
+            print(
+                "Warning: Could not auto-detect Flash size "
+                f"(FlashID={flash_id:#x}, SizeID={size_id:#x}), defaulting to 4MB"
+            )
+        else:
+            print("Auto-detected Flash size:", flash_size)
+        args.flash_size = flash_size
+    return flash_size
 
 
 def _update_image_flash_params(esp, address, args, image):
@@ -456,8 +462,10 @@ def write_flash(esp, args):
                 )
 
     # verify file sizes fit in flash
-    if args.flash_size != "keep":  # TODO: check this even with 'keep'
-        flash_end = flash_size_bytes(args.flash_size)
+    flash_end = flash_size_bytes(
+        detect_flash_size(esp) if args.flash_size == "keep" else args.flash_size
+    )
+    if flash_end is not None:  # Secure download mode
         for address, argfile in args.addr_filename:
             argfile.seek(0, os.SEEK_END)
             if address + argfile.tell() > flash_end:
