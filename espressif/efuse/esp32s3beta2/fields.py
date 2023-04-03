@@ -344,6 +344,14 @@ class EfuseKeyPurposeField(EfuseField):
                 return p[0]
         return "FORBIDDEN_STATE"
 
+    def get_name(self, raw_val):
+        for key in self.KEY_PURPOSES:
+            if key[1] == raw_val:
+                return key[0]
+
     def save(self, new_value):
         raw_val = int(self.check_format(str(new_value)))
+        str_new_value = self.get_name(raw_val)
+        if self.name == "KEY_PURPOSE_5" and str_new_value.startswith("XTS_AES"):
+            raise esptool.FatalError("%s can not have %s key due to a hardware bug (please see TRM for more details)" % (self.name, str_new_value))
         return super(EfuseKeyPurposeField, self).save(raw_val)

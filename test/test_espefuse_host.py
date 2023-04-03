@@ -588,7 +588,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         self.espefuse_py('burn_key \
                           BLOCK_KEY3 images/efuse/256bit USER --no-read-protect --no-write-protect')
         self.espefuse_py('burn_key \
-                          BLOCK_KEY4 images/efuse/256bit SECURE_BOOT_DIGEST0')
+                          BLOCK_KEY5 images/efuse/256bit SECURE_BOOT_DIGEST0')
 
         self.espefuse_py('burn_key \
                           BLOCK_KEY1 images/efuse/256bit_1_256bit_2_combined XTS_AES_256_KEY --no-read-protect --no-write-protect')
@@ -599,7 +599,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         self.check_data_block_in_log(output, "images/efuse/256bit_2", reverse_order=True)
 
         self.assertIn('[5 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 11a1a2a3', output)
-        self.assertIn('[9 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 22a1a2a3', output)
+        self.assertIn('[8 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 acadaeaf a8a9aaab a4a5a6a7 22a1a2a3', output)
 
     @unittest.skipUnless(chip_target in ["esp32s2", "esp32s3"], "512 bit keys are only supported on ESP32-S2 and S3")
     def test_burn_key_512bit_non_consecutive_blocks_loop_around(self):
@@ -1065,6 +1065,30 @@ class TestMultipleCommands(EfuseTestCase):
                           get_custom_mac \
                           adc_info \
                           check_error')
+
+
+@unittest.skipIf(
+    chip_target not in ["esp32c3", "esp32h2beta1", "esp32s3", "esp32s3beta2"],
+    reason="These chips have a hardware bug that limits the use of the KEY5",
+)
+class TestKeyPurposes(EfuseTestCase):
+    def test_burn_xts_aes_key_purpose(self):
+        self.espefuse_py(
+            "burn_efuse KEY_PURPOSE_5 XTS_AES_128_KEY",
+            check_msg="A fatal error occurred: "
+            "KEY_PURPOSE_5 can not have XTS_AES_128_KEY "
+            "key due to a hardware bug (please see TRM for more details)",
+            ret_code=2,
+        )
+
+    def test_burn_xts_aes_key(self):
+        self.espefuse_py(
+            "burn_key BLOCK_KEY5 images/efuse/256bit XTS_AES_128_KEY",
+            check_msg="A fatal error occurred: "
+            "KEY_PURPOSE_5 can not have XTS_AES_128_KEY "
+            "key due to a hardware bug (please see TRM for more details)",
+            ret_code=2,
+        )
 
 
 if __name__ == '__main__':
