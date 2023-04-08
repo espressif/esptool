@@ -60,7 +60,7 @@ Each received command will result in a response SLIP packet sent from the ESP ch
 +========+=============+==============================================================================================================+
 | 0      | Direction   | Always ``0x01`` for responses                                                                                |
 +--------+-------------+--------------------------------------------------------------------------------------------------------------+
-| 1      | Command     | Same value as Command identifier in the request packet that trigged the response                             |
+| 1      | Command     | Same value as Command identifier in the request packet that triggered the response                           |
 +--------+-------------+--------------------------------------------------------------------------------------------------------------+
 | 2-3    | Size        | Size of data field. At least the length of the `Status Bytes`_ (2 or 4 bytes, see below).                    |
 +--------+-------------+--------------------------------------------------------------------------------------------------------------+
