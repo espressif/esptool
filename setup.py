@@ -125,7 +125,7 @@ setup(
         "cryptography>=2.1.4,<40.0.0",
         "ecdsa>=0.16.0",
         "pyserial>=3.0",
-        "reedsolo>=1.5.3,<=1.6.0",
+        "reedsolo>=1.5.3,<1.8",
     ],
     packages=find_packages(),
     include_package_data=True,
