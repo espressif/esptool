@@ -32,6 +32,7 @@ jobs:
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
       STUBS_DIR: /esptool/targets/stub_flasher/
+      PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
     steps:
       - name: Checkout repository
         uses: actions/checkout@master
