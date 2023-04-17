@@ -209,6 +209,8 @@ check_stub_build:
     PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
   before_script:
     - pip install -e .[dev] --prefer-binary
+    # libffi (needed for espsecure) version keeps changing in python docker images. Add a symlink to the installed version on Raspberry Pi
+    - if [ $(uname -m) = "armv7l" ]; then ln -sfn /usr/lib/arm-linux-gnueabihf/libffi.so.7.1.0 /usr/lib/arm-linux-gnueabihf/libffi.so.6; fi
   artifacts:
     reports:
       junit: test/report.xml
@@ -233,8 +235,6 @@ target_esp32:
   tags:
     - esptool_esp32_target
   script:
-    # libffi (needed for espsecure) version keeps changing in python docker images, add a symlink to the installed version
-    - ln -sfn /usr/lib/arm-linux-gnueabihf/libffi.so.7.1.0 /usr/lib/arm-linux-gnueabihf/libffi.so.6
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32 --chip esp32 --baud 115200
 
 # ESP32S2
