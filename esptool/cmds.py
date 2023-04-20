@@ -737,7 +737,10 @@ def image_info(args):
             title = "{} extended image header".format(args.chip.upper())
             print(title)
             print("=" * len(title))
-            print("WP pin: {:#02x}".format(image.wp_pin))
+            print(
+                f"WP pin: {image.wp_pin:#02x}",
+                *["(disabled)"] if image.wp_pin == image.WP_PIN_DISABLED else [],
+            )
             print(
                 "Flash pins drive settings: "
                 "clk_drv: {:#02x}, q_drv: {:#02x}, d_drv: {:#02x}, "

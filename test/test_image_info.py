@@ -86,7 +86,7 @@ class TestImageInfo:
         assert "Flash mode: DIO" in out, "Wrong flash mode"
 
         # Extended header
-        assert "WP pin: 0xee" in out, "Wrong WP pin"
+        assert "WP pin: 0xee (disabled)" in out, "Wrong WP pin"
         assert "Chip ID: 5" in out, "Wrong chip ID"
         assert (
             "clk_drv: 0x0, q_drv: 0x0, d_drv: 0x0, "
