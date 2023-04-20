@@ -753,7 +753,15 @@ def image_info(args):
                     image.wp_drv,
                 )
             )
-            print("Chip ID: {}".format(image.chip_id))
+            try:
+                chip = next(
+                    chip
+                    for chip in CHIP_DEFS.values()
+                    if getattr(chip, "IMAGE_CHIP_ID", None) == image.chip_id
+                )
+                print(f"Chip ID: {image.chip_id} ({chip.CHIP_NAME})")
+            except StopIteration:
+                print(f"Chip ID: {image.chip_id} (Unknown ID)")
             print(
                 "Minimal chip revision: "
                 f"v{image.min_rev_full // 100}.{image.min_rev_full % 100}, "
