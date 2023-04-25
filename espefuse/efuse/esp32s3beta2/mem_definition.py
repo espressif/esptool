@@ -58,6 +58,18 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_PWR_OFF_NUM_S = 0
     EFUSE_PWR_OFF_NUM_M = 0xFFFF << EFUSE_PWR_OFF_NUM_S
 
+    # EFUSE_WR_TIM_CONF1_REG
+    EFUSE_PWR_ON_NUM_S = 8
+    EFUSE_PWR_ON_NUM_M = 0x0000FFFF << EFUSE_PWR_ON_NUM_S
+
+    # EFUSE_DAC_CONF_REG
+    EFUSE_DAC_CLK_DIV_S = 0
+    EFUSE_DAC_CLK_DIV_M = 0xFF << EFUSE_DAC_CLK_DIV_S
+
+    # EFUSE_DAC_CONF_REG
+    EFUSE_DAC_NUM_S = 9
+    EFUSE_DAC_NUM_M = 0xFF << EFUSE_DAC_NUM_S
+
 
 class EfuseDefineBlocks(EfuseBlocksBase):
 

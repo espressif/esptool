@@ -234,6 +234,13 @@ class EspEfuses(base_fields.EspEfusesBase):
                 "The eFuse supports only xtal=26M and 40M (xtal was %d)" % xtal_freq
             )
 
+        self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_NUM_M, 0xFF)
+        self.update_reg(
+            self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_CLK_DIV_M, 0x28
+        )
+        self.update_reg(
+            self.REGS.EFUSE_WR_TIM_CONF1_REG, self.REGS.EFUSE_PWR_ON_NUM_M, 0x3000
+        )
         self.update_reg(
             self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x190
         )
