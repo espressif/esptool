@@ -2,6 +2,8 @@
 
 {IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO2", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32c3="GPIO8"}
 
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0", esp8266="0", esp32="1000", esp32s2="1000", esp32s3="0", esp32c3="0"}
+
 .. _boot-mode:
 
 Boot Mode Selection
@@ -217,7 +219,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 
    The rest of boot messages are used internally by Espressif.
 
-.. only:: esp32
+.. only:: not esp8266
 
    Boot Log
    --------
@@ -225,38 +227,50 @@ Depending on the kind of hardware you have, it may also be possible to manually 
    Boot Mode Message
    ^^^^^^^^^^^^^^^^^
 
-   After reset, the second line printed by the ESP32 ROM (at 115200bps) is a reset & boot mode message:
+   After reset, the second line printed by the {IDF_TARGET_NAME} ROM (at 115200bps) is a reset & boot mode message:
 
    ::
 
       ets Jun  8 2016 00:22:57
       rst:0x1 (POWERON_RESET),boot:0x3 (DOWNLOAD_BOOT(UART0/UART1/SDIO_REI_REO_V2))
 
-   ``rst:0xNN (REASON)`` is an enumerated value (and description) of the reason for the reset. `A mapping between the hex value and each reason can be found in the ESP-IDF source <https://github.com/espressif/esp-idf/blob/release/v3.0/components/esp32/include/rom/rtc.h#L80>`__.
-   The value can be read in ESP32 code via the `get_reset_reason() ROM function <https://github.com/espressif/esp-idf/blob/release/v3.0/components/esp32/include/rom/rtc.h#L147>`__.
 
-   ``boot:0xNN (DESCRIPTION)`` is the hex value of the strapping pins, as represented in the `GPIO_STRAP register <https://github.com/espressif/esp-idf/blob/3cad00fdcca7dd4b7939d7862407c000c29657c1/components/soc/esp32/include/soc/gpio_reg.h#L130>`__.
+   ``rst:0xNN (REASON)`` is an enumerated value (and description) of the reason for the reset. A mapping between the hex value and each reason can be found in the `ESP-IDF source under RESET_REASON enum <https://github.com/espressif/esp-idf/blob/release/v5.0/components/esp_rom/include/{IDF_TARGET_PATH_NAME}/rom/rtc.h>`__.
+   The value can be read in {IDF_TARGET_NAME} code via the `get_reset_reason() ROM function <https://github.com/espressif/esp-idf/blob/release/v5.0/components/esp_rom/include/{IDF_TARGET_PATH_NAME}/rom/rtc.h>`__.
+
+   ``boot:0xNN (DESCRIPTION)`` is the hex value of the strapping pins, as represented in the `GPIO_STRAP register <https://github.com/espressif/esp-idf/blob/release/v5.0/components/soc/{IDF_TARGET_PATH_NAME}/include/soc/gpio_reg.h>`__.
+
    The individual bit values are as follows:
+   
+   .. only:: esp32
 
-   -  ``0x01`` - GPIO5
-   -  ``0x02`` - MTDO (GPIO15)
-   -  ``0x04`` - GPIO4
-   -  ``0x08`` - GPIO2
-   -  ``0x10`` - GPIO0
-   -  ``0x20`` - MTDI (GPIO12)
+      -  ``0x01`` - GPIO5
+      -  ``0x02`` - MTDO (GPIO15)
+      -  ``0x04`` - GPIO4
+      -  ``0x08`` - GPIO2
+      -  ``0x10`` - GPIO0
+      -  ``0x20`` - MTDI (GPIO12)
+
+   .. only:: not esp32
+
+      - ``0x04`` - {IDF_TARGET_STRAP_BOOT_2_GPIO}
+      - ``0x08`` - {IDF_TARGET_STRAP_BOOT_GPIO}
 
    If the pin was high on reset, the bit value will be set. If it was low on reset, the bit will be cleared.
 
    A number of boot mode strings can be shown depending on which bits are set:
 
-   -  ``DOWNLOAD_BOOT(UART0/UART1/SDIO_REI_REO_V2)`` - ESP32 is in download flashing mode (suitable for esptool)
+   -  ``DOWNLOAD_BOOT(UART0/UART1/SDIO_REI_REO_V2)`` or ``DOWNLOAD(USB/UART0)`` - {IDF_TARGET_NAME} is in download flashing mode (suitable for esptool)
    -  ``SPI_FAST_FLASH_BOOT`` - This is the normal SPI flash boot mode.
-   -  Other modes (including ``HSPI_FLASH_BOOT``, ``SPI_FLASH_BOOT``, ``SDIO_REI_FEO_V1_BOOT``, ``ATE_BOOT``) may be shown here. This indicates an unsupported boot mode has been selected.
-      Consult the strapping pins shown above (in most cases, one of these modes is selected if GPIO2 has been pulled high when GPIO0 is low).
+   -  Other modes (including ``SPI_FLASH_BOOT``, ``SDIO_REI_FEO_V1_BOOT``, ``ATE_BOOT``) may be shown here. This indicates an unsupported boot mode has been selected.
+      Consult the strapping pins shown above (in most cases, one of these modes is selected if {IDF_TARGET_STRAP_BOOT_2_GPIO} has been pulled high when {IDF_TARGET_STRAP_BOOT_GPIO} is low).
 
-   .. note::
+   .. only:: esp32
 
-      ``GPIO_STRAP`` register includes GPIO 4 but this pin is not used by any supported boot mode and be set either high or low for all supported boot modes.
+      .. note::
+
+         ``GPIO_STRAP`` register includes GPIO 4 but this pin is not used by any supported boot mode and be set either high or low for all supported boot modes.
+
 
    Later Boot Messages
    ^^^^^^^^^^^^^^^^^^^
@@ -269,34 +283,55 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 
    ::
 
-      flash read err, 1000
+      flash read err, {IDF_TARGET_BOOTLOADER_OFFSET}
 
-   This fatal error indicates that the bootloader tried to read the software bootloader header at address 0x1000 but failed to read valid data. Possible reasons for this include:
+   This fatal error indicates that the bootloader tried to read the software bootloader header at address 0x{IDF_TARGET_BOOTLOADER_OFFSET} but failed to read valid data. Possible reasons for this include:
 
-   -  There isn't actually a bootloader at offset 0x1000 (maybe the bootloader was flashed to the wrong offset by mistake, or the flash has been erased and no bootloader has been flashed yet.)
+   -  There isn't actually a bootloader at offset 0x{IDF_TARGET_BOOTLOADER_OFFSET} (maybe the bootloader was flashed to the wrong offset by mistake, or the flash has been erased and no bootloader has been flashed yet.)
    -  Physical problem with the connection to the flash chip, or flash chip power.
-   -  Boot mode accidentally set to ``HSPI_FLASH_BOOT``, which uses different SPI flash pins. Check GPIO2 (see above).
-   -  VDDSDIO has been enabled at 1.8V (due to MTDI/GPIO12, see above), but this flash chip requires 3.3V so it's browning out.
    -  Flash encryption is enabled but the bootloader is plaintext. Alternatively, flash encryption is disabled but the bootloader is encrypted ciphertext.
+
+   .. only:: esp32
+
+      -  Boot mode accidentally set to ``HSPI_FLASH_BOOT``, which uses different SPI flash pins. Check {IDF_TARGET_STRAP_BOOT_2_GPIO} (see above).
+      -  VDDSDIO has been enabled at 1.8V (due to MTDI/GPIO12, see above), but this flash chip requires 3.3V so it's browning out.
+
 
    Software Bootloader Header Info
    """""""""""""""""""""""""""""""
 
-   ::
+   .. only:: esp32
 
-      configsip: 0, SPIWP:0x00
-      clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
-      mode:DIO, clock div:1
+      ::
 
-   This is normal boot output based on a combination of efuse values and information read from the bootloader header at flash offset 0x1000:
+         configsip: 0, SPIWP:0x00
+         clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+         mode:DIO, clock div:1
 
-   -  ``configsip: N`` indicates SPI flash config:
-      -  0 for default SPI flash
-      -  1 if booting from the HSPI bus (due to EFUSE configuration)
-      -  Any other value indicates that SPI flash pins have been remapped via efuse (the value is the value read from efuse, consult :ref:`espefuse docs <espefuse>` to get an easier to read representation of these pin mappings).
+   
+   .. only:: not esp32
+
+      ::
+
+         SPIWP:0xee
+         mode:DIO, clock div:1
+
+
+   This is normal boot output based on a combination of efuse values and information read from the bootloader header at flash offset 0x{IDF_TARGET_BOOTLOADER_OFFSET}:
+
+   .. only:: esp32
+
+      -  ``configsip: N`` indicates SPI flash config:
+
+         -  0 for default SPI flash
+         -  1 if booting from the HSPI bus (due to EFUSE configuration)
+         -  Any other value indicates that SPI flash pins have been remapped via efuse (the value is the value read from efuse, consult :ref:`espefuse docs <espefuse>` to get an easier to read representation of these pin mappings).
+
+      -  ``clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00`` Custom GPIO drive strength values for SPI flash pins. These are read from the bootloader header in flash. Not currently supported.
+
+
    -  ``SPIWP:0xNN`` indicates a custom ``WP`` pin value, which is stored in the bootloader header. This pin value is only used if SPI flash pins have been remapped via efuse (as shown in the ``configsip`` value).
       All custom pin values but WP are encoded in the configsip byte loaded from efuse, and WP is supplied in the bootloader header.
-   -  ``clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00`` Custom GPIO drive strength values for SPI flash pins. These are read from the bootloader header in flash. Not currently supported.
    -  ``mode: AAA, clock div: N``. SPI flash access mode. Read from the bootloader header, correspond to the ``--flash_mode`` and ``--flash_freq`` arguments supplied to ``esptool.py write_flash`` or ``esptool.py elf2image``.
    -  ``mode`` can be DIO, DOUT, QIO, or QOUT. *QIO and QOUT are not supported here*, to boot in a Quad I/O mode the ROM bootloader should load the software bootloader in a Dual I/O mode and then the ESP-IDF software bootloader enables Quad I/O based on the detected flash chip mode.
    -  ``clock div: N`` is the SPI flash clock frequency divider. This is an integer clock divider value from an 80MHz APB clock, based on the supplied ``--flash_freq`` argument (ie 80MHz=1, 40MHz=2, etc).
@@ -316,7 +351,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 
    These entries are printed as the ROM bootloader loads each segment in the software bootloader image. The load address and length of each segment is printed.
 
-   You can compare these values to the software bootloader image by running ``esptool.py --chip esp32 image_info /path/to/bootloader.bin`` to dump image info including a summary of each segment. Corresponding details will also be found in the bootloader ELF file headers.
+   You can compare these values to the software bootloader image by running ``esptool.py --chip {IDF_TARGET_PATH_NAME} image_info /path/to/bootloader.bin`` to dump image info including a summary of each segment. Corresponding details will also be found in the bootloader ELF file headers.
 
    If there is a problem with the SPI flash chip addressing mode, the values printed by the bootloader here may be corrupted.
 
