@@ -668,26 +668,49 @@ def burn_bit(esp, efuses, args):
     print("Successful")
 
 
-def check_error(esp, efuses, args):
+def get_error_summary(efuses):
     error_in_blocks = efuses.get_coding_scheme_warnings()
-    if args.recovery:
-        if error_in_blocks:
-            confirmed = False
-            for block in reversed(efuses.blocks):
-                if block.fail or block.num_errors > 0:
-                    if not block.get_bitstring().all(False):
-                        block.save(block.get_bitstring().bytes[::-1])
-                        if not confirmed:
-                            confirmed = True
-                            efuses.confirm(
-                                "Recovery of block coding errors", args.do_not_confirm
-                            )
-                        block.burn()
-            # Reset the recovery flag to run check_error() without it,
-            # just to check the new state of eFuse blocks.
-            args.recovery = False
-            check_error(esp, efuses, args)
-    else:
-        if error_in_blocks:
-            raise esptool.FatalError("Error(s) were detected in eFuses")
+    if not error_in_blocks:
+        return False
+    writable = True
+    for blk in efuses.blocks:
+        if blk.fail or blk.num_errors:
+            if blk.id == 0:
+                for field in efuses:
+                    if field.block == blk.id and (field.fail or field.num_errors):
+                        wr = "writable" if field.is_writeable() else "not writable"
+                        writable &= wr == "writable"
+                        name = field.name
+                        val = field.get()
+                        print(f"BLOCK{field.block:<2}: {name:<40} = {val:<8} ({wr})")
+            else:
+                wr = "writable" if blk.is_writeable() else "not writable"
+                writable &= wr == "writable"
+                name = f"{blk.name} [ERRORS:{blk.num_errors} FAIL:{int(blk.fail)}]"
+                val = str(blk.get_bitstring())
+                print(f"BLOCK{blk.id:<2}: {name:<40} = {val:<8} ({wr})")
+    if not writable and error_in_blocks:
+        print("Not all errors can be fixed because some fields are write-protected!")
+    return True
+
+
+def check_error(esp, efuses, args):
+    error_in_blocks = get_error_summary(efuses)
+    if args.recovery and error_in_blocks:
+        confirmed = False
+        for block in reversed(efuses.blocks):
+            if block.fail or block.num_errors > 0:
+                if not block.get_bitstring().all(False):
+                    block.save(block.get_bitstring().bytes[::-1])
+                    if not confirmed:
+                        confirmed = True
+                        efuses.confirm(
+                            "Recovery of block coding errors", args.do_not_confirm
+                        )
+                    block.burn()
+        if confirmed:
+            efuses.update_efuses()
+        error_in_blocks = get_error_summary(efuses)
+    if error_in_blocks:
+        raise esptool.FatalError("Error(s) were detected in eFuses")
     print("No errors detected")

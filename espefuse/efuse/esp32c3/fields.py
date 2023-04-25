@@ -158,10 +158,6 @@ class EspEfuses(base_fields.EspEfusesBase):
             )
         )
 
-    def get_block_errors(self, block_num):
-        """Returns (error count, failure boolean flag)"""
-        return self.blocks[block_num].num_errors, self.blocks[block_num].fail
-
     def efuse_controller_setup(self):
         self.set_efuse_timing()
         self.clear_pgm_registers()
@@ -262,12 +258,9 @@ class EspEfuses(base_fields.EspEfusesBase):
                     self.read_reg(self.REGS.EFUSE_RD_REPEAT_ERR0_REG + offs * 4)
                     for offs in range(5)
                 ]
-                data = BitArray()
+                block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    data.append("uint:32=%d" % word)
-                # pos=32 because EFUSE_WR_DIS goes first it is 32bit long
-                # and not under error control
-                block.err_bitarray.overwrite(data, pos=32)
+                    block.err_bitarray.overwrite(BitArray("uint:32=%d" % word))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
@@ -310,21 +303,6 @@ class EfuseField(base_fields.EfuseFieldBase):
             "adc_tp": EfuseAdcPointCalibration,
             "wafer": EfuseWafer,
         }.get(type_class, EfuseField)(parent, efuse_tuple)
-
-    def get_info(self):
-        output = "%s (BLOCK%d)" % (self.name, self.block)
-        errs, fail = self.parent.get_block_errors(self.block)
-        if errs != 0 or fail:
-            output += (
-                "[FAIL:%d]" % (fail)
-                if self.block == 0
-                else "[ERRS:%d FAIL:%d]" % (errs, fail)
-            )
-        if self.efuse_class == "keyblock":
-            name = self.parent.blocks[self.block].key_purpose_name
-            if name is not None:
-                output += "\n  Purpose: %s\n " % (self.parent[name].get())
-        return output
 
 
 class EfuseWafer(EfuseField):

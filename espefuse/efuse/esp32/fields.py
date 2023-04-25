@@ -286,9 +286,6 @@ class EfuseField(base_fields.EfuseFieldBase):
             "pkg": EfusePkg,
         }.get(type_class, EfuseField)(parent, efuse_tuple)
 
-    def get_info(self):
-        return "%s (BLOCK%d):" % (self.name, self.block)
-
 
 class EfuseMacField(EfuseField):
     """

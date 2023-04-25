@@ -551,6 +551,10 @@ class EspEfusesBase(object):
         else:
             raise esptool.FatalError(error_msg)
 
+    def get_block_errors(self, block_num):
+        """Returns (error count, failure boolean flag)"""
+        return self.blocks[block_num].num_errors, self.blocks[block_num].fail
+
 
 class EfuseFieldBase(EfuseProtectBase):
     def __init__(self, parent, param):
@@ -734,3 +738,18 @@ class EfuseFieldBase(EfuseProtectBase):
         # Burn a efuse. Added for compatibility reason.
         self.save(new_value)
         self.parent.burn_all()
+
+    def get_info(self):
+        output = f"{self.name} (BLOCK{self.block})"
+        if self.block == 0:
+            if self.fail:
+                output += "[error]"
+        else:
+            errs, fail = self.parent.get_block_errors(self.block)
+            if errs != 0 or fail:
+                output += "[error]"
+        if self.efuse_class == "keyblock":
+            name = self.parent.blocks[self.block].key_purpose_name
+            if name is not None:
+                output += f"\n  Purpose: {self.parent[name].get()}\n "
+        return output
