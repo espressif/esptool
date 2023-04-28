@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import os
 import re
 import struct
 import sys
@@ -85,6 +86,15 @@ def expand_chip_name(chip_name):
 def strip_chip_name(chip_name):
     """Strip chip name to normalized form, e.g. `ESP32-S3(beta2)` -> `esp32s3beta2`"""
     return re.sub(r"[-()]", "", chip_name.lower())
+
+
+def get_file_size(path_to_file):
+    """Returns the file size in bytes"""
+    file_size = 0
+    with open(path_to_file, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        file_size = f.tell()
+    return file_size
 
 
 class FatalError(RuntimeError):

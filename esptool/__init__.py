@@ -354,7 +354,7 @@ def main(argv=None, esp=None):
     subparsers.add_parser("run", help="Run application code in flash")
 
     parser_image_info = subparsers.add_parser(
-        "image_info", help="Dump headers from an application image"
+        "image_info", help="Dump headers from a binary file (bootloader or application)"
     )
     parser_image_info.add_argument("filename", help="Image file to parse")
     parser_image_info.add_argument(

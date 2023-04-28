@@ -34,6 +34,7 @@ from .util import (
 from .util import (
     div_roundup,
     flash_size_bytes,
+    get_file_size,
     hexify,
     pad_to,
     print_overwrite,
@@ -788,11 +789,16 @@ def image_info(args):
         )
         format_str = "{:7}  {:#07x}  {:#010x}  {:#010x}  {}"
         app_desc = None
+        bootloader_desc = None
         for idx, seg in enumerate(image.segments, start=1):
             segs = seg.get_memory_type(image)
             seg_name = ", ".join(segs)
             if "DROM" in segs:  # The DROM segment starts with the esp_app_desc_t struct
                 app_desc = seg.data[:256]
+            elif "DRAM" in segs:
+                # The DRAM segment starts with the esp_bootloader_desc_t struct
+                if len(seg.data) >= 80:
+                    bootloader_desc = seg.data[:80]
             print(
                 format_str.format(idx, len(seg.data), seg.addr, seg.file_offs, seg_name)
             )
@@ -850,6 +856,27 @@ def image_info(args):
                 print(f'ESP-IDF: {idf_ver.decode("utf-8")}')
                 print(f"Secure version: {secure_version}")
 
+        elif bootloader_desc:
+            BOOTLOADER_DESC_STRUCT_FMT = "<B" + "3s" + "I32s24s" + "16s"
+            (
+                magic_byte,
+                reserved,
+                version,
+                idf_ver,
+                date_time,
+                reserved2,
+            ) = struct.unpack(BOOTLOADER_DESC_STRUCT_FMT, bootloader_desc)
+
+            if magic_byte == 80:
+                print()
+                title = "Bootloader information"
+                print(title)
+                print("=" * len(title))
+                print(f"Bootloader version: {version}")
+                print(f'ESP-IDF: {idf_ver.decode("utf-8")}')
+                print(f'Compile time: {date_time.decode("utf-8")}')
+
+    print(f"File size: {get_file_size(args.filename)} (bytes)")
     with open(args.filename, "rb") as f:
         # magic number
         try:
