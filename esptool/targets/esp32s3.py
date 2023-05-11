@@ -83,10 +83,15 @@ class ESP32S3ROM(ESP32ROM):
     UARTDEV_BUF_NO_USB_OTG = 3  # The above var when USB-OTG is used
     UARTDEV_BUF_NO_USB_JTAG_SERIAL = 4  # The above var when USB-JTAG/Serial is used
 
-    RTC_CNTL_WDT_WKEY = 0x50D83AA1
     RTCCNTL_BASE_REG = 0x60008000
+    RTC_CNTL_SWD_CONF_REG = RTCCNTL_BASE_REG + 0x00B4
+    RTC_CNTL_SWD_AUTO_FEED_EN = 1 << 31
+    RTC_CNTL_SWD_WPROTECT_REG = RTCCNTL_BASE_REG + 0x00B8
+    RTC_CNTL_SWD_WKEY = 0x8F1D312A
+
     RTC_CNTL_WDTCONFIG0_REG = RTCCNTL_BASE_REG + 0x0090
     RTC_CNTL_WDTWPROTECT_REG = RTCCNTL_BASE_REG + 0x00B0
+    RTC_CNTL_WDT_WKEY = 0x50D83AA1
 
     USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
 
@@ -238,19 +243,29 @@ class ESP32S3ROM(ESP32ROM):
             return False  # can't detect USB-JTAG/Serial in secure download mode
         return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL
 
-    def disable_rtc_watchdog(self):
-        # When USB-JTAG/Serial is used, the RTC watchdog is not reset
-        # and can then reset the board during flashing. Disable it.
+    def disable_watchdogs(self):
+        # When USB-JTAG/Serial is used, the RTC WDT and SWD watchdog are not reset
+        # and can then reset the board during flashing. Disable them.
         if self.uses_usb_jtag_serial():
+            # Disable RTC WDT
             self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)
             self.write_reg(self.RTC_CNTL_WDTCONFIG0_REG, 0)
             self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)
+
+            # Automatically feed SWD
+            self.write_reg(self.RTC_CNTL_SWD_WPROTECT_REG, self.RTC_CNTL_SWD_WKEY)
+            self.write_reg(
+                self.RTC_CNTL_SWD_CONF_REG,
+                self.read_reg(self.RTC_CNTL_SWD_CONF_REG)
+                | self.RTC_CNTL_SWD_AUTO_FEED_EN,
+            )
+            self.write_reg(self.RTC_CNTL_SWD_WPROTECT_REG, 0)
 
     def _post_connect(self):
         if self.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
         if not self.sync_stub_detected:  # Don't run if stub is reused
-            self.disable_rtc_watchdog()
+            self.disable_watchdogs()
 
     def _check_if_can_reset(self):
         """

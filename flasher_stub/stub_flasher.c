@@ -108,13 +108,17 @@ static void reset_cpu_freq()
 #endif // USE_MAX_CPU_FREQ
 
 #if WITH_USB_JTAG_SERIAL
-static void disable_rtc_watchdog()
+static void disable_watchdogs()
 {
   if (stub_uses_usb_jtag_serial())
   {
     WRITE_REG(RTC_CNTL_WDTWPROTECT_REG, RTC_CNTL_WDT_WKEY); // Disable write protection
     WRITE_REG(RTC_CNTL_WDTCONFIG0_REG, 0x0);                // Disable RTC watchdog
     WRITE_REG(RTC_CNTL_WDTWPROTECT_REG, 0x0);               // Re-enable write protection
+
+    WRITE_REG(RTC_CNTL_SWD_WPROTECT_REG, RTC_CNTL_SWD_WKEY);        // Disable write protection
+    REG_SET_MASK(RTC_CNTL_SWD_CONF_REG, RTC_CNTL_SWD_AUTO_FEED_EN); // Autofeed super watchdog
+    WRITE_REG(RTC_CNTL_SWD_WPROTECT_REG, 0x0);                      // Re-enable write protection
   }
 }
 #endif // WITH_USB_JTAG_SERIAL
@@ -450,7 +454,7 @@ void stub_main()
   #endif // USE_MAX_CPU_FREQ
 
   #if WITH_USB_JTAG_SERIAL
-    disable_rtc_watchdog();
+    disable_watchdogs();
   #endif // WITH_USB_JTAG_SERIAL
 
   /* zero bss */
