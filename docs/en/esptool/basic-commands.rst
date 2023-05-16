@@ -105,6 +105,14 @@ The read_flash command allows reading back the contents of flash. The arguments 
 
     esptool.py -p PORT -b 460800 read_flash 0 0x200000 flash_contents.bin
 
+
+It is also possible to autodetect flash size by using ``ALL`` as size. The above example with autodetection would look like this:
+
+::
+
+    esptool.py -p PORT -b 460800 read_flash 0 ALL flash_contents.bin
+
+
 .. note::
 
     If ``write_flash`` updated the boot image's :ref:`flash mode and flash size <flash-modes>` during flashing then these bytes may be different when read back.

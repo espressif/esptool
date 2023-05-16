@@ -776,6 +776,10 @@ class TestErase(EsptoolTestCase):
         empty = self.readback(0x10000, 0x1000)
         assert empty == b"\xFF" * 0x1000
 
+    def test_region_erase_all(self):
+        res = self.run_esptool("erase_region 0x0 ALL")
+        assert re.search(r"Detected flash size: \d+[KM]B", res) is not None
+
     def test_large_region_erase(self):
         # verifies that erasing a large region doesn't time out
         self.run_esptool("erase_region 0x0 0x100000")

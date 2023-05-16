@@ -39,6 +39,7 @@ import time
 import traceback
 
 from esptool.cmds import (
+    DETECTED_FLASH_SIZES,
     chip_id,
     detect_chip,
     detect_flash_size,
@@ -526,7 +527,9 @@ def main(argv=None, esp=None):
     add_spi_connection_arg(parser_read_flash)
     parser_read_flash.add_argument("address", help="Start address", type=arg_auto_int)
     parser_read_flash.add_argument(
-        "size", help="Size of region to dump", type=arg_auto_int
+        "size",
+        help="Size of region to dump. Use `ALL` to read to the end of flash.",
+        type=arg_auto_size,
     )
     parser_read_flash.add_argument("filename", help="Name of binary dump")
     parser_read_flash.add_argument(
@@ -570,8 +573,9 @@ def main(argv=None, esp=None):
     )
     parser_erase_region.add_argument(
         "size",
-        help="Size of region to erase (must be multiple of 4096)",
-        type=arg_auto_int,
+        help="Size of region to erase (must be multiple of 4096). "
+        "Use `ALL` to erase to the end of flash.",
+        type=arg_auto_size,
     )
 
     parser_merge_bin = subparsers.add_parser(
@@ -827,6 +831,23 @@ def main(argv=None, esp=None):
                         "than 16MB, in case of failure use --no-stub."
                     )
 
+        if getattr(args, "size", "") == "all":
+            if esp.secure_download_mode:
+                raise FatalError(
+                    "Detecting flash size is not supported in secure download mode. "
+                    "Set an exact size value."
+                )
+            # detect flash size
+            flash_id = esp.flash_id()
+            size_id = flash_id >> 16
+            size_str = DETECTED_FLASH_SIZES.get(size_id)
+            if size_str is None:
+                raise FatalError(
+                    "Detecting flash size failed. Set an exact size value."
+                )
+            print(f"Detected flash size: {size_str}")
+            args.size = flash_size_bytes(size_str)
+
         if esp.IS_STUB and hasattr(args, "address") and hasattr(args, "size"):
             if args.address + args.size > 0x1000000:
                 print(
@@ -869,6 +890,11 @@ def main(argv=None, esp=None):
 
 def arg_auto_int(x):
     return int(x, 0)
+
+
+def arg_auto_size(x):
+    x = x.lower()
+    return x if x == "all" else arg_auto_int(x)
 
 
 def get_port_list():
