@@ -1812,6 +1812,16 @@ def _main():
     except esptool.FatalError as e:
         print("\nA fatal error occurred: %s" % e)
         sys.exit(2)
+    except ValueError as e:
+        try:
+            if [arg for arg in e.args if "Could not deserialize key data." in arg]:
+                print(
+                    "Note: This error originates from the cryptography module. "
+                    "It is likely not a problem with espsecure, "
+                    "please make sure you are using a compatible OpenSSL backend."
+                )
+        finally:
+            raise
 
 
 if __name__ == "__main__":
