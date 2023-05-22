@@ -18,9 +18,12 @@ if os.name != "nt":
     # Linux/macOS: remove current script directory to avoid importing this file
     # as a module; we want to import the installed espefuse module instead
     with contextlib.suppress(ValueError):
-        if sys.path[0].endswith("/bin"):
-            sys.path.pop(0)
-        sys.path.remove(os.path.dirname(sys.executable))
+        executable_dir = os.path.dirname(sys.executable)
+        sys.path = [
+            path
+            for path in sys.path
+            if not path.endswith(("/bin", "/sbin")) and path != executable_dir
+        ]
 
     # Linux/macOS: delete imported module entry to force Python to load
     # the module from scratch; this enables importing espefuse module in
