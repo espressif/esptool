@@ -136,8 +136,12 @@ class ESP32C6ROM(ESP32C3ROM):
 
     def read_mac(self):
         mac0 = self.read_reg(self.MAC_EFUSE_REG)
-        mac1 = self.read_reg(self.MAC_EFUSE_REG + 4)  # only bottom 16 bits are MAC
-        bitstring = struct.pack(">II", mac1, mac0)[2:]
+        mac_reg1 = self.read_reg(self.MAC_EFUSE_REG + 4)
+        mac1 = mac_reg1 & 0xFFFF
+        mac_ext = (mac_reg1 >> 16) & 0xFFFF
+        bitstring = struct.pack(">HIH", mac1, mac0, mac_ext)
+        # MAC: 60:55:f9:f7:2c:a2:ff:fe
+        #     | mac1|   mac0    | mac_ext|
         return tuple(bitstring)
 
     def get_flash_crypt_config(self):
