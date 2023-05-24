@@ -29,7 +29,7 @@ Getting started is easy:
 
 2) Connect an Espressif chip to your computer.
 
-3) Run ``esptool.py`` commands:
+3) Run ``esptool.py`` commands. For example, to read information about your chip's SPI flash, run:
 
     ::
 

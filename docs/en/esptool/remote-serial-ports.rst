@@ -1,7 +1,7 @@
 Remote Serial Ports
 ===================
 
-It is possible to connect to any networked remote serial port that supports `RFC2217 <http://www.ietf.org/rfc/rfc2217.txt>`__ (Telnet) protocol. To do this, specify the serial port to esptool as ``rfc2217://<host>:<port>``. For example:
+It is possible to connect to any networked remote serial port that supports `RFC2217 <http://www.ietf.org/rfc/rfc2217.txt>`__ (Telnet) protocol. To do this, specify the serial port to esptool as ``rfc2217://<host>:<port>``. For example, to read information about your chip's SPI flash, run:
 
 ::
 
