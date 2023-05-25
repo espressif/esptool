@@ -36,9 +36,9 @@ from bitstring import BitStream
 from conftest import arg_chip, arg_port, arg_reset_port, need_to_install_package_err
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
-IMAGES_DIR = os.path.join(TEST_DIR, "images/efuse/")
-S_IMAGES_DIR = os.path.join(TEST_DIR, "secure_images/")
-EFUSE_S_DIR = os.path.join(TEST_DIR, "efuse_scripts/")
+IMAGES_DIR = os.path.join(TEST_DIR, "images", "efuse")
+S_IMAGES_DIR = os.path.join(TEST_DIR, "secure_images")
+EFUSE_S_DIR = os.path.join(TEST_DIR, "efuse_scripts")
 
 import pytest
 

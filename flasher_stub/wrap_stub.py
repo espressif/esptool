@@ -17,7 +17,7 @@ sys.path.append("..")
 import esptool  # noqa: E402
 
 THIS_DIR = os.path.dirname(__file__)
-BUILD_DIR = os.path.join(THIS_DIR, "./build/")
+BUILD_DIR = os.path.join(THIS_DIR, "build")
 
 
 def wrap_stub(elf_file):
@@ -66,7 +66,7 @@ def write_json_files(stubs_dict):
             return json.JSONEncoder.default(self, obj)
 
     for filename, stub_data in stubs_dict.items():
-        with open(BUILD_DIR + filename, "w") as outfile:
+        with open(os.path.join(BUILD_DIR, filename), "w") as outfile:
             json.dump(stub_data, outfile, cls=BytesEncoder, indent=4)
 
 

@@ -97,13 +97,13 @@ DEFAULT_CONNECT_ATTEMPTS = cfg.getint("connect_attempts", 7)
 # Number of times to try writing a data block
 WRITE_BLOCK_ATTEMPTS = cfg.getint("write_block_attempts", 3)
 
-STUBS_DIR = os.path.join(os.path.dirname(__file__), "./targets/stub_flasher/")
+STUBS_DIR = os.path.join(os.path.dirname(__file__), "targets", "stub_flasher")
 
 
 def get_stub_json_path(chip_name):
     chip_name = strip_chip_name(chip_name)
     chip_name = chip_name.replace("esp", "")
-    return STUBS_DIR + "stub_flasher_" + chip_name + ".json"
+    return os.path.join(STUBS_DIR, f"stub_flasher_{chip_name}.json")
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):

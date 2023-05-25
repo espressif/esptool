@@ -12,7 +12,7 @@ try:
 except ImportError:
     need_to_install_package_err()
 
-IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images/")
+IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images")
 
 ESP8266_BIN = "not_4_byte_aligned.bin"
 
@@ -40,7 +40,7 @@ class TestImageInfo:
         ]
         if version is not None:
             cmd += ["--version", str(version)]
-        cmd += ["".join([IMAGES_DIR, file])]
+        cmd += ["".join([IMAGES_DIR, os.sep, file])]
         print("\nExecuting {}".format(" ".join(cmd)))
 
         try:
