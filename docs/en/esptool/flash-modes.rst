@@ -1,4 +1,11 @@
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp8266="0x0", esp32="0x1000", esp32s2="0x1000", esp32s3="0x0", esp32c3="0x0"}
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000"}
+
+{IDF_TARGET_FLASH_FREQ_F:default="80", esp32c2="60", esp32h2="48"}
+
+{IDF_TARGET_FLASH_FREQ_0:default="40", esp32c2="30", esp32h2="24"}
+
+{IDF_TARGET_FLASH_FREQ:default="``40m``, ``26m``, ``20m``, ``80m``", esp32c2="``30m``, ``20m``, ``15m``, ``60m``", esp32h2="``24m``, ``16m``, ``12m``, ``48m``", esp32c6="``40m``, ``20m``, ``80m``"}
+
 
 .. _flash-modes:
 
@@ -36,9 +43,9 @@ For a full explanation of these modes, see the :ref:`SPI Flash Modes page <spi-f
 Flash Frequency (--flash_freq, -ff)
 ------------------------------------
 
-Clock frequency for SPI flash interactions. Valid values are ``keep``, ``40m``, ``26m``, ``20m``, ``80m`` (MHz). The default is ``keep``, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable ``ESPTOOL_FF``.
+Clock frequency for SPI flash interactions. Valid values are ``keep``, {IDF_TARGET_FLASH_FREQ} (MHz). The default is ``keep``, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable ``ESPTOOL_FF``.
 
-The flash chip connected to most chips works with 40MHz clock speeds, but you can try lower values if the device won't boot. The highest 80MHz flash clock speed will give the best performance, but may cause crashing if the flash or board design is not capable of this speed.
+The flash chip connected to most chips works with {IDF_TARGET_FLASH_FREQ_0}MHz clock speeds, but you can try lower values if the device won't boot. The highest {IDF_TARGET_FLASH_FREQ_F}MHz flash clock speed will give the best performance, but may cause crashing if the flash or board design is not capable of this speed.
 
 Flash Size (--flash_size, -fs)
 -------------------------------
@@ -49,13 +56,13 @@ Size of the SPI flash, given in megabytes.
 
     Valid values are: ``keep``, ``detect``, ``256KB``, ``512KB``, ``1MB``, ``2MB``, ``4MB``, ``2MB-c1``, ``4MB-c1``, ``8MB``, ``16MB``
 
-.. only:: esp32 or esp32c3
+.. only:: esp32 or esp32c3 or esp32c6 or esp32c2 or esp32h2
 
     Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``
 
 .. only:: esp32s2 or esp32s3
 
-    Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``, ``32MB``, ``64MB``
+    Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``, ``32MB``, ``64MB``, ``128MB``
 
 .. note::
 

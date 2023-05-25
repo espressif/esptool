@@ -1,4 +1,4 @@
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp8266="0x0", esp32="0x1000", esp32s2="0x1000", esp32s3="0x0", esp32c3="0x0"}
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000"}
 
 .. _troubleshooting:
 
