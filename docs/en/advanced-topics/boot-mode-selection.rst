@@ -287,14 +287,14 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 
    This fatal error indicates that the bootloader tried to read the software bootloader header at address 0x{IDF_TARGET_BOOTLOADER_OFFSET} but failed to read valid data. Possible reasons for this include:
 
-   -  There isn't actually a bootloader at offset 0x{IDF_TARGET_BOOTLOADER_OFFSET} (maybe the bootloader was flashed to the wrong offset by mistake, or the flash has been erased and no bootloader has been flashed yet.)
-   -  Physical problem with the connection to the flash chip, or flash chip power.
-   -  Flash encryption is enabled but the bootloader is plaintext. Alternatively, flash encryption is disabled but the bootloader is encrypted ciphertext.
+   .. list::
 
-   .. only:: esp32
+      -  There isn't actually a bootloader at offset 0x{IDF_TARGET_BOOTLOADER_OFFSET} (maybe the bootloader was flashed to the wrong offset by mistake, or the flash has been erased and no bootloader has been flashed yet.)
+      -  Physical problem with the connection to the flash chip, or flash chip power.
+      -  Flash encryption is enabled but the bootloader is plaintext. Alternatively, flash encryption is disabled but the bootloader is encrypted ciphertext.
 
-      -  Boot mode accidentally set to ``HSPI_FLASH_BOOT``, which uses different SPI flash pins. Check {IDF_TARGET_STRAP_BOOT_2_GPIO} (see above).
-      -  VDDSDIO has been enabled at 1.8V (due to MTDI/GPIO12, see above), but this flash chip requires 3.3V so it's browning out.
+      :esp32: -  Boot mode accidentally set to ``HSPI_FLASH_BOOT``, which uses different SPI flash pins. Check {IDF_TARGET_STRAP_BOOT_2_GPIO} (see above).
+      :esp32: -  VDDSDIO has been enabled at 1.8V (due to MTDI/GPIO12, see above), but this flash chip requires 3.3V so it's browning out.
 
 
    Software Bootloader Header Info
@@ -317,26 +317,24 @@ Depending on the kind of hardware you have, it may also be possible to manually 
          mode:DIO, clock div:1
 
 
-   This is normal boot output based on a combination of efuse values and information read from the bootloader header at flash offset 0x{IDF_TARGET_BOOTLOADER_OFFSET}:
+   This is normal boot output based on a combination of eFuse values and information read from the bootloader header at flash offset 0x{IDF_TARGET_BOOTLOADER_OFFSET}:
 
-   .. only:: esp32
+   .. list::
 
-      -  ``configsip: N`` indicates SPI flash config:
+      :esp32: -  ``configsip: N`` indicates SPI flash config:
 
-         -  0 for default SPI flash
-         -  1 if booting from the HSPI bus (due to EFUSE configuration)
-         -  Any other value indicates that SPI flash pins have been remapped via efuse (the value is the value read from efuse, consult :ref:`espefuse docs <espefuse>` to get an easier to read representation of these pin mappings).
+         :esp32: -  0 for default SPI flash
+         :esp32: -  1 if booting from the HSPI bus (due to eFuse configuration)
+         :esp32: -  Any other value indicates that SPI flash pins have been remapped via eFuse (the value is the value read from eFuse, consult :ref:`espefuse docs <espefuse>` to get an easier to read representation of these pin mappings).
 
-      -  ``clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00`` Custom GPIO drive strength values for SPI flash pins. These are read from the bootloader header in flash. Not currently supported.
-
-
-   -  ``SPIWP:0xNN`` indicates a custom ``WP`` pin value, which is stored in the bootloader header. This pin value is only used if SPI flash pins have been remapped via efuse (as shown in the ``configsip`` value).
-      All custom pin values but WP are encoded in the configsip byte loaded from efuse, and WP is supplied in the bootloader header.
-   -  ``mode: AAA, clock div: N``. SPI flash access mode. Read from the bootloader header, correspond to the ``--flash_mode`` and ``--flash_freq`` arguments supplied to ``esptool.py write_flash`` or ``esptool.py elf2image``.
-   -  ``mode`` can be DIO, DOUT, QIO, or QOUT. *QIO and QOUT are not supported here*, to boot in a Quad I/O mode the ROM bootloader should load the software bootloader in a Dual I/O mode and then the ESP-IDF software bootloader enables Quad I/O based on the detected flash chip mode.
-   -  ``clock div: N`` is the SPI flash clock frequency divider. This is an integer clock divider value from an 80MHz APB clock, based on the supplied ``--flash_freq`` argument (ie 80MHz=1, 40MHz=2, etc).
-      The ROM bootloader actually loads the software bootloader at a lower frequency than the flash_freq value. The initial APB clock frequency is equal to the crystal frequency, so with a 40MHz crystal the SPI clock used to load the software bootloader will be half the configured value (40MHz/2=20MHz).
-      When the software bootloader starts it sets the APB clock to 80MHz causing the SPI clock frequency to match the value set when flashing.
+      -  ``SPIWP:0xNN`` indicates a custom ``WP`` pin value, which is stored in the bootloader header. This pin value is only used if SPI flash pins have been remapped via eFuse (as shown in the ``configsip`` value).
+         All custom pin values but WP are encoded in the configsip byte loaded from eFuse, and WP is supplied in the bootloader header.
+      :esp32: -  ``clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00`` Custom GPIO drive strength values for SPI flash pins. These are read from the bootloader header in flash. Not currently supported.
+      -  ``mode: AAA, clock div: N``. SPI flash access mode. Read from the bootloader header, correspond to the ``--flash_mode`` and ``--flash_freq`` arguments supplied to ``esptool.py write_flash`` or ``esptool.py elf2image``.
+      -  ``mode`` can be DIO, DOUT, QIO, or QOUT. *QIO and QOUT are not supported here*, to boot in a Quad I/O mode the ROM bootloader should load the software bootloader in a Dual I/O mode and then the ESP-IDF software bootloader enables Quad I/O based on the detected flash chip mode.
+      -  ``clock div: N`` is the SPI flash clock frequency divider. This is an integer clock divider value from an 80MHz APB clock, based on the supplied ``--flash_freq`` argument (ie 80MHz=1, 40MHz=2, etc).
+         The ROM bootloader actually loads the software bootloader at a lower frequency than the flash_freq value. The initial APB clock frequency is equal to the crystal frequency, so with a 40MHz crystal the SPI clock used to load the software bootloader will be half the configured value (40MHz/2=20MHz).
+         When the software bootloader starts it sets the APB clock to 80MHz causing the SPI clock frequency to match the value set when flashing.
 
    Software Bootloader Load Segments
    """""""""""""""""""""""""""""""""
