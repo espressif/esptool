@@ -273,7 +273,7 @@ static void start_next_erase(void)
             esp_rom_opiflash_wren();
 
             esp_rom_opiflash_exec_cmd(1, SPI_FLASH_SLOWRD_MODE,
-                                CMD_LARGE_BLOCK_ERASE, 8, 
+                                CMD_LARGE_BLOCK_ERASE, 8,
                                 fs.next_erase_sector * FLASH_SECTOR_SIZE, 24,
                                 0,
                                 NULL, 0,
@@ -291,7 +291,7 @@ static void start_next_erase(void)
             esp_rom_opiflash_wren();
 
             esp_rom_opiflash_exec_cmd(1, SPI_FLASH_SLOWRD_MODE,
-                                CMD_SECTOR_ERASE, 8, 
+                                CMD_SECTOR_ERASE, 8,
                                 fs.next_erase_sector * FLASH_SECTOR_SIZE, 24,
                                 0,
                                 NULL, 0,
@@ -423,6 +423,13 @@ void handle_flash_encrypt_data(void *data_buf, uint32_t length) {
 #endif // !ESP8266
 
 void handle_flash_deflated_data(void *data_buf, uint32_t length) {
+  /* if all data has been uploaded and another block comes,
+     accept it only if it is part of a 4-byte Adler-32 checksum */
+  if (fs.remaining == 0 && length > 4) {
+    fs.last_error = ESP_TOO_MUCH_DATA;
+    return;
+  }
+
   static uint8_t out_buf[32768];
   static uint8_t *next_out = out_buf;
   int status = TINFL_STATUS_NEEDS_MORE_INPUT;
@@ -463,9 +470,6 @@ void handle_flash_deflated_data(void *data_buf, uint32_t length) {
 
   if (status == TINFL_STATUS_DONE && fs.remaining > 0) {
     fs.last_error = ESP_NOT_ENOUGH_DATA;
-  }
-  if (status != TINFL_STATUS_DONE && fs.remaining == 0) {
-    fs.last_error = ESP_TOO_MUCH_DATA;
   }
 }
 
