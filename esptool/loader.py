@@ -295,6 +295,7 @@ class ESPLoader(object):
             "flash_id": None,
             "chip_id": None,
             "uart_no": None,
+            "usb_pid": None,
         }
 
         if isinstance(port, str):
@@ -475,6 +476,9 @@ class ESPLoader(object):
             self.sync_stub_detected &= val == 0
 
     def _get_pid(self):
+        if self.cache["usb_pid"] is not None:
+            return self.cache["usb_pid"]
+
         if list_ports is None:
             print(
                 "\nListing all serial ports is currently not available. "
@@ -502,10 +506,11 @@ class ESPLoader(object):
         ports = list_ports.comports()
         for p in ports:
             if p.device in active_ports:
+                self.cache["usb_pid"] = p.pid
                 return p.pid
         print(
-            "\nFailed to get PID of a device on {}, "
-            "using standard reset sequence.".format(active_port)
+            f"\nFailed to get PID of a device on {active_port}, "
+            "using standard reset sequence."
         )
 
     def _connect_attempt(self, reset_strategy, mode="default_reset"):

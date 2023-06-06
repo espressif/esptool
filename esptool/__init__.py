@@ -713,7 +713,16 @@ def main(argv=None, esp=None):
                 )
                 args.no_stub = True
             else:
-                esp = esp.run_stub()
+                try:
+                    esp = esp.run_stub()
+                except Exception:
+                    # The CH9102 bridge (PID: 0x55D4) can have issues on MacOS
+                    if sys.platform == "darwin" and esp._get_pid() == 0x55D4:
+                        print(
+                            "\nNote: If issues persist, "
+                            "try installing the WCH USB-to-Serial MacOS driver."
+                        )
+                    raise
 
         if args.override_vddsdio:
             esp.override_vddsdio(args.override_vddsdio)
