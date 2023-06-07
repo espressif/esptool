@@ -62,10 +62,10 @@
 
     Mac fuses:
     MAC (BLOCK1)                                       MAC address                                       
-    = 60:55:f9:f7:2c:05:ff:fe (OK) R/W 
+    = 60:55:f9:f7:2c:05 (OK) R/W 
     MAC_EXT (BLOCK1)                                   Stores the extended bits of MAC address            = ff:fe (OK) R/W 
     CUSTOM_MAC (BLOCK3)                                Custom MAC                                        
-    = 00:00:00:00:00:00:ff:fe (OK) R/W 
+    = 00:00:00:00:00:00 (OK) R/W 
 
     Security fuses:
     DIS_FORCE_DOWNLOAD (BLOCK0)                        Represents whether the function that forces chip i = False R/W (0b0)

@@ -577,6 +577,9 @@ class EfuseFieldBase(EfuseProtectBase):
         self.bitarray.set(0)
         self.update(self.parent.blocks[self.block].bitarray)
 
+    def is_field_calculated(self):
+        return self.word is None or self.pos is None
+
     def check_format(self, new_value_str):
         if new_value_str is None:
             return new_value_str
@@ -669,8 +672,10 @@ class EfuseFieldBase(EfuseProtectBase):
         self.save_to_block(bitarray_field)
 
     def update(self, bit_array_block):
-        if self.word is None or self.pos is None:
-            self.bitarray.overwrite(self.convert_to_bitstring(self.get()), pos=0)
+        if self.is_field_calculated():
+            self.bitarray.overwrite(
+                self.convert_to_bitstring(self.check_format(self.get())), pos=0
+            )
             return
         field_len = self.bitarray.len
         bit_array_block.pos = bit_array_block.length - (

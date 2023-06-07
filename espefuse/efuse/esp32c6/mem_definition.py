@@ -12,6 +12,7 @@ from ..mem_definition_base import (
     EfuseBlocksBase,
     EfuseFieldsBase,
     EfuseRegistersBase,
+    Field,
 )
 
 
@@ -150,6 +151,16 @@ class EfuseDefineFields(EfuseFieldsBase):
             elif efuse.category == "calibration":
                 self.BLOCK2_CALIBRATION_EFUSES.append(efuse)
                 self.ALL_EFUSES[i] = None
+
+        f = Field()
+        f.name = "MAC_EUI64"
+        f.block = 1
+        f.bit_len = 64
+        f.type = f"bytes:{f.bit_len // 8}"
+        f.category = "MAC"
+        f.class_type = "mac"
+        f.description = "calc MAC_EUI64 = MAC[0]:MAC[1]:MAC[2]:MAC_EXT[0]:MAC_EXT[1]:MAC[3]:MAC[4]:MAC[5]"
+        self.CALC.append(f)
 
         for efuse in self.ALL_EFUSES:
             if efuse is not None:

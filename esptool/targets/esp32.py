@@ -283,8 +283,10 @@ class ESP32ROM(ESPLoader):
     def chip_id(self):
         raise NotSupportedError(self, "chip_id")
 
-    def read_mac(self):
+    def read_mac(self, mac_type="BASE_MAC"):
         """Read MAC from EFUSE region"""
+        if mac_type != "BASE_MAC":
+            return None
         words = [self.read_efuse(2), self.read_efuse(1)]
         bitstring = struct.pack(">II", *words)
         bitstring = bitstring[2:8]  # trim the 2 byte CRC

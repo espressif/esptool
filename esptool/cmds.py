@@ -1029,12 +1029,16 @@ def elf2image(args):
 
 
 def read_mac(esp, args):
-    mac = esp.read_mac()
-
     def print_mac(label, mac):
         print("%s: %s" % (label, ":".join(map(lambda x: "%02x" % x, mac))))
 
-    print_mac("MAC", mac)
+    eui64 = esp.read_mac("EUI64")
+    if eui64:
+        print_mac("MAC", eui64)
+        print_mac("BASE MAC", esp.read_mac("BASE_MAC"))
+        print_mac("MAC_EXT", esp.read_mac("MAC_EXT"))
+    else:
+        print_mac("MAC", esp.read_mac("BASE_MAC"))
 
 
 def chip_id(esp, args):

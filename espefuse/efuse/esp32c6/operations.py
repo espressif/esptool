@@ -167,8 +167,7 @@ def add_commands(subparsers, efuses):
     p.add_argument(
         "mac",
         help="Custom MAC Address to burn given in hexadecimal format with bytes "
-        "separated by colons (e.g. AA:CD:EF:01:02:03). "
-        "Final CUSTOM_MAC = CUSTOM_MAC[48] + MAC_EXT[16]",
+        "separated by colons (e.g. AA:CD:EF:01:02:03).",
         type=fields.base_fields.CheckArgValue(efuses, "CUSTOM_MAC"),
     )
     add_force_write_always(p)

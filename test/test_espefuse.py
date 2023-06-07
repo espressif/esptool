@@ -184,8 +184,6 @@ class TestReadCommands(EfuseTestCase):
         self.espefuse_py("get_custom_mac -h")
         if arg_chip == "esp32":
             right_msg = "Custom MAC Address is not set in the device."
-        elif arg_chip in ["esp32h2", "esp32h2beta1"]:
-            right_msg = "Custom MAC Address: 00:00:00:00:00:00:00:00 (OK)"
         else:
             right_msg = "Custom MAC Address: 00:00:00:00:00:00 (OK)"
         self.espefuse_py("get_custom_mac", check_msg=right_msg)
@@ -386,19 +384,13 @@ class TestBurnCustomMacCommands(EfuseTestCase):
     def test_burn_custom_mac(self):
         self.espefuse_py("burn_custom_mac -h")
         cmd = "burn_custom_mac AA:CD:EF:11:22:33"
+        mac = "aa:cd:ef:11:22:33"
         if arg_chip == "esp32":
             self.espefuse_py(
-                cmd,
-                check_msg="Custom MAC Address version 1: "
-                "aa:cd:ef:11:22:33 (CRC 0x63 OK)",
+                cmd, check_msg=f"Custom MAC Address version 1: {mac} (CRC 0x63 OK)"
             )
         else:
-            mac_custom = (
-                "aa:cd:ef:11:22:33:00:00"
-                if arg_chip in ["esp32h2", "esp32h2beta1"]
-                else "aa:cd:ef:11:22:33"
-            )
-            self.espefuse_py(cmd, check_msg=f"Custom MAC Address: {mac_custom} (OK)")
+            self.espefuse_py(cmd, check_msg=f"Custom MAC Address: {mac} (OK)")
 
     def test_burn_custom_mac2(self):
         self.espefuse_py(
@@ -645,12 +637,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
             ret_code=2,
         )
         self.espefuse_py("burn_efuse CUSTOM_MAC AA:CD:EF:01:02:03")
-        if arg_chip in ["esp32h2", "esp32h2beta1"]:
-            self.espefuse_py(
-                "get_custom_mac", check_msg=f"aa:cd:ef:01:02:03:00:00 {crc_msg}"
-            )
-        else:
-            self.espefuse_py("get_custom_mac", check_msg=f"aa:cd:ef:01:02:03 {crc_msg}")
+        self.espefuse_py("get_custom_mac", check_msg=f"aa:cd:ef:01:02:03 {crc_msg}")
 
     def test_burn_efuse(self):
         self.espefuse_py("burn_efuse -h")

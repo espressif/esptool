@@ -131,8 +131,10 @@ class ESP8266ROM(ESPLoader):
         id1 = self.read_reg(self.ESP_OTP_MAC1)
         return (id0 >> 24) | ((id1 & 0xFFFFFF) << 8)
 
-    def read_mac(self):
+    def read_mac(self, mac_type="BASE_MAC"):
         """Read MAC from OTP ROM"""
+        if mac_type != "BASE_MAC":
+            return None
         mac0 = self.read_reg(self.ESP_OTP_MAC0)
         mac1 = self.read_reg(self.ESP_OTP_MAC1)
         mac3 = self.read_reg(self.ESP_OTP_MAC3)

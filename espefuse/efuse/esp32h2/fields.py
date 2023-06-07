@@ -327,23 +327,27 @@ class EfuseMacField(EfuseField):
             raise esptool.FatalError(
                 "Required MAC Address in AA:CD:EF:01:02:03 format!"
             )
-        if new_value_str.count(":") != 5:
+        num_bytes = 8 if self.name == "MAC_EUI64" else 6
+        if new_value_str.count(":") != num_bytes - 1:
             raise esptool.FatalError(
-                "MAC Address needs to be a 6-byte hexadecimal format "
+                f"MAC Address needs to be a {num_bytes}-byte hexadecimal format "
                 "separated by colons (:)!"
             )
         hexad = new_value_str.replace(":", "")
-        if len(hexad) != 12:
+        hexad = hexad.split(" ", 1)[0] if self.is_field_calculated() else hexad
+        if len(hexad) != num_bytes * 2:
             raise esptool.FatalError(
-                "MAC Address needs to be a 6-byte hexadecimal number "
-                "(12 hexadecimal characters)!"
+                f"MAC Address needs to be a {num_bytes}-byte hexadecimal number "
+                f"({num_bytes * 2} hexadecimal characters)!"
             )
         # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
         bindata = binascii.unhexlify(hexad)
-        # unicast address check according to
-        # https://tools.ietf.org/html/rfc7042#section-2.1
-        if esptool.util.byte(bindata, 0) & 0x01:
-            raise esptool.FatalError("Custom MAC must be a unicast MAC!")
+
+        if not self.is_field_calculated():
+            # unicast address check according to
+            # https://tools.ietf.org/html/rfc7042#section-2.1
+            if esptool.util.byte(bindata, 0) & 0x01:
+                raise esptool.FatalError("Custom MAC must be a unicast MAC!")
         return bindata
 
     def check(self):
@@ -356,11 +360,14 @@ class EfuseMacField(EfuseField):
 
     def get(self, from_read=True):
         if self.name == "CUSTOM_MAC":
-            mac = self.get_raw(from_read)[::-1] + self.parent["MAC_EXT"].get_raw(
-                from_read
-            )
+            mac = self.get_raw(from_read)[::-1]
         elif self.name == "MAC":
-            mac = self.get_raw(from_read) + self.parent["MAC_EXT"].get_raw(from_read)
+            mac = self.get_raw(from_read)
+        elif self.name == "MAC_EUI64":
+            mac = self.parent["MAC"].get_bitstring(from_read).copy()
+            mac_ext = self.parent["MAC_EXT"].get_bitstring(from_read)
+            mac.insert(mac_ext, 24)
+            mac = mac.bytes
         else:
             mac = self.get_raw(from_read)
         return "%s %s" % (util.hexify(mac, ":"), self.check())
@@ -380,7 +387,7 @@ class EfuseMacField(EfuseField):
         else:
             # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not possible,
             # as it's written in the factory.
-            raise esptool.FatalError("Writing Factory MAC address is not supported")
+            raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
 # fmt: off
