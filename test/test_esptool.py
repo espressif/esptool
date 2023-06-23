@@ -616,14 +616,16 @@ class TestSecurityInfo(EsptoolTestCase):
     def test_show_security_info(self):
         res = self.run_esptool("get_security_info")
         assert "Flags" in res
-        assert "Flash_Crypt_Cnt" in res
-        assert "Key_Purposes" in res
+        assert "Crypt Count" in res
+        assert "Key Purposes" in res
         if arg_chip != "esp32s2":
             esp = esptool.get_default_connected_device(
                 [arg_port], arg_port, 10, 115200, arg_chip
             )
-            assert f"Chip_ID: {esp.IMAGE_CHIP_ID}" in res
-            assert "Api_Version" in res
+            assert f"Chip ID: {esp.IMAGE_CHIP_ID}" in res
+            assert "API Version" in res
+        assert "Secure Boot" in res
+        assert "Flash Encryption" in res
 
 
 class TestFlashSizes(EsptoolTestCase):

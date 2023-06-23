@@ -1180,15 +1180,95 @@ def write_flash_status(esp, args):
     print(("After flash status:   " + fmt) % esp.read_status(args.bytes))
 
 
+# The following mapping was taken from the ROM code
+# This mapping is same across all targets in the ROM
+SECURITY_INFO_FLAG_MAP = {
+    "SECURE_BOOT_EN": (1 << 0),
+    "SECURE_BOOT_AGGRESSIVE_REVOKE": (1 << 1),
+    "SECURE_DOWNLOAD_ENABLE": (1 << 2),
+    "SECURE_BOOT_KEY_REVOKE0": (1 << 3),
+    "SECURE_BOOT_KEY_REVOKE1": (1 << 4),
+    "SECURE_BOOT_KEY_REVOKE2": (1 << 5),
+    "SOFT_DIS_JTAG": (1 << 6),
+    "HARD_DIS_JTAG": (1 << 7),
+    "DIS_USB": (1 << 8),
+    "DIS_DOWNLOAD_DCACHE": (1 << 9),
+    "DIS_DOWNLOAD_ICACHE": (1 << 10),
+}
+
+
+# Get the status of respective security flag
+def get_security_flag_status(flag_name, flags_value):
+    try:
+        return (flags_value & SECURITY_INFO_FLAG_MAP[flag_name]) != 0
+    except KeyError:
+        raise ValueError(f"Invalid flag name: {flag_name}")
+
+
 def get_security_info(esp, args):
     si = esp.get_security_info()
-    # TODO: better display
+    print()
+    title = "Security Information:"
+    print(title)
+    print("=" * len(title))
     print("Flags: {:#010x} ({})".format(si["flags"], bin(si["flags"])))
-    print("Flash_Crypt_Cnt: {:#x}".format(si["flash_crypt_cnt"]))
-    print("Key_Purposes: {}".format(si["key_purposes"]))
+    print("Key Purposes: {}".format(si["key_purposes"]))
     if si["chip_id"] is not None and si["api_version"] is not None:
-        print("Chip_ID: {}".format(si["chip_id"]))
-        print("Api_Version: {}".format(si["api_version"]))
+        print("Chip ID: {}".format(si["chip_id"]))
+        print("API Version: {}".format(si["api_version"]))
+
+    flags = si["flags"]
+
+    if get_security_flag_status("SECURE_BOOT_EN", flags):
+        print("Secure Boot: Enabled")
+        if get_security_flag_status("SECURE_BOOT_AGGRESSIVE_REVOKE", flags):
+            print("Secure Boot Aggressive key revocation: Enabled")
+
+        revoked_keys = []
+        for i, key in enumerate(
+            [
+                "SECURE_BOOT_KEY_REVOKE0",
+                "SECURE_BOOT_KEY_REVOKE1",
+                "SECURE_BOOT_KEY_REVOKE2",
+            ]
+        ):
+            if get_security_flag_status(key, flags):
+                revoked_keys.append(i)
+
+        if len(revoked_keys) > 0:
+            print("Secure Boot Key Revocation Status:\n")
+            for i in revoked_keys:
+                print(f"\tSecure Boot Key{i} is Revoked\n")
+
+    else:
+        print("Secure Boot: Disabled")
+
+    flash_crypt_cnt = bin(si["flash_crypt_cnt"])
+    if (flash_crypt_cnt.count("1") % 2) != 0:
+        print("Flash Encryption: Enabled")
+    else:
+        print("Flash Encryption: Disabled")
+
+    CRYPT_CNT_STRING = "SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT)"
+    if esp.CHIP_NAME == "esp32":
+        CRYPT_CNT_STRING = "Flash Crypt Count (FLASH_CRYPT_CNT)"
+
+    print(f"{CRYPT_CNT_STRING}: {si['flash_crypt_cnt']:#x}")
+
+    if get_security_flag_status("DIS_DOWNLOAD_DCACHE", flags):
+        print("Dcache in UART download mode: Disabled")
+
+    if get_security_flag_status("DIS_DOWNLOAD_ICACHE", flags):
+        print("Icache in UART download mode: Disabled")
+
+    hard_dis_jtag = get_security_flag_status("HARD_DIS_JTAG", flags)
+    soft_dis_jtag = get_security_flag_status("SOFT_DIS_JTAG", flags)
+    if hard_dis_jtag:
+        print("JTAG: Permenantly Disabled")
+    elif soft_dis_jtag:
+        print("JTAG: Software Access Disabled")
+    if get_security_flag_status("DIS_USB", flags):
+        print("USB Access: Disabled")
 
 
 def merge_bin(args):
