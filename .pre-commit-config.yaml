@@ -7,3 +7,9 @@ repos:
     rev: 22.3.0
     hooks:
       - id: black
+  - repo: https://github.com/espressif/conventional-precommit-linter
+    rev: v1.1.0
+    hooks:
+      - id: conventional-precommit-linter
+        stages: [commit-msg]
+default_install_hook_types: [pre-commit, commit-msg]
