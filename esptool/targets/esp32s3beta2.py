@@ -14,11 +14,6 @@ class ESP32S3BETA2ROM(ESP32S3ROM):
 
     EFUSE_BASE = 0x6001A000  # BLOCK0 read base address
 
-    def get_chip_description(self):
-        major_rev = self.get_major_chip_version()
-        minor_rev = self.get_minor_chip_version()
-        return f"{self.CHIP_NAME} (revision v{major_rev}.{minor_rev})"
-
 
 class ESP32S3BETA2StubLoader(ESP32S3BETA2ROM):
     """Access class for ESP32S3 stub loader, runs on top of ROM.
