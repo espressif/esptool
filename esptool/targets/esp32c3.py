@@ -114,16 +114,39 @@ class ESP32C3ROM(ESP32ROM):
         num_word = 5
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
 
+    def get_flash_cap(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 27) & 0x07
+
+    def get_flash_vendor(self):
+        num_word = 4
+        vendor_id = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x07
+        return {1: "XMC", 2: "GD", 3: "FM", 4: "TT", 5: "ZBIT"}.get(vendor_id, "")
+
     def get_chip_description(self):
         chip_name = {
-            0: "ESP32-C3",
+            0: "ESP32-C3 (QFN32)",
+            1: "ESP8685 (QFN28)",
+            2: "ESP32-C3 AZ (QFN32)",
+            3: "ESP8686 (QFN24)",
         }.get(self.get_pkg_version(), "unknown ESP32-C3")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["WiFi", "BLE"]
+        features = ["WiFi", "BLE"]
+
+        flash = {
+            0: None,
+            1: "Embedded Flash 4MB",
+            2: "Embedded Flash 2MB",
+            3: "Embedded Flash 1MB",
+            4: "Embedded Flash 8MB",
+        }.get(self.get_flash_cap(), "Unknown Embedded Flash")
+        if flash is not None:
+            features += [flash + f" ({self.get_flash_vendor()})"]
+        return features
 
     def get_crystal_freq(self):
         # ESP32C3 XTAL is fixed to 40MHz
