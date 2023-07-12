@@ -50,6 +50,9 @@ HSM config file
 An HSM config file is required with the fields (``pkcs11_lib``, ``credentials``, ``slot``, ``label``, ``label_pubkey``)
 populated corresponding to the HSM used.
 
+To access an HSM token of a selected slot, you will also need to pass in the token User PIN and thus you will be prompted to type in the User PIN.
+Alternatively, you could also add a ``credentials`` field in the HSM config file to store the (plaintext) User PIN to automate the signing workflow.
+
 Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <https://github.com/opendnssec/SoftHSMv2>`_ as an external HSM: ::
 
     # hsm_config.ini
