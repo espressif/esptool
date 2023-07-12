@@ -6,6 +6,7 @@ import binascii
 import configparser
 import os
 import sys
+from getpass import getpass
 
 try:
     import pkcs11
@@ -31,10 +32,16 @@ def read_hsm_config(configfile):
     if not config.has_section(section):
         raise configparser.NoSectionError(section)
 
-    section_options = ["pkcs11_lib", "credentials", "slot", "label"]
+    section_options = ["pkcs11_lib", "slot", "label"]
     for option in section_options:
         if not config.has_option(section, option):
             raise configparser.NoOptionError(option, section)
+
+    # If the config file does not contain the "credentials" option,
+    # prompt the user for the HSM PIN
+    if not config.has_option(section, "credentials"):
+        hsm_pin = getpass("Please enter the PIN of your HSM:\n")
+        config.set(section, "credentials", hsm_pin)
 
     return config[section]
 

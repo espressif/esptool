@@ -50,6 +50,9 @@ HSM config file
 An HSM config file is required with the fields (``pkcs11_lib``, ``credentials``, ``slot``, ``label``, ``label_pubkey``)
 populated corresponding to the HSM used.
 
+To avoid storing the PIN in plaintext, you could simply remove the ``credentials`` option from the config file,
+and during signing using the HSM, you will be prompted to type in the HSM Pin.
+
 Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <https://github.com/opendnssec/SoftHSMv2>`_ as an external HSM: ::
 
     # hsm_config.ini
