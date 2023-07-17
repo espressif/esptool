@@ -110,7 +110,7 @@ class ESP32C2ROM(ESP32C3ROM):
 
     def _post_connect(self):
         # ESP32C2 ECO0 is no longer supported by the flasher stub
-        if self.get_chip_revision() == 0:
+        if not self.secure_download_mode and self.get_chip_revision() == 0:
             self.stub_is_disabled = True
             self.IS_STUB = False
 

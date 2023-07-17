@@ -34,6 +34,8 @@ def flash_size_bytes(size):
     """Given a flash size of the type passed in args.flash_size
     (ie 512KB or 1MB) then return the size in bytes.
     """
+    if size is None:
+        return None
     if "MB" in size:
         return int(size[: size.index("MB")]) * 1024 * 1024
     elif "KB" in size:

@@ -466,7 +466,7 @@ def write_flash(esp, args):
     flash_end = flash_size_bytes(
         detect_flash_size(esp) if args.flash_size == "keep" else args.flash_size
     )
-    if flash_end is not None:  # Secure download mode
+    if flash_end is not None:  # Not in secure download mode
         for address, argfile in args.addr_filename:
             argfile.seek(0, os.SEEK_END)
             if address + argfile.tell() > flash_end:
