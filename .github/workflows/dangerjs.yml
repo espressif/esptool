@@ -1,0 +1,19 @@
+name: DangerJS Check
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: write
+  statuses: write
+
+jobs:
+  pull-request-style-linter:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: DangerJS pull request linter
+      uses: espressif/github-actions/danger_pr_review@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

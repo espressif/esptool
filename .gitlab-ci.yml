@@ -1,7 +1,20 @@
 # Gitlab CI config
 #
 # Note: When updating, please also update test_esptool.yml GH Actions workflow file
+include:
+  - project: 'espressif/shared-ci-dangerjs'
+    ref: master
+    file: 'danger.yaml'
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
 stages:
+  - danger
   - test
   - report
   - build_docs
