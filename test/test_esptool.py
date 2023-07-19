@@ -24,6 +24,7 @@ import tempfile
 import time
 from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
+from unittest.mock import MagicMock
 
 # Link command line options --port, --chip, --baud, --with-trace, and --preload-port
 from conftest import (
@@ -1135,6 +1136,23 @@ class TestReadWriteMemory(EsptoolTestCase):
             )
             chip = esp.get_chip_description()
             assert "unknown" not in chip.lower()
+        finally:
+            esp._port.close()
+
+    def test_read_get_chip_features(self):
+        try:
+            esp = esptool.get_default_connected_device(
+                [arg_port], arg_port, 10, 115200, arg_chip
+            )
+
+            if hasattr(esp, "get_flash_cap") and esp.get_flash_cap() == 0:
+                esp.get_flash_cap = MagicMock(return_value=1)
+            if hasattr(esp, "get_psram_cap") and esp.get_psram_cap() == 0:
+                esp.get_psram_cap = MagicMock(return_value=1)
+
+            features = ", ".join(esp.get_chip_features())
+            assert "Unknown Embedded Flash" not in features
+            assert "Unknown Embedded PSRAM" not in features
         finally:
             esp._port.close()
 
