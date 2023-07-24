@@ -934,7 +934,7 @@ def expand_file_arguments(argv):
         else:
             new_args.append(arg)
     if expanded:
-        print("esptool %s" % (" ".join(new_args[1:])))
+        print(f"esptool.py {' '.join(new_args)}")
         return new_args
     return argv
 
