@@ -361,6 +361,7 @@ class ESP32ROM(ESPLoader):
         return rom_calculated_freq
 
     def change_baud(self, baud):
+        assert self.CHIP_NAME == "ESP32", "This workaround should only apply to ESP32"
         # It's a workaround to avoid esp32 CK_8M frequency drift.
         rom_calculated_freq = self.get_rom_cal_crystal_freq()
         valid_freq = 40000000 if rom_calculated_freq > 33000000 else 26000000
