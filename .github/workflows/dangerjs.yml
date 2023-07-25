@@ -5,7 +5,7 @@ on:
 
 permissions:
   pull-requests: write
-  statuses: write
+  contents: write
 
 jobs:
   pull-request-style-linter:
