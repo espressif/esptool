@@ -51,4 +51,5 @@ More Information
    Troubleshooting <troubleshooting>
    Contribute <contributing>
    Versions <versions>
+   Resources <resources>
    About <about>
