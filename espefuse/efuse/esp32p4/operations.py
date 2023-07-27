@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-#
 # This file includes the operations with eFuses for ESP32-P4 chip
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -19,6 +17,7 @@ from .. import util
 from ..base_operations import (
     add_common_commands,
     add_force_write_always,
+    add_show_sensitive_info_option,
     burn_bit,
     burn_block_data,
     burn_efuse,
@@ -57,6 +56,7 @@ def add_commands(subparsers, efuses):
     )
     protect_options(burn_key)
     add_force_write_always(burn_key)
+    add_show_sensitive_info_option(burn_key)
     burn_key.add_argument(
         "block",
         help="Key block to burn",
@@ -107,6 +107,7 @@ def add_commands(subparsers, efuses):
     )
     protect_options(burn_key_digest)
     add_force_write_always(burn_key_digest)
+    add_show_sensitive_info_option(burn_key_digest)
     burn_key_digest.add_argument(
         "block",
         help="Key block to burn",
@@ -175,15 +176,11 @@ def add_commands(subparsers, efuses):
 
 
 def burn_custom_mac(esp, efuses, args):
-    efuses["CUSTOM_MAC"].save(args.mac)
-    if not efuses.burn_all(check_batch_mode=True):
-        return
-    get_custom_mac(esp, efuses, args)
-    print("Successful")
+    print("Not supported yet")
 
 
 def get_custom_mac(esp, efuses, args):
-    print("Custom MAC Address: {}".format(efuses["CUSTOM_MAC"].get()))
+    print("Not supported yet")
 
 
 def set_flash_voltage(esp, efuses, args):
@@ -244,7 +241,13 @@ def burn_key(esp, efuses, args, digest=None):
         if efuses[block.key_purpose_name].need_reverse(keypurpose):
             revers_msg = "\tReversing byte order for AES-XTS hardware peripheral"
             data = data[::-1]
-        print("-> [%s]" % (util.hexify(data, " ")))
+        print(
+            "-> [{}]".format(
+                util.hexify(data, " ")
+                if args.show_sensitive_info
+                else " ".join(["??"] * len(data))
+            )
+        )
         if revers_msg:
             print(revers_msg)
         if len(data) != num_bytes:

@@ -12,6 +12,7 @@ from ..mem_definition_base import (
     EfuseBlocksBase,
     EfuseFieldsBase,
     EfuseRegistersBase,
+    Field,
 )
 
 
@@ -44,40 +45,36 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_PGM_CMD = 0x2
     EFUSE_READ_CMD = 0x1
 
-    # this chip has a design error so fail_bit is shifted by one block but err_num is in the correct place
-    BLOCK_FAIL_BIT = [
-        # error_reg,                fail_bit
-        (EFUSE_RD_REPEAT_ERR0_REG, None),  # BLOCK0
-        (EFUSE_RD_RS_ERR0_REG, 7),  # MAC_SPI_8M_0
-        (EFUSE_RD_RS_ERR0_REG, 11),  # BLOCK_SYS_DATA
-        (EFUSE_RD_RS_ERR0_REG, 15),  # BLOCK_USR_DATA
-        (EFUSE_RD_RS_ERR0_REG, 19),  # BLOCK_KEY0
-        (EFUSE_RD_RS_ERR0_REG, 23),  # BLOCK_KEY1
-        (EFUSE_RD_RS_ERR0_REG, 27),  # BLOCK_KEY2
-        (EFUSE_RD_RS_ERR0_REG, 31),  # BLOCK_KEY3
-        (EFUSE_RD_RS_ERR1_REG, 3),  # BLOCK_KEY4
-        (EFUSE_RD_RS_ERR1_REG, 7),  # BLOCK_KEY5
-        (EFUSE_RD_RS_ERR1_REG, None),  # BLOCK_SYS_DATA2
-    ]
-
-    BLOCK_NUM_ERRORS = [
-        # error_reg,               err_num_mask, err_num_offs
-        (EFUSE_RD_REPEAT_ERR0_REG, None, None),  # BLOCK0
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 0),  # MAC_SPI_8M_0
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 4),  # BLOCK_SYS_DATA
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 8),  # BLOCK_USR_DATA
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 12),  # BLOCK_KEY0
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 16),  # BLOCK_KEY1
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 20),  # BLOCK_KEY2
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 24),  # BLOCK_KEY3
-        (EFUSE_RD_RS_ERR0_REG, 0x7, 28),  # BLOCK_KEY4
-        (EFUSE_RD_RS_ERR1_REG, 0x7, 0),  # BLOCK_KEY5
-        (EFUSE_RD_RS_ERR1_REG, 0x7, 4),  # BLOCK_SYS_DATA2
+    BLOCK_ERRORS = [
+        # error_reg,               err_num_mask, err_num_offs,     fail_bit
+        (EFUSE_RD_REPEAT_ERR0_REG, None, None, None),  # BLOCK0
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 0, 3),  # MAC_SPI_8M_0
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 4, 7),  # BLOCK_SYS_DATA
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 8, 11),  # BLOCK_USR_DATA
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 12, 15),  # BLOCK_KEY0
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 16, 19),  # BLOCK_KEY1
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 20, 23),  # BLOCK_KEY2
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 24, 27),  # BLOCK_KEY3
+        (EFUSE_RD_RS_ERR0_REG, 0x7, 28, 31),  # BLOCK_KEY4
+        (EFUSE_RD_RS_ERR1_REG, 0x7, 0, 3),  # BLOCK_KEY5
+        (EFUSE_RD_RS_ERR1_REG, 0x7, 4, 7),  # BLOCK_SYS_DATA2
     ]
 
     # EFUSE_WR_TIM_CONF2_REG
     EFUSE_PWR_OFF_NUM_S = 0
     EFUSE_PWR_OFF_NUM_M = 0xFFFF << EFUSE_PWR_OFF_NUM_S
+
+    # EFUSE_WR_TIM_CONF1_REG
+    EFUSE_PWR_ON_NUM_S = 8
+    EFUSE_PWR_ON_NUM_M = 0x0000FFFF << EFUSE_PWR_ON_NUM_S
+
+    # EFUSE_DAC_CONF_REG
+    EFUSE_DAC_CLK_DIV_S = 0
+    EFUSE_DAC_CLK_DIV_M = 0xFF << EFUSE_DAC_CLK_DIV_S
+
+    # EFUSE_DAC_CONF_REG
+    EFUSE_DAC_NUM_S = 9
+    EFUSE_DAC_NUM_M = 0xFF << EFUSE_DAC_NUM_S
 
 
 class EfuseDefineBlocks(EfuseBlocksBase):
@@ -154,6 +151,16 @@ class EfuseDefineFields(EfuseFieldsBase):
             elif efuse.category == "calibration":
                 self.BLOCK2_CALIBRATION_EFUSES.append(efuse)
                 self.ALL_EFUSES[i] = None
+
+        f = Field()
+        f.name = "MAC_EUI64"
+        f.block = 1
+        f.bit_len = 64
+        f.type = f"bytes:{f.bit_len // 8}"
+        f.category = "MAC"
+        f.class_type = "mac"
+        f.description = "calc MAC_EUI64 = MAC[0]:MAC[1]:MAC[2]:MAC_EXT[0]:MAC_EXT[1]:MAC[3]:MAC[4]:MAC[5]"
+        self.CALC.append(f)
 
         for efuse in self.ALL_EFUSES:
             if efuse is not None:

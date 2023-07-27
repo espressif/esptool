@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-#
 # This file describes eFuses controller for ESP32-P4 chip
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -18,11 +16,11 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     CHIP_NAME = "ESP32-P4"
     mem = None
     debug = False
-    Blocks = EfuseDefineBlocks
-    Fields = EfuseDefineFields
-    REGS = EfuseDefineRegisters
 
     def __init__(self, efuse_file=None, debug=False):
+        self.Blocks = EfuseDefineBlocks
+        self.Fields = EfuseDefineFields()
+        self.REGS = EfuseDefineRegisters
         super(EmulateEfuseController, self).__init__(efuse_file, debug)
         self.write_reg(self.REGS.EFUSE_STATUS_REG, 1)
 

@@ -180,6 +180,9 @@ class TestReadCommands(EfuseTestCase):
     def test_summary_json(self):
         self.espefuse_py("summary --format json")
 
+    @pytest.mark.skipif(
+        arg_chip == "esp32p4", reason="No Custom MAC Address defined yet"
+    )
     def test_get_custom_mac(self):
         self.espefuse_py("get_custom_mac -h")
         if arg_chip == "esp32":
@@ -343,6 +346,10 @@ class TestWriteProtectionCommands(EfuseTestCase):
             efuse_lists = """RD_DIS DIS_DOWNLOAD_ICACHE
                            XTS_KEY_LENGTH_256 UART_PRINT_CONTROL"""
             efuse_lists2 = "RD_DIS DIS_DOWNLOAD_ICACHE"
+        elif arg_chip == "esp32p4":
+            efuse_lists = """RD_DIS KEY_PURPOSE_0 SECURE_BOOT_KEY_REVOKE0
+                           SPI_BOOT_CRYPT_CNT"""
+            efuse_lists2 = "RD_DIS KEY_PURPOSE_0 KEY_PURPOSE_2"
         else:
             efuse_lists = """RD_DIS DIS_ICACHE DIS_FORCE_DOWNLOAD
                            DIS_CAN SOFT_DIS_JTAG DIS_DOWNLOAD_MANUAL_ENCRYPT
@@ -380,6 +387,7 @@ class TestWriteProtectionCommands(EfuseTestCase):
             )
 
 
+@pytest.mark.skipif(arg_chip == "esp32p4", reason="No Custom MAC Address defined yet")
 class TestBurnCustomMacCommands(EfuseTestCase):
     def test_burn_custom_mac(self):
         self.espefuse_py("burn_custom_mac -h")
@@ -617,6 +625,9 @@ class TestBurnEfuseCommands(EfuseTestCase):
         assert "(Override SD_CMD pad (GPIO11/SPICS0)) 0b00000 -> 0b11111" in output
         assert "BURN BLOCK0  - OK (all write block bits are set)" in output
 
+    @pytest.mark.skipif(
+        arg_chip == "esp32p4", reason="No Custom MAC Address defined yet"
+    )
     def test_burn_mac_custom_efuse(self):
         crc_msg = "(OK)"
         self.espefuse_py("burn_efuse -h")
@@ -639,6 +650,9 @@ class TestBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py("burn_efuse CUSTOM_MAC AA:CD:EF:01:02:03")
         self.espefuse_py("get_custom_mac", check_msg=f"aa:cd:ef:01:02:03 {crc_msg}")
 
+    @pytest.mark.skipif(
+        arg_chip == "esp32p4", reason="No such eFuses, will be defined later"
+    )
     def test_burn_efuse(self):
         self.espefuse_py("burn_efuse -h")
         if arg_chip == "esp32":
@@ -1742,14 +1756,20 @@ class TestExecuteScriptsCommands(EfuseTestCase):
         # Restore the stored working directory
         os.chdir(self.stored_dir)
 
-    @pytest.mark.skipif(arg_chip == "esp32c2", reason="TODO: Add tests for esp32c2")
+    @pytest.mark.skipif(
+        arg_chip in ["esp32c2", "esp32p4"],
+        reason="These chips do not have eFuses used in this test",
+    )
     def test_execute_scripts_with_check_that_only_one_burn(self):
         self.espefuse_py("execute_scripts -h")
         name = arg_chip if arg_chip in ["esp32", "esp32c2"] else "esp32xx"
         os.chdir(os.path.join(TEST_DIR, "efuse_scripts", name))
         self.espefuse_py("execute_scripts execute_efuse_script2.py")
 
-    @pytest.mark.skipif(arg_chip == "esp32c2", reason="TODO: Add tests for esp32c2")
+    @pytest.mark.skipif(
+        arg_chip in ["esp32c2", "esp32p4"],
+        reason="These chips do not have eFuses used in this test",
+    )
     def test_execute_scripts_with_check(self):
         self.espefuse_py("execute_scripts -h")
         name = arg_chip if arg_chip in ["esp32", "esp32c2"] else "esp32xx"
