@@ -96,7 +96,7 @@ def detect_chip(
         print("Detecting chip type...", end="")
         chip_id = detect_port.get_chip_id()
         for cls in [
-            n for n in ROM_LIST if n.CHIP_NAME not in ("ESP8266", "ESP32", "ESP32S2")
+            n for n in ROM_LIST if n.CHIP_NAME not in ("ESP8266", "ESP32", "ESP32-S2")
         ]:
             # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip_id
             if chip_id == cls.IMAGE_CHIP_ID:
