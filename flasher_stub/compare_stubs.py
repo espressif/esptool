@@ -66,7 +66,7 @@ def diff(path_to_new, path_to_old):
 
 if __name__ == "__main__":
     same = True
-    for chip in esptool.CHIP_LIST:
+    for chip in [n for n in esptool.CHIP_LIST if n != "esp32p4"]:
         print("Comparing {} stub: ".format(chip), end="")
 
         chip = chip.replace("esp", "")

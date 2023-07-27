@@ -84,6 +84,8 @@ host_tests:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32h2beta1
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32c6
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32h2
+    # TODO: ESP32P4
+    # - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32p4
     # some .coverage files in sub-directories are not collected on some runners, move them first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
 
