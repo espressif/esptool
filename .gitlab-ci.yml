@@ -1,10 +1,13 @@
 # Gitlab CI config
 #
 # Note: When updating, please also update test_esptool.yml GH Actions workflow file
-include:
-  - project: 'espressif/shared-ci-dangerjs'
-    ref: master
-    file: 'danger.yaml'
+stages:
+  - pre-check
+  - test
+  - report
+  - build_docs
+  - deploy_docs
+  - deploy_development_package
 
 workflow:
   rules:
@@ -13,13 +16,12 @@ workflow:
       when: never
     - if: '$CI_COMMIT_BRANCH'
 
-stages:
-  - danger
-  - test
-  - report
-  - build_docs
-  - deploy_docs
-  - deploy_development_package
+include:
+    - project: espressif/shared-ci-dangerjs
+      ref: master
+      file: danger.yaml
+run-danger-mr-linter:
+    stage: pre-check
 
 # cache the pip download directory in all jobs
 variables:
