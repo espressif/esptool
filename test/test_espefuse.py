@@ -280,9 +280,10 @@ class TestReadProtectionCommands(EfuseTestCase):
                 ret_code=2,
             )
         else:
+            key1_purpose = "USER" if arg_chip in ["esp32p4"] else "RESERVED"
             self.espefuse_py(
                 f"burn_key BLOCK_KEY0 {IMAGES_DIR}/256bit USER \
-                BLOCK_KEY1 {IMAGES_DIR}/256bit RESERVED \
+                BLOCK_KEY1 {IMAGES_DIR}/256bit {key1_purpose} \
                 BLOCK_KEY2 {IMAGES_DIR}/256bit SECURE_BOOT_DIGEST0 \
                 BLOCK_KEY3 {IMAGES_DIR}/256bit SECURE_BOOT_DIGEST1 \
                 BLOCK_KEY4 {IMAGES_DIR}/256bit SECURE_BOOT_DIGEST2 \
@@ -1054,7 +1055,10 @@ class TestBurnKeyCommands(EfuseTestCase):
             "acadaeaf a8a9aaab a4a5a6a7 22a1a2a3"
         ) in output
 
-    @pytest.mark.skipif(arg_chip != "esp32h2", reason="Only for ESP32-H2 chips")
+    @pytest.mark.skipif(
+        arg_chip not in ["esp32h2", "esp32p4"],
+        reason="These chips support ECDSA_KEY",
+    )
     def test_burn_key_ecdsa_key(self):
         self.espefuse_py(
             f"burn_key \
@@ -1077,7 +1081,10 @@ class TestBurnKeyCommands(EfuseTestCase):
             "00000000 00000000 00000000 00000000"
         ) in output
 
-    @pytest.mark.skipif(arg_chip != "esp32h2", reason="Only for ESP32-H2 chips")
+    @pytest.mark.skipif(
+        arg_chip not in ["esp32h2", "esp32p4"],
+        reason="These chips support ECDSA_KEY",
+    )
     def test_burn_key_ecdsa_key_check_byte_order(self):
         self.espefuse_py(
             f"burn_key \

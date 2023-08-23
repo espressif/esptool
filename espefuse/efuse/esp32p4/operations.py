@@ -65,7 +65,7 @@ def add_commands(subparsers, efuses):
     )
     burn_key.add_argument(
         "keyfile",
-        help="File containing 256 bits of binary key data",
+        help="File containing 256 bits of binary key data. For the ECDSA_KEY purpose use PEM file.",
         action="append",
         type=argparse.FileType("rb"),
     )
@@ -86,7 +86,7 @@ def add_commands(subparsers, efuses):
         )
         burn_key.add_argument(
             "keyfile",
-            help="File containing 256 bits of binary key data",
+            help="File containing 256 bits of binary key data. For the ECDSA_KEY purpose use PEM file.",
             nargs="?",
             action="append",
             metavar="KEYFILE",
@@ -232,14 +232,21 @@ def burn_key(esp, efuses, args, digest=None):
         block = efuses.blocks[block_num]
 
         if digest is None:
-            data = datafile.read()
+            if keypurpose == "ECDSA_KEY":
+                sk = espsecure.load_ecdsa_signing_key(datafile)
+                data = sk.to_string()
+                if len(data) == 24:
+                    # the private key is 24 bytes long for NIST192p, add 8 bytes of padding
+                    data = b"\x00" * 8 + data
+            else:
+                data = datafile.read()
         else:
             data = datafile
 
         print(" - %s" % (efuse.name), end=" ")
         revers_msg = None
         if efuses[block.key_purpose_name].need_reverse(keypurpose):
-            revers_msg = "\tReversing byte order for AES-XTS hardware peripheral"
+            revers_msg = f"\tReversing byte order for {keypurpose} hardware peripheral"
             data = data[::-1]
         print(
             "-> [{}]".format(

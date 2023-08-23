@@ -381,7 +381,7 @@ class EfuseMacField(EfuseField):
 class EfuseKeyPurposeField(EfuseField):
     KEY_PURPOSES = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
-        ("RESERVED",                     1,  None,       None,      "no_need_rd_protect"),   # Reserved
+        ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key
         ("XTS_AES_256_KEY_1",            2,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_1 (flash/PSRAM encryption)
         ("XTS_AES_256_KEY_2",            3,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_2 (flash/PSRAM encryption)
         ("XTS_AES_128_KEY",              4,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_128_KEY (flash/PSRAM encryption)
@@ -427,6 +427,11 @@ class EfuseKeyPurposeField(EfuseField):
             if p[1] == self.get_raw(from_read):
                 return p[0]
         return "FORBIDDEN_STATE"
+
+    def get_name(self, raw_val):
+        for key in self.KEY_PURPOSES:
+            if key[1] == raw_val:
+                return key[0]
 
     def save(self, new_value):
         raw_val = int(self.check_format(str(new_value)))
