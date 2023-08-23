@@ -105,6 +105,8 @@ class ESP32ROM(ESPLoader):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 32
 
+    UF2_FAMILY_ID = 0x1C5F21B0
+
     """ Try to read the BLOCK1 (encryption key) and check if it is valid """
 
     def is_flash_encryption_key_valid(self):

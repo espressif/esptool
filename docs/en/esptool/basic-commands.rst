@@ -236,8 +236,7 @@ This information corresponds to the headers described in :ref:`image-format`.
 
 Merge Binaries for Flashing: merge_bin
 --------------------------------------
-
-The ``merge_bin`` command will merge multiple binary files (of any kind) into a single file that can be flashed to a device later. Any gaps between the input files are padded with 0xFF bytes (same as unwritten flash contents).
+The ``merge_bin`` command will merge multiple binary files (of any kind) into a single file that can be flashed to a device later. Any gaps between the input files are padded based on selected output format.
 
 For example:
 
@@ -247,22 +246,53 @@ For example:
 
 Will create a file ``merged-flash.bin`` with the contents of the other 3 files. This file can be later be written to flash with ``esptool.py write_flash 0x0 merged-flash.bin``.
 
-.. note:
 
-    Because gaps between the input files are padded with 0xFF bytes, when the merged binary is written then any flash sectors between the individual files will be erased. To avoid this, write the files individually.
-
-**Options:**
+**Common options:**
 
 *  The ``merge_bin`` command supports the same ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` options as the ``write_flash`` command to override the bootloader flash header (see above for details).
    These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the ``--chip`` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
-*  The ``--target-offset 0xNNN`` option will create a merged binary that should be flashed at the specified offset, instead of at offset 0x0.
-*  The ``--fill-flash-size SIZE`` option will pad the merged binary with 0xFF bytes to the full flash specified size, for example ``--fill-flash-size 4MB`` will create a 4MB binary file.
+*  The ``--format`` option will change the format of the output file. For more information about formats see formats description below.
 *  It is possible to append options from a text file with ``@filename``. As an example, this can be conveniently used with the ESP-IDF build system, which produces a ``flash_args`` file in the build directory of a project:
 
 .. code:: sh
 
     cd build    # The build directory of an ESP-IDF project
     esptool.py --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin @flash_args
+
+
+RAW Output Format
+^^^^^^^^^^^^^^^^^
+
+The output of the command will be in ``raw`` format and gaps between individual files will be filled with `0xFF` bytes (same as unwritten flash contents).
+
+.. note::
+
+    Because gaps between the input files are padded with `0xFF` bytes, when the merged binary is written then any flash sectors between the individual files will be erased. To avoid this, write the files individually.
+
+
+**RAW options:**
+
+*  The ``--fill-flash-size SIZE`` option will pad the merged binary with `0xFF` bytes to the full flash specified size, for example ``--fill-flash-size 4MB`` will create a 4MB binary file.
+*  The ``--target-offset 0xNNN`` option will create a merged binary that should be flashed at the specified offset, instead of at offset 0x0.
+
+
+UF2 Output Format
+^^^^^^^^^^^^^^^^^
+
+This command will generate a UF2 (`USB Flashing Format <https://github.com/microsoft/uf2>`_) binary. 
+This UF2 file can be copied to a USB mass storage device exposed by another ESP running the `ESP USB Bridge <https://github.com/espressif/esp-usb-bridge>`_ project. The bridge MCU will use it to flash the target MCU. This is as simple copying (or "drag-and-dropping") the file to the exposed disk accessed by a file explorer in your machine.
+
+Gaps between the files will be filled with `0x00` bytes.
+
+**UF2 options:**
+
+*  The ``--chunk-size`` option will set what portion of 512 byte block will be used for data. Common value is 256 bytes. By default the largest possible value will be used.
+*  The ``--md5-disable`` option will disable MD5 checksums at the end of each block. This can be useful for integration with e.g. `tinyuf2 <https://github.com/adafruit/tinyuf2>`__.
+
+.. code:: sh
+
+    esptool.py --chip {IDF_TARGET_NAME} merge_bin --format uf2 -o merged-flash.uf2 --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
+
 
 Advanced Commands
 -----------------

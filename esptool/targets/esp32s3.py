@@ -117,6 +117,8 @@ class ESP32S3ROM(ESP32ROM):
         [0x50000000, 0x50002000, "RTC_DATA"],
     ]
 
+    UF2_FAMILY_ID = 0xC47E5767
+
     def get_pkg_version(self):
         num_word = 3
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x07

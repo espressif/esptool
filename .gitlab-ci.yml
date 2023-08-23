@@ -65,6 +65,15 @@ version_check:
     reports:
       junit: test/report.xml
 
+check_uf2_ids:
+  <<: *host_tests_template
+  allow_failure: true
+  variables:
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+    PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
+  script:
+    - coverage run -m pytest ${CI_PROJECT_DIR}/test/test_uf2_ids.py
+
 host_tests:
   <<: *host_tests_template
   variables:

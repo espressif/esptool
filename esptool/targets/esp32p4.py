@@ -79,6 +79,8 @@ class ESP32P4ROM(ESP32ROM):
         [0x600FE000, 0x60100000, "MEM_INTERNAL2"],
     ]
 
+    UF2_FAMILY_ID = 0x3D308E94
+
     def get_pkg_version(self):
         # ESP32P4 TODO
         return 0

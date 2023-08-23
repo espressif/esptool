@@ -25,6 +25,7 @@ from .loader import (
     timeout_per_mb,
 )
 from .targets import CHIP_DEFS, CHIP_LIST, ROM_LIST
+from .uf2_writer import UF2Writer
 from .util import (
     FatalError,
     NotImplementedInROMError,
@@ -1278,9 +1279,9 @@ def merge_bin(args):
         msg = (
             "Please specify the chip argument"
             if args.chip == "auto"
-            else "Invalid chip choice: '{}'".format(args.chip)
+            else f"Invalid chip choice: '{args.chip}'"
         )
-        msg = msg + " (choose from {})".format(", ".join(CHIP_LIST))
+        msg = f"{msg} (choose from {', '.join(CHIP_LIST)})"
         raise FatalError(msg)
 
     # sort the files by offset.
@@ -1291,32 +1292,45 @@ def merge_bin(args):
     first_addr = input_files[0][0]
     if first_addr < args.target_offset:
         raise FatalError(
-            "Output file target offset is 0x%x. Input file offset 0x%x is before this."
-            % (args.target_offset, first_addr)
+            f"Output file target offset is {args.target_offset:#x}. "
+            f"Input file offset {first_addr:#x} is before this."
         )
 
-    if args.format != "raw":
-        raise FatalError(
-            "This version of esptool only supports the 'raw' output format"
-        )
-
-    with open(args.output, "wb") as of:
-
-        def pad_to(flash_offs):
-            # account for output file offset if there is any
-            of.write(b"\xFF" * (flash_offs - args.target_offset - of.tell()))
-
-        for addr, argfile in input_files:
-            pad_to(addr)
-            image = argfile.read()
-            image = _update_image_flash_params(chip_class, addr, args, image)
-            of.write(image)
-        if args.fill_flash_size:
-            pad_to(flash_size_bytes(args.fill_flash_size))
+    if args.format == "uf2":
+        with UF2Writer(
+            chip_class.UF2_FAMILY_ID,
+            args.output,
+            args.chunk_size,
+            md5_enabled=not args.md5_disable,
+        ) as writer:
+            for addr, argfile in input_files:
+                print(f"Adding {argfile.name} at {addr:#x}")
+                image = argfile.read()
+                image = _update_image_flash_params(chip_class, addr, args, image)
+                writer.add_file(addr, image)
         print(
-            "Wrote 0x%x bytes to file %s, ready to flash to offset 0x%x"
-            % (of.tell(), args.output, args.target_offset)
+            f"Wrote {os.path.getsize(args.output):#x} bytes to file {args.output}, "
+            f"ready to be flashed with any ESP USB Bridge"
         )
+
+    elif args.format == "raw":
+        with open(args.output, "wb") as of:
+
+            def pad_to(flash_offs):
+                # account for output file offset if there is any
+                of.write(b"\xFF" * (flash_offs - args.target_offset - of.tell()))
+
+            for addr, argfile in input_files:
+                pad_to(addr)
+                image = argfile.read()
+                image = _update_image_flash_params(chip_class, addr, args, image)
+                of.write(image)
+            if args.fill_flash_size:
+                pad_to(flash_size_bytes(args.fill_flash_size))
+            print(
+                f"Wrote {of.tell():#x} bytes to file {args.output}, "
+                f"ready to flash to offset {args.target_offset:#x}"
+            )
 
 
 def version(args):

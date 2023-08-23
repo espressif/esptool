@@ -60,6 +60,8 @@ class ESP8266ROM(ESPLoader):
         [0x40201010, 0x402E1010, "IROM"],
     ]
 
+    UF2_FAMILY_ID = 0x7EAB61ED
+
     def get_efuses(self):
         # Return the 128 bits of ESP8266 efuse as a single Python integer
         result = self.read_reg(0x3FF0005C) << 96

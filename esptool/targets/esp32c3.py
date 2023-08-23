@@ -99,6 +99,8 @@ class ESP32C3ROM(ESP32ROM):
         [0x600FE000, 0x60100000, "MEM_INTERNAL2"],
     ]
 
+    UF2_FAMILY_ID = 0xD42BA06C
+
     def get_pkg_version(self):
         num_word = 3
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x07

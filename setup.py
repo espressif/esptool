@@ -101,6 +101,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     python_requires=">=3.7",
     setup_requires=(["wheel"] if "bdist_wheel" in sys.argv else []),
@@ -115,6 +116,7 @@ setup(
             "pre-commit",
             "pytest",
             "pytest-rerunfailures",
+            "requests",
         ],
         "hsm": [
             "python-pkcs11",

@@ -29,6 +29,8 @@ class ESP32H2ROM(ESP32C6ROM):
         "12m": 0x2,
     }
 
+    UF2_FAMILY_ID = 0x332726F6
+
     def get_pkg_version(self):
         num_word = 4
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x07

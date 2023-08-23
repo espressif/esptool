@@ -1,9 +1,14 @@
+import filecmp
+import hashlib
 import itertools
 import os
 import os.path
+import random
+import struct
 import subprocess
 import sys
 import tempfile
+from functools import partial
 
 IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images")
 
@@ -13,6 +18,8 @@ import pytest
 
 try:
     from esptool.util import byte
+    from esptool.uf2_writer import UF2Writer
+    from esptool.targets import CHIP_DEFS
 except ImportError:
     need_to_install_package_err()
 
@@ -189,3 +196,239 @@ class TestMergeBin:
         assert bootloader == merged[: len(bootloader)]
         assert helloworld == merged[0xF000 : 0xF000 + len(helloworld)]
         self.assertAllFF(merged[0xF000 + len(helloworld) :])
+
+
+class UF2Block(object):
+    def __init__(self, bs):
+        self.length = len(bs)
+
+        # See https://github.com/microsoft/uf2 for the format
+        first_part = "<" + "I" * 8
+        # payload is between
+        last_part = "<I"
+
+        first_part_len = struct.calcsize(first_part)
+        last_part_len = struct.calcsize(last_part)
+
+        (
+            self.magicStart0,
+            self.magicStart1,
+            self.flags,
+            self.targetAddr,
+            self.payloadSize,
+            self.blockNo,
+            self.numBlocks,
+            self.familyID,
+        ) = struct.unpack(first_part, bs[:first_part_len])
+
+        self.data = bs[first_part_len:-last_part_len]
+
+        (self.magicEnd,) = struct.unpack(last_part, bs[-last_part_len:])
+
+    def __len__(self):
+        return self.length
+
+
+class UF2BlockReader(object):
+    def __init__(self, f_name):
+        self.f_name = f_name
+
+    def get(self):
+        with open(self.f_name, "rb") as f:
+            for chunk in iter(partial(f.read, UF2Writer.UF2_BLOCK_SIZE), b""):
+                yield UF2Block(chunk)
+
+
+class BinaryWriter(object):
+    def __init__(self, f_name):
+        self.f_name = f_name
+
+    def append(self, data):
+        # File is reopened several times in order to make sure that won't left open
+        with open(self.f_name, "ab") as f:
+            f.write(data)
+
+
+@pytest.mark.host_test
+class TestUF2:
+    def generate_binary(self, size):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            for _ in range(size):
+                f.write(struct.pack("B", random.randrange(0, 1 << 8)))
+            return f.name
+
+    @staticmethod
+    def generate_chipID():
+        chip, rom = random.choice(list(CHIP_DEFS.items()))
+        family_id = rom.UF2_FAMILY_ID
+        return chip, family_id
+
+    def generate_uf2(
+        self,
+        of_name,
+        chip_id,
+        iter_addr_offset_tuples,
+        chunk_size=None,
+        md5_enable=True,
+    ):
+        com_args = [
+            sys.executable,
+            "-m",
+            "esptool",
+            "--chip",
+            chip_id,
+            "merge_bin",
+            "--format",
+            "uf2",
+            "-o",
+            of_name,
+        ]
+        if not md5_enable:
+            com_args.append("--md5-disable")
+        com_args += [] if chunk_size is None else ["--chunk-size", str(chunk_size)]
+        file_args = list(
+            itertools.chain(*[(hex(addr), f) for addr, f in iter_addr_offset_tuples])
+        )
+
+        output = subprocess.check_output(com_args + file_args, stderr=subprocess.STDOUT)
+        output = output.decode("utf-8")
+        print(output)
+        assert "warning" not in output.lower(), "merge_bin should not output warnings"
+
+        exp_list = [f"Adding {f} at {hex(addr)}" for addr, f in iter_addr_offset_tuples]
+        exp_list += [
+            f"bytes to file {of_name}, ready to be flashed with any ESP USB Bridge"
+        ]
+        for e in exp_list:
+            assert e in output
+
+        return of_name
+
+    def process_blocks(self, uf2block, expected_chip_id, md5_enable=True):
+        flags = UF2Writer.UF2_FLAG_FAMILYID_PRESENT
+        if md5_enable:
+            flags |= UF2Writer.UF2_FLAG_MD5_PRESENT
+
+        parsed_binaries = []
+
+        block_list = []  # collect block numbers here
+        total_blocks = set()  # collect total block numbers here
+        for block in UF2BlockReader(uf2block).get():
+            if block.blockNo == 0:
+                # new file has been detected
+                base_addr = block.targetAddr
+                current_addr = base_addr
+                binary_writer = BinaryWriter(self.generate_binary(0))
+
+            assert len(block) == UF2Writer.UF2_BLOCK_SIZE
+            assert block.magicStart0 == UF2Writer.UF2_FIRST_MAGIC
+            assert block.magicStart1 == UF2Writer.UF2_SECOND_MAGIC
+            assert block.flags & flags == flags
+
+            assert len(block.data) == UF2Writer.UF2_DATA_SIZE
+            payload = block.data[: block.payloadSize]
+            if md5_enable:
+                md5_obj = hashlib.md5(payload)
+                md5_part = block.data[
+                    block.payloadSize : block.payloadSize + UF2Writer.UF2_MD5_PART_SIZE
+                ]
+                address, length = struct.unpack("<II", md5_part[: -md5_obj.digest_size])
+                md5sum = md5_part[-md5_obj.digest_size :]
+                assert address == block.targetAddr
+                assert length == block.payloadSize
+                assert md5sum == md5_obj.digest()
+
+            assert block.familyID == expected_chip_id
+            assert block.magicEnd == UF2Writer.UF2_FINAL_MAGIC
+
+            assert current_addr == block.targetAddr
+            binary_writer.append(payload)
+
+            block_list.append(block.blockNo)
+            total_blocks.add(block.numBlocks)
+            if block.blockNo == block.numBlocks - 1:
+                assert block_list == list(range(block.numBlocks))
+                # we have found all blocks and in the right order
+                assert total_blocks == {
+                    block.numBlocks
+                }  # numBlocks are the same in all the blocks
+                del block_list[:]
+                total_blocks.clear()
+
+                parsed_binaries += [(base_addr, binary_writer.f_name)]
+
+            current_addr += block.payloadSize
+        return parsed_binaries
+
+    def common(self, t, chunk_size=None, md5_enable=True):
+        of_name = self.generate_binary(0)
+        try:
+            chip_name, chip_id = self.generate_chipID()
+            self.generate_uf2(of_name, chip_name, t, chunk_size, md5_enable)
+            parsed_t = self.process_blocks(of_name, chip_id, md5_enable)
+
+            assert len(t) == len(parsed_t)
+            for (orig_addr, orig_fname), (addr, fname) in zip(t, parsed_t):
+                assert orig_addr == addr
+                assert filecmp.cmp(orig_fname, fname)
+        finally:
+            os.unlink(of_name)
+            for _, file_name in t:
+                os.unlink(file_name)
+
+    def test_simple(self):
+        self.common([(0, self.generate_binary(1))])
+
+    def test_more_files(self):
+        self.common(
+            [(0x100, self.generate_binary(1)), (0x1000, self.generate_binary(1))]
+        )
+
+    def test_larger_files(self):
+        self.common(
+            [(0x100, self.generate_binary(6)), (0x1000, self.generate_binary(8))]
+        )
+
+    def test_boundaries(self):
+        self.common(
+            [
+                (0x100, self.generate_binary(UF2Writer.UF2_DATA_SIZE)),
+                (0x2000, self.generate_binary(UF2Writer.UF2_DATA_SIZE + 1)),
+                (0x3000, self.generate_binary(UF2Writer.UF2_DATA_SIZE - 1)),
+            ]
+        )
+
+    def test_files_with_more_blocks(self):
+        self.common(
+            [
+                (0x100, self.generate_binary(3 * UF2Writer.UF2_DATA_SIZE)),
+                (0x2000, self.generate_binary(2 * UF2Writer.UF2_DATA_SIZE + 1)),
+                (0x3000, self.generate_binary(2 * UF2Writer.UF2_DATA_SIZE - 1)),
+            ]
+        )
+
+    def test_very_large_files(self):
+        self.common(
+            [
+                (0x100, self.generate_binary(20 * UF2Writer.UF2_DATA_SIZE + 5)),
+                (0x10000, self.generate_binary(50 * UF2Writer.UF2_DATA_SIZE + 100)),
+                (0x100000, self.generate_binary(100 * UF2Writer.UF2_DATA_SIZE)),
+            ]
+        )
+
+    def test_chunk_size(self):
+        chunk_size = 256
+        self.common(
+            [
+                (0x1000, self.generate_binary(chunk_size)),
+                (0x2000, self.generate_binary(chunk_size + 1)),
+                (0x3000, self.generate_binary(chunk_size - 1)),
+            ],
+            chunk_size,
+        )
+
+    def test_md5_disable(self):
+        self.common(
+            [(0x100, self.generate_binary(1)), (0x2000, self.generate_binary(1))],
+            md5_enable=False,
+        )

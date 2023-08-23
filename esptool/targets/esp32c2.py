@@ -61,6 +61,8 @@ class ESP32C2ROM(ESP32C3ROM):
         [0x4037C000, 0x403C0000, "IRAM"],
     ]
 
+    UF2_FAMILY_ID = 0x2B88D29C
+
     def get_pkg_version(self):
         num_word = 1
         return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 22) & 0x07
