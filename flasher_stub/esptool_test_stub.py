@@ -32,5 +32,5 @@ if __name__ == "__main__":
     try:
         esptool.main()
     except esptool.FatalError as e:
-        print("\nA fatal error occurred: %s" % e)
+        print("\nA fatal error occurred: %s" % e, file=sys.stderr)
         sys.exit(2)

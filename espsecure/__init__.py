@@ -1810,7 +1810,7 @@ def _main():
     try:
         main()
     except esptool.FatalError as e:
-        print("\nA fatal error occurred: %s" % e)
+        print("\nA fatal error occurred: %s" % e, file=sys.stderr)
         sys.exit(2)
     except ValueError as e:
         try:
@@ -1819,6 +1819,7 @@ def _main():
                     "Note: This error originates from the cryptography module. "
                     "It is likely not a problem with espsecure, "
                     "please make sure you are using a compatible OpenSSL backend."
+                    , file=sys.stderr
                 )
         finally:
             raise
