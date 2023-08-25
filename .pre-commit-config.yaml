@@ -3,6 +3,7 @@ repos:
     rev: 4.0.1
     hooks:
       - id: flake8
+        additional_dependencies: [flake8-import-order]
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
@@ -12,4 +13,5 @@ repos:
     hooks:
       - id: conventional-precommit-linter
         stages: [commit-msg]
+default_stages: [commit]
 default_install_hook_types: [pre-commit, commit-msg]
