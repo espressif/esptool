@@ -67,7 +67,7 @@ from esptool.cmds import (
 from esptool.config import load_config_file
 from esptool.loader import (
     DEFAULT_CONNECT_ATTEMPTS,
-    REDIRECT_ERROR,
+    REDIRECT_ERRORS,
     ESPLoader,
     list_ports,
 )
@@ -177,7 +177,7 @@ def main(argv=None, esp=None):
         "--redirect-errors",
         help="Redirect errors to stderr instead of stdout",
         action="store_true",
-        default=os.environ.get("REDIRECT_ERROR", REDIRECT_ERROR),
+        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
     )
 
     subparsers = parser.add_subparsers(

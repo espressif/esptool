@@ -20,7 +20,7 @@ import espefuse.efuse.esp32s3 as esp32s3_efuse
 import espefuse.efuse.esp32s3beta2 as esp32s3beta2_efuse
 
 import esptool
-from esptool.loader import REDIRECT_ERROR
+from esptool.loader import REDIRECT_ERRORS
 
 DefChip = namedtuple("DefChip", ["chip_name", "efuse_lib", "chip_class"])
 
@@ -216,7 +216,7 @@ def main(custom_commandline=None, esp=None):
         "--redirect-errors",
         help="Redirect errors to stderr instead of stdout",
         action="store_true",
-        default=os.environ.get("REDIRECT_ERROR", REDIRECT_ERROR),
+        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
     )
 
     common_args, remaining_args = init_parser.parse_known_args(custom_commandline)

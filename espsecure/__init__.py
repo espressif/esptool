@@ -23,7 +23,7 @@ from cryptography.utils import int_to_bytes
 import ecdsa
 
 import esptool
-from esptool.loader import REDIRECT_ERROR
+from esptool.loader import REDIRECT_ERRORS
 
 SIG_BLOCK_MAGIC = 0xE7
 
@@ -1433,7 +1433,7 @@ def main(custom_commandline=None):
         "--redirect-errors",
         help="Redirect errors to stderr instead of stdout",
         action="store_true",
-        default=os.environ.get("REDIRECT_ERROR", REDIRECT_ERROR),
+        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
     )
 
     subparsers = parser.add_subparsers(

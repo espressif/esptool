@@ -14,7 +14,7 @@ import os.path
 import sys
 
 import esptool  # noqa: E402
-from esptool.loader import REDIRECT_ERROR
+from esptool.loader import REDIRECT_ERRORS
 
 sys.path.append("..")
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         "--redirect-errors",
         help="Redirect errors to stderr instead of stdout",
         action="store_true",
-        default=os.environ.get("REDIRECT_ERROR", REDIRECT_ERROR),
+        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
     )
     args = parser.parse_args()
     globals()["redirect_errors"] = args.redirect_errors

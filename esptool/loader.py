@@ -97,7 +97,7 @@ DEFAULT_CONNECT_ATTEMPTS = cfg.getint("connect_attempts", 7)
 # Number of times to try writing a data block
 WRITE_BLOCK_ATTEMPTS = cfg.getint("write_block_attempts", 3)
 # Redirect errors to stderr
-REDIRECT_ERROR = cfg.getboolean("redirect_errors", False)
+REDIRECT_ERRORS = cfg.getboolean("redirect_errors", False)
 
 STUBS_DIR = os.path.join(os.path.dirname(__file__), "targets", "stub_flasher")
 
