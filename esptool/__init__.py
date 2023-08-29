@@ -1080,25 +1080,27 @@ def _main():
     try:
         main()
     except FatalError as e:
-        print(f"\nA fatal error occurred: {e}", file=sys.stderr)
+        print(f"\nA fatal error occurred: {e}", file=sys.stderr if globals()["redirect_errors"] else sys.stdout)
         sys.exit(2)
     except serial.serialutil.SerialException as e:
-        print(f"\nA serial exception error occurred: {e}", file=sys.stderr)
+        file = sys.stderr if globals()["redirect_errors"] else sys.stdout
+        print(f"\nA serial exception error occurred: {e}", file=file)
         print(
             "Note: This error originates from pySerial. "
             "It is likely not a problem with esptool, "
             "but with the hardware connection or drivers."
-            , file=sys.stderr
+            , file=file
         )
         print(
             "For troubleshooting steps visit: "
             "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html"
-            , file=sys.stderr
+            , file=file
         )
         sys.exit(1)
     except StopIteration:
-        print(traceback.format_exc(), file=sys.stderr)
-        print("A fatal error occurred: The chip stopped responding.", file=sys.stderr)
+        file = sys.stderr if globals()["redirect_errors"] else sys.stdout
+        print(traceback.format_exc(), file=file)
+        print("A fatal error occurred: The chip stopped responding.", file=file)
         sys.exit(2)
 
 

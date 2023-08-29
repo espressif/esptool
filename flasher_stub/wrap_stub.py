@@ -54,7 +54,7 @@ def wrap_stub(elf_file):
             stub.get("data_start", 0),
             stub["entry"],
         ),
-        file=sys.stderr,
+        file=sys.stderr if globals()["redirect_errors"] else sys.stdout,
     )
 
     return stub
