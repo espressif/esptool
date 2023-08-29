@@ -13,6 +13,8 @@ import os
 import os.path
 import sys
 
+from esptool.loader import REDIRECT_ERROR
+
 sys.path.append("..")
 import esptool  # noqa: E402
 
@@ -78,7 +80,14 @@ def stub_name(filename):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("elf_files", nargs="+", help="Stub ELF files to convert")
+    parser.add_argument(
+        "--redirect-errors",
+        help="Redirect errors to stderr instead of stdout",
+        action="store_true",
+        default=os.environ.get("REDIRECT_ERROR", REDIRECT_ERROR),
+    )
     args = parser.parse_args()
+    globals()["redirect_errors"] = args.redirect_errors
 
     stubs = dict(
         (stub_name(elf_file), wrap_stub(elf_file)) for elf_file in args.elf_files

@@ -65,7 +65,7 @@ from esptool.cmds import (
     write_mem,
 )
 from esptool.config import load_config_file
-from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, ESPLoader, list_ports
+from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, REDIRECT_ERROR, ESPLoader, list_ports
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
@@ -166,6 +166,13 @@ def main(argv=None, esp=None):
         ),
         type=int,
         default=os.environ.get("ESPTOOL_CONNECT_ATTEMPTS", DEFAULT_CONNECT_ATTEMPTS),
+    )
+
+    parser.add_argument(
+        "--redirect-errors",
+        help="Redirect errors to stderr instead of stdout",
+        action="store_true",
+        default=os.environ.get("REDIRECT_ERROR", REDIRECT_ERROR),
     )
 
     subparsers = parser.add_subparsers(
@@ -633,6 +640,7 @@ def main(argv=None, esp=None):
     argv = expand_file_arguments(argv or sys.argv[1:])
 
     args = parser.parse_args(argv)
+    globals()["redirect_errors"] = args.redirect_errors
     print("esptool.py v%s" % __version__)
     load_config_file(verbose=True)
 

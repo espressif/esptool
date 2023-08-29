@@ -23,6 +23,7 @@ from cryptography.utils import int_to_bytes
 import ecdsa
 
 import esptool
+from esptool.loader import REDIRECT_ERROR
 
 SIG_BLOCK_MAGIC = 0xE7
 
@@ -1428,6 +1429,13 @@ def main(custom_commandline=None):
         prog="espsecure",
     )
 
+    parser.add_argument(
+        "--redirect-errors",
+        help="Redirect errors to stderr instead of stdout",
+        action="store_true",
+        default=os.environ.get("REDIRECT_ERROR", REDIRECT_ERROR),
+    )
+
     subparsers = parser.add_subparsers(
         dest="operation", help="Run espsecure.py {command} -h for additional help"
     )
@@ -1790,6 +1798,7 @@ def main(custom_commandline=None):
     )
 
     args = parser.parse_args(custom_commandline)
+    globals()["redirect_errors"] = args.redirect_errors
     print("espsecure.py v%s" % esptool.__version__)
     if args.operation is None:
         parser.print_help()
