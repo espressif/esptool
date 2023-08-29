@@ -1101,7 +1101,7 @@ def _main():
         )
         print(
             "For troubleshooting steps visit: "
-            "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html",
+            "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html",  # noqa: E501
             file=file,
         )
         sys.exit(1)
