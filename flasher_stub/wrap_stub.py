@@ -13,10 +13,10 @@ import os
 import os.path
 import sys
 
+import esptool  # noqa: E402
 from esptool.loader import REDIRECT_ERROR
 
 sys.path.append("..")
-import esptool  # noqa: E402
 
 THIS_DIR = os.path.dirname(__file__)
 BUILD_DIR = os.path.join(THIS_DIR, "build")

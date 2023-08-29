@@ -65,7 +65,12 @@ from esptool.cmds import (
     write_mem,
 )
 from esptool.config import load_config_file
-from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, REDIRECT_ERROR, ESPLoader, list_ports
+from esptool.loader import (
+    DEFAULT_CONNECT_ATTEMPTS,
+    REDIRECT_ERROR,
+    ESPLoader,
+    list_ports,
+)
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
@@ -1080,7 +1085,10 @@ def _main():
     try:
         main()
     except FatalError as e:
-        print(f"\nA fatal error occurred: {e}", file=sys.stderr if globals()["redirect_errors"] else sys.stdout)
+        print(
+            f"\nA fatal error occurred: {e}",
+            file=sys.stderr if globals()["redirect_errors"] else sys.stdout,
+        )
         sys.exit(2)
     except serial.serialutil.SerialException as e:
         file = sys.stderr if globals()["redirect_errors"] else sys.stdout
@@ -1088,13 +1096,13 @@ def _main():
         print(
             "Note: This error originates from pySerial. "
             "It is likely not a problem with esptool, "
-            "but with the hardware connection or drivers."
-            , file=file
+            "but with the hardware connection or drivers.",
+            file=file,
         )
         print(
             "For troubleshooting steps visit: "
-            "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html"
-            , file=file
+            "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html",
+            file=file,
         )
         sys.exit(1)
     except StopIteration:
