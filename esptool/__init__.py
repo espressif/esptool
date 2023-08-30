@@ -67,8 +67,8 @@ from esptool.cmds import (
 from esptool.config import load_config_file
 from esptool.loader import (
     DEFAULT_CONNECT_ATTEMPTS,
-    REDIRECT_ERRORS,
     ESPLoader,
+    REDIRECT_ERRORS,
     list_ports,
 )
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
