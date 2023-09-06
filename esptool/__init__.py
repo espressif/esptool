@@ -173,13 +173,6 @@ def main(argv=None, esp=None):
         default=os.environ.get("ESPTOOL_CONNECT_ATTEMPTS", DEFAULT_CONNECT_ATTEMPTS),
     )
 
-    parser.add_argument(
-        "--redirect-errors",
-        help="Redirect errors to stderr instead of stdout",
-        action="store_true",
-        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
-    )
-
     subparsers = parser.add_subparsers(
         dest="operation", help="Run esptool.py {command} -h for additional help"
     )
@@ -645,7 +638,6 @@ def main(argv=None, esp=None):
     argv = expand_file_arguments(argv or sys.argv[1:])
 
     args = parser.parse_args(argv)
-    globals()["redirect_errors"] = args.redirect_errors
     print("esptool.py v%s" % __version__)
     load_config_file(verbose=True)
 
@@ -1087,11 +1079,11 @@ def _main():
     except FatalError as e:
         print(
             f"\nA fatal error occurred: {e}",
-            file=sys.stderr if globals()["redirect_errors"] else sys.stdout,
+            file=sys.stderr if REDIRECT_ERRORS else sys.stdout,
         )
         sys.exit(2)
     except serial.serialutil.SerialException as e:
-        file = sys.stderr if globals()["redirect_errors"] else sys.stdout
+        file = sys.stderr if REDIRECT_ERRORS else sys.stdout
         print(f"\nA serial exception error occurred: {e}", file=file)
         print(
             "Note: This error originates from pySerial. "
@@ -1106,7 +1098,7 @@ def _main():
         )
         sys.exit(1)
     except StopIteration:
-        file = sys.stderr if globals()["redirect_errors"] else sys.stdout
+        file = sys.stderr if REDIRECT_ERRORS else sys.stdout
         print(traceback.format_exc(), file=file)
         print("A fatal error occurred: The chip stopped responding.", file=file)
         sys.exit(2)

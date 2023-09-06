@@ -1429,13 +1429,6 @@ def main(custom_commandline=None):
         prog="espsecure",
     )
 
-    parser.add_argument(
-        "--redirect-errors",
-        help="Redirect errors to stderr instead of stdout",
-        action="store_true",
-        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
-    )
-
     subparsers = parser.add_subparsers(
         dest="operation", help="Run espsecure.py {command} -h for additional help"
     )
@@ -1798,7 +1791,6 @@ def main(custom_commandline=None):
     )
 
     args = parser.parse_args(custom_commandline)
-    globals()["redirect_errors"] = args.redirect_errors
     print("espsecure.py v%s" % esptool.__version__)
     if args.operation is None:
         parser.print_help()
@@ -1821,7 +1813,7 @@ def _main():
     except esptool.FatalError as e:
         print(
             "\nA fatal error occurred: %s" % e,
-            file=sys.stderr if globals()["redirect_errors"] else sys.stdout,
+            file=sys.stderr if REDIRECT_ERRORS else sys.stdout,
         )
         sys.exit(2)
     except ValueError as e:
@@ -1831,7 +1823,7 @@ def _main():
                     "Note: This error originates from the cryptography module. "
                     "It is likely not a problem with espsecure, "
                     "please make sure you are using a compatible OpenSSL backend.",
-                    file=sys.stderr if globals()["redirect_errors"] else sys.stdout,
+                    file=sys.stderr if REDIRECT_ERRORS else sys.stdout,
                 )
         finally:
             raise

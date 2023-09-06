@@ -54,7 +54,7 @@ def wrap_stub(elf_file):
             stub.get("data_start", 0),
             stub["entry"],
         ),
-        file=sys.stderr if globals()["redirect_errors"] else sys.stdout,
+        file=sys.stderr if REDIRECT_ERRORS else sys.stdout,
     )
 
     return stub
@@ -80,14 +80,7 @@ def stub_name(filename):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("elf_files", nargs="+", help="Stub ELF files to convert")
-    parser.add_argument(
-        "--redirect-errors",
-        help="Redirect errors to stderr instead of stdout",
-        action="store_true",
-        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
-    )
     args = parser.parse_args()
-    globals()["redirect_errors"] = args.redirect_errors
 
     stubs = dict(
         (stub_name(elf_file), wrap_stub(elf_file)) for elf_file in args.elf_files

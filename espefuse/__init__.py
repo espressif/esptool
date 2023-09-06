@@ -212,13 +212,6 @@ def main(custom_commandline=None, esp=None):
         action="store_true",
     )
 
-    init_parser.add_argument(
-        "--redirect-errors",
-        help="Redirect errors to stderr instead of stdout",
-        action="store_true",
-        default=os.environ.get("REDIRECT_ERRORS", REDIRECT_ERRORS),
-    )
-
     common_args, remaining_args = init_parser.parse_known_args(custom_commandline)
     debug_mode = common_args.debug or ("dump" in remaining_args)
     just_print_help = [
@@ -270,8 +263,6 @@ def main(custom_commandline=None, esp=None):
     try:
         for rem_args in grouped_remaining_args:
             args, unused_args = parser.parse_known_args(rem_args, namespace=common_args)
-            globals()["redirect_errors"] = args.redirect_errors
-
             if args.operation is None:
                 parser.print_help()
                 parser.exit(1)
@@ -306,7 +297,7 @@ def _main():
     except esptool.FatalError as e:
         print(
             "\nA fatal error occurred: %s" % e,
-            file=sys.stderr if globals()["redirect_errors"] else sys.stdout,
+            file=sys.stderr if REDIRECT_ERRORS else sys.stdout,
         )
         sys.exit(2)
 
