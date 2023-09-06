@@ -6,9 +6,8 @@
  * SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
  */
 
-#ifndef STUB_FLASHER_H_
-#define STUB_FLASHER_H_
-
+#pragma once
+#include <stdbool.h>
 #include <stdint.h>
 
 /* Maximum write block size, used for various buffers. */
@@ -22,8 +21,9 @@
 #define SECTORS_PER_BLOCK (FLASH_BLOCK_SIZE / FLASH_SECTOR_SIZE)
 
 /* 32-bit addressing is supported only by ESP32S3 */
-#if defined(ESP32S3)
+#if defined(ESP32S3) && !defined(ESP32S3BETA2)
 #define FLASH_MAX_SIZE 64*1024*1024
+extern bool large_flash_mode;
 #else
 #define FLASH_MAX_SIZE 16*1024*1024
 #endif
@@ -108,5 +108,3 @@ typedef enum {
 
   ESP_CMD_NOT_IMPLEMENTED = 0xFF,
 } esp_command_error;
-
-#endif /* STUB_FLASHER_H_ */

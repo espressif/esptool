@@ -123,6 +123,26 @@ static void disable_watchdogs()
 }
 #endif // WITH_USB_JTAG_SERIAL
 
+#if ESP32S3 && !ESP32S3BETA2
+bool large_flash_mode = false;
+
+bool flash_larger_than_16mb()
+{
+  uint32_t flash_id;
+  esp_rom_opiflash_exec_cmd(1, SPI_FLASH_FASTRD_MODE,
+                            CMD_RDID, 8,
+                            0, 0,
+                            0,
+                            NULL, 0,
+                            (uint8_t *)&flash_id, 24,
+                            ESP_ROM_OPIFLASH_SEL_CS0,
+                            false);
+
+  uint8_t flid_lowbyte = (flash_id >> 16) & 0xFF;
+  return ((flid_lowbyte >= 0x19 && flid_lowbyte < 0x30) || (flid_lowbyte >= 0x39)); // See DETECTED_FLASH_SIZES in esptool
+}
+#endif // ESP32S3
+
 static void stub_handle_rx_byte(char byte)
 {
   int16_t r = SLIP_recv_byte(byte, (slip_state_t *)&ub.state);
@@ -490,9 +510,11 @@ void stub_main()
         spi_flash_attach(spiconfig, 0);
 #endif
 #if ESP32S3 && !ESP32S3BETA2
-        // Initialize OPI flash driver only when flash is detected octal. Otherwise, we don't need to
-        // initialize such a driver
-        if (ets_efuse_flash_octal_mode()) {
+        large_flash_mode = ets_efuse_flash_octal_mode() || flash_larger_than_16mb();
+
+        // Initialize OPI flash driver only when flash is detected octal or quad larger than 16MB.
+        // Otherwise, we don't need to initialize such a driver
+        if (large_flash_mode) {
           static const esp_rom_opiflash_def_t flash_driver = OPIFLASH_DRIVER();
           esp_rom_opiflash_legacy_driver_init(&flash_driver);
           esp_rom_opiflash_wait_idle();

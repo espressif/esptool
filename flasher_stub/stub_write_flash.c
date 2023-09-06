@@ -214,7 +214,7 @@ esp_command_error handle_flash_begin(uint32_t total_size, uint32_t offset) {
   fs.last_error = ESP_OK;
 
 #if defined(ESP32S3) && !defined(ESP32S3BETA2)
-  if (ets_efuse_flash_octal_mode()) {
+  if (large_flash_mode) {
     esp_rom_opiflash_wait_idle();
   } else {
     if (SPIUnlock() != 0) {
@@ -266,7 +266,7 @@ static void start_next_erase(void)
   spi_write_enable();
   spi_wait_ready();
   #if defined(ESP32S3) && !defined(ESP32S3BETA2)
-      if (ets_efuse_flash_octal_mode()) {
+      if (large_flash_mode) {
         if (block_erase) {
           if (fs.next_erase_sector * FLASH_SECTOR_SIZE < (1 << 24)) {
             esp_rom_opiflash_wait_idle();
@@ -354,7 +354,7 @@ void handle_flash_data(void *data_buf, uint32_t length) {
 
   /* do the actual write */
   #if defined(ESP32S3) && !defined(ESP32S3BETA2)
-      if (ets_efuse_flash_octal_mode()) {
+      if (large_flash_mode){
         res = SPIWrite4B(1, fs.next_write, data_buf, length);
       } else {
         res = SPIWrite(fs.next_write, data_buf, length);

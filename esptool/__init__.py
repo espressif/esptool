@@ -834,7 +834,11 @@ def main(argv=None, esp=None):
             if flash_size is not None:  # Secure download mode
                 esp.flash_set_parameters(flash_size_bytes(flash_size))
                 # Check if stub supports chosen flash size
-                if esp.IS_STUB and flash_size in ("32MB", "64MB", "128MB"):
+                if (
+                    esp.IS_STUB
+                    and esp.CHIP_NAME != "ESP32-S3"
+                    and flash_size_bytes(flash_size) > 16 * 1024 * 1024
+                ):
                     print(
                         "WARNING: Flasher stub doesn't fully support flash size larger "
                         "than 16MB, in case of failure use --no-stub."
@@ -858,7 +862,7 @@ def main(argv=None, esp=None):
             args.size = flash_size_bytes(size_str)
 
         if esp.IS_STUB and hasattr(args, "address") and hasattr(args, "size"):
-            if args.address + args.size > 0x1000000:
+            if esp.CHIP_NAME != "ESP32-S3" and args.address + args.size > 0x1000000:
                 print(
                     "WARNING: Flasher stub doesn't fully support flash size larger "
                     "than 16MB, in case of failure use --no-stub."

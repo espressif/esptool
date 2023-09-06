@@ -291,10 +291,19 @@ target_esp32s3:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3 --chip esp32s3 --baud 115200
 
-target_esp32s3_32MB:
+target_esp32s3_32MB_octal:
   extends: .target_esptool_test
   tags:
-    - esptool_esp32s3_32MB_target
+    - esptool_esp32s3_32MB_octal_target
+  variables:
+    ESPTOOL_TEST_FLASH_SIZE: "32"
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3_32MB --chip esp32s3 --baud 115200
+
+target_esp32s3_32MB_quad:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32s3_32MB_quad_target
   variables:
     ESPTOOL_TEST_FLASH_SIZE: "32"
   script:
