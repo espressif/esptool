@@ -438,8 +438,8 @@ build_docs:
   image: python:3.7-bullseye
   tags:
     - build_docs
-  only:
-    changes:
+  rules:
+    - changes:
       - "docs/**/*"
       - "CONTRIBUTING.rst"
   needs: []
@@ -461,10 +461,6 @@ build_docs:
     - deploy
   needs:
     - build_docs
-  only:
-    changes:
-      - "docs/**/*"
-      - "CONTRIBUTING.rst"
   script:
     - source ${CI_PROJECT_DIR}/docs/utils.sh
     - add_doc_server_ssh_keys $DOCS_DEPLOY_PRIVATEKEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
