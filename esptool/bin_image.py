@@ -648,10 +648,10 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 if not self.is_flash_addr(s.addr)
             ]
 
-            # Patch to support 761 union bus memmap     // TODO: ESPTOOL-512
+            # Patch to support ESP32-C6 union bus memmap
             # move ".flash.appdesc" segment to the top of the flash segment
             for segment in flash_segments:
-                if segment.name == ".flash.appdesc":
+                if isinstance(segment, ELFSection) and segment.name == ".flash.appdesc":
                     flash_segments.remove(segment)
                     flash_segments.insert(0, segment)
                     break
