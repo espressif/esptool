@@ -886,7 +886,7 @@ class TestBurnKeyCommands(EfuseTestCase):
                BLOCK_KEY0 {IMAGES_DIR}/256bit   XTS_AES_256_KEY_1 \
                BLOCK_KEY1 {IMAGES_DIR}/256bit_1 XTS_AES_256_KEY_2 \
                BLOCK_KEY2 {IMAGES_DIR}/256bit_2 XTS_AES_128_KEY"
-        if arg_chip in ["esp32c3", "esp32c6", "esp32p4"] or arg_chip in [
+        if arg_chip in ["esp32c3", "esp32c6"] or arg_chip in [
             "esp32h2",
             "esp32h2beta1",
         ]:
