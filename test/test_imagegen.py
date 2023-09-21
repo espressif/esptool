@@ -1,6 +1,7 @@
 import hashlib
 import os
 import os.path
+import re
 import struct
 import subprocess
 import sys
@@ -113,7 +114,7 @@ class BaseTestCase:
                 f" segment(s) in bin image (image segments: {image.segments})"
             )
 
-    def assertImageInfo(self, binpath, chip="esp8266"):
+    def assertImageInfo(self, binpath, chip="esp8266", assert_sha=False):
         """
         Run esptool.py image_info on a binary file,
         assert no red flags about contents.
@@ -126,7 +127,13 @@ class BaseTestCase:
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise
-        assert "invalid" not in output, "Checksum calculation should be valid"
+        assert re.search(
+            r"Checksum: [a-fA-F0-9]{2} \(valid\)", output
+        ), "Checksum calculation should be valid"
+        if assert_sha:
+            assert re.search(
+                r"Validation Hash: [a-fA-F0-9]{64} \(valid\)", output
+            ), "SHA256 should be valid"
         assert (
             "warning" not in output.lower()
         ), "Should be no warnings in image_info output"
@@ -267,7 +274,11 @@ class TestESP32Image(BaseTestCase):
         try:
             self.run_elf2image("esp32", elfpath, extra_args=extra_args)
             image = esptool.bin_image.LoadFirmwareImage("esp32", binpath)
-            self.assertImageInfo(binpath, "esp32")
+            self.assertImageInfo(
+                binpath,
+                "esp32",
+                True if "--ram-only-header" not in extra_args else False,
+            )
             return image
         finally:
             try_delete(binpath)
@@ -320,6 +331,13 @@ class TestESP32Image(BaseTestCase):
 
         # --use_segments uses ELF segments(phdrs), produces just 2 segments in the bin
         image = self._test_elf2image(ELF, BIN, ["--use_segments"])
+        assert len(image.segments) == 2
+
+    def test_ram_only_header(self):
+        ELF = "esp32-app-template.elf"
+        BIN = "esp32-app-template.bin"
+        # --ram-only-header produces just 2 visible segments in the bin
+        image = self._test_elf2image(ELF, BIN, ["--ram-only-header"])
         assert len(image.segments) == 2
 
 

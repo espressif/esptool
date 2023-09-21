@@ -477,6 +477,17 @@ def main(argv=None, esp=None):
         "must be aligned to. Value 0xFF is used for padding, similar to erase_flash",
         default=None,
     )
+    parser_elf2image.add_argument(
+        "--ram-only-header",
+        help="Order segments of the output so IRAM and DRAM are placed at the "
+        "beginning and force the main header segment number to RAM segments "
+        "quantity. This will make the other segments invisible to the ROM "
+        "loader. Use this argument with care because the ROM loader will load "
+        "only the RAM segments although the other segments being present in "
+        "the output.",
+        action="store_true",
+        default=None,
+    )
 
     add_spi_flash_subparsers(parser_elf2image, allow_keep=False, auto_detect=False)
 

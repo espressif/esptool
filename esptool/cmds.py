@@ -980,6 +980,11 @@ def elf2image(args):
         args.chip = "esp8266"
 
     print("Creating {} image...".format(args.chip))
+    if args.ram_only_header:
+        print(
+            "RAM only visible in the header - only RAM segments are visible to the "
+            "ROM loader!"
+        )
 
     if args.chip != "esp8266":
         image = CHIP_DEFS[args.chip].BOOTLOADER_IMAGE()
@@ -990,6 +995,7 @@ def elf2image(args):
         image.min_rev = args.min_rev
         image.min_rev_full = args.min_rev_full
         image.max_rev_full = args.max_rev_full
+        image.ram_only_header = args.ram_only_header
         image.append_digest = args.append_digest
     elif args.version == "1":  # ESP8266
         image = ESP8266ROMFirmwareImage()

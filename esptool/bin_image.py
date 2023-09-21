@@ -571,7 +571,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     IROM_ALIGN = 65536
 
-    def __init__(self, load_file=None, append_digest=True):
+    def __init__(self, load_file=None, append_digest=True, ram_only_header=False):
         super(ESP32FirmwareImage, self).__init__()
         self.secure_pad = None
         self.flash_mode = 0
@@ -589,6 +589,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.min_rev = 0
         self.min_rev_full = 0
         self.max_rev_full = 0
+        self.ram_only_header = ram_only_header
 
         self.append_digest = append_digest
 
@@ -701,33 +702,61 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     pad_len += self.IROM_ALIGN
                 return pad_len
 
-            # try to fit each flash segment on a 64kB aligned boundary
-            # by padding with parts of the non-flash segments...
-            while len(flash_segments) > 0:
-                segment = flash_segments[0]
-                pad_len = get_alignment_data_needed(segment)
-                if pad_len > 0:  # need to pad
-                    if len(ram_segments) > 0 and pad_len > self.SEG_HEADER_LEN:
-                        pad_segment = ram_segments[0].split_image(pad_len)
-                        if len(ram_segments[0].data) == 0:
-                            ram_segments.pop(0)
-                    else:
-                        pad_segment = ImageSegment(0, b"\x00" * pad_len, f.tell())
-                    checksum = self.save_segment(f, pad_segment, checksum)
+            if self.ram_only_header:
+                # write RAM segments first in order to get only RAM segments quantity
+                # and checksum (ROM bootloader will only care for RAM segments and its
+                # correct checksums)
+                for segment in ram_segments:
+                    checksum = self.save_segment(f, segment, checksum)
                     total_segments += 1
-                else:
+                self.append_checksum(f, checksum)
+
+                # reversing to match the same section order from linker script
+                flash_segments.reverse()
+                for segment in flash_segments:
+                    pad_len = get_alignment_data_needed(segment)
+                    while pad_len > 0:
+                        pad_segment = ImageSegment(0, b"\x00" * pad_len, f.tell())
+                        self.save_segment(f, pad_segment)
+                        total_segments += 1
+                        pad_len = get_alignment_data_needed(segment)
                     # write the flash segment
                     assert (
                         f.tell() + 8
                     ) % self.IROM_ALIGN == segment.addr % self.IROM_ALIGN
-                    checksum = self.save_flash_segment(f, segment, checksum)
-                    flash_segments.pop(0)
+                    # save the flash segment but not saving its checksum neither
+                    # saving the number of flash segments, since ROM bootloader
+                    # should "not see" them
+                    self.save_flash_segment(f, segment)
                     total_segments += 1
+            else:  # not self.ram_only_header
+                # try to fit each flash segment on a 64kB aligned boundary
+                # by padding with parts of the non-flash segments...
+                while len(flash_segments) > 0:
+                    segment = flash_segments[0]
+                    pad_len = get_alignment_data_needed(segment)
+                    if pad_len > 0:  # need to pad
+                        if len(ram_segments) > 0 and pad_len > self.SEG_HEADER_LEN:
+                            pad_segment = ram_segments[0].split_image(pad_len)
+                            if len(ram_segments[0].data) == 0:
+                                ram_segments.pop(0)
+                        else:
+                            pad_segment = ImageSegment(0, b"\x00" * pad_len, f.tell())
+                        checksum = self.save_segment(f, pad_segment, checksum)
+                        total_segments += 1
+                    else:
+                        # write the flash segment
+                        assert (
+                            f.tell() + 8
+                        ) % self.IROM_ALIGN == segment.addr % self.IROM_ALIGN
+                        checksum = self.save_flash_segment(f, segment, checksum)
+                        flash_segments.pop(0)
+                        total_segments += 1
 
-            # flash segments all written, so write any remaining RAM segments
-            for segment in ram_segments:
-                checksum = self.save_segment(f, segment, checksum)
-                total_segments += 1
+                # flash segments all written, so write any remaining RAM segments
+                for segment in ram_segments:
+                    checksum = self.save_segment(f, segment, checksum)
+                    total_segments += 1
 
             if self.secure_pad:
                 # pad the image so that after signing it will end on a a 64KB boundary.
@@ -759,8 +788,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 checksum = self.save_segment(f, pad_segment, checksum)
                 total_segments += 1
 
-            # done writing segments
-            self.append_checksum(f, checksum)
+            if not self.ram_only_header:
+                # done writing segments
+                self.append_checksum(f, checksum)
             image_length = f.tell()
 
             if self.secure_pad:
@@ -769,7 +799,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             # kinda hacky: go back to the initial header and write the new segment count
             # that includes padding segments. This header is not checksummed
             f.seek(1)
-            f.write(bytes([total_segments]))
+            if self.ram_only_header:
+                # Update the header with the RAM segments quantity as it should be
+                # visible by the ROM bootloader
+                f.write(bytes([len(ram_segments)]))
+            else:
+                f.write(bytes([total_segments]))
 
             if self.append_digest:
                 # calculate the SHA256 of the whole file and append it

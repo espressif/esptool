@@ -211,6 +211,10 @@ By default, ``elf2image`` uses the sections in the ELF file to generate each seg
 
     In the above example, the output image file would be called ``my_esp_app.bin``.
 
+    The ``--ram-only-header`` configuration is mainly applicable for use within the Espressif's SIMPLE_BOOT option from 3rd party OSes such as ZephyrOS and NuttX OS.
+    This option makes only the RAM segments visible to the ROM bootloader placing them at the beginning of the file and altering the segment count from the image header with the quantity of these segments, and also writing only their checksum. This segment placement may result in a more fragmented binary because of flash alignment constraints.
+    It is strongly recommended to use this configuration with care, because the image built must then handle the basic hardware initialization and the flash mapping for code execution after ROM bootloader boot it.
+
 .. _image-info:
 
 Output .bin Image Details: image_info
@@ -279,7 +283,7 @@ The output of the command will be in ``raw`` format and gaps between individual 
 UF2 Output Format
 ^^^^^^^^^^^^^^^^^
 
-This command will generate a UF2 (`USB Flashing Format <https://github.com/microsoft/uf2>`_) binary. 
+This command will generate a UF2 (`USB Flashing Format <https://github.com/microsoft/uf2>`_) binary.
 This UF2 file can be copied to a USB mass storage device exposed by another ESP running the `ESP USB Bridge <https://github.com/espressif/esp-usb-bridge>`_ project. The bridge MCU will use it to flash the target MCU. This is as simple copying (or "drag-and-dropping") the file to the exposed disk accessed by a file explorer in your machine.
 
 Gaps between the files will be filled with `0x00` bytes.
