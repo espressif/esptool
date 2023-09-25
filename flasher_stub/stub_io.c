@@ -71,7 +71,7 @@ static void stub_configure_rx_uart(void)
       WRITE_REG(INTERRUPT_CORE0_USB_DEVICE_INT_MAP_REG, ETS_USB_INUM);
     #endif // IS_RISCV
     ets_isr_attach(ETS_USB_INUM, jtag_serial_isr, NULL);
-    REG_SET_MASK(USB_DEVICE_INT_ENA_REG, USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_ENA);
+    WRITE_REG(USB_DEVICE_INT_ENA_REG, USB_DEVICE_SERIAL_OUT_RECV_PKT_INT_ENA);
     ets_isr_unmask(1 << ETS_USB_INUM);
     return;
   }
