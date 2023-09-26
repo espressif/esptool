@@ -43,8 +43,8 @@ cache:
 
 version_check:
   <<: *test_template
-  only:
-    - tags
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
   script:
     - VERSION=$(esptool.py version | head -n 1)
     - |
@@ -480,9 +480,12 @@ build_docs:
 deploy_docs_preview:
   extends:
     - .deploy_docs_template
-  except:
-    refs:
-      - master
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "master"'
+      when: never
+    - changes:
+      - "docs/**/*"
+      - "CONTRIBUTING.rst"
   variables:
     TYPE: "preview"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
@@ -495,9 +498,8 @@ deploy_docs_preview:
 deploy_docs_production:
   extends:
     - .deploy_docs_template
-  only:
-    refs:
-      - master
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "master"'
   variables:
     TYPE: "production"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
