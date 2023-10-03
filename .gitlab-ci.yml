@@ -500,6 +500,9 @@ deploy_docs_production:
     - .deploy_docs_template
   rules:
     - if: '$CI_COMMIT_REF_NAME == "master"'
+      changes:
+      - "docs/**/*"
+      - "CONTRIBUTING.rst"
   variables:
     TYPE: "production"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
