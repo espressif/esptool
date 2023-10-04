@@ -117,7 +117,7 @@ class EfuseDefineFields(EfuseFieldsBase):
 
         self.KEYBLOCKS = []
 
-        # if BLK_VERSION_MAJOR is 1, these efuse fields are in BLOCK2
+        # if BLK_VERSION_MINOR is 2, these efuse fields are in BLOCK2
         self.BLOCK2_CALIBRATION_EFUSES = []
 
         self.CALC = []
