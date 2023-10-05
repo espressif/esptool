@@ -252,7 +252,7 @@ Will create a file ``merged-flash.bin`` with the contents of the other 3 files. 
 *  The ``merge_bin`` command supports the same ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` options as the ``write_flash`` command to override the bootloader flash header (see above for details).
    These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the ``--chip`` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
 *  The ``--format`` option will change the format of the output file. For more information about formats see formats description below.
-*  It is possible to append options from a text file with ``@filename``. As an example, this can be conveniently used with the ESP-IDF build system, which produces a ``flash_args`` file in the build directory of a project:
+*  It is possible to append options from a text file with ``@filename`` (see the advanced options page :ref:`Specifying Arguments via File <specify_arguments_via_file>` section for details). As an example, this can be conveniently used with the ESP-IDF build system, which produces a ``flash_args`` file in the build directory of a project:
 
 .. code:: sh
 

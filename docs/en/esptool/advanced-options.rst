@@ -100,7 +100,12 @@ Passing ``--no-stub`` will disable certain options, as not all options are imple
 
 Specifying Arguments via File
 -----------------------------
+.. _specify_arguments_via_file:
 
 Anywhere on the esptool command line, you can specify a file name as ``@filename.txt`` to read one or more arguments from text file ``filename.txt``. Arguments can be separated by newlines or spaces, quotes can be used to enclose arguments that span multiple words. Arguments read from the text file are expanded exactly as if they had appeared in that order on the esptool command line.
 
 An example of this is available in the :ref:`merge_bin <merge-bin>` command description.
+
+.. note:: PowerShell users
+
+    Because of `splatting <https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_splatting?view=powershell-7.3>`__ in PowerShell (method of passing a collection of parameter values to a command as a unit) there is a need to add quotes around @filename.txt ("@filename.txt") to be correctly resolved.
