@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
     - name: Checkout ref commit
@@ -19,6 +19,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools
+
     - name: SoftHSM2 setup
       run: |
         sudo apt-get update
@@ -28,22 +33,18 @@ jobs:
         sudo chown -R $(whoami) /var/lib/softhsm
         ./ci/setup_softhsm2.sh || exit 1
 
-    - name: Test python components (fast)
+    - name: Install esptool and check if the installed versions can run
       run: |
         python setup.py build
         pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev,hsm]
-        pytest test/test_imagegen.py
-        pytest test/test_espsecure.py
-        pytest test/test_espsecure_hsm.py
-        pytest test/test_merge_bin.py
-        pytest test/test_image_info.py
-        pytest test/test_modules.py
-
-    - name: Check the installed versions can run
-      run: |
         esptool.py --help
         espefuse.py --help
         espsecure.py --help
+
+    - name: Test esptool and components
+      run: |
+        pytest -m host_test
+        pytest test/test_espsecure_hsm.py
 
     - name: Build stub (Python 3.7 only)
       if: matrix.python-version == 3.7
