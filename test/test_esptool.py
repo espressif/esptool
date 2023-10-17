@@ -598,7 +598,7 @@ class TestFlashing(EsptoolTestCase):
         )
         assert (
             "images/esp32c3_header_min_rev.bin "
-            "requires chip revision in range [v0.10 - max rev not set]" in output
+            "requires chip revision in range [v2.55 - max rev not set]" in output
         )
         assert "Use --force to flash anyway." in output
 

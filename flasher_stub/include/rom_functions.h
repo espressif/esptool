@@ -107,6 +107,10 @@ SpiFlashOpResult SPI_Encrypt_Write(uint32_t flash_addr, const void* data, uint32
 
 #if ESP32S2_OR_LATER
 uint32_t GetSecurityInfoProc(int* pMsg, int* pnErr, uint8_t *buf);  // pMsg and pnErr unused in ROM
+#if ESP32C3
+extern uint32_t _rom_eco_version; // rom constant to define ECO version
+uint32_t GetSecurityInfoProcNewEco(int* pMsg, int* pnErr, uint8_t *buf);  // GetSecurityInfo for C3 ECO7+
+#endif // ESP32C3
 SpiFlashOpResult SPI_read_status_high(esp_rom_spiflash_chip_t *spi, uint32_t *status);
 #else
 /* Note: On ESP32 this was a static function whose first argument was elided by the

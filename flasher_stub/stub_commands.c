@@ -254,7 +254,14 @@ esp_command_error handle_get_security_info()
   uint8_t buf[SECURITY_INFO_BYTES];
   esp_command_error ret;
 
+  #ifdef ESP32C3
+  if (_rom_eco_version >= 7)
+    ret = GetSecurityInfoProcNewEco(NULL, NULL, buf);
+  else
+    ret = GetSecurityInfoProc(NULL, NULL, buf);
+  #else
   ret = GetSecurityInfoProc(NULL, NULL, buf);
+  #endif // ESP32C3
   if (ret == ESP_OK)
     SLIP_send_frame_data_buf(buf, sizeof(buf));
   return ret;

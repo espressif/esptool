@@ -67,6 +67,7 @@ send_packet = 0x400000a8;
 recv_packet = 0x400000ac;
 GetUartDevice = 0x400000b0;
 GetSecurityInfoProc = 0x4004b9da;
+GetSecurityInfoProcNewEco = 0x4004d51e; /* manually added from esp32c3eco7-20230720; new address of function for eco7+ */
 UartDwnLdProc = 0x400000b4;
 Uart_Init = 0x400000b8;
 ets_set_user_start = 0x400000bc;
@@ -2197,4 +2198,3 @@ _global_impure_ptr = 0x3fcdffdc;
  */
 _rom_chip_id = 0x40000010;
 _rom_eco_version = 0x40000014;
-
