@@ -102,6 +102,17 @@ Early Stage Crash
 
    Use any of `serial terminal programs`_ to view the boot log. ({IDF_TARGET_NAME} baud rate is 115200bps). See if the program is crashing during early startup or outputting an error message.
 
+.. only:: not esp8266 and not esp32 and not esp32c2
+
+   Issues When Using USB-Serial/JTAG or USB-OTG
+   --------------------------------------------
+
+   When working with ESP chips that implement a `USB-Serial/JTAG Controller <https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/api-guides/usb-serial-jtag-console.html>`_ or a `USB-OTG console <https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/usb-otg-console.html>`_, it's essential to be aware of potential issues related to the loaded application interfering with or reprogramming the GPIO pins used for USB communication.
+
+   If the application accidentally reconfigures the USB peripheral pins or disables the USB peripheral, the device disappears from the system. You can also encounter unstable flashing or errors like ``OSError: [Errno 71] Protocol error``.
+
+   If that happens, try :ref:`manually entering the download mode <manual-bootloader>` and then using the :ref:`erase_flash <erase_flash>` command to wipe the flash memory. Then, make sure to fix the issue in the application before flashing again.
+
 Serial Terminal Programs
 ------------------------
 
