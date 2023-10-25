@@ -80,7 +80,7 @@ This guide explains how to select the boot mode correctly and describes the boot
    {IDF_TARGET_STRAP_BOOT_2_GPIO}
    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   .. only:: not esp32c3
+   .. only:: esp32 or esp32s2 or esp32s3
 
       {IDF_TARGET_STRAP_BOOT_2_GPIO} must also be either left unconnected/floating, or driven Low, in order to enter the serial bootloader.
 
@@ -241,7 +241,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
    ``boot:0xNN (DESCRIPTION)`` is the hex value of the strapping pins, as represented in the `GPIO_STRAP register <https://github.com/espressif/esp-idf/blob/release/v5.0/components/soc/{IDF_TARGET_PATH_NAME}/include/soc/gpio_reg.h>`__.
 
    The individual bit values are as follows:
-   
+
    .. only:: esp32
 
       -  ``0x01`` - GPIO5
@@ -308,7 +308,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
          clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
          mode:DIO, clock div:1
 
-   
+
    .. only:: not esp32
 
       ::
