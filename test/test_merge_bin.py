@@ -197,6 +197,72 @@ class TestMergeBin:
         assert helloworld == merged[0xF000 : 0xF000 + len(helloworld)]
         self.assertAllFF(merged[0xF000 + len(helloworld) :])
 
+    def test_merge_mixed(self):
+        # convert bootloader to hex
+        hex = self.run_merge_bin(
+            "esp32",
+            [(0x1000, "bootloader_esp32.bin")],
+            options=["--format", "hex"],
+        )
+        # create a temp file with hex content
+        with tempfile.NamedTemporaryFile(suffix=".hex", delete=False) as f:
+            f.write(hex)
+        # merge hex file with bin file
+        # output to bin file should be the same as in merge bin + bin
+        try:
+            merged = self.run_merge_bin(
+                "esp32",
+                [(0x1000, f.name), (0x10000, "ram_helloworld/helloworld-esp32.bin")],
+                ["--target-offset", "0x1000", "--fill-flash-size", "2MB"],
+            )
+        finally:
+            os.unlink(f.name)
+        # full length is without target-offset arg
+        assert len(merged) == 0x200000 - 0x1000
+
+        bootloader = read_image("bootloader_esp32.bin")
+        helloworld = read_image("ram_helloworld/helloworld-esp32.bin")
+        assert bootloader == merged[: len(bootloader)]
+        assert helloworld == merged[0xF000 : 0xF000 + len(helloworld)]
+        self.assertAllFF(merged[0xF000 + len(helloworld) :])
+
+    def test_merge_bin2hex(self):
+        merged = self.run_merge_bin(
+            "esp32",
+            [
+                (0x1000, "bootloader_esp32.bin"),
+            ],
+            options=["--format", "hex"],
+        )
+        lines = merged.splitlines()
+        # hex format - :0300300002337A1E
+        # :03          0030  00    02337A 1E
+        #  ^data_cnt/2 ^addr ^type ^data  ^checksum
+
+        # check for starting address - 0x1000 passed from arg
+        assert lines[0][3:7] == b"1000"
+        # pick a random line for testing the format
+        line = lines[random.randrange(0, len(lines))]
+        assert line[0] == ord(":")
+        data_len = int(b"0x" + line[1:3], 16)
+        # : + len + addr + type + data + checksum
+        assert len(line) == 1 + 2 + 4 + 2 + data_len * 2 + 2
+        # last line is allways :00000001FF
+        assert lines[-1] == b":00000001FF"
+        # convert back and verify the result against the source bin file
+        with tempfile.NamedTemporaryFile(suffix=".hex", delete=False) as hex:
+            hex.write(merged)
+            merged_bin = self.run_merge_bin(
+                "esp32",
+                [(0x1000, hex.name)],
+                options=["--format", "raw"],
+            )
+        source = read_image("bootloader_esp32.bin")
+        # verify that padding was done correctly
+        assert b"\xFF" * 0x1000 == merged_bin[:0x1000]
+        # verify the file itself
+        assert source == merged_bin[0x1000:]
+
 
 class UF2Block(object):
     def __init__(self, bs):

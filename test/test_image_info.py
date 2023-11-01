@@ -2,6 +2,7 @@ import os
 import os.path
 import subprocess
 import sys
+import tempfile
 
 from conftest import need_to_install_package_err
 
@@ -40,7 +41,9 @@ class TestImageInfo:
         ]
         if version is not None:
             cmd += ["--version", str(version)]
-        cmd += ["".join([IMAGES_DIR, os.sep, file])]
+        # if path was passed use the whole path
+        # if file does not exists try to use file from IMAGES_DIR directory
+        cmd += [file] if os.path.isfile(file) else ["".join([IMAGES_DIR, os.sep, file])]
         print("\nExecuting {}".format(" ".join(cmd)))
 
         try:
@@ -189,3 +192,43 @@ class TestImageInfo:
         assert "Bootloader version: 1" in out
         assert "ESP-IDF: v5.2-dev-254-g1950b15" in out
         assert "Compile time: Apr 25 2023 00:13:32" in out
+
+    def test_intel_hex(self):
+        # This bootloader binary is built from "hello_world" project
+        # with default settings, IDF version is v5.2.
+        # File is converted to Intel Hex using merge_bin
+
+        def convert_bin2hex(file):
+            subprocess.check_output(
+                [
+                    sys.executable,
+                    "-m",
+                    "esptool",
+                    "--chip",
+                    "esp32",
+                    "merge_bin",
+                    "--format",
+                    "hex",
+                    "0x0",
+                    "".join([IMAGES_DIR, os.sep, "bootloader_esp32_v5_2.bin"]),
+                    "-o",
+                    file,
+                ]
+            )
+
+        fd, file = tempfile.mkstemp(suffix=".hex")
+        try:
+            convert_bin2hex(file)
+            out = self.run_image_info("esp32", file, "2")
+            assert "File size: 26768 (bytes)" in out
+            assert "Bootloader information" in out
+            assert "Bootloader version: 1" in out
+            assert "ESP-IDF: v5.2-dev-254-g1950b15" in out
+            assert "Compile time: Apr 25 2023 00:13:32" in out
+        finally:
+            try:
+                # make sure that file was closed before removing it
+                os.close(fd)
+            except OSError:
+                pass
+            os.unlink(file)

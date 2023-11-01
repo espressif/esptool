@@ -10,6 +10,10 @@ import io
 import os
 import re
 import struct
+import tempfile
+from typing import BinaryIO, Optional
+
+from intelhex import IntelHex
 
 from .loader import ESPLoader
 from .targets import (
@@ -34,6 +38,23 @@ def align_file_position(f, size):
     """Align the position in the file to the next block of specified size"""
     align = (size - 1) - (f.tell() % size)
     f.seek(align, 1)
+
+
+def intel_hex_to_bin(file: BinaryIO, start_addr: Optional[int] = None) -> BinaryIO:
+    """Convert IntelHex file to temp binary file with padding from start_addr
+    If hex file was detected return temp bin file object; input file otherwise"""
+    INTEL_HEX_MAGIC = b":"
+    magic = file.read(1)
+    file.seek(0)
+    if magic == INTEL_HEX_MAGIC:
+        ih = IntelHex()
+        ih.loadhex(file.name)
+        file.close()
+        bin = tempfile.NamedTemporaryFile(suffix=".bin", delete=False)
+        ih.tobinfile(bin, start=start_addr)
+        return bin
+    else:
+        return file
 
 
 def LoadFirmwareImage(chip, image_file):

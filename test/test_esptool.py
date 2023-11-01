@@ -24,6 +24,7 @@ import tempfile
 import time
 from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
+from typing import List
 from unittest.mock import MagicMock
 
 # Link command line options --port, --chip, --baud, --with-trace, and --preload-port
@@ -388,6 +389,42 @@ class TestFlashing(EsptoolTestCase):
         self.run_esptool("write_flash 0x0 images/sector.bin 0x1000 images/fifty_kb.bin")
         self.verify_readback(0, 4096, "images/sector.bin")
         self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
+
+    def test_short_flash_hex(self):
+        _, f = tempfile.mkstemp(suffix=".hex")
+        try:
+            self.run_esptool(f"merge_bin --format hex 0x0 images/one_kb.bin -o {f}")
+            self.run_esptool(f"write_flash 0x0 {f}")
+            self.verify_readback(0, 1024, "images/one_kb.bin")
+        finally:
+            os.unlink(f)
+
+    def test_adjacent_flash_hex(self):
+        _, f1 = tempfile.mkstemp(suffix=".hex")
+        _, f2 = tempfile.mkstemp(suffix=".hex")
+        try:
+            self.run_esptool(f"merge_bin --format hex 0x0 images/sector.bin -o {f1}")
+            self.run_esptool(
+                f"merge_bin --format hex 0x1000 images/fifty_kb.bin -o {f2}"
+            )
+            self.run_esptool(f"write_flash 0x0 {f1} 0x1000 {f2}")
+            self.verify_readback(0, 4096, "images/sector.bin")
+            self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
+        finally:
+            os.unlink(f1)
+            os.unlink(f2)
+
+    def test_adjacent_flash_mixed(self):
+        _, f = tempfile.mkstemp(suffix=".hex")
+        try:
+            self.run_esptool(
+                f"merge_bin --format hex 0x1000 images/fifty_kb.bin -o {f}"
+            )
+            self.run_esptool(f"write_flash 0x0 images/sector.bin 0x1000 {f}")
+            self.verify_readback(0, 4096, "images/sector.bin")
+            self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
+        finally:
+            os.unlink(f)
 
     def test_adjacent_independent_flash(self):
         self.run_esptool("write_flash 0x0 images/sector.bin")
@@ -949,6 +986,15 @@ class TestKeepImageSettings(EsptoolTestCase):
 class TestLoadRAM(EsptoolTestCase):
     # flashing an application not supporting USB-CDC will make
     # /dev/ttyACM0 disappear and USB-CDC tests will not work anymore
+
+    def verify_output(self, expected_out: List[bytes]):
+        """Verify that at least one element of expected_out is in serial output"""
+        with serial.serial_for_url(arg_port, arg_baud) as p:
+            p.timeout = 5
+            output = p.read(100)
+            print(f"Output: {output}")
+            assert any(item in output for item in expected_out)
+
     @pytest.mark.quick_test
     def test_load_ram(self):
         """Verify load_ram command
@@ -957,17 +1003,28 @@ class TestLoadRAM(EsptoolTestCase):
         "Hello world!\n" to the serial port.
         """
         self.run_esptool(f"load_ram images/ram_helloworld/helloworld-{arg_chip}.bin")
+        self.verify_output(
+            [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
+        )
+
+    def test_load_ram_hex(self):
+        """Verify load_ram command with hex file as input
+
+        The "hello world" binary programs for each chip print
+        "Hello world!\n" to the serial port.
+        """
+        _, f = tempfile.mkstemp(suffix=".hex")
         try:
-            p = serial.serial_for_url(arg_port, arg_baud)
-            p.timeout = 5
-            output = p.read(100)
-            print(f"Output: {output}")
-            assert (
-                b"Hello world!" in output  # xtensa
-                or b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04' in output  # C3
+            self.run_esptool(
+                f"merge_bin --format hex -o {f} 0x0 "
+                f"images/ram_helloworld/helloworld-{arg_chip}.bin"
+            )
+            self.run_esptool(f"load_ram {f}")
+            self.verify_output(
+                [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
             )
         finally:
-            p.close()
+            os.unlink(f)
 
 
 class TestDeepSleepFlash(EsptoolTestCase):

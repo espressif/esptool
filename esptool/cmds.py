@@ -11,6 +11,8 @@ import sys
 import time
 import zlib
 
+from intelhex import IntelHex
+
 from .bin_image import ELFFile, ImageSegment, LoadFirmwareImage
 from .bin_image import (
     ESP8266ROMFirmwareImage,
@@ -1337,6 +1339,19 @@ def merge_bin(args):
                 f"Wrote {of.tell():#x} bytes to file {args.output}, "
                 f"ready to flash to offset {args.target_offset:#x}"
             )
+    elif args.format == "hex":
+        out = IntelHex()
+        for addr, argfile in input_files:
+            ihex = IntelHex()
+            image = argfile.read()
+            image = _update_image_flash_params(chip_class, addr, args, image)
+            ihex.frombytes(image, addr)
+            out.merge(ihex)
+        out.write_hex_file(args.output)
+        print(
+            f"Wrote {os.path.getsize(args.output):#x} bytes to file {args.output}, "
+            f"ready to flash to offset {args.target_offset:#x}"
+        )
 
 
 def version(args):

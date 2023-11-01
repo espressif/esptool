@@ -38,6 +38,7 @@ import sys
 import time
 import traceback
 
+from esptool.bin_image import intel_hex_to_bin
 from esptool.cmds import (
     DETECTED_FLASH_SIZES,
     chip_id,
@@ -185,7 +186,9 @@ def main(argv=None, esp=None):
     parser_load_ram = subparsers.add_parser(
         "load_ram", help="Download an image to RAM and execute"
     )
-    parser_load_ram.add_argument("filename", help="Firmware image")
+    parser_load_ram.add_argument(
+        "filename", help="Firmware image", action=AutoHex2BinAction
+    )
 
     parser_dump_mem = subparsers.add_parser(
         "dump_mem", help="Dump arbitrary memory to disk"
@@ -357,7 +360,9 @@ def main(argv=None, esp=None):
     parser_image_info = subparsers.add_parser(
         "image_info", help="Dump headers from a binary file (bootloader or application)"
     )
-    parser_image_info.add_argument("filename", help="Image file to parse")
+    parser_image_info.add_argument(
+        "filename", help="Image file to parse", action=AutoHex2BinAction
+    )
     parser_image_info.add_argument(
         "--version",
         "-v",
@@ -601,7 +606,7 @@ def main(argv=None, esp=None):
         "--format",
         "-f",
         help="Format of the output file",
-        choices=["raw", "uf2"],
+        choices=["raw", "uf2", "hex"],
         default="raw",
     )
     uf2_group = parser_merge_bin.add_argument_group("UF2 format")
@@ -1057,6 +1062,20 @@ class SpiConnectionAction(argparse.Action):
         setattr(namespace, self.dest, value)
 
 
+class AutoHex2BinAction(argparse.Action):
+    """Custom parser class for auto conversion of input files from hex to bin"""
+
+    def __call__(self, parser, namespace, value, option_string=None):
+        try:
+            with open(value, "rb") as f:
+                # if hex file was detected replace hex file with converted temp bin
+                # otherwise keep the original file
+                value = intel_hex_to_bin(f).name
+        except IOError as e:
+            raise argparse.ArgumentError(self, e)
+        setattr(namespace, self.dest, value)
+
+
 class AddrFilenamePairAction(argparse.Action):
     """Custom parser class for the address/filename pairs passed as arguments"""
 
@@ -1085,6 +1104,8 @@ class AddrFilenamePairAction(argparse.Action):
                     "Must be pairs of an address "
                     "and the binary filename to write there",
                 )
+            # check for intel hex files and convert them to bin
+            argfile = intel_hex_to_bin(argfile, address)
             pairs.append((address, argfile))
 
         # Sort the addresses and check for overlapping

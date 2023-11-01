@@ -220,7 +220,7 @@ By default, ``elf2image`` uses the sections in the ELF file to generate each seg
 Output .bin Image Details: image_info
 -------------------------------------
 
-The ``image_info`` command outputs some information (load addresses, sizes, etc) about a ``.bin`` file created by ``elf2image``.
+The ``image_info`` command outputs some information (load addresses, sizes, etc) about a ``.bin`` file created by ``elf2image``. Command also supports ``.hex`` file created by ``merge_bin`` command from supported ``.bin`` files.
 
 To view more information about the image, such as set flash size, frequency and mode, or extended header information, use the ``--version 2`` option. This extended output will become the default in a future major release.
 
@@ -240,7 +240,7 @@ This information corresponds to the headers described in :ref:`image-format`.
 
 Merge Binaries for Flashing: merge_bin
 --------------------------------------
-The ``merge_bin`` command will merge multiple binary files (of any kind) into a single file that can be flashed to a device later. Any gaps between the input files are padded based on selected output format.
+The ``merge_bin`` command will merge multiple binary files (of any kind) into a single file that can be flashed to a device later. Any gaps between the input files are padded based on the selected output format.
 
 For example:
 
@@ -248,7 +248,7 @@ For example:
 
     esptool.py --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
 
-Will create a file ``merged-flash.bin`` with the contents of the other 3 files. This file can be later be written to flash with ``esptool.py write_flash 0x0 merged-flash.bin``.
+Will create a file ``merged-flash.bin`` with the contents of the other 3 files. This file can be later written to flash with ``esptool.py write_flash 0x0 merged-flash.bin``.
 
 
 **Common options:**
@@ -256,12 +256,29 @@ Will create a file ``merged-flash.bin`` with the contents of the other 3 files. 
 *  The ``merge_bin`` command supports the same ``--flash_mode``, ``--flash_size`` and ``--flash_freq`` options as the ``write_flash`` command to override the bootloader flash header (see above for details).
    These options are applied to the output file contents in the same way as when writing to flash. Make sure to pass the ``--chip`` parameter if using these options, as the supported values and the bootloader offset both depend on the chip.
 *  The ``--format`` option will change the format of the output file. For more information about formats see formats description below.
+*  The input files can be in either ``bin`` or ``hex`` format and they will be automatically converted to type selected by ``--format`` argument.
 *  It is possible to append options from a text file with ``@filename`` (see the advanced options page :ref:`Specifying Arguments via File <specify_arguments_via_file>` section for details). As an example, this can be conveniently used with the ESP-IDF build system, which produces a ``flash_args`` file in the build directory of a project:
 
 .. code:: sh
 
     cd build    # The build directory of an ESP-IDF project
     esptool.py --chip {IDF_TARGET_NAME} merge_bin -o merged-flash.bin @flash_args
+
+
+HEX Output Format
+^^^^^^^^^^^^^^^^^
+
+The output of the command will be in `Intel Hex format <https://www.intel.com/content/www/us/en/support/programmable/articles/000076770.html>`__. The gaps between the files won't be padded.
+
+Intel Hex format offers distinct advantages when compared to the binary format, primarily in the following areas:
+
+* **Transport**: Intel Hex files are represented in ASCII text format, significantly increasing the likelihood of flawless transfers across various mediums.
+* **Size**: Data is carefully allocated to specific memory addresses eliminating the need for unnecessary padding. Binary images often lack detailed addressing information, leading to the inclusion of data for all memory locations from the file's initial address to its end.
+* **Validity Checks**: Each line in an Intel Hex file has a checksum to help find errors and make sure data stays unchanged.
+
+.. code:: sh
+
+    esptool.py --chip {IDF_TARGET_NAME} merge_bin --format hex -o merged-flash.hex --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
 
 
 RAW Output Format
@@ -290,7 +307,7 @@ Gaps between the files will be filled with `0x00` bytes.
 
 **UF2 options:**
 
-*  The ``--chunk-size`` option will set what portion of 512 byte block will be used for data. Common value is 256 bytes. By default the largest possible value will be used.
+*  The ``--chunk-size`` option will set what portion of 512 byte block will be used for data. A common value is 256 bytes. By default, the largest possible value will be used.
 *  The ``--md5-disable`` option will disable MD5 checksums at the end of each block. This can be useful for integration with e.g. `tinyuf2 <https://github.com/adafruit/tinyuf2>`__.
 
 .. code:: sh

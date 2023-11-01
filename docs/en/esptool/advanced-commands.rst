@@ -48,7 +48,7 @@ The ``dump_mem`` command will dump a region from the chip's memory space to a fi
 Load a Binary to RAM: load_ram
 ------------------------------
 
-The ``load_ram`` command allows the loading of an executable binary image (created with the ``elf2image`` or ``make_image`` commands) directly into RAM, and then immediately executes the program contained within it.
+The ``load_ram`` command allows the loading of an executable binary image (created with the ``elf2image`` or ``make_image`` commands) directly into RAM, and then immediately executes the program contained within it. Command also supports ``.hex`` file created by ``merge_bin`` command from supported ``.bin`` files.
 
 ::
 
