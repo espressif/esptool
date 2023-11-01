@@ -69,6 +69,7 @@ STUB_ELF_32H2_BETA_2 = $(BUILD_DIR)/$(STUB)_32h2beta2.elf
 STUB_ELF_32C2 = $(BUILD_DIR)/$(STUB)_32c2.elf
 STUB_ELF_32C6 = $(BUILD_DIR)/$(STUB)_32c6.elf
 STUB_ELF_32H2 = $(BUILD_DIR)/$(STUB)_32h2.elf
+STUB_ELF_32P4 = $(BUILD_DIR)/$(STUB)_32p4.elf
 
 STUBS_ELF =
 ifneq ($(WITHOUT_ESP8266),1)
@@ -92,7 +93,8 @@ STUBS_ELF += \
   $(STUB_ELF_32H2_BETA_2) \
   $(STUB_ELF_32C2) \
   $(STUB_ELF_32C6) \
-  $(STUB_ELF_32H2)
+  $(STUB_ELF_32H2) \
+  $(STUB_ELF_32P4)
 endif
 
 .PHONY: all clean install
@@ -170,6 +172,10 @@ $(STUB_ELF_32C6): $(SRCS) $(BUILD_DIR) ld/stub_32c6.ld
 $(STUB_ELF_32H2): $(SRCS) $(BUILD_DIR) ld/stub_32h2.ld
 	@echo "  CC(32H2)   $^ -> $@"
 	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32H2=1 -Tstub_32h2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(STUB_ELF_32P4): $(SRCS) $(BUILD_DIR) ld/stub_32p4.ld
+	@echo "  CC(32P4)   $^ -> $@"
+	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32P4=1 -Tstub_32p4.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR)

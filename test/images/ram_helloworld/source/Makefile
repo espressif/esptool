@@ -27,12 +27,13 @@ APP_ELF_32C3 = $(BUILD_DIR)/$(APP)-esp32c3.elf
 APP_ELF_32C2 = $(BUILD_DIR)/$(APP)-esp32c2.elf
 APP_ELF_32C6 = $(BUILD_DIR)/$(APP)-esp32c6.elf
 APP_ELF_32H2 = $(BUILD_DIR)/$(APP)-esp32h2.elf
+APP_ELF_32P4 = $(BUILD_DIR)/$(APP)-esp32p4.elf
 
 .PHONY: all esp32 clean
 
-all: $(APP_ELF_8266) $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6) $(APP_ELF_32H2)
+all: $(APP_ELF_8266) $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6) $(APP_ELF_32H2) $(APP_ELF_32P4)
 
-esp32: $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6) $(APP_ELF_32H2)
+esp32: $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6) $(APP_ELF_32H2) $(APP_ELF_32P4)
 
 $(BUILD_DIR):
 	$(Q) mkdir $@
@@ -81,6 +82,10 @@ $(APP_ELF_32C6): $(SRCS) $(BUILD_DIR) ld/app_32c6.ld
 $(APP_ELF_32H2): $(SRCS) $(BUILD_DIR) ld/app_32h2.ld
 	@echo "  CC(32H2)   $^ -> $@"
 	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32H2=1 -Tapp_32h2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(APP_ELF_32P4): $(SRCS) $(BUILD_DIR) ld/app_32p4.ld
+	@echo "  CC(32P4)   $^ -> $@"
+	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32P4=1 -Tapp_32p4.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 clean:
 	$(Q) rm -rf $(BUILD_DIR)

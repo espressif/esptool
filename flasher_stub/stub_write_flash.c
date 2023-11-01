@@ -102,6 +102,8 @@ static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3fcdfff
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3fcdfff0;
 #elif ESP32H2
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x4084fff0;
+#elif ESP32P4
+static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x4ff3ffec;
 #else
 static esp_rom_spiflash_chip_t *flashchip = (esp_rom_spiflash_chip_t *)0x3ffae270;
 #endif

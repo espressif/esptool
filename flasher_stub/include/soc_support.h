@@ -55,6 +55,13 @@
 #define IS_RISCV 1
 #endif // ESP32H2
 
+#ifdef ESP32P4
+// TODO: Add support for USB modes when MP is available
+// #define WITH_USB_JTAG_SERIAL 1
+// #define WITH_USB_OTG 1
+#define IS_RISCV 1
+#endif // ESP32P4
+
 // Increase CPU freq to speed up read/write operations over USB
 // Temporarily disabled on the S3 due to stability issues, will be fixed in the next minor release
 #define USE_MAX_CPU_FREQ ((WITH_USB_JTAG_SERIAL || WITH_USB_OTG) && !ESP32S3)
@@ -152,6 +159,13 @@
 #define USB_DEVICE_BASE_REG 0x6000F000
 #define DR_REG_PCR_BASE     0x60096000
 #define DR_REG_LP_WDT_BASE  0x600B1C00
+#endif
+
+#ifdef ESP32P4
+#define UART_BASE_REG       0x500CA000 /* UART0 */
+#define SPI_BASE_REG        0x5008D000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x5008C000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x500E0000
 #endif
 
 /**********************************************************
