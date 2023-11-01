@@ -184,8 +184,6 @@ class ESPLoader(object):
     CHIP_NAME = "Espressif device"
     IS_STUB = False
 
-    FPGA_SLOW_BOOT = False
-
     DEFAULT_PORT = "/dev/ttyUSB0"
 
     USES_RFC2217 = False
@@ -628,7 +626,7 @@ class ESPLoader(object):
 
         # This FPGA delay is for Espressif internal use
         if (
-            self.FPGA_SLOW_BOOT
+            self.CHIP_NAME == "ESP32"
             and os.environ.get("ESPTOOL_ENV_FPGA", "").strip() == "1"
         ):
             delay = extra_delay = 7

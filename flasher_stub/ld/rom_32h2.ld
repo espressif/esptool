@@ -1,8 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
 /* ROM function interface esp32h2.rom.ld for esp32h2
  *
  *
@@ -22,7 +17,7 @@ PROVIDE ( SPI_read_status_high = esp_rom_spiflash_read_statushigh);
 PROVIDE ( SPI_write_status = esp_rom_spiflash_write_status);
 PROVIDE ( SPIRead = esp_rom_spiflash_read);
 PROVIDE ( SPIParamCfg = esp_rom_spiflash_config_param);
-PROVIDE ( SPIEraseChip = esp_rom_spiflash_erase_chip); 
+PROVIDE ( SPIEraseChip = esp_rom_spiflash_erase_chip);
 PROVIDE ( SPIEraseSector = esp_rom_spiflash_erase_sector);
 PROVIDE ( SPIEraseBlock = esp_rom_spiflash_erase_block);
 PROVIDE ( SPI_Write_Encrypt_Enable = esp_rom_spiflash_write_encrypted_enable);

@@ -466,67 +466,72 @@ void stub_main()
 {
   const uint32_t greeting = 0x4941484f; /* OHAI */
 
-  /* this points to stub_main now, clear for next boot */
+  /* This points to stub_main now, clear for next boot. */
   ets_set_user_start(0);
 
+  /* Increase CPU frequency and flashing speed if supported. */
   #if USE_MAX_CPU_FREQ
     set_max_cpu_freq();
   #endif // USE_MAX_CPU_FREQ
 
+  /* Disable all watchdogs to prevent the chip from resetting during longer operations. */
   #if WITH_USB_JTAG_SERIAL
     disable_watchdogs();
   #endif // WITH_USB_JTAG_SERIAL
 
-  /* zero bss */
+  /* Zero the bss region. */
   for(uint32_t *p = &_bss_start; p < &_bss_end; p++) {
     *p = 0;
   }
 
+  /* Send the OHAI greeting, stub will be reported as running. */
   SLIP_send(&greeting, 4);
 
+  /* Configure the interrupts for receiving data from esptool on the host. */
   ub.reading_buf = ub.buf_a;
   stub_io_init(&stub_handle_rx_byte);
 
   /* Configure default SPI flash functionality.
      Can be overriden later by esptool.py. */
-#ifdef ESP8266
-        SelectSpiFunction();
+  #ifdef ESP8266
+    SelectSpiFunction();
+    spi_flash_attach();
+  #else
+    #if SUPPORT_CONFIG_SPI
+          uint32_t spiconfig = ets_efuse_get_spiconfig();
+    #else
+          uint32_t spiconfig = 0;
+    #endif // SUPPORT_CONFIG_SPI
+    uint32_t strapping = READ_REG(GPIO_STRAP_REG);
+    /* If GPIO1 (U0TXD) is pulled low and no other boot mode is
+        set in efuse, assume HSPI flash mode (same as normal boot)
+    */
+    if (spiconfig == 0 && (strapping & 0x1c) == 0x08) {
+        spiconfig = 1; /* HSPI flash mode */
+    }
+    spi_flash_attach(spiconfig, 0);
+  #endif // ESP8266
 
-        spi_flash_attach();
-#else
-#if !ESP32C2 && !ESP32C6 && !ESP32H2 && !ESP32P4
-        uint32_t spiconfig = ets_efuse_get_spiconfig();
-#else
-        // ESP32C2/ESP32C6 doesn't support get spiconfig.
-        uint32_t spiconfig = 0;
-#endif
-        uint32_t strapping = READ_REG(GPIO_STRAP_REG);
-        /* If GPIO1 (U0TXD) is pulled low and no other boot mode is
-           set in efuse, assume HSPI flash mode (same as normal boot)
-        */
-        if (spiconfig == 0 && (strapping & 0x1c) == 0x08) {
-            spiconfig = 1; /* HSPI flash mode */
-        }
-        spi_flash_attach(spiconfig, 0);
-#endif
-#if ESP32S3 && !ESP32S3BETA2
-        large_flash_mode = ets_efuse_flash_octal_mode() || flash_larger_than_16mb();
+  /* Initialize the OPI flash driver if supported. */
+  #if ESP32S3 && !ESP32S3BETA2
+    large_flash_mode = ets_efuse_flash_octal_mode() || flash_larger_than_16mb();
 
-        // Initialize OPI flash driver only when flash is detected octal or quad larger than 16MB.
-        // Otherwise, we don't need to initialize such a driver
-        if (large_flash_mode) {
-          static const esp_rom_opiflash_def_t flash_driver = OPIFLASH_DRIVER();
-          esp_rom_opiflash_legacy_driver_init(&flash_driver);
-          esp_rom_opiflash_wait_idle();
-        }
-#endif //ESP32S3 && !ESP32S3BETA2
-        SPIParamCfg(0, FLASH_MAX_SIZE, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
-                    FLASH_PAGE_SIZE, FLASH_STATUS_MASK);
+    // Initialize OPI flash driver only when flash is detected octal or quad larger than 16MB.
+    // Otherwise, we don't need to initialize such a driver
+    if (large_flash_mode) {
+      static const esp_rom_opiflash_def_t flash_driver = OPIFLASH_DRIVER();
+      esp_rom_opiflash_legacy_driver_init(&flash_driver);
+      esp_rom_opiflash_wait_idle();
+    }
+  #endif //ESP32S3 && !ESP32S3BETA2
+  SPIParamCfg(0, FLASH_MAX_SIZE, FLASH_BLOCK_SIZE, FLASH_SECTOR_SIZE,
+              FLASH_PAGE_SIZE, FLASH_STATUS_MASK);
 
+  /* Configurations are done, now run the loop to receive and handle commands. */
   cmd_loop();
 
-  /* if cmd_loop returns, it's due to ESP_RUN_USER_CODE command. */
-
+  /* If cmd_loop returns, it's due to ESP_RUN_USER_CODE command. */
+  /* Decrease CPU frequency back to the saved value before the stub flasher returns. */
   #if USE_MAX_CPU_FREQ
     reset_cpu_freq();
   #endif // USE_MAX_CPU_FREQ

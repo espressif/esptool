@@ -1,9 +1,3 @@
-/*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
- */
-
 MEMORY {
   iram : org = 0x40800000, len = 0x4000
   dram : org = 0x40830000, len = 0x18000

@@ -63,11 +63,16 @@
 #endif // ESP32P4
 
 // Increase CPU freq to speed up read/write operations over USB
-// Temporarily disabled on the S3 due to stability issues, will be fixed in the next minor release
+// Disabled on the S3 due to stability issues, would require dbias adjustment.
+// https://github.com/espressif/esptool/issues/832, https://github.com/espressif/esptool/issues/808
 #define USE_MAX_CPU_FREQ ((WITH_USB_JTAG_SERIAL || WITH_USB_OTG) && !ESP32S3)
+
+// Later chips don't support ets_efuse_get_spiconfig.
+#define SUPPORT_CONFIG_SPI (ESP32 || ESP32S2 || ESP32S3 || ESP32S3BETA2 || ESP32C3 || ESP32H2BETA1 || ESP32H2BETA2 || ESP32C6BETA)
 
 /**********************************************************
  * Per-SOC based peripheral register base addresses
+ * Sync with reg_base.h in ESP-IDF
  */
 #ifdef ESP8266
 #define UART_BASE_REG       0x60000000 /* UART0 */
@@ -380,21 +385,6 @@
  * SYSTEM registers
  */
 
-#ifdef ESP32S3
-#define SYSTEM_CPU_PER_CONF_REG       (SYSTEM_BASE_REG + 0x010)
-#define SYSTEM_CPUPERIOD_SEL_M        ((SYSTEM_CPUPERIOD_SEL_V)<<(SYSTEM_CPUPERIOD_SEL_S))
-#define SYSTEM_CPUPERIOD_SEL_V        0x3
-#define SYSTEM_CPUPERIOD_SEL_S        0
-#define SYSTEM_CPUPERIOD_MAX          1  // CPU_CLK frequency is 160 MHz - not actually max possible frequency,
-// see https://github.com/espressif/esptool/issues/832 and https://github.com/espressif/esptool/issues/808
-
-#define SYSTEM_SYSCLK_CONF_REG        (SYSTEM_BASE_REG + 0x060)
-#define SYSTEM_SOC_CLK_SEL_M          ((SYSTEM_SOC_CLK_SEL_V)<<(SYSTEM_SOC_CLK_SEL_S))
-#define SYSTEM_SOC_CLK_SEL_V          0x3
-#define SYSTEM_SOC_CLK_SEL_S          10
-#define SYSTEM_SOC_CLK_MAX            1
-#endif // ESP32S3
-
 #ifdef ESP32C3
 #define SYSTEM_CPU_PER_CONF_REG       (SYSTEM_BASE_REG + 0x008)
 #define SYSTEM_CPUPERIOD_SEL_M        ((SYSTEM_CPUPERIOD_SEL_V)<<(SYSTEM_CPUPERIOD_SEL_S))
@@ -450,3 +440,28 @@
 #if ESP32S3_OR_LATER
 #define SECURITY_INFO_BYTES 20
 #endif // ESP32S3_OR_LATER
+
+/**********************************************************
+ * Per-SOC address of the rom_spiflash_legacy_funcs symbol in ROM
+ * Can be retrieved with gdb: "info address rom_spiflash_legacy_funcs"
+ */
+
+#if ESP32 || ESP32S2 || ESP32S3
+#define ROM_SPIFLASH_LEGACY         0x3ffae270
+#endif // ESP32 || ESP32S2 || ESP32S3
+
+#if ESP32C3 || ESP32C6BETA || ESP32C2 || ESP32C6
+#define ROM_SPIFLASH_LEGACY         0x3fcdfff4
+#endif // ESP32C3 || ESP32C6BETA || ESP32C2 || ESP32C6
+
+#if ESP32H2BETA1 || ESP32H2BETA2
+#define ROM_SPIFLASH_LEGACY         0x3fcdfff0
+#endif // ESP32H2BETA1 || ESP32H2BETA2
+
+#if ESP32H2
+#define ROM_SPIFLASH_LEGACY         0x4084fff0
+#endif // ESP32H2
+
+#if ESP32P4
+#define ROM_SPIFLASH_LEGACY         0x4ff3ffec
+#endif // ESP32P4
