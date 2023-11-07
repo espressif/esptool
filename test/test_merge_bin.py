@@ -252,11 +252,11 @@ class TestMergeBin:
         # convert back and verify the result against the source bin file
         with tempfile.NamedTemporaryFile(suffix=".hex", delete=False) as hex:
             hex.write(merged)
-            merged_bin = self.run_merge_bin(
-                "esp32",
-                [(0x1000, hex.name)],
-                options=["--format", "raw"],
-            )
+        merged_bin = self.run_merge_bin(
+            "esp32",
+            [(0x1000, hex.name)],
+            options=["--format", "raw"],
+        )
         source = read_image("bootloader_esp32.bin")
         # verify that padding was done correctly
         assert b"\xFF" * 0x1000 == merged_bin[:0x1000]

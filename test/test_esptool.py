@@ -396,22 +396,27 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
 
     def test_short_flash_hex(self):
-        _, f = tempfile.mkstemp(suffix=".hex")
+        fd, f = tempfile.mkstemp(suffix=".hex")
         try:
             self.run_esptool(f"merge_bin --format hex 0x0 images/one_kb.bin -o {f}")
+            # make sure file is closed before running next command (mainly for Windows)
+            os.close(fd)
             self.run_esptool(f"write_flash 0x0 {f}")
             self.verify_readback(0, 1024, "images/one_kb.bin")
         finally:
             os.unlink(f)
 
     def test_adjacent_flash_hex(self):
-        _, f1 = tempfile.mkstemp(suffix=".hex")
-        _, f2 = tempfile.mkstemp(suffix=".hex")
+        fd1, f1 = tempfile.mkstemp(suffix=".hex")
+        fd2, f2 = tempfile.mkstemp(suffix=".hex")
         try:
             self.run_esptool(f"merge_bin --format hex 0x0 images/sector.bin -o {f1}")
+            # make sure file is closed before running next command (mainly for Windows)
+            os.close(fd1)
             self.run_esptool(
                 f"merge_bin --format hex 0x1000 images/fifty_kb.bin -o {f2}"
             )
+            os.close(fd2)
             self.run_esptool(f"write_flash 0x0 {f1} 0x1000 {f2}")
             self.verify_readback(0, 4096, "images/sector.bin")
             self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
@@ -420,11 +425,13 @@ class TestFlashing(EsptoolTestCase):
             os.unlink(f2)
 
     def test_adjacent_flash_mixed(self):
-        _, f = tempfile.mkstemp(suffix=".hex")
+        fd, f = tempfile.mkstemp(suffix=".hex")
         try:
             self.run_esptool(
                 f"merge_bin --format hex 0x1000 images/fifty_kb.bin -o {f}"
             )
+            # make sure file is closed before running next command (mainly for Windows)
+            os.close(fd)
             self.run_esptool(f"write_flash 0x0 images/sector.bin 0x1000 {f}")
             self.verify_readback(0, 4096, "images/sector.bin")
             self.verify_readback(4096, 50 * 1024, "images/fifty_kb.bin")
@@ -1063,12 +1070,14 @@ class TestLoadRAM(EsptoolTestCase):
         The "hello world" binary programs for each chip print
         "Hello world!\n" to the serial port.
         """
-        _, f = tempfile.mkstemp(suffix=".hex")
+        fd, f = tempfile.mkstemp(suffix=".hex")
         try:
             self.run_esptool(
                 f"merge_bin --format hex -o {f} 0x0 "
                 f"images/ram_helloworld/helloworld-{arg_chip}.bin"
             )
+            # make sure file is closed before running next command (mainly for Windows)
+            os.close(fd)
             self.run_esptool(f"load_ram {f}")
             self.verify_output(
                 [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
