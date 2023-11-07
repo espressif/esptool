@@ -962,8 +962,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_2")
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3"],
-        reason="512 bit keys are only supported on ESP32-S2 and S3",
+        arg_chip not in ["esp32s2", "esp32s3", "esp32p4"],
+        reason="512 bit keys are only supported on ESP32-S2, S3, and P4",
     )
     def test_burn_key_512bit(self):
         self.espefuse_py(
@@ -980,8 +980,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         )
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3"],
-        reason="512 bit keys are only supported on ESP32-S2 and S3",
+        arg_chip not in ["esp32s2", "esp32s3", "esp32p4"],
+        reason="512 bit keys are only supported on ESP32-S2, S3, and P4",
     )
     def test_burn_key_512bit_non_consecutive_blocks(self):
         # Burn efuses seperately to test different kinds
@@ -1023,8 +1023,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3"],
-        reason="512 bit keys are only supported on ESP32-S2 and S3",
+        arg_chip not in ["esp32s2", "esp32s3", "esp32p4"],
+        reason="512 bit keys are only supported on ESP32-S2, S3, and P4",
     )
     def test_burn_key_512bit_non_consecutive_blocks_loop_around(self):
         self.espefuse_py(
