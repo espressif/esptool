@@ -323,6 +323,15 @@ def burn_key(esp, efuses, args, digest=None):
             if efuses[block.key_purpose_name].is_writeable():
                 disable_wr_protect_key_purpose = True
 
+        if keypurpose == "ECDSA_KEY":
+            if efuses["ECDSA_FORCE_USE_HARDWARE_K"].get() == 0:
+                # For ECDSA key purpose block permanently enable
+                # the hardware TRNG supplied k mode (most secure mode)
+                print("\tECDSA_FORCE_USE_HARDWARE_K: 0 -> 1")
+                efuses["ECDSA_FORCE_USE_HARDWARE_K"].save(1)
+            else:
+                print("\tECDSA_FORCE_USE_HARDWARE_K is already '1'")
+
         if disable_wr_protect_key_purpose:
             print("\tDisabling write to '%s'." % block.key_purpose_name)
             efuses[block.key_purpose_name].disable_write()
