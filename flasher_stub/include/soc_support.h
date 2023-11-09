@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-/* SoC-level support for ESP8266/ESP32.
+/* SoC-level support.
  *
  * Provide a unified register-level interface.
  *
@@ -23,6 +23,7 @@
 #define WRITE_REG(REG, VAL) *((volatile uint32_t *)(REG)) = (VAL)
 #define REG_SET_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)|(mask)))
 #define REG_CLR_MASK(reg, mask) WRITE_REG((reg), (READ_REG(reg)&(~(mask))))
+#define REG_SET_FIELD(_r, _f, _v) (WRITE_REG((_r),((READ_REG(_r) & ~((_f) << (_f##_S)))|(((_v) & (_f))<<(_f##_S)))))
 
 #define ESP32_OR_LATER   !(ESP8266)
 #define ESP32S2_OR_LATER !(ESP8266 || ESP32)
@@ -84,6 +85,7 @@
 #define SPI_BASE_REG        0x3ff42000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x3ff43000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x3ff44000 /* GPIO */
+#define DR_REG_IO_MUX_BASE  0x3ff49000
 #endif
 
 #ifdef ESP32S2
@@ -94,6 +96,7 @@
 #define USB_BASE_REG        0x60080000
 #define RTCCNTL_BASE_REG    0x3f408000
 #define SYSTEM_BASE_REG     0x3F4C0000
+#define DR_REG_IO_MUX_BASE  0x3f409000
 #endif
 
 #ifdef ESP32S3
@@ -105,6 +108,19 @@
 #define RTCCNTL_BASE_REG    0x60008000 /* RTC Control */
 #define USB_DEVICE_BASE_REG 0x60038000
 #define SYSTEM_BASE_REG     0x600C0000
+#define DR_REG_IO_MUX_BASE  0x60009000
+#endif
+
+#ifdef ESP32S3BETA2
+#define UART_BASE_REG       0x60000000 /* UART0 */
+#define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
+#define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
+#define GPIO_BASE_REG       0x60004000 /* GPIO */
+#define USB_BASE_REG        0x60080000
+#define RTCCNTL_BASE_REG    0x60008000 /* RTC Control */
+#define USB_DEVICE_BASE_REG 0x60038000
+#define SYSTEM_BASE_REG     0x600C0000
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32C3
@@ -115,6 +131,7 @@
 #define RTCCNTL_BASE_REG    0x60008000 /* RTC Control */
 #define USB_DEVICE_BASE_REG 0x60043000
 #define SYSTEM_BASE_REG     0x600C0000
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32C6BETA
@@ -122,6 +139,7 @@
 #define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x60004000
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32H2BETA1
@@ -130,6 +148,7 @@
 #define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x60004000
 #define RTCCNTL_BASE_REG    0x60008000
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32H2BETA2
@@ -137,6 +156,7 @@
 #define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x60004000
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32C2
@@ -144,6 +164,7 @@
 #define SPI_BASE_REG        0x60002000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x60003000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x60004000
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32C6
@@ -154,6 +175,7 @@
 #define USB_DEVICE_BASE_REG 0x6000F000
 #define DR_REG_PCR_BASE     0x60096000
 #define DR_REG_LP_WDT_BASE  0x600B1C00
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32H2
@@ -164,6 +186,7 @@
 #define USB_DEVICE_BASE_REG 0x6000F000
 #define DR_REG_PCR_BASE     0x60096000
 #define DR_REG_LP_WDT_BASE  0x600B1C00
+#define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
 #ifdef ESP32P4
@@ -171,6 +194,7 @@
 #define SPI_BASE_REG        0x5008D000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x5008C000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x500E0000
+#define DR_REG_IO_MUX_BASE  0x500E1000
 #endif
 
 /**********************************************************
@@ -427,7 +451,7 @@
 #define PCR_SOC_CLK_SEL_V            0x3
 #define PCR_SOC_CLK_SEL_S            16
 #define PCR_SOC_CLK_MAX              1 // CPU_CLK frequency is 160 MHz (source is PLL_CLK)
-#endif // ESP32C6
+#endif // ESP32H2
 
 /**********************************************************
  * Per-SOC security info buffer size
@@ -446,9 +470,9 @@
  * Can be retrieved with gdb: "info address rom_spiflash_legacy_funcs"
  */
 
-#if ESP32 || ESP32S2 || ESP32S3
+#if ESP32 || ESP32S2 || ESP32S3 || ESP32S3BETA2
 #define ROM_SPIFLASH_LEGACY         0x3ffae270
-#endif // ESP32 || ESP32S2 || ESP32S3
+#endif // ESP32 || ESP32S2 || ESP32S3 || ESP32S3BETA2
 
 #if ESP32C3 || ESP32C6BETA || ESP32C2 || ESP32C6
 #define ROM_SPIFLASH_LEGACY         0x3fcdfff4
@@ -464,4 +488,78 @@
 
 #if ESP32P4
 #define ROM_SPIFLASH_LEGACY         0x4ff3ffec
+#endif // ESP32P4
+
+/**********************************************************
+ * IO-MUX peripheral
+ */
+
+#define MCU_SEL 0x7
+#define MCU_SEL_S 12
+
+#define PIN_FUNC_SELECT(PIN_NAME, FUNC)      REG_SET_FIELD(PIN_NAME, MCU_SEL, FUNC)
+
+#if ESP32
+// PERIPHS_IO_MUX_SD_...
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x60)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x68)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x64)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x5c)
+#define FUNC_GPIO 2
+#endif // ESP32
+
+#if ESP32S2
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x7c)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x80)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x84)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x78)
+#define FUNC_GPIO 1
+#endif // ESP32S2
+
+#if ESP32C3
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x40)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x48)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x44)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x3c)
+#define FUNC_GPIO 1
+#endif // ESP32C3
+
+#if ESP32S3 || ESP32S3BETA2
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x7c)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x80)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x84)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x78)
+#define FUNC_GPIO 1
+#endif // ESP32S3 || ESP32S3BETA2
+
+#if ESP32C2
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x40)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x48)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x44)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x3c)
+#define FUNC_GPIO 1
+#endif // ESP32C2
+
+#if ESP32C6 || ESP32C6BETA
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x78)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x68)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x7c)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x64)
+#define FUNC_GPIO 1
+#endif // ESP32C6 || ESP32C6BETA
+
+#if ESP32H2 || ESP32H2BETA1 || ESP32H2BETA2
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x50)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x44)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x54)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x40)
+#define FUNC_GPIO 1
+#endif // ESP32H2 || ESP32H2BETA1 || ESP32H2BETA2
+
+#if ESP32P4
+#define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x7c)
+#define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x80)
+#define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x84)
+#define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x78)
+#define FUNC_GPIO 1
 #endif // ESP32P4

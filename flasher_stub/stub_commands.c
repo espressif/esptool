@@ -186,6 +186,16 @@ esp_command_error handle_spi_attach(uint32_t hspi_config_arg)
          see https://github.com/themadinventor/esptool/issues/98 */
         SelectSpiFunction();
 #else
+        /* Stub calls spi_flash_attach automatically when it boots,
+          therefore, we need to "unattach" the flash before attaching again
+          with different configuration to avoid issues. */
+
+        // Configure the SPI flash pins back as classic GPIOs
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_SPICLK_U, FUNC_GPIO);
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_SPIQ_U, FUNC_GPIO);
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_SPID_U, FUNC_GPIO);
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_SPICS0_U, FUNC_GPIO);
+
         /* spi_flash_attach calls SelectSpiFunction() and another
            function to initialise SPI flash interface.
 
