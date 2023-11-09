@@ -40,6 +40,12 @@ When communicating with the {IDF_TARGET_NAME} ROM serial bootloader, the followi
 | Flow control        | None              |
 +---------------------+-------------------+
 
+.. only:: esp32c2
+    
+    .. note::
+
+        You might experience issues when using low baud rates on {IDF_TARGET_NAME}. If you encounter any problems when connecting, please use at least 115200 or higher.
+
 .. only:: esp8266
 
     .. note::

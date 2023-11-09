@@ -682,8 +682,17 @@ class ESPLoader(object):
             print("")  # end 'Connecting...' line
 
         if last_error is not None:
+            additional_msg = ""
+            if self.CHIP_NAME == "ESP32-C2" and self._port.baudrate < 115200:
+                additional_msg = (
+                    "\nNote: Please set a higher baud rate (--baud)"
+                    " if ESP32-C2 doesn't connect"
+                    " (at least 115200 Bd is recommended)."
+                )
+
             raise FatalError(
                 "Failed to connect to {}: {}"
+                f"{additional_msg}"
                 "\nFor troubleshooting steps visit: "
                 "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html".format(  # noqa E501
                     self.CHIP_NAME, last_error
