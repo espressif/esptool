@@ -230,13 +230,16 @@ class EsptoolTestCase:
         # Restore the stored working directory
         os.chdir(self.stored_dir)
 
-    def readback(self, offset, length):
+    def readback(self, offset, length, spi_connection=None):
         """Read contents of flash back, return to caller."""
         dump_file = tempfile.NamedTemporaryFile(delete=False)  # a file we can read into
         try:
-            self.run_esptool(
+            cmd = (
                 f"--before default_reset read_flash {offset} {length} {dump_file.name}"
             )
+            if spi_connection:
+                cmd += f" --spi-connection {spi_connection}"
+            self.run_esptool(cmd)
             with open(dump_file.name, "rb") as f:
                 rb = f.read()
 
@@ -248,8 +251,10 @@ class EsptoolTestCase:
             dump_file.close()
             os.unlink(dump_file.name)
 
-    def verify_readback(self, offset, length, compare_to, is_bootloader=False):
-        rb = self.readback(offset, length)
+    def verify_readback(
+        self, offset, length, compare_to, is_bootloader=False, spi_connection=None
+    ):
+        rb = self.readback(offset, length, spi_connection)
         with open(compare_to, "rb") as f:
             ct = f.read()
         if len(rb) != len(ct):
@@ -762,6 +767,51 @@ class TestFlashDetection(EsptoolTestCase):
         )
         assert "Manufacturer:" in res
         assert "Device:" in res
+
+
+@pytest.mark.skipif(
+    os.getenv("ESPTOOL_TEST_SPI_CONN") is None, reason="Needs external flash"
+)
+class TestExternalFlash(EsptoolTestCase):
+    conn = os.getenv("ESPTOOL_TEST_SPI_CONN")
+
+    def test_short_flash_to_external_stub(self):
+        # First flash internal flash, then external
+        self.run_esptool("write_flash 0x0 images/one_kb.bin")
+        self.run_esptool(
+            f"write_flash --spi-connection {self.conn} 0x0 images/sector.bin"
+        )
+
+        self.verify_readback(0, 1024, "images/one_kb.bin")
+        self.verify_readback(0, 1024, "images/sector.bin", spi_connection=self.conn)
+
+        # First flash external flash, then internal
+        self.run_esptool(
+            f"write_flash --spi-connection {self.conn} 0x0 images/one_kb.bin"
+        )
+        self.run_esptool("write_flash 0x0 images/sector.bin")
+
+        self.verify_readback(0, 1024, "images/sector.bin")
+        self.verify_readback(0, 1024, "images/one_kb.bin", spi_connection=self.conn)
+
+    def test_short_flash_to_external_ROM(self):
+        # First flash internal flash, then external
+        self.run_esptool("--no-stub write_flash 0x0 images/one_kb.bin")
+        self.run_esptool(
+            f"--no-stub write_flash --spi-connection {self.conn} 0x0 images/sector.bin"
+        )
+
+        self.verify_readback(0, 1024, "images/one_kb.bin")
+        self.verify_readback(0, 1024, "images/sector.bin", spi_connection=self.conn)
+
+        # First flash external flash, then internal
+        self.run_esptool(
+            f"--no-stub write_flash --spi-connection {self.conn} 0x0 images/one_kb.bin"
+        )
+        self.run_esptool("--no-stub write_flash 0x0 images/sector.bin")
+
+        self.verify_readback(0, 1024, "images/sector.bin")
+        self.verify_readback(0, 1024, "images/one_kb.bin", spi_connection=self.conn)
 
 
 @pytest.mark.skipif(

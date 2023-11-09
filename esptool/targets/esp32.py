@@ -281,7 +281,7 @@ class ESP32ROM(ESPLoader):
         return self.read_reg(self.EFUSE_RD_REG_BASE + (4 * n))
 
     def chip_id(self):
-        raise NotSupportedError(self, "chip_id")
+        raise NotSupportedError(self, "Function chip_id")
 
     def read_mac(self, mac_type="BASE_MAC"):
         """Read MAC from EFUSE region"""
@@ -373,6 +373,11 @@ class ESP32ROM(ESPLoader):
         self._set_port_baudrate(baud)
         time.sleep(0.05)  # get rid of garbage sent during baud rate change
         self.flush_input()
+
+    def check_spi_connection(self, spi_connection):
+        # Pins 30, 31 do not exist
+        if not set(spi_connection).issubset(set(range(0, 30)) | set((32, 33))):
+            raise FatalError("SPI Pin numbers must be in the range 0-29, 32, or 33.")
 
 
 class ESP32StubLoader(ESP32ROM):

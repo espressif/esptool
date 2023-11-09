@@ -282,6 +282,8 @@ target_esp32c3:
   extends: .target_esptool_test
   tags:
     - esptool_esp32c3_target
+  variables:
+    ESPTOOL_TEST_SPI_CONN: "6,2,7,4,10"
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C3 --chip esp32c3 --baud 115200
 
@@ -329,6 +331,8 @@ target_esp32s3_jtag_serial:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s3_jtag_serial_target
+  variables:
+    ESPTOOL_TEST_SPI_CONN: "12,13,11,9,10"
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3_JTAG_SERIAL --preload-port /dev/serial_ports/ESP32S3_PRELOAD --chip esp32s3 --baud 115200
 

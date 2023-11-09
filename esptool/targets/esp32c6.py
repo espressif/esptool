@@ -180,6 +180,15 @@ class ESP32C6ROM(ESP32C3ROM):
 
         return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
 
+    def check_spi_connection(self, spi_connection):
+        if not set(spi_connection).issubset(set(range(0, 31))):
+            raise FatalError("SPI Pin numbers must be in the range 0-30.")
+        if any([v for v in spi_connection if v in [12, 13]]):
+            print(
+                "WARNING: GPIO pins 12 and 13 are used by USB-Serial/JTAG, "
+                "consider using other pins for SPI flash connection."
+            )
+
 
 class ESP32C6StubLoader(ESP32C6ROM):
     """Access class for ESP32C6 stub loader, runs on top of ROM.

@@ -169,6 +169,9 @@ class ESP32P4ROM(ESP32ROM):
         # if not self.sync_stub_detected:  # Don't run if stub is reused
         #     self.disable_watchdogs()
 
+    def check_spi_connection(self, spi_connection):
+        pass  # TODO: Define GPIOs for --spi-connection
+
 
 class ESP32P4StubLoader(ESP32P4ROM):
     """Access class for ESP32P4 stub loader, runs on top of ROM.

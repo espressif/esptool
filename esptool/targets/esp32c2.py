@@ -8,6 +8,7 @@ import time
 
 from .esp32c3 import ESP32C3ROM
 from ..loader import ESPLoader
+from ..util import FatalError
 
 
 class ESP32C2ROM(ESP32C3ROM):
@@ -143,6 +144,10 @@ class ESP32C2ROM(ESP32C3ROM):
                 if key_word[i] != 0:
                     return True
             return False
+
+    def check_spi_connection(self, spi_connection):
+        if not set(spi_connection).issubset(set(range(0, 21))):
+            raise FatalError("SPI Pin numbers must be in the range 0-20.")
 
 
 class ESP32C2StubLoader(ESP32C2ROM):

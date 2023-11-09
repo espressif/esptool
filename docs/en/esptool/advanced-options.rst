@@ -45,7 +45,7 @@ The ``--no-stub`` option disables uploading of a software "stub loader" that man
 
 Passing ``--no-stub`` will disable certain options, as not all options are implemented in every chip's ROM loader.
 
-.. only:: esp32
+.. only:: not esp8266
 
     Overriding SPI Flash Connections
     --------------------------------
@@ -61,42 +61,50 @@ Passing ``--no-stub`` will disable certain options, as not all options are imple
 
     The only exception to this is if the ``--no-stub`` option is also provided. In this case, efuse values are ignored and ``--spi-connection`` will default to ``--spi-connection SPI`` unless set to a different value.
 
-    SPI Mode
-    ^^^^^^^^
+    .. only:: esp32
 
-    ``--spi-connection SPI`` uses the default SPI pins:
+        SPI Mode
+        ^^^^^^^^
 
-    * CLK = GPIO 6
-    * Q = GPIO 7
-    * D = GPIO 8
-    * HD = GPIO 9
-    * CS = GPIO 11
+        ``--spi-connection SPI`` uses the default SPI pins:
 
-    During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is not pulled low (default).
+        * CLK = GPIO 6
+        * Q = GPIO 7
+        * D = GPIO 8
+        * HD = GPIO 9
+        * CS = GPIO 11
 
-    This is the normal pin configuration for ESP32 chips that do not contain embedded flash.
+        During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is not pulled low (default).
 
-    HSPI Mode
-    ^^^^^^^^^
+        This is the normal pin configuration for ESP32 chips that do not contain embedded flash.
 
-    ``--spi-connection HSPI`` uses the HSPI peripheral instead of the SPI peripheral for SPI flash communications, via the following HSPI pins:
+        HSPI Mode
+        ^^^^^^^^^
 
-    * CLK = GPIO 14
-    * Q = GPIO 12
-    * D = GPIO 13
-    * HD = GPIO 4
-    * CS = GPIO 15
+        ``--spi-connection HSPI`` uses the HSPI peripheral instead of the SPI peripheral for SPI flash communications, via the following HSPI pins:
 
-    During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is pulled low on reset.
+        * CLK = GPIO 14
+        * Q = GPIO 12
+        * D = GPIO 13
+        * HD = GPIO 4
+        * CS = GPIO 15
+
+        During normal booting, this configuration is selected if all SPI pin efuses are unset and GPIO1 (U0TXD) is pulled low on reset.
 
     Custom SPI Pin Configuration
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     ``--spi-connection <CLK>,<Q>,<D>,<HD>,<CS>`` allows a custom list of pins to be configured for the SPI flash connection. This can be used to emulate the flash configuration equivalent to a particular set of SPI pin efuses being burned. The values supplied are GPIO numbers.
 
-    For example, ``--spi-connection 6,17,8,11,16`` sets an identical configuration to the factory efuse configuration for ESP32s with embedded flash.
+    .. only:: esp32
 
-    When setting a custom pin configuration, the SPI peripheral (not HSPI) will be used unless the ``CLK`` pin value is set to 14 (HSPI CLK), in which case the HSPI peripheral will be used.
+        For example, ``--spi-connection 6,17,8,11,16`` sets an identical configuration to the factory efuse configuration for ESP32s with embedded flash.
+
+        When setting a custom pin configuration, the SPI peripheral (not HSPI) will be used unless the ``CLK`` pin value is set to 14 (HSPI CLK), in which case the HSPI peripheral will be used.
+
+    .. note::
+
+        Some GPIO pins might be shared with other peripherals. Therefore, some SPI pad pin configurations might not work reliably or at all. Use a different combination of pins if you encounter issues.
 
 Specifying Arguments via File
 -----------------------------

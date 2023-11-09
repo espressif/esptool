@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from .esp32c6 import ESP32C6ROM
+from ..util import FatalError
 
 
 class ESP32H2ROM(ESP32C6ROM):
@@ -57,6 +58,15 @@ class ESP32H2ROM(ESP32C6ROM):
     def get_crystal_freq(self):
         # ESP32H2 XTAL is fixed to 32MHz
         return 32
+
+    def check_spi_connection(self, spi_connection):
+        if not set(spi_connection).issubset(set(range(0, 28))):
+            raise FatalError("SPI Pin numbers must be in the range 0-27.")
+        if any([v for v in spi_connection if v in [26, 27]]):
+            print(
+                "WARNING: GPIO pins 26 and 27 are used by USB-Serial/JTAG, "
+                "consider using other pins for SPI flash connection."
+            )
 
 
 class ESP32H2StubLoader(ESP32H2ROM):

@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from ..loader import ESPLoader
-from ..util import FatalError, NotImplementedInROMError
+from ..util import FatalError, NotSupportedError
 
 
 class ESP8266ROM(ESPLoader):
@@ -170,9 +170,10 @@ class ESP8266ROM(ESPLoader):
             return (num_sectors - head_sectors) * sector_size
 
     def override_vddsdio(self, new_voltage):
-        raise NotImplementedInROMError(
-            "Overriding VDDSDIO setting only applies to ESP32"
-        )
+        raise NotSupportedError(self, "Overriding VDDSDIO")
+
+    def check_spi_connection(self, spi_connection):
+        raise NotSupportedError(self, "Setting --spi-connection")
 
 
 class ESP8266StubLoader(ESP8266ROM):

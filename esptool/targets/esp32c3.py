@@ -228,6 +228,15 @@ class ESP32C3ROM(ESP32ROM):
         if not self.sync_stub_detected:  # Don't run if stub is reused
             self.disable_watchdogs()
 
+    def check_spi_connection(self, spi_connection):
+        if not set(spi_connection).issubset(set(range(0, 22))):
+            raise FatalError("SPI Pin numbers must be in the range 0-21.")
+        if any([v for v in spi_connection if v in [18, 19]]):
+            print(
+                "WARNING: GPIO pins 18 and 19 are used by USB-Serial/JTAG, "
+                "consider using other pins for SPI flash connection."
+            )
+
 
 class ESP32C3StubLoader(ESP32C3ROM):
     """Access class for ESP32C3 stub loader, runs on top of ROM.

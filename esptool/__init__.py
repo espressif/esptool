@@ -177,9 +177,9 @@ def main(argv=None, esp=None):
         parent.add_argument(
             "--spi-connection",
             "-sc",
-            help="ESP32-only argument. Override default SPI Flash connection. "
+            help="Override default SPI Flash connection. "
             "Value can be SPI, HSPI or a comma-separated list of 5 I/O numbers "
-            "to use for SPI flash (CLK,Q,D,HD,CS).",
+            "to use for SPI flash (CLK,Q,D,HD,CS). Not supported with ESP8266.",
             action=SpiConnectionAction,
         )
 
@@ -770,14 +770,22 @@ def main(argv=None, esp=None):
                     "Keeping initial baud rate %d" % initial_baud
                 )
 
-        # override common SPI flash parameter stuff if configured to do so
+        # Override the common SPI flash parameter stuff if configured to do so
         if hasattr(args, "spi_connection") and args.spi_connection is not None:
-            if esp.CHIP_NAME != "ESP32":
-                raise FatalError(
-                    "Chip %s does not support --spi-connection option." % esp.CHIP_NAME
-                )
-            print("Configuring SPI flash mode...")
-            esp.flash_spi_attach(args.spi_connection)
+            spi_config = args.spi_connection
+            if args.spi_connection == "SPI":
+                value = 0
+            elif args.spi_connection == "HSPI":
+                value = 1
+            else:
+                esp.check_spi_connection(args.spi_connection)
+                # Encode the pin numbers as a 32-bit integer with packed 6-bit values,
+                # the same way the ESP ROM takes them
+                clk, q, d, hd, cs = args.spi_connection
+                spi_config = f"CLK:{clk}, Q:{q}, D:{d}, HD:{hd}, CS:{cs}"
+                value = (hd << 24) | (cs << 18) | (d << 12) | (q << 6) | clk
+            print(f"Configuring SPI flash mode ({spi_config})...")
+            esp.flash_spi_attach(value)
         elif args.no_stub:
             print("Enabling default SPI flash mode...")
             # ROM loader doesn't enable flash unless we explicitly do it
@@ -846,6 +854,15 @@ def main(argv=None, esp=None):
                         "Try checking the chip connections or removing "
                         "any other hardware connected to IOs."
                     )
+                    if (
+                        hasattr(args, "spi_connection")
+                        and args.spi_connection is not None
+                    ):
+                        print(
+                            "Some GPIO pins might be used by other peripherals, "
+                            "try using another --spi-connection combination."
+                        )
+
             except FatalError as e:
                 raise FatalError(f"Unable to verify flash chip connection ({e}).")
 
@@ -1023,43 +1040,31 @@ class SpiConnectionAction(argparse.Action):
     """
 
     def __call__(self, parser, namespace, value, option_string=None):
-        if value.upper() == "SPI":
-            value = 0
-        elif value.upper() == "HSPI":
-            value = 1
+        if value.upper() in ["SPI", "HSPI"]:
+            values = value.upper()
         elif "," in value:
             values = value.split(",")
             if len(values) != 5:
                 raise argparse.ArgumentError(
                     self,
-                    "%s is not a valid list of comma-separate pin numbers. "
-                    "Must be 5 numbers - CLK,Q,D,HD,CS." % value,
+                    f"{value} is not a valid list of comma-separate pin numbers. "
+                    "Must be 5 numbers - CLK,Q,D,HD,CS.",
                 )
             try:
                 values = tuple(int(v, 0) for v in values)
             except ValueError:
                 raise argparse.ArgumentError(
                     self,
-                    "%s is not a valid argument. All pins must be numeric values"
-                    % values,
+                    f"{values} is not a valid argument. "
+                    "All pins must be numeric values",
                 )
-            if any([v for v in values if v > 33 or v < 0]):
-                raise argparse.ArgumentError(
-                    self, "Pin numbers must be in the range 0-33."
-                )
-            # encode the pin numbers as a 32-bit integer with packed 6-bit values,
-            # the same way ESP32 ROM takes them
-            # TODO: make this less ESP32 ROM specific somehow...
-            clk, q, d, hd, cs = values
-            value = (hd << 24) | (cs << 18) | (d << 12) | (q << 6) | clk
         else:
             raise argparse.ArgumentError(
                 self,
-                "%s is not a valid spi-connection value. "
-                "Values are SPI, HSPI, or a sequence of 5 pin numbers CLK,Q,D,HD,CS)."
-                % value,
+                f"{value} is not a valid spi-connection value. "
+                "Values are SPI, HSPI, or a sequence of 5 pin numbers - CLK,Q,D,HD,CS.",
             )
-        setattr(namespace, self.dest, value)
+        setattr(namespace, self.dest, values)
 
 
 class AutoHex2BinAction(argparse.Action):

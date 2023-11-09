@@ -384,7 +384,7 @@ The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data 
 
 .. only:: not esp8266
 
-    On the {IDF_TARGET_NAME} stub loader, it is required to send this command before interacting with SPI flash.
+    On the {IDF_TARGET_NAME} stub loader sending this command before interacting with SPI flash is optional. On {IDF_TARGET_NAME} ROM loader, it is required to send this command before interacting with SPI flash.
 
     +------------------+----------------------------------------------------------------------------------------------------------------------------------+
     | Value            | Meaning                                                                                                                          |
@@ -400,9 +400,11 @@ The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data 
 
     When writing the values of each pin as 6-bit numbers packed into the data word, each 6-bit value uses the following representation:
 
-    * Pin numbers 0 through 30 are represented as themselves.
-    * Pin numbers 32 & 33 are represented as values 30 & 31.
-    * It is not possible to represent pins 30 & 31 or pins higher than 33. This is the same 6-bit representation used by the ``SPI_PAD_CONFIG_xxx`` efuses.
+    .. only:: esp32
+
+        * Pin numbers 0 through 30 are represented as themselves.
+        * Pin numbers 32 & 33 are represented as values 30 & 31.
+        * It is not possible to represent pins 30 & 31 or pins higher than 33. This is the same 6-bit representation used by the ``SPI_PAD_CONFIG_xxx`` efuses.
 
     On {IDF_TARGET_NAME} ROM loader only, there is an additional 4 bytes in the data payload of this command. These bytes should all be set to zero.
 
