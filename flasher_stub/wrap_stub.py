@@ -39,6 +39,10 @@ def wrap_stub(elf_file):
     except ValueError:
         pass
 
+    for s in e.nobits_sections:
+        if s.name == ".bss":
+            stub["bss_start"] = s.addr
+
     # Pad text with NOPs to mod 4.
     if len(stub["text"]) % 4 != 0:
         stub["text"] += (4 - (len(stub["text"]) % 4)) * "\0"

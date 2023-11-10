@@ -1135,6 +1135,7 @@ ESP32H2ROM.BOOTLOADER_IMAGE = ESP32H2FirmwareImage
 class ELFFile(object):
     SEC_TYPE_PROGBITS = 0x01
     SEC_TYPE_STRTAB = 0x03
+    SEC_TYPE_NOBITS = 0x08  # e.g. .bss section
     SEC_TYPE_INITARRAY = 0x0E
     SEC_TYPE_FINIARRAY = 0x0F
 
@@ -1225,6 +1226,7 @@ class ELFFile(object):
 
         all_sections = [read_section_header(offs) for offs in section_header_offsets]
         prog_sections = [s for s in all_sections if s[1] in ELFFile.PROG_SEC_TYPES]
+        nobits_secitons = [s for s in all_sections if s[1] == ELFFile.SEC_TYPE_NOBITS]
 
         # search for the string table section
         if not (shstrndx * self.LEN_SEC_HEADER) in section_header_offsets:
@@ -1256,6 +1258,11 @@ class ELFFile(object):
             if lma != 0 and size > 0
         ]
         self.sections = prog_sections
+        self.nobits_sections = [
+            ELFSection(lookup_string(n_offs), lma, b"")
+            for (n_offs, _type, lma, size, offs) in nobits_secitons
+            if lma != 0 and size > 0
+        ]
 
     def _read_segments(self, f, segment_header_offs, segment_header_count, shstrndx):
         f.seek(segment_header_offs)
