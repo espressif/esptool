@@ -669,11 +669,14 @@ class TestSecurityInfo(EsptoolTestCase):
         assert "Crypt Count" in res
         assert "Key Purposes" in res
         if arg_chip != "esp32s2":
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
-            )
-            assert f"Chip ID: {esp.IMAGE_CHIP_ID}" in res
-            assert "API Version" in res
+            try:
+                esp = esptool.get_default_connected_device(
+                    [arg_port], arg_port, 10, 115200, arg_chip
+                )
+                assert f"Chip ID: {esp.IMAGE_CHIP_ID}" in res
+                assert "API Version" in res
+            finally:
+                esp._port.close()
         assert "Secure Boot" in res
         assert "Flash Encryption" in res
 
