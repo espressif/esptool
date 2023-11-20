@@ -125,7 +125,7 @@ Automatic Bootloader
 
 As an example of auto-reset curcuitry implementation, check the `schematic <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_ of the ESP32 DevKitC development board:
 
--  The **Micro USB 5V & USB-UART** section shows the ``DTR`` and ``RTS`` control lines of the USB to serial converter chip connected to ``GPIO0`` and ``EN`` pins of the ESP module.
+-  The **Micro USB 5V & USB-UART** section shows the ``DTR`` and ``RTS`` control lines of the USB to serial converter chip connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` pins of the ESP module.
 -  Some OS and/or drivers may activate ``RTS`` and or ``DTR`` automatically when opening the serial port (true only for some serial terminal programs, not ``esptool.py``), pulling them low together and holding the ESP in reset. If ``RTS`` is wired directly to ``EN`` then RTS/CTS "hardware flow control" needs to be disabled in the serial program to avoid this.
    An additional circuitry is implemented in order to avoid this problem - if both ``RTS`` and ``DTR`` are asserted together, this doesn't reset the chip. The schematic shows this specific circuit with two transistors and its truth table.
 -  If this circuitry is implemented (all Espressif boards have it), adding a capacitor between the ``EN`` pin and ``GND`` (in the 1uF-10uF range) is necessary for the reset circuitry to work reliably. This is shown in the **ESP32 Module** section of the schematic.
