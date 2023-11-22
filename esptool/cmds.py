@@ -983,10 +983,7 @@ def elf2image(args):
 
     print("Creating {} image...".format(args.chip))
     if args.ram_only_header:
-        print(
-            "RAM only visible in the header - only RAM segments are visible to the "
-            "ROM loader!"
-        )
+        print("ROM segments hidden - only RAM segments are visible to the ROM loader!")
 
     if args.chip != "esp8266":
         image = CHIP_DEFS[args.chip].BOOTLOADER_IMAGE()
