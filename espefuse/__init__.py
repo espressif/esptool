@@ -214,6 +214,12 @@ def main(custom_commandline=None, esp=None):
         "Use with caution.",
         action="store_true",
     )
+    init_parser.add_argument(
+        "--postpone",
+        help="Postpone burning some efuses from BLOCK0 at the end, "
+        "(efuses which disable access to blocks or chip).",
+        action="store_true",
+    )
 
     common_args, remaining_args = init_parser.parse_known_args(custom_commandline)
     debug_mode = common_args.debug or ("dump" in remaining_args)
@@ -263,6 +269,8 @@ def main(custom_commandline=None, esp=None):
     if there_are_multiple_burn_commands_in_args:
         efuses.batch_mode_cnt += 1
 
+    efuses.postpone = common_args.postpone
+
     try:
         for rem_args in grouped_remaining_args:
             args, unused_args = parser.parse_known_args(rem_args, namespace=common_args)
@@ -289,6 +297,7 @@ def main(custom_commandline=None, esp=None):
             efuses.batch_mode_cnt -= 1
             if not efuses.burn_all(check_batch_mode=True):
                 raise esptool.FatalError("BURN was not done")
+            print("Successful")
     finally:
         if not external_esp and not common_args.virt and esp._port:
             esp._port.close()

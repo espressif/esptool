@@ -1977,3 +1977,29 @@ class TestKeyPurposes(EfuseTestCase):
             "key due to a hardware bug (please see TRM for more details)",
             ret_code=2,
         )
+
+
+class TestPostponedEfuses(EfuseTestCase):
+    def test_postpone_efuses(self):
+        if arg_chip == "esp32":
+            cmd = f"--postpone \
+                    burn_efuse UART_DOWNLOAD_DIS 1 \
+                    burn_key BLOCK1 {IMAGES_DIR}/256bit \
+                    burn_efuse ABS_DONE_1 1 FLASH_CRYPT_CNT 1"
+            num = 1
+        else:
+            sb_digest_name = (
+                "SECURE_BOOT_DIGEST" if arg_chip == "esp32c2" else "SECURE_BOOT_DIGEST0"
+            )
+            cmd = f"--postpone \
+                burn_efuse ENABLE_SECURITY_DOWNLOAD 1 DIS_DOWNLOAD_MODE 1 \
+                SECURE_VERSION 1 \
+                burn_key BLOCK_KEY0 {IMAGES_DIR}/256bit {sb_digest_name} \
+                burn_efuse SPI_BOOT_CRYPT_CNT 1 SECURE_BOOT_EN 1"
+            num = 3 if arg_chip == "esp32c2" else 4
+        output = self.espefuse_py(cmd)
+        assert f"BURN BLOCK{num}  - OK" in output
+        assert "BURN BLOCK0  - OK" in output
+        assert "Burn postponed efuses from BLOCK0" in output
+        assert "BURN BLOCK0  - OK" in output
+        assert "Successful" in output
