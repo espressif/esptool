@@ -85,6 +85,16 @@ class ESP32C2ROM(ESP32C3ROM):
         num_word = 1
         return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 20) & 0x3
 
+    def get_flash_cap(self):
+        # ESP32-C2 doesn't have eFuse field FLASH_CAP.
+        # Can't get info about the flash chip.
+        return 0
+
+    def get_flash_vendor(self):
+        # ESP32-C2 doesn't have eFuse field FLASH_VENDOR.
+        # Can't get info about the flash chip.
+        return ""
+
     def get_crystal_freq(self):
         # The crystal detection algorithm of ESP32/ESP8266 works for ESP32-C2 as well.
         return ESPLoader.get_crystal_freq(self)
