@@ -6,6 +6,7 @@
 
 import binascii
 import struct
+import sys
 import time
 
 from bitstring import BitArray
@@ -206,7 +207,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                     )
                     print("DIS_DOWNLOAD_MODE is enabled")
                     print("Successful")
-                    exit(0)  # finish without errors
+                    sys.exit(0)  # finish without errors
                 raise
 
             print("Established a connection with the chip")
@@ -220,7 +221,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                     )
                     print("ENABLE_SECURITY_DOWNLOAD is enabled")
                     print("Successful")
-                    exit(0)  # finish without errors
+                    sys.exit(0)  # finish without errors
             raise
 
     def set_efuse_timing(self):
