@@ -118,6 +118,7 @@ setup(
             "pytest",
             "pytest-rerunfailures",
             "requests",
+            "commitizen",
         ],
         "hsm": [
             "python-pkcs11",

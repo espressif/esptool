@@ -83,52 +83,43 @@ jobs:
 
   create_release:
     name: Create GitHub release
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && !(contains(github.ref_name, 'dev'))
     needs: build-esptool-binaries
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      VERSION: ${{ steps.get_version.outputs.VERSION }}
+    permissions:
+      contents: write
     steps:
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Version ${{ github.ref }}
-          draft: true
-          prerelease: false
       - name: Get version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         shell: bash
-
-  upload_assets:
-    name: Upload release assets
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: create_release
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        TARGET: [macos, linux-amd64, win64, arm, arm64]
-    env:
-      DISTPATH: esptool-${{ needs.create_release.outputs.VERSION }}-${{ matrix.TARGET }}
-    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --user -e ".[dev]"
+      - name: Generate changelog
+        run: |
+          cz changelog ${{ steps.get_version.outputs.VERSION }} --template ci/gh_changelog_template.md.j2 --file-name changelog_body.md
+          cat changelog_body.md
       - name: Download built binaries
         uses: actions/download-artifact@master
-      - name: Rename and package binaries
+      - name: Compress and rename binaries
         run: |
-          mv esptool-${{ matrix.TARGET }} ${{ env.DISTPATH }}
-          zip -r ${{ env.DISTPATH }}.zip ./${{ env.DISTPATH }}/*
-      - name: Upload release assets
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
+          for dir in esptool-*; do
+            zip -r "esptool-v${{ steps.get_version.outputs.VERSION }}-${dir#esptool-}.zip" "$dir"
+          done
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: "${{ env.DISTPATH }}.zip"
-          asset_name: "${{ env.DISTPATH }}.zip"
-          asset_content_type: application/zip
+          body_path: changelog_body.md
+          name: Version ${{ steps.get_version.outputs.VERSION }}
+          draft: true
+          prerelease: false
+          files: esptool-v${{ steps.get_version.outputs.VERSION }}-*.zip

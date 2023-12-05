@@ -1,0 +1,22 @@
+{# This changelog template is used for automatically generated GH release notes. #}
+{# It is passed to commitizen's --template option in a GH Actions workflow run. #}
+
+{% for entry in tree %}
+
+{% for change_key, changes in entry.changes.items() %}
+
+{% if change_key %}
+### {{ change_key }}
+{% endif %}
+
+{% for change in changes %}
+{% if change.scope %}
+- **{{ change.scope }}**: {{ change.message }}
+{% elif change.message %}
+- {{ change.message }}
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+
+Thanks to <FILL OUT CONTRIBUTORS>, and others for contributing to this release!
