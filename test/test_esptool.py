@@ -778,6 +778,22 @@ class TestFlashDetection(EsptoolTestCase):
         assert "Manufacturer:" in res
         assert "Device:" in res
 
+    @pytest.mark.quick_test
+    @pytest.mark.skipif(
+        arg_chip not in ["esp32c2"],
+        reason="This test make sense only for EPS32-C2",
+    )
+    def test_flash_size(self):
+        """Test ESP32-C2 efuse block for flash size feature"""
+        # ESP32-C2 class inherits methods from ESP32-C3 class
+        # but it does not have the same amount of efuse blocks
+        # the methods are overwritten
+        # in case anything changes this test will fail to remind us
+        res = self.run_esptool("flash_id")
+        lines = res.splitlines()
+        for line in lines:
+            assert "embedded flash" not in line.lower()
+
 
 @pytest.mark.skipif(
     os.getenv("ESPTOOL_TEST_SPI_CONN") is None, reason="Needs external flash"
