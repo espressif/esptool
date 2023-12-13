@@ -1,3 +1,61 @@
+## v4.7.0 (2023-12-13)
+
+### New Features
+
+- **test_esptool**: Added test for embedded and detected flash size match
+- **spi_connection**: Support --spi-connection on all chips
+- **espefuse**: Support XTS_AES_256_KEY key_purpose for ESP32P4
+- **xip_psram**: support xip psram feature on esp32p4
+- add support for intel hex format
+- **esp32p4**: Stub flasher support
+- **elf2image**: add ram-only-header argument
+- **rfc2217_server**: Add hard reset sequence
+- **espefuse**: Adds efuse ADC calibration data for ESP32H2
+- **espefuse**: Update the way to complete the operation
+- add support for get_security_info on esp32c3 ECO7
+- **loader**: Added hints for some serial port issues when rising port error
+- Add support for Python 3.12
+- **esp32c3**: Support ECO6 and ECO7 magic numbers
+- **merge_bin**: add support for uf2 format
+- **esp32-s3**: Support >16MB quad flash chips
+- **efuse**: Update key purpose table and tests
+- **efuse**: ESP32P4 adds ecdsa_key support
+- **espefuse**: Add support for esp32p4 chip
+- **esptool**: added target to esp32p4
+- **espsecure**: Allow prompting for HSM PIN in read_hsm_config
+- **esptool**: Add new packages for ESP32C3 and flash efuses
+- **esptool**: Add tests for get_chip_features
+- **esptool**: Add PICO package for ESP32S3 and flash/psram efuses
+- **get_security_info**: Improved the output format and added more details
+
+### Bug Fixes
+
+- **esp32c2**: Added get_flash_cap and get_flash_vendor
+- **testloadram**: Windows assertion error
+- fixed exit() to be used from right module
+- **esp32c2**: Recommend using higher baud rate if connection fails
+- **test_esptool**: Fixed connection issue on Windows
+- **esptool**: Rephrase the --ram-only-header command message
+- **load_ram**: check for overlaps in bss section
+- **tests/intelhex**: make sure file is closed on Windows
+- **spi_connection**: Unattach previously attached SPI flash
+- **espefuse**: Fix ECDSA_FORCE_USE_HARDWARE_K for ECDSA key (esp32h2)
+- **loader**: Could not open serial port message adjusted
+- **flasher_stub**: fix usb-serial-jtag enabled non-related intr source
+- **bin_image**: Check only ELF sections when searching for .flash.appdesc
+- **danger-github**: Fir Danger GitHub token permission
+- Fix redirection of STDOUT
+- **autodetection**: Remove the ESP32-S2 ROM class from get_security_info autodetection
+- assert in esp32 exclusive workaround
+- **elf2image**: fix text/rodata mapping overlap issue on uni-idrom bus chips
+- **dangerGH**: Update token permissions - allow Danger to add comments to PR
+- **expand file args**: Correctly print the expanded command
+- **esp32-c2**: Enable flashing in secure download mode
+
+### Code Refactoring
+
+- **stub_flasher**: Cleanup, make adding new targets easier
+
 ## v4.6.2 (2023-06-12)
 
 ### Bug Fixes
