@@ -3,11 +3,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import errno
 import os
 import struct
 import time
 
-from .util import FatalError
+from .util import FatalError, PrintOnce
 
 # Used for resetting into bootloader on Unix-like systems
 if os.name != "nt":
@@ -26,11 +27,28 @@ DEFAULT_RESET_DELAY = 0.05  # default time to wait before releasing boot pin aft
 
 
 class ResetStrategy(object):
+    print_once = PrintOnce()
+
     def __init__(self, port, reset_delay=DEFAULT_RESET_DELAY):
         self.port = port
         self.reset_delay = reset_delay
 
-    def __call__():
+    def __call__(self):
+        try:
+            self.reset()
+        except OSError as e:
+            # ENOTTY for TIOCMSET; EINVAL for TIOCMGET
+            if e.errno in [errno.ENOTTY, errno.EINVAL]:
+                self.print_once(
+                    "WARNING: Chip was NOT reset. Setting RTS/DTR lines is not "
+                    f"supported for port '{self.port.name}'. Set --before and --after "
+                    "arguments to 'no_reset' and switch to bootloader manually to "
+                    "avoid this warning."
+                )
+            else:
+                raise
+
+    def reset(self):
         pass
 
     def _setDTR(self, state):
@@ -63,7 +81,7 @@ class ClassicReset(ResetStrategy):
     Classic reset sequence, sets DTR and RTS lines sequentially.
     """
 
-    def __call__(self):
+    def reset(self):
         self._setDTR(False)  # IO0=HIGH
         self._setRTS(True)  # EN=LOW, chip in reset
         time.sleep(0.1)
@@ -79,7 +97,7 @@ class UnixTightReset(ResetStrategy):
     which allows setting DTR and RTS lines at the same time.
     """
 
-    def __call__(self):
+    def reset(self):
         self._setDTRandRTS(False, False)
         self._setDTRandRTS(True, True)
         self._setDTRandRTS(False, True)  # IO0=HIGH & EN=LOW, chip in reset
@@ -96,7 +114,7 @@ class USBJTAGSerialReset(ResetStrategy):
     is connecting via its USB-JTAG-Serial peripheral.
     """
 
-    def __call__(self):
+    def reset(self):
         self._setRTS(False)
         self._setDTR(False)  # Idle
         time.sleep(0.1)
@@ -121,7 +139,7 @@ class HardReset(ResetStrategy):
         super().__init__(port)
         self.uses_usb_otg = uses_usb_otg
 
-    def __call__(self):
+    def reset(self):
         self._setRTS(True)  # EN->LOW
         if self.uses_usb_otg:
             # Give the chip some time to come out of reset,
@@ -162,7 +180,7 @@ class CustomReset(ResetStrategy):
         "U": "self._setDTRandRTS({})",
     }
 
-    def __call__(self):
+    def reset(self):
         exec(self.constructed_strategy)
 
     def __init__(self, port, seq_str):

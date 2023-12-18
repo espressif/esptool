@@ -1204,6 +1204,30 @@ class TestVirtualPort(TestAutoDetect):
             )
         self.verify_readback(0, 50 * 1024, "images/fifty_kb.bin")
 
+    @pytest.fixture
+    def pty_port(self):
+        import pty
+
+        master_fd, slave_fd = pty.openpty()
+        yield os.ttyname(slave_fd)
+        os.close(master_fd)
+        os.close(slave_fd)
+
+    @pytest.mark.host_test
+    def test_pty_port(self, pty_port):
+        cmd = [sys.executable, "-m", "esptool", "--port", pty_port, "chip_id"]
+        output = subprocess.run(
+            cmd,
+            cwd=TEST_DIR,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        # no chip connected so command should fail
+        assert output.returncode != 0
+        output = output.stdout.decode("utf-8")
+        print(output)  # for logging
+        assert "WARNING: Chip was NOT reset." in output
+
 
 @pytest.mark.quick_test
 class TestReadWriteMemory(EsptoolTestCase):
