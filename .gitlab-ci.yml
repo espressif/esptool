@@ -22,6 +22,8 @@ include:
       file: danger.yaml
 run-danger-mr-linter:
     stage: pre-check
+    variables:
+      ENABLE_CHECK_UPDATED_CHANGELOG: 'false'
 
 # cache the pip download directory in all jobs
 variables:
