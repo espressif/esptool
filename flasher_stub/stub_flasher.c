@@ -63,7 +63,7 @@ static bool can_use_max_cpu_freq()
   #endif
 }
 
-#if ESP32C6 || ESP32H2
+#if ESP32C6 || ESP32H2 || ESP32C5BETA3
 static uint32_t pcr_sysclk_conf_reg = 0;
 #else
 static uint32_t cpu_per_conf_reg = 0;
@@ -75,7 +75,7 @@ static void set_max_cpu_freq()
   if (can_use_max_cpu_freq())
   {
     /* Set CPU frequency to max. This also increases SPI speed. */
-    #if ESP32C6 || ESP32H2
+    #if ESP32C6 || ESP32H2 || ESP32C5BETA3
     pcr_sysclk_conf_reg = READ_REG(PCR_SYSCLK_CONF_REG);
     WRITE_REG(PCR_SYSCLK_CONF_REG, (pcr_sysclk_conf_reg & ~PCR_SOC_CLK_SEL_M) | (PCR_SOC_CLK_MAX << PCR_SOC_CLK_SEL_S));
     #else
@@ -92,7 +92,7 @@ static void reset_cpu_freq()
 {
   /* Restore saved sysclk_conf and cpu_per_conf registers.
      Use only if set_max_cpu_freq() has been called. */
-  #if ESP32C6 || ESP32H2
+  #if ESP32C6 || ESP32H2 || ESP32C5BETA3
   if (can_use_max_cpu_freq() && pcr_sysclk_conf_reg != 0)
   {
     WRITE_REG(PCR_SYSCLK_CONF_REG, (READ_REG(PCR_SYSCLK_CONF_REG) & ~PCR_SOC_CLK_SEL_M) | (pcr_sysclk_conf_reg & PCR_SOC_CLK_SEL_M));

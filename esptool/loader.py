@@ -1454,7 +1454,12 @@ class ESPLoader(object):
         #   See the self.XTAL_CLK_DIVIDER parameter for this factor.
         uart_div = self.read_reg(self.UART_CLKDIV_REG) & self.UART_CLKDIV_MASK
         est_xtal = (self._port.baudrate * uart_div) / 1e6 / self.XTAL_CLK_DIVIDER
-        norm_xtal = 40 if est_xtal > 33 else 26
+        if est_xtal > 45:
+            norm_xtal = 48
+        elif est_xtal > 33:
+            norm_xtal = 40
+        else:
+            norm_xtal = 26
         if abs(norm_xtal - est_xtal) > 1:
             print(
                 "WARNING: Detected crystal freq %.2fMHz is quite different to "
