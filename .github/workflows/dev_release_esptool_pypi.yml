@@ -31,8 +31,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         TWINE_NON_INTERACTIVE: true
       run: |
-        DEV_VERSION=$(echo "${{ github.ref_name }}" | grep -oE 'dev[0-9]+' | sed 's/dev//')
-        python ci/patch_dev_release.py --dev-no ${DEV_VERSION} esptool/__init__.py
+        python ci/patch_dev_release.py --version ${{ github.ref_name }} esptool/__init__.py
         git diff
         python -m pip download esptool==$(python setup.py -V) && echo "Version ${{ github.ref_name }} already published, skipping..." && exit 1
 
