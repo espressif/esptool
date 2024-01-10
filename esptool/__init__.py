@@ -217,7 +217,12 @@ def main(argv=None, esp=None):
         default="0xFFFFFFFF",
     )
 
-    def add_spi_flash_subparsers(parent, allow_keep, auto_detect):
+    def add_spi_flash_subparsers(
+        parent: argparse.ArgumentParser,
+        allow_keep: bool,
+        auto_detect: bool,
+        size_only: bool = False,
+    ):
         """Add common parser arguments for SPI flash properties"""
         extra_keep_args = ["keep"] if allow_keep else []
 
@@ -234,33 +239,35 @@ def main(argv=None, esp=None):
             extra_fs_message = ""
             flash_sizes = []
 
-        parent.add_argument(
-            "--flash_freq",
-            "-ff",
-            help="SPI Flash frequency",
-            choices=extra_keep_args
-            + [
-                "80m",
-                "60m",
-                "48m",
-                "40m",
-                "30m",
-                "26m",
-                "24m",
-                "20m",
-                "16m",
-                "15m",
-                "12m",
-            ],
-            default=os.environ.get("ESPTOOL_FF", "keep" if allow_keep else None),
-        )
-        parent.add_argument(
-            "--flash_mode",
-            "-fm",
-            help="SPI Flash mode",
-            choices=extra_keep_args + ["qio", "qout", "dio", "dout"],
-            default=os.environ.get("ESPTOOL_FM", "keep" if allow_keep else "qio"),
-        )
+        if not size_only:
+            parent.add_argument(
+                "--flash_freq",
+                "-ff",
+                help="SPI Flash frequency",
+                choices=extra_keep_args
+                + [
+                    "80m",
+                    "60m",
+                    "48m",
+                    "40m",
+                    "30m",
+                    "26m",
+                    "24m",
+                    "20m",
+                    "16m",
+                    "15m",
+                    "12m",
+                ],
+                default=os.environ.get("ESPTOOL_FF", "keep" if allow_keep else None),
+            )
+            parent.add_argument(
+                "--flash_mode",
+                "-fm",
+                help="SPI Flash mode",
+                choices=extra_keep_args + ["qio", "qout", "dio", "dout"],
+                default=os.environ.get("ESPTOOL_FM", "keep" if allow_keep else "qio"),
+            )
+
         parent.add_argument(
             "--flash_size",
             "-fs",
@@ -540,7 +547,9 @@ def main(argv=None, esp=None):
     parser_read_flash = subparsers.add_parser(
         "read_flash", help="Read SPI flash content"
     )
-    add_spi_connection_arg(parser_read_flash)
+    add_spi_flash_subparsers(
+        parser_read_flash, allow_keep=True, auto_detect=True, size_only=True
+    )
     parser_read_flash.add_argument("address", help="Start address", type=arg_auto_int)
     parser_read_flash.add_argument(
         "size",

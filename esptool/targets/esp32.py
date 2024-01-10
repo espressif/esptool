@@ -329,11 +329,17 @@ class ESP32ROM(ESPLoader):
         data = b""
         while len(data) < length:
             block_len = min(BLOCK_LEN, length - len(data))
-            r = self.check_command(
-                "read flash block",
-                self.ESP_READ_FLASH_SLOW,
-                struct.pack("<II", offset + len(data), block_len),
-            )
+            try:
+                r = self.check_command(
+                    "read flash block",
+                    self.ESP_READ_FLASH_SLOW,
+                    struct.pack("<II", offset + len(data), block_len),
+                )
+            except FatalError:
+                print(
+                    "Hint: Consider specifying flash size using '--flash_size' argument"
+                )
+                raise
             if len(r) < block_len:
                 raise FatalError(
                     "Expected %d byte block, got %d bytes. Serial errors?"

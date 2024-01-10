@@ -115,6 +115,11 @@ It is also possible to autodetect flash size by using ``ALL`` as size. The above
 
 .. note::
 
+    When using the ``read_flash`` command in combination with the ``--no-stub`` argument, it may be necessary to also set the ``--flash_size`` argument to ensure proper reading of the flash contents by the ROM.
+
+
+.. note::
+
     If ``write_flash`` updated the boot image's :ref:`flash mode and flash size <flash-modes>` during flashing then these bytes may be different when read back.
 
 .. _erase_flash:
