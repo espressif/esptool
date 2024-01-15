@@ -793,7 +793,7 @@ def image_info(args):
         format_str = "{:7}  {:#07x}  {:#010x}  {:#010x}  {}"
         app_desc = None
         bootloader_desc = None
-        for idx, seg in enumerate(image.segments, start=1):
+        for idx, seg in enumerate(image.segments):
             segs = seg.get_memory_type(image)
             seg_name = ", ".join(segs)
             if "DROM" in segs:  # The DROM segment starts with the esp_app_desc_t struct
