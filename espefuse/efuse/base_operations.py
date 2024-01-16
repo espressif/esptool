@@ -684,7 +684,8 @@ def burn_bit(esp, efuses, args):
 
 
 def get_error_summary(efuses):
-    error_in_blocks = efuses.get_coding_scheme_warnings()
+    efuses.get_coding_scheme_warnings()
+    error_in_blocks = any(blk.fail or blk.num_errors != 0 for blk in efuses.blocks)
     if not error_in_blocks:
         return False
     writable = True
