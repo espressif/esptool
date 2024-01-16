@@ -101,7 +101,7 @@ class TestImageInfo:
 
         # Segments
         assert (
-            "2  0x01864  0x3fcd6114  0x00000034  DRAM, BYTE_ACCESSIBLE" in out
+            "1  0x01864  0x3fcd6114  0x00000034  DRAM, BYTE_ACCESSIBLE" in out
         ), "Wrong segment info"
 
         # Footer
@@ -126,7 +126,7 @@ class TestImageInfo:
         assert "Flash mode: QIO" in out, "Wrong flash mode"
         assert "Checksum: 0x6b (valid)" in out, "Invalid checksum"
         assert "Segments: 1" in out, "Wrong number of segments"
-        assert "1  0x00014  0x40100000  0x00000008  IRAM" in out, "Wrong segment info"
+        assert "0  0x00014  0x40100000  0x00000008  IRAM" in out, "Wrong segment info"
 
     def test_image_type_detection(self):
         # ESP8266, version 1 and 2
