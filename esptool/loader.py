@@ -300,7 +300,7 @@ class ESPLoader(object):
 
         if isinstance(port, str):
             try:
-                self._port = serial.serial_for_url(port)
+                self._port = serial.serial_for_url(port, exclusive=True)
             except serial.serialutil.SerialException as e:
                 port_issues = [
                     [  # does not exist error

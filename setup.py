@@ -128,7 +128,7 @@ setup(
         "bitstring>=3.1.6",
         "cryptography>=2.1.4",
         "ecdsa>=0.16.0",
-        "pyserial>=3.0",
+        "pyserial>=3.3",
         "reedsolo>=1.5.3,<1.8",
         "PyYAML>=5.1",
         "intelhex",

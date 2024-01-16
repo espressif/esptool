@@ -256,7 +256,7 @@ def main():
     logging.getLogger("rfc2217").setLevel(level)
 
     # connect to serial port
-    ser = serial.serial_for_url(args.SERIALPORT, do_not_open=True)
+    ser = serial.serial_for_url(args.SERIALPORT, do_not_open=True, exclusive=True)
     ser.timeout = 3  # required so that the reader thread can exit
     # reset control line as no _remote_ "terminal" has been connected yet
     ser.dtr = False
