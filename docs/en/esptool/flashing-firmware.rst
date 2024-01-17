@@ -1,3 +1,5 @@
+.. _flashing:
+
 Flashing Firmware
 =================
 

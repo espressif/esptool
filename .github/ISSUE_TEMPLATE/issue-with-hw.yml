@@ -21,7 +21,7 @@ body:
     id: version
     attributes:
       label: Esptool Version
-      description: The output of `git describe` if working with the sources, output of `esptool.py version` otherwise. If possible, consider updating esptool.
+      description: The output of `git describe` if working with the sources, output of `esptool.py version` otherwise. If possible, consider [updating esptool](https://docs.espressif.com/projects/esptool/en/latest/installation.html#how-to-update).
       placeholder: ex. v4.0.1, commit v4.1-10-g2059335aa
     validations:
       required: true
