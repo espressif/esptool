@@ -184,7 +184,7 @@ class EsptoolTestCase:
             preload
             and arg_preload_port
             and arg_chip
-            in ["esp32c3", "esp32s3", "esp32c6", "esp32h2"]  # With USB-JTAG/Serial
+            in ["esp32c3", "esp32s3", "esp32c6", "esp32h2", "esp32p4"]  # With U-JS
         ):
             port_index = base_cmd.index("--port") + 1
             base_cmd[port_index] = arg_preload_port  # Set the port to the preload one
@@ -1012,9 +1012,7 @@ class TestKeepImageSettings(EsptoolTestCase):
     def setup_class(self):
         super(TestKeepImageSettings, self).setup_class()
         self.BL_IMAGE = f"images/bootloader_{arg_chip}.bin"
-        self.flash_offset = (
-            0x1000 if arg_chip in ("esp32", "esp32s2") else 0
-        )  # bootloader offset
+        self.flash_offset = esptool.CHIP_DEFS[arg_chip].BOOTLOADER_FLASH_OFFSET
         with open(self.BL_IMAGE, "rb") as f:
             self.header = f.read(8)
 
@@ -1085,7 +1083,7 @@ class TestKeepImageSettings(EsptoolTestCase):
 
 
 @pytest.mark.skipif(
-    arg_chip in ["esp32s2", "esp32s3"],
+    arg_chip in ["esp32s2", "esp32s3", "esp32p4"],
     reason="Not supported on targets with USB-CDC.",
 )
 class TestLoadRAM(EsptoolTestCase):
@@ -1169,7 +1167,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
     )
     @pytest.mark.quick_test
     def test_flash_header_rewrite(self):
-        bl_offset = 0x1000 if arg_chip in ("esp32", "esp32s2") else 0
+        bl_offset = esptool.CHIP_DEFS[arg_chip].BOOTLOADER_FLASH_OFFSET
         bl_image = f"images/bootloader_{arg_chip}.bin"
 
         output = self.run_esptool(
@@ -1187,7 +1185,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
     def test_flash_header_no_magic_no_rewrite(self):
         # first image doesn't start with magic byte, second image does
         # but neither are valid bootloader binary images for either chip
-        bl_offset = 0x1000 if arg_chip in ("esp32", "esp32s2") else 0
+        bl_offset = esptool.CHIP_DEFS[arg_chip].BOOTLOADER_FLASH_OFFSET
         for image in ["images/one_kb.bin", "images/one_kb_all_ef.bin"]:
             output = self.run_esptool(
                 f"write_flash -fm dout -ff 20m {bl_offset:#x} {image}"
