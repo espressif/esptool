@@ -330,7 +330,7 @@ class TestUF2:
     def generate_binary(self, size):
         with tempfile.NamedTemporaryFile(delete=False) as f:
             for _ in range(size):
-                f.write(struct.pack("B", random.randrange(0, 1 << 8)))
+                f.write(struct.pack("B", random.randrange(0, 1 << 7)))
             return f.name
 
     @staticmethod
