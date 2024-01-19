@@ -62,8 +62,8 @@
 #endif // ESP32H2
 
 #ifdef ESP32P4
-// TODO: Add support for USB modes when MP is available
-// #define WITH_USB_JTAG_SERIAL 1
+#define WITH_USB_JTAG_SERIAL 1
+// TODO: Add support for USB OTG when MP is available
 // #define WITH_USB_OTG 1
 #define IS_RISCV 1
 #endif // ESP32P4
@@ -71,7 +71,8 @@
 // Increase CPU freq to speed up read/write operations over USB
 // Disabled on the S3 due to stability issues, would require dbias adjustment.
 // https://github.com/espressif/esptool/issues/832, https://github.com/espressif/esptool/issues/808
-#define USE_MAX_CPU_FREQ ((WITH_USB_JTAG_SERIAL || WITH_USB_OTG) && !ESP32S3)
+// Disabled for P4 because it is already running on high (360MHz) CPU frequency
+#define USE_MAX_CPU_FREQ ((WITH_USB_JTAG_SERIAL || WITH_USB_OTG) && !ESP32S3 && !ESP32P4)
 
 // Later chips don't support ets_efuse_get_spiconfig.
 #define SUPPORT_CONFIG_SPI (ESP32 || ESP32S2 || ESP32S3 || ESP32S3BETA2 || ESP32C3 || ESP32H2BETA1 || ESP32H2BETA2 || ESP32C6BETA)
@@ -199,6 +200,8 @@
 #define SPI_BASE_REG        0x5008D000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x5008C000 /* SPI peripheral 0, inner state machine */
 #define GPIO_BASE_REG       0x500E0000
+#define USB_DEVICE_BASE_REG 0x500D2000
+#define DR_REG_LP_WDT_BASE  0x50116000
 #define DR_REG_IO_MUX_BASE  0x500E1000
 #endif
 
@@ -348,6 +351,17 @@
 #define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
 #endif // ESP32H2
 
+#if ESP32P4
+#define UART_USB_OTG  5
+#define UART_USB_JTAG_SERIAL  6
+
+#define DR_REG_INTERRUPT_MATRIX_BASE            0x500D6000
+#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_MATRIX_BASE + 0x58) /* USB-JTAG-Serial, CORE0_USB_DEVICE_INT_MAP_REG */
+
+#define CLIC_EXT_INTR_NUM_OFFSET 16  /* For CLIC first 16 intrrupts are reserved as internal */
+#define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
+#endif
+
 #ifdef WITH_USB_JTAG_SERIAL
 #define USB_DEVICE_INT_ENA_REG          (USB_DEVICE_BASE_REG + 0x010)
 #define USB_DEVICE_INT_CLR_REG          (USB_DEVICE_BASE_REG + 0x014)
@@ -389,7 +403,7 @@
 #define RTC_CNTL_SWD_AUTO_FEED_EN     (1 << 31)
 #endif
 
-#if ESP32C6 || ESP32C5BETA3
+#if ESP32C6 || ESP32C5BETA3 || ESP32P4
 #define RTC_CNTL_WDTCONFIG0_REG       (DR_REG_LP_WDT_BASE + 0x0)   // LP_WDT_RWDT_CONFIG0_REG
 #define RTC_CNTL_WDTWPROTECT_REG      (DR_REG_LP_WDT_BASE + 0x0018)  // LP_WDT_RWDT_WPROTECT_REG
 #define RTC_CNTL_SWD_CONF_REG         (DR_REG_LP_WDT_BASE + 0x001C)  // LP_WDT_SWD_CONFIG_REG

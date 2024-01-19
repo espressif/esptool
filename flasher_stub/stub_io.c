@@ -65,7 +65,11 @@ static void stub_configure_rx_uart(void)
 #if WITH_USB_JTAG_SERIAL
   if (stub_uses_usb_jtag_serial()) {
     #if IS_RISCV
-      WRITE_REG(INTERRUPT_CORE0_USB_INTR_MAP_REG, ETS_USB_INUM);  // Route USB interrupt to CPU
+      #if ESP32P4
+        WRITE_REG(INTERRUPT_CORE0_USB_INTR_MAP_REG, ETS_USB_INUM + CLIC_EXT_INTR_NUM_OFFSET);
+      #else
+        WRITE_REG(INTERRUPT_CORE0_USB_INTR_MAP_REG, ETS_USB_INUM);  // Route USB interrupt to CPU
+      #endif
       esprv_intc_int_set_priority(ETS_USB_INUM, 1);
     #else
       WRITE_REG(INTERRUPT_CORE0_USB_DEVICE_INT_MAP_REG, ETS_USB_INUM);
