@@ -1252,7 +1252,7 @@ class ELFFile(object):
         nobits_secitons = [s for s in all_sections if s[1] == ELFFile.SEC_TYPE_NOBITS]
 
         # search for the string table section
-        if not (shstrndx * self.LEN_SEC_HEADER) in section_header_offsets:
+        if (shstrndx * self.LEN_SEC_HEADER) not in section_header_offsets:
             raise FatalError("ELF file has no STRTAB section at shstrndx %d" % shstrndx)
         _, sec_type, _, sec_size, sec_offs = read_section_header(
             shstrndx * self.LEN_SEC_HEADER

@@ -368,15 +368,14 @@ class EfuseMacField(EfuseField):
 
 
 class EfuseKeyPurposeField(EfuseField):
+    # fmt: off
     KEY_PURPOSES = [
-        # fmt: off
         ("USER",                                        0, None),      # User purposes (software-only use)
         ("XTS_AES_128_KEY",                             1, None),      # (whole 256bits) flash/PSRAM encryption
         ("XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS", 2, None),      # (lo 128bits) flash/PSRAM encryption
         ("SECURE_BOOT_DIGEST",                          3, "DIGEST"),
         # (hi 128bits) Secure Boot key digest
-        # fmt: on
-    ]
+    ]  # fmt: on
 
     KEY_PURPOSES_NAME = [name[0] for name in KEY_PURPOSES]
     DIGEST_KEY_PURPOSES = [name[0] for name in KEY_PURPOSES if name[2] == "DIGEST"]

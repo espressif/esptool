@@ -128,12 +128,12 @@ check_python_style:
       codequality: code_quality_report.json
     when: on_failure
   script:
-    # This step installs any 'dev' dependencies (ie flake8, Black)
+    # This step installs any 'dev' dependencies (ie ruff)
     # The runner should cache the downloads, so still quite fast.
     - pip install -e .[dev] --prefer-binary
-    - python -m flake8 --exit-zero --format gl-codeclimate --output-file code_quality_report.json
-    - python -m flake8
-    - python -m black --check --diff .
+    - python -m ruff check --exit-zero --output-format=gitlab --output-file=code_quality_report.json
+    - python -m ruff check
+    - python -m ruff format
 
 .run_esptool: &run_esptool |
   esptool.py --help

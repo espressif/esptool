@@ -108,12 +108,9 @@ setup(
     setup_requires=(["wheel"] if "bdist_wheel" in sys.argv else []),
     extras_require={
         "dev": [
-            "flake8>=3.2.0",
-            "flake8-import-order",
-            "flake8-gl-codeclimate",
+            "ruff>=0.1.14",
             "pyelftools",
             "coverage~=6.0",
-            "black",
             "pre-commit",
             "pytest",
             "pytest-rerunfailures",

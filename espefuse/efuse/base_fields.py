@@ -58,8 +58,9 @@ class CheckArgValue(object):
             elif efuse.efuse_type.startswith("bytes"):
                 if new_value is None:
                     raise esptool.FatalError(
-                        "New value required for efuse '{}' "
-                        "(given None)".format(efuse.name)
+                        "New value required for efuse '{}' (given None)".format(
+                            efuse.name
+                        )
                     )
                 if len(new_value) * 8 != efuse.bitarray.len:
                     raise esptool.FatalError(

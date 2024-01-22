@@ -1,13 +1,10 @@
 repos:
-  - repo: https://github.com/PyCQA/flake8
-    rev: 6.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.14
     hooks:
-      - id: flake8
-        additional_dependencies: [flake8-import-order]
-  - repo: https://github.com/psf/black
-    rev: 23.11.0
-    hooks:
-      - id: black
+      - id: ruff # Runs ruff linter (replaces flake8)
+        args: [--fix, --exit-non-zero-on-fix] # --fix for fixing errors
+      - id: ruff-format
   - repo: https://github.com/espressif/conventional-precommit-linter
     rev: v1.4.0
     hooks:

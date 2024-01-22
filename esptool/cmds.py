@@ -892,8 +892,9 @@ def image_info(args):
             ESP8266V2FirmwareImage.IMAGE_V2_MAGIC,
         ]:
             raise FatalError(
-                "This is not a valid image "
-                "(invalid magic number: {:#x})".format(magic)
+                "This is not a valid image " "(invalid magic number: {:#x})".format(
+                    magic
+                )
             )
 
         if args.chip == "auto":
