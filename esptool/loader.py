@@ -300,7 +300,17 @@ class ESPLoader(object):
 
         if isinstance(port, str):
             try:
-                self._port = serial.serial_for_url(port, exclusive=True)
+                self._port = serial.serial_for_url(
+                    port, exclusive=True, do_not_open=True
+                )
+                if sys.platform == "win32":
+                    # When opening a port on Windows,
+                    # the RTS/DTR (active low) lines
+                    # need to be set to False (pulled high)
+                    # to avoid unwanted chip reset
+                    self._port.rts = False
+                    self._port.dtr = False
+                self._port.open()
             except serial.serialutil.SerialException as e:
                 port_issues = [
                     [  # does not exist error

@@ -869,9 +869,6 @@ class TestExternalFlash(EsptoolTestCase):
         self.verify_readback(0, 1024, "images/one_kb.bin", spi_connection=self.conn)
 
 
-@pytest.mark.skipif(
-    os.name == "nt", reason="Temporarily disabled on windows"
-)  # TODO: ESPTOOL-673
 class TestStubReuse(EsptoolTestCase):
     def test_stub_reuse_with_synchronization(self):
         """Keep the flasher stub running and reuse it the next time."""
