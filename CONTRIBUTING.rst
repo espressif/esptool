@@ -85,24 +85,22 @@ To use the tool, first install ``pre-commit``. Then enable the ``pre-commit`` an
    $ python -m pip install pre-commit
    $ pre-commit install -t pre-commit -t commit-msg
 
-On the first commit ``pre-commit`` will install the hooks, subsequent checks will be significantly faster. If an error is found an appropriate error message will be displayed. If the error was with ``black`` then the tool will fix them for you automatically. Review the changes and re-stage for commit if you are happy with them.
+On the first commit ``pre-commit`` will install the hooks, subsequent checks will be significantly faster. If an error is found an appropriate error message will be displayed. Review the changes and re-stage for commit if you are happy with them.
 
 Conventional Commits
 """"""""""""""""""""
 
 ``esptool.py`` complies with the `Conventional Commits standard <https://www.conventionalcommits.org/en/v1.0.0/#specification>`_. Every commit message is checked with `Conventional Precommit Linter <https://github.com/espressif/conventional-precommit-linter>`_, ensuring it adheres to the standard.
 
-Flake8
-""""""
 
-``esptool.py`` complies with `flake8 <http://flake8.readthedocs.io/en/latest/>`_ style guide enforcement.
+Ruff
+""""
 
-Black
-"""""
+``esptool.py`` is `PEP8 <https://peps.python.org/pep-0008/>` compliant and enforces this style guide. For compliancy checking, we use `ruff <https://docs.astral.sh/ruff/>`.
+``Ruff`` also auto-format files in the same style as previously used ``black``.
 
-All files should be formatted using the `Black <https://black.readthedocs.io/en/stable/index.html>`_ auto-formatter.
 
-``Black``, ``flake8``, and ``Conventional Precommit Linter`` tools will be automatically run by ``pre-commit`` if that is configured. To check your code manually before submitting, run ``python -m flake8`` and ``black .`` (the tools are installed as part of the development requirements shown at the beginning of this document).
+``Ruff`` and ``Conventional Precommit Linter`` tools will be automatically run by ``pre-commit`` if that is configured. To check your code manually before submitting, run ``python -m ruff`` (this tool is installed as part of the development requirements shown at the beginning of this document).
 
 When you submit a Pull Request, the GitHub Actions automated build system will run automated checks using these tools.
 
