@@ -113,6 +113,9 @@ class EfuseTestCase:
     def _set_34_coding_scheme(self):
         self.espefuse_py("burn_efuse CODING_SCHEME 1")
 
+    def _set_none_recovery_coding_scheme(self):
+        self.espefuse_py("burn_efuse CODING_SCHEME 3")
+
     def check_data_block_in_log(
         self, log, file_path, repeat=1, reverse_order=False, offset=0
     ):
@@ -1681,6 +1684,16 @@ class TestBurnBitCommands(EfuseTestCase):
             check_msg="Burn into BLOCK3 is forbidden "
             "(3/4 coding scheme does not allow this).",
             ret_code=2,
+        )
+
+    @pytest.mark.skipif(arg_chip != "esp32", reason="ESP32-only")
+    def test_burn_bit_with_none_recovery_coding_scheme(self):
+        self._set_none_recovery_coding_scheme()
+        self.espefuse_py("burn_bit BLOCK3 0 1 2 4 8 16 32 64 96 128 160 192 224 255")
+        self.espefuse_py(
+            "summary",
+            check_msg="17 01 01 00 01 00 00 00 01 00 00 00 01 00 00 "
+            "00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 80",
         )
 
 

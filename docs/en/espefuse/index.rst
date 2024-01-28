@@ -76,7 +76,7 @@ The coding scheme helps the eFuse controller to detect an error of the eFuse blo
 
 .. only:: esp32
     
-    * ``None`` no need any special encoding data. BLOCK0.
+    * ``None`` no need any special encoding data. BLOCK0 is always None.
     * ``3/4``, requires encoding data. The BLOCK length is reduced from 256 bits to 192 bits.
     * ``Repeat`` not supported by this tool and IDF. The BLOCK length is reduced from 256 bits to 128 bits.
 

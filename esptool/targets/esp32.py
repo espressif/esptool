@@ -272,9 +272,12 @@ class ESP32ROM(ESPLoader):
         coding_scheme = word6 & 0x3
         features += [
             "Coding Scheme %s"
-            % {0: "None", 1: "3/4", 2: "Repeat (UNSUPPORTED)", 3: "Invalid"}[
-                coding_scheme
-            ]
+            % {
+                0: "None",
+                1: "3/4",
+                2: "Repeat (UNSUPPORTED)",
+                3: "None (may contain encoding data)",
+            }[coding_scheme]
         ]
 
         return features

@@ -75,10 +75,14 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 self.save_to_file()
 
     def read_raw_coding_scheme(self):
-        return (
+        coding_scheme = (
             self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD)
             & self.REGS.EFUSE_CODING_SCHEME_MASK
         )
+        if coding_scheme == self.REGS.CODING_SCHEME_NONE_RECOVERY:
+            return self.REGS.CODING_SCHEME_NONE
+        else:
+            return coding_scheme
 
     def write_raw_coding_scheme(self, value):
         self.write_efuse(

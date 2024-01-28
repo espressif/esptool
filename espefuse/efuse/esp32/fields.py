@@ -157,10 +157,14 @@ class EspEfuses(base_fields.EspEfusesBase):
         raise KeyError
 
     def read_coding_scheme(self):
-        self.coding_scheme = (
+        coding_scheme = (
             self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD)
             & self.REGS.EFUSE_CODING_SCHEME_MASK
         )
+        if coding_scheme == self.REGS.CODING_SCHEME_NONE_RECOVERY:
+            self.coding_scheme = self.REGS.CODING_SCHEME_NONE
+        else:
+            self.coding_scheme = coding_scheme
 
     def print_status_regs(self):
         print("")
