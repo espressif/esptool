@@ -182,7 +182,7 @@ class EfuseBlockBase(EfuseProtectBase):
 
     def get_block_len(self):
         coding_scheme = self.get_coding_scheme()
-        if coding_scheme == self.parent.REGS.CODING_SCHEME_NONE:
+        if coding_scheme == self.parent.REGS.CODING_SCHEME_NONE or coding_scheme == self.parent.REGS.CODING_SCHEME_NONE_RECOVERY:
             return self.len * 4
         elif coding_scheme == self.parent.REGS.CODING_SCHEME_34:
             return (self.len * 3 // 4) * 4

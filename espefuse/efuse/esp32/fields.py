@@ -100,7 +100,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 EfuseField.convert(self, efuse) for efuse in self.Fields.ADC_CALIBRATION
             ]
         else:
-            if self.coding_scheme == self.REGS.CODING_SCHEME_NONE:
+            if self.coding_scheme == self.REGS.CODING_SCHEME_NONE or self.coding_scheme == self.REGS.CODING_SCHEME_NONE_RECOVERY:
                 self.efuses += [
                     EfuseField.convert(self, efuse)
                     for efuse in self.Fields.KEYBLOCKS_256
