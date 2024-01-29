@@ -11,6 +11,7 @@ import sys
 import tempfile
 import zlib
 from collections import namedtuple
+from io import IOBase
 
 from cryptography import exceptions
 from cryptography.hazmat.backends import default_backend
@@ -1802,8 +1803,11 @@ def main(custom_commandline=None):
     finally:
         for arg_name in vars(args):
             obj = getattr(args, arg_name)
-            if isinstance(obj, OutFileType):
+            if isinstance(obj, (OutFileType, IOBase)):
                 obj.close()
+            elif isinstance(obj, list):
+                for f in [o for o in obj if isinstance(o, IOBase)]:
+                    f.close()
 
 
 def _main():
