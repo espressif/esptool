@@ -1,3 +1,5 @@
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000"}
+
 .. _flashing:
 
 Flashing Firmware
@@ -42,10 +44,10 @@ It is also possible to assemble the command manually, please see the :ref:`espto
 ESP-IDF
 ^^^^^^^
 
-ESP-IDF outputs the full esptool command used for flashing after the build is finished::
+ESP-IDF outputs the full esptool command used for flashing after the build is finished, for example::
 
     Project build complete. To flash, run this command:
-    python esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x1000 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
+    python esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip {IDF_TARGET_PATH_NAME}  write_flash --flash_mode dio --flash_size detect --flash_freq 40m {IDF_TARGET_BOOTLOADER_OFFSET} build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
     or run 'idf.py -p (PORT) flash'
 
 Arduino
@@ -56,11 +58,11 @@ The full esptool command is hidden from the user by default. To expose it, open 
 PlatformIO
 ^^^^^^^^^^
 
-To do a verbose upload and see the exact esptool invocation, run ``pio run -v -t upload`` in the terminal. In the generated output, there is the full esptool command, e.g.:
+To do a verbose upload and see the exact esptool invocation, run ``pio run -v -t upload`` in the terminal. In the generated output, there is the full esptool command, you will see something like:
 
 ::
 
-    “.../.platformio/penv/bin/python2.7” “.../.platformio/packages/tool-esptoolpy/esptool.py” --chip esp32 --port “/dev/cu.usbserial001” --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect 0x1000 .../.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x8000 .../project_folder/.pio/build/esp32doit-devkit-v1/partitions.bin 0xe000 .../.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 .pio/build/esp32doit-devkit-v1/firmware.bin
+    “.../.platformio/penv/bin/python2.7” “.../.platformio/packages/tool-esptoolpy/esptool.py” --chip {IDF_TARGET_PATH_NAME} --port “/dev/cu.usbserial001” --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect {IDF_TARGET_BOOTLOADER_OFFSET} .../.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x8000 .../project_folder/.pio/build/esp32doit-devkit-v1/partitions.bin 0xe000 .../.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 .pio/build/esp32doit-devkit-v1/firmware.bin
 
 
 Flashing
@@ -70,7 +72,7 @@ If you split the output, you’ll find the ``write_flash`` command with a list o
 
 Change ``PORT`` to the name of :ref:`actually used serial port <serial-port>` and run the command. A successful flash looks like this::
 
-    $ python esptool.py -p /dev/tty.usbserial-0001 -b 460800 --before default_reset --after hard_reset --chip esp32  write_flash --flash_mode dio --flash_size detect --flash_freq 40m 0x1000 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
+    $ python esptool.py -p /dev/tty.usbserial-0001 -b 460800 --before default_reset --after hard_reset --chip {IDF_TARGET_PATH_NAME} write_flash --flash_mode dio --flash_size detect --flash_freq 40m {IDF_TARGET_BOOTLOADER_OFFSET} build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
     esptool.py v3.2-dev
     Serial port /dev/tty.usbserial-0001
     Connecting.........

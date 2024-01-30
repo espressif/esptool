@@ -2,7 +2,7 @@
 
 {IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO8", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46"}
 
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0",esp32="1000", esp32s2="1000"}
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0", esp32="1000", esp32s2="1000", esp32p4="2000"}
 
 .. _boot-mode:
 
