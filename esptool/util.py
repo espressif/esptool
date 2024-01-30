@@ -142,6 +142,12 @@ class FatalError(RuntimeError):
             0x109: "CRC or checksum was invalid",
             0x10A: "Version was invalid",
             0x10B: "MAC address was invalid",
+            0x6001: "Flash operation failed",
+            0x6002: "Flash operation timed out",
+            0x6003: "Flash not initialised properly",
+            0x6004: "Operation not supported by the host SPI bus",
+            0x6005: "Operation not supported by the flash chip",
+            0x6006: "Can't write, protection enabled",
             # Flasher stub error codes
             0xC000: "Bad data length",
             0xC100: "Bad data checksum",
