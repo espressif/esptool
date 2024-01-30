@@ -36,6 +36,9 @@ class ESP32ROM(ESPLoader):
     SPI_MISO_DLEN_OFFS = 0x2C
     EFUSE_RD_REG_BASE = 0x3FF5A000
 
+    EFUSE_BLK0_RDATA3_REG_OFFS = EFUSE_RD_REG_BASE + 0x00C
+    EFUSE_BLK0_RDATA5_REG_OFFS = EFUSE_RD_REG_BASE + 0x014
+
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE + 0x18
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 7  # EFUSE_RD_DISABLE_DL_ENCRYPT
 
@@ -275,6 +278,20 @@ class ESP32ROM(ESPLoader):
         ]
 
         return features
+
+    def get_chip_spi_pads(self):
+        """Read chip spi pad config
+        return: clk, q, d, hd, cd
+        """
+        efuse_blk0_rdata5 = self.read_reg(self.EFUSE_BLK0_RDATA5_REG_OFFS)
+        spi_pad_clk = efuse_blk0_rdata5 & 0x1F
+        spi_pad_q = (efuse_blk0_rdata5 >> 5) & 0x1F
+        spi_pad_d = (efuse_blk0_rdata5 >> 10) & 0x1F
+        spi_pad_cs = (efuse_blk0_rdata5 >> 15) & 0x1F
+
+        efuse_blk0_rdata3_reg = self.read_reg(self.EFUSE_BLK0_RDATA3_REG_OFFS)
+        spi_pad_hd = (efuse_blk0_rdata3_reg >> 4) & 0x1F
+        return spi_pad_clk, spi_pad_q, spi_pad_d, spi_pad_hd, spi_pad_cs
 
     def read_efuse(self, n):
         """Read the nth word of the ESP3x EFUSE region."""

@@ -779,6 +779,13 @@ def main(argv=None, esp=None):
                     "Keeping initial baud rate %d" % initial_baud
                 )
 
+        def _define_spi_conn(spi_connection):
+            """Prepare SPI configuration string and value for flash_spi_attach()"""
+            clk, q, d, hd, cs = spi_connection
+            spi_config_txt = f"CLK:{clk}, Q:{q}, D:{d}, HD:{hd}, CS:{cs}"
+            value = (hd << 24) | (cs << 18) | (d << 12) | (q << 6) | clk
+            return spi_config_txt, value
+
         # Override the common SPI flash parameter stuff if configured to do so
         if hasattr(args, "spi_connection") and args.spi_connection is not None:
             spi_config = args.spi_connection
@@ -790,15 +797,26 @@ def main(argv=None, esp=None):
                 esp.check_spi_connection(args.spi_connection)
                 # Encode the pin numbers as a 32-bit integer with packed 6-bit values,
                 # the same way the ESP ROM takes them
-                clk, q, d, hd, cs = args.spi_connection
-                spi_config = f"CLK:{clk}, Q:{q}, D:{d}, HD:{hd}, CS:{cs}"
-                value = (hd << 24) | (cs << 18) | (d << 12) | (q << 6) | clk
+                spi_config, value = _define_spi_conn(args.spi_connection)
             print(f"Configuring SPI flash mode ({spi_config})...")
             esp.flash_spi_attach(value)
         elif args.no_stub:
-            print("Enabling default SPI flash mode...")
-            # ROM loader doesn't enable flash unless we explicitly do it
-            esp.flash_spi_attach(0)
+            if esp.CHIP_NAME != "ESP32" or esp.secure_download_mode:
+                print("Enabling default SPI flash mode...")
+                # ROM loader doesn't enable flash unless we explicitly do it
+                esp.flash_spi_attach(0)
+            else:
+                # ROM doesn't attach in-package flash chips
+                spi_chip_pads = esp.get_chip_spi_pads()
+                spi_config_txt, value = _define_spi_conn(spi_chip_pads)
+                if spi_chip_pads != (0, 0, 0, 0, 0):
+                    print(
+                        "Attaching flash from eFuses' SPI pads configuration"
+                        f"({spi_config_txt})..."
+                    )
+                else:
+                    print("Enabling default SPI flash mode...")
+                esp.flash_spi_attach(value)
 
         # XMC chip startup sequence
         XMC_VENDOR_ID = 0x20
