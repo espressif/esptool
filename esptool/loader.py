@@ -1651,12 +1651,14 @@ class HexFormatter(object):
             while len(s) > 0:
                 line = s[:16]
                 ascii_line = "".join(
-                    c
-                    if (
-                        c == " "
-                        or (c in string.printable and c not in string.whitespace)
+                    (
+                        c
+                        if (
+                            c == " "
+                            or (c in string.printable and c not in string.whitespace)
+                        )
+                        else "."
                     )
-                    else "."
                     for c in line.decode("ascii", "replace")
                 )
                 s = s[16:]

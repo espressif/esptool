@@ -41,6 +41,7 @@ cache:
     - host_test
   dependencies: []
   before_script:
+    - pip install --upgrade pip
     - pip install -e .[dev] --prefer-binary
 
 version_check:

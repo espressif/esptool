@@ -815,9 +815,11 @@ def image_info(args):
         print(
             "Checksum: {:#02x} ({})".format(
                 image.checksum,
-                "valid"
-                if image.checksum == calc_checksum
-                else "invalid - calculated {:02x}".format(calc_checksum),
+                (
+                    "valid"
+                    if image.checksum == calc_checksum
+                    else "invalid - calculated {:02x}".format(calc_checksum)
+                ),
             )
         )
         try:
@@ -941,9 +943,11 @@ def image_info(args):
     print(
         "Checksum: {:02x} ({})".format(
             image.checksum,
-            "valid"
-            if image.checksum == calc_checksum
-            else "invalid - calculated {:02x}".format(calc_checksum),
+            (
+                "valid"
+                if image.checksum == calc_checksum
+                else "invalid - calculated {:02x}".format(calc_checksum)
+            ),
         )
     )
     try:
