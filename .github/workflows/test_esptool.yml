@@ -69,10 +69,8 @@ jobs:
         - name: Checkout
           uses: actions/checkout@master
 
-        - name: Lint with flake8
+        - name: Lint and format with ruff
           run: |
             pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev]
-            python -m flake8
-
-        - name: Check formatting with Black
-          uses: psf/black@stable
+            python -m ruff check
+            python -m ruff format
