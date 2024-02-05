@@ -44,9 +44,10 @@ jobs:
         with:
           python-version: 3.8
       - name: Install dependencies
+        # PyInstaller >=6.0 results in significantly more antivirus false positives
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install pyinstaller==5.13.2
           pip install --user -e .
       - name: Build with PyInstaller
         run: |
