@@ -74,7 +74,7 @@ Repairs encoding errors in eFuse blocks, if possible.
     BLOCK0          (                ) [0 ] err__regs: 00000000 00000000 00000000 00000000 00000000 00000000
     EFUSE_RD_RS_ERR0_REG        0x00008990
     EFUSE_RD_RS_ERR1_REG        0x00000000
-    Recovery of block coding errors. 
+    Recovery of block coding errors.
     This is an irreversible operation!
     Type 'BURN' (all capitals) to continue.
     BURN

@@ -31,7 +31,7 @@ Optional arguments:
     Check all blocks for burn...
     idx, BLOCK_NAME,          Conclusion
     [03] BLOCK3               is empty, will burn the new value
-    . 
+    .
     This is an irreversible operation!
     Type 'BURN' (all capitals) to continue.
     BURN

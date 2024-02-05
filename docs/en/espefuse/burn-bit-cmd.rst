@@ -31,7 +31,7 @@ Burning bits to BLOCK2:
     Check all blocks for burn...
     idx, BLOCK_NAME,          Conclusion
     [02] BLOCK2               is empty, will burn the new value
-    . 
+    .
     This is an irreversible operation!
     Type 'BURN' (all capitals) to continue.
     BURN
@@ -65,7 +65,7 @@ Burning In Multiple Blocks
     idx, BLOCK_NAME,          Conclusion
     [02] BLOCK2               is empty, will burn the new value
     [03] BLOCK3               is empty, will burn the new value
-    . 
+    .
     This is an irreversible operation!
     Type 'BURN' (all capitals) to continue.
     BURN

@@ -35,7 +35,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
         Check all blocks for burn...
         idx, BLOCK_NAME,          Conclusion
         [03] BLOCK3               is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -47,12 +47,12 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
         > espefuse.py summary
         ...
         MAC_VERSION (BLOCK3):                              Version of the MAC field                           = Custom MAC in BLOCK3 R/W (0x01)
-        CUSTOM_MAC (BLOCK3):                               Custom MAC                                        
-        = 48:63:92:15:72:16 (CRC 0x75 OK) R/W 
+        CUSTOM_MAC (BLOCK3):                               Custom MAC
+        = 48:63:92:15:72:16 (CRC 0x75 OK) R/W
         CUSTOM_MAC_CRC (BLOCK3):                           CRC of custom MAC                                  = 117 R/W (0x75)
         ...
-        BLOCK3 (BLOCK3):                                   Variable Block 3                                  
-        = 75 48 63 92 15 72 16 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 R/W 
+        BLOCK3 (BLOCK3):                                   Variable Block 3
+        = 75 48 63 92 15 72 16 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 R/W
 
 .. only:: esp32c2
 
@@ -75,7 +75,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
                 (to write): 0x0400000000000000
                 (coding scheme = NONE)
         [01] BLOCK1               is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -88,8 +88,8 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
         > espefuse.py summary
         ...
         CUSTOM_MAC_USED (BLOCK0)                           Enable CUSTOM_MAC programming                      = True R/W (0b1)
-        CUSTOM_MAC (BLOCK1)                                Custom MAC addr                                   
-        = 48:63:92:15:72:16 (OK) R/W 
+        CUSTOM_MAC (BLOCK1)                                Custom MAC addr
+        = 48:63:92:15:72:16 (OK) R/W
 
 .. only:: esp32c3 or esp32s2 or esp32s3
 
@@ -105,7 +105,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
         Check all blocks for burn...
         idx, BLOCK_NAME,          Conclusion
         [03] BLOCK_USR_DATA       is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -116,5 +116,5 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
 
         > espefuse.py summary
         ...
-        CUSTOM_MAC (BLOCK3)                                Custom MAC Address                                
+        CUSTOM_MAC (BLOCK3)                                Custom MAC Address
         = 48:63:92:15:72:16 (OK) R/W

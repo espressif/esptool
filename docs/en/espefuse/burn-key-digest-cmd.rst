@@ -3,7 +3,7 @@
 Burn key Digest
 ===============
 
-The ``espefuse.py burn_key_digest`` command parses a RSA public key and burns the digest to eFuse block for use with `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html#signature-block-format>`_. 
+The ``espefuse.py burn_key_digest`` command parses a RSA public key and burns the digest to eFuse block for use with `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html#signature-block-format>`_.
 
 Positional arguments:
 
@@ -11,7 +11,7 @@ Positional arguments:
 
     :not esp32 and not esp32c2: - ``block`` - Name of key block.
     - ``Keyfile``. Key file to digest (PEM format).
-    :not esp32 and not esp32c2: - ``Key purpose``. The purpose of this key [``SECURE_BOOT_DIGEST0``, ``SECURE_BOOT_DIGEST1``, ``SECURE_BOOT_DIGEST2``]. 
+    :not esp32 and not esp32c2: - ``Key purpose``. The purpose of this key [``SECURE_BOOT_DIGEST0``, ``SECURE_BOOT_DIGEST1``, ``SECURE_BOOT_DIGEST2``].
 
 .. only:: not esp32 and not esp32c2
 
@@ -55,7 +55,7 @@ Usage
         idx, BLOCK_NAME,          Conclusion
         [00] BLOCK0               is empty, will burn the new value
         [02] BLOCK2               is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -66,8 +66,8 @@ Usage
 
         > espefuse.py summary
         ...
-        BLOCK2 (BLOCK2):                                   Secure boot key                                   
-        = a2 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d R/- 
+        BLOCK2 (BLOCK2):                                   Secure boot key
+        = a2 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d R/-
 
 .. only:: esp32c2
 
@@ -75,7 +75,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn_key_digest secure_boot_v2_ecdsa192.pem 
+        > espefuse.py burn_key_digest secure_boot_v2_ecdsa192.pem
 
         === Run "burn_key_digest" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
@@ -87,7 +87,7 @@ Usage
         idx, BLOCK_NAME,          Conclusion
         [00] BLOCK0               is empty, will burn the new value
         [03] BLOCK_KEY0           is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -97,18 +97,18 @@ Usage
         Successful
 
         > espefuse.py  summary
-        ...                                  
+        ...
         XTS_KEY_LENGTH_256 (BLOCK0)                        Flash encryption key length                        = 128 bits key R/W (0b0)
         ...
         BLOCK_KEY0 (BLOCK3)                                BLOCK_KEY0 - 256-bits. 256-bit key of Flash Encryp
-        = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 c2 bd 9c 1a b4 b7 44 22 59 c6 d3 12 0b 79 1f R/- 
-                                                        tion                                              
-        BLOCK_KEY0_LOW_128 (BLOCK3)                        BLOCK_KEY0 - lower 128-bits. 128-bit key of Flash 
-        = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/- 
-                                                        Encryption                                        
+        = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 c2 bd 9c 1a b4 b7 44 22 59 c6 d3 12 0b 79 1f R/-
+                                                        tion
+        BLOCK_KEY0_LOW_128 (BLOCK3)                        BLOCK_KEY0 - lower 128-bits. 128-bit key of Flash
+        = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/-
+                                                        Encryption
         BLOCK_KEY0_HI_128 (BLOCK3)                         BLOCK_KEY0 - higher 128-bits. 128-bits key of Secu
-        = 02 c2 bd 9c 1a b4 b7 44 22 59 c6 d3 12 0b 79 1f R/- 
-                                                        re Boot.   
+        = 02 c2 bd 9c 1a b4 b7 44 22 59 c6 d3 12 0b 79 1f R/-
+                                                        re Boot.
 
 .. only:: esp32c3 or esp32s2 or esp32s3
 
@@ -143,7 +143,7 @@ Usage
         [04] BLOCK_KEY0           is empty, will burn the new value
         [05] BLOCK_KEY1           is empty, will burn the new value
         [06] BLOCK_KEY2           is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -162,13 +162,13 @@ Usage
         ...
         BLOCK_KEY0 (BLOCK4)
         Purpose: SECURE_BOOT_DIGEST0
-        Encryption key0 or user data                      
-        = a2 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d R/- 
+        Encryption key0 or user data
+        = a2 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d R/-
         BLOCK_KEY1 (BLOCK5)
         Purpose: SECURE_BOOT_DIGEST1
-        Encryption key1 or user data                      
+        Encryption key1 or user data
         = a3 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d R/-
         BLOCK_KEY2 (BLOCK6)
         Purpose: SECURE_BOOT_DIGEST2
-        Encryption key2 or user data                      
+        Encryption key2 or user data
         = a4 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d R/-

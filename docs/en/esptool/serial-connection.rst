@@ -19,7 +19,7 @@ However, if you are wiring the chip yourself to a USB/Serial adapter or similar 
 
 Note that TX (transmit) on the ESP chip is connected to RX (receive) on the serial port connection, and vice versa.
 
-Do not connect the chip to 5V TTL serial adapters, and especially not to "standard" RS-232 adapters! 3.3V serial only! 
+Do not connect the chip to 5V TTL serial adapters, and especially not to "standard" RS-232 adapters! 3.3V serial only!
 
 .. _serial-port-settings:
 
@@ -28,7 +28,7 @@ Serial Port Settings
 
 When communicating with the {IDF_TARGET_NAME} ROM serial bootloader, the following serial port settings are recommended:
 
-+---------------------+-------------------+ 
++---------------------+-------------------+
 | Baud rate           | {IDF_TARGET_BAUD_RATE}            |
 +---------------------+-------------------+
 | Data bits           | 8                 |
@@ -41,7 +41,7 @@ When communicating with the {IDF_TARGET_NAME} ROM serial bootloader, the followi
 +---------------------+-------------------+
 
 .. only:: esp32c2
-    
+
     .. note::
 
         You might experience issues when using low baud rates on {IDF_TARGET_NAME}. If you encounter any problems when connecting, please use at least 115200 or higher.

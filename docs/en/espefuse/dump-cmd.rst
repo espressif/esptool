@@ -59,7 +59,7 @@ The order of registers in the dump:
 .. only:: not esp32 and not esp32c2
 
     .. code-block:: none
-        
+
         > espefuse.py dump
 
         Connecting....
@@ -111,4 +111,3 @@ These dump files can be written to another chip:
     > espefuse.py burn_block_data BLOCK0 backup/chip1/blk0.bin \
     BLOCK1 backup/chip1/blk1.bin \
     BLOCK2 backup/chip1/blk2.bin
- 

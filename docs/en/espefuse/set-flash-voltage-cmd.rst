@@ -13,7 +13,7 @@ The ``espefuse.py set_flash_voltage`` command permanently sets the internal flas
 
 Positional arguments:
 
-- ``voltage`` - Voltage selection ['1.8V', '3.3V', 'OFF'].  
+- ``voltage`` - Voltage selection ['1.8V', '3.3V', 'OFF'].
 
 .. only:: esp32c2 or esp32c3
 
@@ -111,7 +111,7 @@ Once an efuse is burned it cannot be un-burned. However, changes can be made by 
         Check all blocks for burn...
         idx, BLOCK_NAME,          Conclusion
         [00] BLOCK0               is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -132,7 +132,7 @@ Once an efuse is burned it cannot be un-burned. However, changes can be made by 
         Check all blocks for burn...
         idx, BLOCK_NAME,          Conclusion
         [00] BLOCK0               is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN
@@ -146,13 +146,13 @@ Once an efuse is burned it cannot be un-burned. However, changes can be made by 
         > espefuse.py set_flash_voltage OFF
 
         === Run "set_flash_voltage" command ===
-        Disable internal flash voltage regulator (VDD_SPI). SPI flash will 
+        Disable internal flash voltage regulator (VDD_SPI). SPI flash will
         VDD_SPI setting complete.
 
         Check all blocks for burn...
         idx, BLOCK_NAME,          Conclusion
         [00] BLOCK0               is empty, will burn the new value
-        . 
+        .
         This is an irreversible operation!
         Type 'BURN' (all capitals) to continue.
         BURN

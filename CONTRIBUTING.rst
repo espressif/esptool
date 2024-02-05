@@ -96,13 +96,18 @@ Conventional Commits
 Ruff
 """"
 
-``esptool.py`` is `PEP8 <https://peps.python.org/pep-0008/>` compliant and enforces this style guide. For compliancy checking, we use `ruff <https://docs.astral.sh/ruff/>`.
+``esptool.py`` is `PEP8 <https://peps.python.org/pep-0008/>`_ compliant and enforces this style guide. For compliancy checking, we use `ruff <https://docs.astral.sh/ruff/>`_.
 ``Ruff`` also auto-format files in the same style as previously used ``black``.
 
 
 ``Ruff`` and ``Conventional Precommit Linter`` tools will be automatically run by ``pre-commit`` if that is configured. To check your code manually before submitting, run ``python -m ruff`` (this tool is installed as part of the development requirements shown at the beginning of this document).
 
 When you submit a Pull Request, the GitHub Actions automated build system will run automated checks using these tools.
+
+Shinx-lint
+""""""""""
+
+The documentation is checked for stylistic and formal issues by ``sphinx-lint``.
 
 Automated Integration Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
