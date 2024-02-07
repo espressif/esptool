@@ -4,30 +4,35 @@ on: [push, pull_request]
 
 jobs:
   build-esptool-binaries:
-    name: Build esptool binaries for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build esptool binaries for ${{ matrix.platform }}
+    runs-on: ${{ matrix.RUN_ON }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-20.04, windows-latest, ARM, ARM64]
+        platform: [macos, windows, linux-amd64, linux-arm32, linux-arm64]
         include:
-        - os: macos-latest
+        - platform: macos
           TARGET: macos
           SEPARATOR: ':'
-        - os: ubuntu-20.04
-          TARGET: linux-amd64
-          SEPARATOR: ':'
-        - os: windows-latest
+          RUN_ON: macos-latest
+        - platform: windows
           TARGET: win64
           EXTEN: .exe
           SEPARATOR: ';'
-        - os: ARM
-          CONTAINER: python:3.8-bullseye
-          TARGET: arm
+          RUN_ON: windows-latest
+        - platform: linux-amd64
+          TARGET: linux-amd64
           SEPARATOR: ':'
-        - os: ARM64
+          RUN_ON: ubuntu-20.04
+        - platform: linux-arm32
           CONTAINER: python:3.8-bullseye
-          TARGET: arm64
+          TARGET: linux-arm32
           SEPARATOR: ':'
+          RUN_ON: [ARM, self-hosted, linux]
+        - platform: linux-arm64
+          CONTAINER: python:3.8-bullseye
+          TARGET: linux-arm64
+          SEPARATOR: ':'
+          RUN_ON: [ARM64, self-hosted, linux]
     container: ${{ matrix.CONTAINER }} # use python container on ARM
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
@@ -39,7 +44,7 @@ jobs:
         uses: actions/checkout@master
       - name: Set up Python 3.8
         # Skip setting python on ARM because of missing compatibility: https://github.com/actions/setup-python/issues/108
-        if: matrix.os != 'ARM' && matrix.os != 'ARM64'
+        if: matrix.platform != 'linux-arm32' && matrix.platform != 'linux-arm64'
         uses: actions/setup-python@master
         with:
           python-version: 3.8
@@ -56,7 +61,7 @@ jobs:
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
       - name: Sign binaries
-        if: matrix.os == 'windows-latest' && github.event_name != 'pull_request'
+        if: matrix.platform == 'windows' && github.event_name != 'pull_request'
         env:
           CERTIFICATE: ${{ secrets.CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
