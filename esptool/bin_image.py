@@ -13,7 +13,7 @@ import struct
 import tempfile
 from typing import BinaryIO, Optional
 
-from intelhex import HexRecordError, IntelHex
+from esptool.intelhex import HexRecordError, IntelHex
 
 from .loader import ESPLoader
 from .targets import (

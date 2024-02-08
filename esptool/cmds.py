@@ -11,7 +11,7 @@ import sys
 import time
 import zlib
 
-from intelhex import IntelHex
+from esptool.intelhex import IntelHex
 
 from .bin_image import ELFFile, ImageSegment, LoadFirmwareImage
 from .bin_image import (

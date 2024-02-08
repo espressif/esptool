@@ -14,8 +14,7 @@ ignore = ["E203"]
 # Assume Python 3.7
 target-version = "py37"
 
-[per-file-ignores]
-
+[lint.per-file-ignores]
 
 # tests often manipulate sys.path before importing the main tools, so ignore import order violations
 "test/*.py" = ["E402"]

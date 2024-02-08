@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
 
     steps:
     - name: Checkout ref commit
@@ -46,8 +46,8 @@ jobs:
         pytest -m host_test
         pytest test/test_espsecure_hsm.py
 
-    - name: Build stub (Python 3.7 only)
-      if: matrix.python-version == 3.7
+    - name: Build stub (Python 3.9 only)
+      if: matrix.python-version == 3.9
       run: |
         export TOOLCHAIN_DIR=$HOME/toolchain
 

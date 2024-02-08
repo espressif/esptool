@@ -128,7 +128,6 @@ setup(
         "pyserial>=3.3",
         "reedsolo>=1.5.3,<1.8",
         "PyYAML>=5.1",
-        "intelhex",
     ],
     packages=find_packages(),
     include_package_data=True,
