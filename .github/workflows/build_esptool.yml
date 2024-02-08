@@ -1,39 +1,32 @@
 name: Build esptool
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+    - '.github/**' # Ignore changes towards the .github directory
 
 jobs:
   build-esptool-binaries:
-    name: Build esptool binaries for ${{ matrix.platform }}
-    runs-on: ${{ matrix.RUN_ON }}
+    name: Build esptool binaries for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        platform: [macos, windows, linux-amd64, linux-arm32, linux-arm64]
+        os: [macos-14, macos-latest, ubuntu-latest, windows-latest]
         include:
-        - platform: macos
+        - os: macos-14
+          TARGET: macos-arm
+          SEPARATOR: ':'
+        - os: macos-latest
           TARGET: macos
           SEPARATOR: ':'
-          RUN_ON: macos-latest
-        - platform: windows
+        - os: ubuntu-latest
+          TARGET: linux-amd64
+          SEPARATOR: ':'
+        - os: windows-latest
           TARGET: win64
           EXTEN: .exe
           SEPARATOR: ';'
-          RUN_ON: windows-latest
-        - platform: linux-amd64
-          TARGET: linux-amd64
-          SEPARATOR: ':'
-          RUN_ON: ubuntu-20.04
-        - platform: linux-arm32
-          CONTAINER: python:3.8-bullseye
-          TARGET: linux-arm32
-          SEPARATOR: ':'
-          RUN_ON: [ARM, self-hosted, linux]
-        - platform: linux-arm64
-          CONTAINER: python:3.8-bullseye
-          TARGET: linux-arm64
-          SEPARATOR: ':'
-          RUN_ON: [ARM64, self-hosted, linux]
-    container: ${{ matrix.CONTAINER }} # use python container on ARM
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
       STUBS_DIR: ./esptool/targets/stub_flasher/
@@ -42,12 +35,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@master
-      - name: Set up Python 3.8
-        # Skip setting python on ARM because of missing compatibility: https://github.com/actions/setup-python/issues/108
-        if: matrix.platform != 'linux-arm32' && matrix.platform != 'linux-arm64'
+      - name: Set up Python 3.11
         uses: actions/setup-python@master
         with:
-          python-version: 3.8
+          python-version: 3.11
       - name: Install dependencies
         # PyInstaller >=6.0 results in significantly more antivirus false positives
         run: |
@@ -60,17 +51,6 @@ jobs:
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.EFUSE_DIR }}*.yaml${{ matrix.SEPARATOR }}${{ env.EFUSE_DIR }}" espefuse.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
-      - name: Sign binaries
-        if: matrix.platform == 'windows' && github.event_name != 'pull_request'
-        env:
-          CERTIFICATE: ${{ secrets.CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-        shell: pwsh
-        run: |
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esptool.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espefuse.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espsecure.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esp_rfc2217_server.exe
       - name: Test binaries
         shell: bash
         run: |
@@ -78,54 +58,76 @@ jobs:
           ./${{ env.DISTPATH }}/espefuse${{ matrix.EXTEN }} -h
           ./${{ env.DISTPATH }}/espsecure${{ matrix.EXTEN }} -h
           ./${{ env.DISTPATH }}/esp_rfc2217_server${{ matrix.EXTEN }} -h
-      - name: Add license and readme
-        shell: bash
-        run: mv LICENSE README.md ./${{ env.DISTPATH }}
       - name: Archive artifact
         uses: actions/upload-artifact@master
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
+      - name: Build stub
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          export TOOLCHAIN_DIR=$HOME/toolchain
+          export ESP8266_BINDIR=$TOOLCHAIN_DIR/xtensa-lx106-elf/bin
+          export ESP32_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32-elf/bin
+          export ESP32S2_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s2-elf/bin
+          export ESP32S3_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s3-elf/bin
+          export ESP32C3_BINDIR=$TOOLCHAIN_DIR/riscv32-esp-elf/bin
+          export PATH=$PATH:$ESP8266_BINDIR:$ESP32_BINDIR:$ESP32S2_BINDIR:$ESP32S3_BINDIR:$ESP32C3_BINDIR
+          ./ci/setup_ci_build_env.sh
+          make -C flasher_stub V=1
+      - name: Archive stubs artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@master
+        with:
+          name: stubs
+          path: /home/runner/work/esptool/esptool/flasher_stub/build
 
-  create_release:
-    name: Create GitHub release
-    if: startsWith(github.ref, 'refs/tags/') && !(contains(github.ref_name, 'dev'))
+  push_stubs:
+    name: Commit changed files
     needs: build-esptool-binaries
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Get version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        shell: bash
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@master
         with:
           fetch-depth: 0
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --user -e ".[dev]"
-      - name: Generate changelog
-        run: |
-          cz changelog ${{ steps.get_version.outputs.VERSION }} --template ci/gh_changelog_template.md.j2 --file-name changelog_body.md
-          cat changelog_body.md
-      - name: Download built binaries
+      - name: Download builded stubs
         uses: actions/download-artifact@master
-      - name: Compress and rename binaries
-        run: |
-          for dir in esptool-*; do
-            zip -r "esptool-v${{ steps.get_version.outputs.VERSION }}-${dir#esptool-}.zip" "$dir"
-          done
-      - name: Create release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          body_path: changelog_body.md
-          name: Version ${{ steps.get_version.outputs.VERSION }}
-          draft: true
-          prerelease: false
-          files: esptool-v${{ steps.get_version.outputs.VERSION }}-*.zip
+          name: stubs
+          path: ./mv_stubs
+      - name: Display structure of downloaded files
+        run: |
+          ls -R
+      - name: Move stubs in folder
+        run: |
+          rm ./esptool/targets/stub_flasher/*
+          cp -R ./mv_stubs/*.json ./esptool/targets/stub_flasher
+          ls -R ./esptool/targets/stub_flasher
+          rm -rf ./mv_stubs
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Stubs updated
+
+  release:
+      name: Upload release binaries
+      needs: build-esptool-binaries
+      runs-on: ubuntu-latest
+      steps:
+        - name: Download built binaries
+          uses: actions/download-artifact@master
+        - name: Rename and package binaries
+          run: |
+            zip -r esptool-macos-arm.zip ./esptool-macos-arm
+            zip -r esptool-macos.zip ./esptool-macos
+            zip -r esptool-linux-amd64.zip ./esptool-linux-amd64
+            zip -r esptool-win64.zip ./esptool-win64
+        - name: Release
+          uses: jason2866/action-gh-release@v1.3
+          with:
+            tag_name: ${{ github.run_number }}
+            prerelease: true
+            files: |
+              *.zip
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
