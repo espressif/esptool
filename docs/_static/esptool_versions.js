@@ -12,5 +12,6 @@ var DOCUMENTATION_VERSIONS = {
        { text: "ESP32-C2", value: "esp32c2" },
        { text: "ESP32-C6", value: "esp32c6" },
        { text: "ESP32-H2", value: "esp32h2" },
+       { text: "ESP32-P4", value: "esp32p4" },
     ]
 };

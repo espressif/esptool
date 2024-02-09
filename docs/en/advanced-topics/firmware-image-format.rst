@@ -47,7 +47,7 @@ The image header is 8 bytes long:
     +--------+--------------------------------------------------------------------------------------------------+
 
 
-.. only:: esp32s2 or esp32s3
+.. only:: esp32s2 or esp32s3 or esp32p4
 
     +--------+------------------------------------------------------------------------------------------------+
     | Byte   | Description                                                                                    |
@@ -89,7 +89,7 @@ The image header is 8 bytes long:
         Flash frequency with value ``0`` can mean either 80MHz or 40MHz based on MSPI clock source mode.
 
 
-.. only:: not (esp8266 or esp32c6 or esp32s3 or esp32s2)
+.. only:: not (esp8266 or esp32c6 or esp32s3 or esp32s2 or esp32p4)
 
     +--------+------------------------------------------------------------------------------------------------+
     | Byte   | Description                                                                                    |

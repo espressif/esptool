@@ -60,7 +60,7 @@ Size of the SPI flash, given in megabytes.
 
     Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``
 
-.. only:: esp32s2 or esp32s3
+.. only:: esp32s2 or esp32s3 or esp32p4
 
     Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``, ``32MB``, ``64MB``, ``128MB``
 
