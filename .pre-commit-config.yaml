@@ -5,6 +5,12 @@ repos:
       - id: ruff # Runs ruff linter (replaces flake8)
         args: [--fix, --exit-non-zero-on-fix] # --fix for fixing errors
       - id: ruff-format
+  - repo: https://github.com/sphinx-contrib/sphinx-lint
+    rev: v0.6.8
+    hooks:
+      - id: sphinx-lint
+        name: Lint RST files in docs folder using Sphinx Lint
+        files: ^((docs/en)/.*\.(rst|inc))|CONTRIBUTING.rst$
   - repo: https://github.com/espressif/conventional-precommit-linter
     rev: v1.4.0
     hooks:

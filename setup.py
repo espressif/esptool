@@ -108,7 +108,6 @@ setup(
     setup_requires=(["wheel"] if "bdist_wheel" in sys.argv else []),
     extras_require={
         "dev": [
-            "ruff>=0.1.14",
             "pyelftools",
             "coverage~=6.0",
             "pre-commit",

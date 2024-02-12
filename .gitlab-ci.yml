@@ -119,22 +119,14 @@ host_tests_hsm:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espsecure_hsm.py
 
-check_python_style:
+run_pre_commit_hooks:
   stage: test
   image: python:3.7-bullseye
   tags:
     - host_test
-  artifacts:
-    reports:
-      codequality: code_quality_report.json
-    when: on_failure
   script:
-    # This step installs any 'dev' dependencies (ie ruff)
-    # The runner should cache the downloads, so still quite fast.
     - pip install -e .[dev] --prefer-binary
-    - python -m ruff check --exit-zero --output-format=gitlab --output-file=code_quality_report.json
-    - python -m ruff check
-    - python -m ruff format
+    - pre-commit run --all-files
 
 .run_esptool: &run_esptool |
   esptool.py --help
