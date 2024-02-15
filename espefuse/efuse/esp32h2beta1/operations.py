@@ -193,38 +193,25 @@ def set_flash_voltage(esp, efuses, args):
 def adc_info(esp, efuses, args):
     print("")
     # fmt: off
-    if efuses["BLK_VERSION_MAJOR"].get() == 1:
-        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_SENSOR_CAL"].get()))
-
+    if efuses["BLK_VERSION_MINOR"].get() == 2:
+        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_CALIB"].get()))
         print("")
-        print("ADC1 readings stored in efuse BLOCK2:")
-        print("    MODE0 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE0_D1"].get()))
-        print("    MODE0 D2 reading  (600mV):  {}".format(efuses["ADC1_MODE0_D2"].get()))
-
-        print("    MODE1 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE1_D1"].get()))
-        print("    MODE1 D2 reading  (800mV):  {}".format(efuses["ADC1_MODE1_D2"].get()))
-
-        print("    MODE2 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE2_D1"].get()))
-        print("    MODE2 D2 reading  (1000mV): {}".format(efuses["ADC1_MODE2_D2"].get()))
-
-        print("    MODE3 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE3_D1"].get()))
-        print("    MODE3 D2 reading  (2000mV): {}".format(efuses["ADC1_MODE3_D2"].get()))
-
-        print("")
-        print("ADC2 readings stored in efuse BLOCK2:")
-        print("    MODE0 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE0_D1"].get()))
-        print("    MODE0 D2 reading  (600mV):  {}".format(efuses["ADC2_MODE0_D2"].get()))
-
-        print("    MODE1 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE1_D1"].get()))
-        print("    MODE1 D2 reading  (800mV):  {}".format(efuses["ADC2_MODE1_D2"].get()))
-
-        print("    MODE2 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE2_D1"].get()))
-        print("    MODE2 D2 reading  (1000mV): {}".format(efuses["ADC2_MODE2_D2"].get()))
-
-        print("    MODE3 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE3_D1"].get()))
-        print("    MODE3 D2 reading  (2000mV): {}".format(efuses["ADC2_MODE3_D2"].get()))
+        print("ADC1:")
+        print("AVE_INITCODE_ATTEN0      = ", efuses["ADC1_AVE_INITCODE_ATTEN0"].get())
+        print("AVE_INITCODE_ATTEN1      = ", efuses["ADC1_AVE_INITCODE_ATTEN1"].get())
+        print("AVE_INITCODE_ATTEN2      = ", efuses["ADC1_AVE_INITCODE_ATTEN2"].get())
+        print("AVE_INITCODE_ATTEN3      = ", efuses["ADC1_AVE_INITCODE_ATTEN3"].get())
+        print("HI_DOUT_ATTEN0           = ", efuses["ADC1_HI_DOUT_ATTEN0"].get())
+        print("HI_DOUT_ATTEN1           = ", efuses["ADC1_HI_DOUT_ATTEN1"].get())
+        print("HI_DOUT_ATTEN2           = ", efuses["ADC1_HI_DOUT_ATTEN2"].get())
+        print("HI_DOUT_ATTEN3           = ", efuses["ADC1_HI_DOUT_ATTEN3"].get())
+        print("CH0_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH0_ATTEN0_INITCODE_DIFF"].get())
+        print("CH1_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH1_ATTEN0_INITCODE_DIFF"].get())
+        print("CH2_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH2_ATTEN0_INITCODE_DIFF"].get())
+        print("CH3_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH3_ATTEN0_INITCODE_DIFF"].get())
+        print("CH4_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH4_ATTEN0_INITCODE_DIFF"].get())
     else:
-        print("BLK_VERSION_MAJOR = {}".format(efuses["BLK_VERSION_MAJOR"].get_meaning()))
+        print("BLK_VERSION_MINOR = {}".format(efuses["BLK_VERSION_MINOR"].get()))
     # fmt: on
 
 

@@ -192,32 +192,7 @@ def set_flash_voltage(esp, efuses, args):
 
 
 def adc_info(esp, efuses, args):
-    print("")
-    # fmt: off
-    if efuses["BLK_VERSION_MINOR"].get() == 1:
-        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_CALIB"].get()))
-
-        print("")
-        print("ADC1 Calibration data stored in efuse BLOCK2:")
-        print(f"OCODE: {efuses['OCODE'].get()}")
-        print(f"INIT_CODE_ATTEN0: {efuses['ADC1_INIT_CODE_ATTEN0'].get()}")
-        print(f"INIT_CODE_ATTEN1: {efuses['ADC1_INIT_CODE_ATTEN1'].get()}")
-        print(f"INIT_CODE_ATTEN2: {efuses['ADC1_INIT_CODE_ATTEN2'].get()}")
-        print(f"INIT_CODE_ATTEN3: {efuses['ADC1_INIT_CODE_ATTEN3'].get()}")
-        print(f"CAL_VOL_ATTEN0: {efuses['ADC1_CAL_VOL_ATTEN0'].get()}")
-        print(f"CAL_VOL_ATTEN1: {efuses['ADC1_CAL_VOL_ATTEN1'].get()}")
-        print(f"CAL_VOL_ATTEN2: {efuses['ADC1_CAL_VOL_ATTEN2'].get()}")
-        print(f"CAL_VOL_ATTEN3: {efuses['ADC1_CAL_VOL_ATTEN3'].get()}")
-        print(f"INIT_CODE_ATTEN0_CH0: {efuses['ADC1_INIT_CODE_ATTEN0_CH0'].get()}")
-        print(f"INIT_CODE_ATTEN0_CH1: {efuses['ADC1_INIT_CODE_ATTEN0_CH1'].get()}")
-        print(f"INIT_CODE_ATTEN0_CH2: {efuses['ADC1_INIT_CODE_ATTEN0_CH2'].get()}")
-        print(f"INIT_CODE_ATTEN0_CH3: {efuses['ADC1_INIT_CODE_ATTEN0_CH3'].get()}")
-        print(f"INIT_CODE_ATTEN0_CH4: {efuses['ADC1_INIT_CODE_ATTEN0_CH4'].get()}")
-        print(f"INIT_CODE_ATTEN0_CH5: {efuses['ADC1_INIT_CODE_ATTEN0_CH5'].get()}")
-        print(f"INIT_CODE_ATTEN0_CH6: {efuses['ADC1_INIT_CODE_ATTEN0_CH6'].get()}")
-    else:
-        print("BLK_VERSION_MINOR = {}".format(efuses["BLK_VERSION_MINOR"].get_meaning()))
-    # fmt: on
+    print("not supported yet")
 
 
 def burn_key(esp, efuses, args, digest=None):

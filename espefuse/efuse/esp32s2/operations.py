@@ -238,37 +238,26 @@ def adc_info(esp, efuses, args):
     print("")
     # fmt: off
     if efuses["BLK_VERSION_MINOR"].get() == 1:
-        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_SENSOR_CAL"].get()))
-
-        print("")
-        print("ADC1 readings stored in efuse BLOCK2:")
-        print("    MODE0 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE0_D1"].get()))
-        print("    MODE0 D2 reading  (600mV):  {}".format(efuses["ADC1_MODE0_D2"].get()))
-
-        print("    MODE1 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE1_D1"].get()))
-        print("    MODE1 D2 reading  (800mV):  {}".format(efuses["ADC1_MODE1_D2"].get()))
-
-        print("    MODE2 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE2_D1"].get()))
-        print("    MODE2 D2 reading  (1000mV): {}".format(efuses["ADC1_MODE2_D2"].get()))
-
-        print("    MODE3 D1 reading  (250mV):  {}".format(efuses["ADC1_MODE3_D1"].get()))
-        print("    MODE3 D2 reading  (2000mV): {}".format(efuses["ADC1_MODE3_D2"].get()))
-
-        print("")
-        print("ADC2 readings stored in efuse BLOCK2:")
-        print("    MODE0 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE0_D1"].get()))
-        print("    MODE0 D2 reading  (600mV):  {}".format(efuses["ADC2_MODE0_D2"].get()))
-
-        print("    MODE1 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE1_D1"].get()))
-        print("    MODE1 D2 reading  (800mV):  {}".format(efuses["ADC2_MODE1_D2"].get()))
-
-        print("    MODE2 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE2_D1"].get()))
-        print("    MODE2 D2 reading  (1000mV): {}".format(efuses["ADC2_MODE2_D2"].get()))
-
-        print("    MODE3 D1 reading  (250mV):  {}".format(efuses["ADC2_MODE3_D1"].get()))
-        print("    MODE3 D2 reading  (2000mV): {}".format(efuses["ADC2_MODE3_D2"].get()))
+        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_CALIB"].get()))
+        print("TADC_CALIB          = {}C".format(efuses["ADC_CALIB"].get()))
+        print("RTCCALIB_V1IDX_A10H = ", efuses["RTCCALIB_V1IDX_A10H"].get())
+        print("RTCCALIB_V1IDX_A11H = ", efuses["RTCCALIB_V1IDX_A11H"].get())
+        print("RTCCALIB_V1IDX_A12H = ", efuses["RTCCALIB_V1IDX_A12H"].get())
+        print("RTCCALIB_V1IDX_A13H = ", efuses["RTCCALIB_V1IDX_A13H"].get())
+        print("RTCCALIB_V1IDX_A20H = ", efuses["RTCCALIB_V1IDX_A20H"].get())
+        print("RTCCALIB_V1IDX_A21H = ", efuses["RTCCALIB_V1IDX_A21H"].get())
+        print("RTCCALIB_V1IDX_A22H = ", efuses["RTCCALIB_V1IDX_A22H"].get())
+        print("RTCCALIB_V1IDX_A23H = ", efuses["RTCCALIB_V1IDX_A23H"].get())
+        print("RTCCALIB_V1IDX_A10L = ", efuses["RTCCALIB_V1IDX_A10L"].get())
+        print("RTCCALIB_V1IDX_A11L = ", efuses["RTCCALIB_V1IDX_A11L"].get())
+        print("RTCCALIB_V1IDX_A12L = ", efuses["RTCCALIB_V1IDX_A12L"].get())
+        print("RTCCALIB_V1IDX_A13L = ", efuses["RTCCALIB_V1IDX_A13L"].get())
+        print("RTCCALIB_V1IDX_A20L = ", efuses["RTCCALIB_V1IDX_A20L"].get())
+        print("RTCCALIB_V1IDX_A21L = ", efuses["RTCCALIB_V1IDX_A21L"].get())
+        print("RTCCALIB_V1IDX_A22L = ", efuses["RTCCALIB_V1IDX_A22L"].get())
+        print("RTCCALIB_V1IDX_A23L = ", efuses["RTCCALIB_V1IDX_A23L"].get())
     else:
-        print("BLK_VERSION_MINOR = {}".format(efuses["BLK_VERSION_MINOR"].get_meaning()))
+        print("BLK_VERSION_MINOR = ", efuses["BLK_VERSION_MINOR"].get_meaning())
     # fmt: on
 
 

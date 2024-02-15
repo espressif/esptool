@@ -198,6 +198,17 @@ class TestReadCommands(EfuseTestCase):
         self.espefuse_py("adc_info -h")
         self.espefuse_py("adc_info")
 
+    def test_adc_info_2(self):
+        if arg_chip == "esp32":
+            self.espefuse_py("burn_efuse BLK3_PART_RESERVE 1")
+        elif arg_chip in ["esp32c3", "esp32s3", "esp32s3beta2"]:
+            self.espefuse_py("burn_efuse BLK_VERSION_MAJOR 1")
+        elif arg_chip in ["esp32c2", "esp32s2", "esp32c6"]:
+            self.espefuse_py("burn_efuse BLK_VERSION_MINOR 1")
+        elif arg_chip in ["esp32h2", "esp32h2beta1"]:
+            self.espefuse_py("burn_efuse BLK_VERSION_MINOR 2")
+        self.espefuse_py("adc_info")
+
     def test_check_error(self):
         self.espefuse_py("check_error -h")
         self.espefuse_py("check_error")

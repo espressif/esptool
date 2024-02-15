@@ -153,18 +153,13 @@ def adc_info(esp, efuses, args):
     print("")
     # fmt: off
     if efuses["BLK_VERSION_MINOR"].get() == 1:
-        print("    RF_REF_I_BIAS_CONFIG:        {}".format(efuses["RF_REF_I_BIAS_CONFIG"].get()))
-
-        print("    LDO_VOL_BIAS_CONFIG_LOW:     {}".format(efuses["LDO_VOL_BIAS_CONFIG_LOW"].get()))
-        print("    LDO_VOL_BIAS_CONFIG_HIGH:    {}".format(efuses["LDO_VOL_BIAS_CONFIG_HIGH"].get()))
-
-        print("    PVT_LOW:                     {}".format(efuses["PVT_LOW"].get()))
-        print("    PVT_HIGH:                    {}".format(efuses["PVT_HIGH"].get()))
-
-        print("    ADC_CALIBRATION_0:           {}".format(efuses["ADC_CALIBRATION_0"].get()))
-        print("    ADC_CALIBRATION_1:           {}".format(efuses["ADC_CALIBRATION_1"].get()))
-        print("    ADC_CALIBRATION_2:           {}".format(efuses["ADC_CALIBRATION_2"].get()))
-
+        print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_CALIB"].get()))
+        print("ADC OCode        = ", efuses["OCODE"].get())
+        print("ADC1:")
+        print("INIT_CODE_ATTEN0 = ", efuses["ADC1_INIT_CODE_ATTEN0"].get())
+        print("INIT_CODE_ATTEN3 = ", efuses["ADC1_INIT_CODE_ATTEN3"].get())
+        print("CAL_VOL_ATTEN0   = ", efuses["ADC1_CAL_VOL_ATTEN0"].get())
+        print("CAL_VOL_ATTEN3   = ", efuses["ADC1_CAL_VOL_ATTEN3"].get())
     else:
         print("BLK_VERSION_MINOR = {}".format(efuses["BLK_VERSION_MINOR"].get_meaning()))
     # fmt: on
