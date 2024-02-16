@@ -1108,6 +1108,7 @@ def flash_id(esp, args):
     flash_type_str = flash_type_dict.get(flash_type)
     if flash_type_str:
         print(f"Flash type set in eFuse: {flash_type_str}")
+    esp.get_flash_voltage()
 
 
 def read_flash(esp, args):

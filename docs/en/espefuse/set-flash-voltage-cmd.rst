@@ -15,7 +15,7 @@ Positional arguments:
 
 - ``voltage`` - Voltage selection ['1.8V', '3.3V', 'OFF'].
 
-.. only:: esp32c2 or esp32c3
+.. only:: not esp32 and not esp32s2 and not esp32s3
 
     .. note::
 

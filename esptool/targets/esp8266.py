@@ -169,6 +169,9 @@ class ESP8266ROM(ESPLoader):
         else:
             return (num_sectors - head_sectors) * sector_size
 
+    def get_flash_voltage(self):
+        pass  # not supported on ESP8266
+
     def override_vddsdio(self, new_voltage):
         raise NotSupportedError(self, "Overriding VDDSDIO")
 

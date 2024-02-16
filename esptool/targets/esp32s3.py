@@ -95,6 +95,7 @@ class ESP32S3ROM(ESP32ROM):
 
     GPIO_STRAP_REG = 0x60004038
     GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
+    GPIO_STRAP_VDDSPI_MASK = 1 << 4
     RTC_CNTL_OPTION1_REG = 0x6000812C
     RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x1  # Is download mode forced over USB?
 
@@ -114,6 +115,11 @@ class ESP32S3ROM(ESP32ROM):
         [0x42000000, 0x42800000, "IROM"],
         [0x50000000, 0x50002000, "RTC_DATA"],
     ]
+
+    EFUSE_VDD_SPI_REG = EFUSE_BASE + 0x34
+    VDD_SPI_XPD = 1 << 4
+    VDD_SPI_TIEH = 1 << 5
+    VDD_SPI_FORCE = 1 << 6
 
     UF2_FAMILY_ID = 0xC47E5767
 
@@ -250,6 +256,9 @@ class ESP32S3ROM(ESP32ROM):
             self.read_reg(self.EFUSE_SECURE_BOOT_EN_REG)
             & self.EFUSE_SECURE_BOOT_EN_MASK
         )
+
+    def _get_rtc_cntl_flash_voltage(self):
+        return None  # not supported on ESP32-S3
 
     def override_vddsdio(self, new_voltage):
         raise NotImplementedInROMError(

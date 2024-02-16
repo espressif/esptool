@@ -5,6 +5,7 @@
 
 import struct
 import time
+from typing import Optional
 
 from ..loader import ESPLoader
 from ..util import FatalError, NotSupportedError
@@ -49,6 +50,11 @@ class ESP32ROM(ESPLoader):
     EFUSE_RD_ABS_DONE_0_MASK = 1 << 4
     EFUSE_RD_ABS_DONE_1_MASK = 1 << 5
 
+    EFUSE_VDD_SPI_REG = EFUSE_RD_REG_BASE + 0x10
+    VDD_SPI_XPD = 1 << 14  # XPD_SDIO_REG
+    VDD_SPI_TIEH = 1 << 15  # XPD_SDIO_TIEH
+    VDD_SPI_FORCE = 1 << 16  # XPD_SDIO_FORCE
+
     DR_REG_SYSCON_BASE = 0x3FF66000
     APB_CTL_DATE_ADDR = DR_REG_SYSCON_BASE + 0x7C
     APB_CTL_DATE_V = 0x1
@@ -63,6 +69,17 @@ class ESP32ROM(ESPLoader):
     RTCCALICFG1 = 0x3FF5F06C
     TIMERS_RTC_CALI_VALUE = 0x01FFFFFF
     TIMERS_RTC_CALI_VALUE_S = 7
+
+    GPIO_STRAP_REG = 0x3FF44038
+    GPIO_STRAP_VDDSPI_MASK = 1 << 5  # GPIO_STRAP_VDDSDIO
+
+    RTC_CNTL_SDIO_CONF_REG = 0x3FF48074
+    RTC_CNTL_XPD_SDIO_REG = 1 << 31
+    RTC_CNTL_DREFH_SDIO_M = 3 << 29
+    RTC_CNTL_DREFM_SDIO_M = 3 << 27
+    RTC_CNTL_DREFL_SDIO_M = 3 << 25
+    RTC_CNTL_SDIO_FORCE = 1 << 22
+    RTC_CNTL_SDIO_PD_EN = 1 << 21
 
     FLASH_SIZES = {
         "1MB": 0x00,
@@ -315,32 +332,63 @@ class ESP32ROM(ESPLoader):
     def get_erase_size(self, offset, size):
         return size
 
+    def _get_efuse_flash_voltage(self) -> Optional[str]:
+        efuse = self.read_reg(self.EFUSE_VDD_SPI_REG)
+        # check efuse setting
+        if efuse & (self.VDD_SPI_FORCE | self.VDD_SPI_XPD | self.VDD_SPI_TIEH):
+            return "3.3V"
+        elif efuse & (self.VDD_SPI_FORCE | self.VDD_SPI_XPD):
+            return "1.8V"
+        elif efuse & self.VDD_SPI_FORCE:
+            return "OFF"
+        return None
+
+    def _get_rtc_cntl_flash_voltage(self) -> Optional[str]:
+        reg = self.read_reg(self.RTC_CNTL_SDIO_CONF_REG)
+        # check if override is set in RTC_CNTL_SDIO_CONF_REG
+        if reg & self.RTC_CNTL_SDIO_FORCE:
+            if reg & self.RTC_CNTL_DREFH_SDIO_M:
+                return "1.9V"
+            elif reg & self.RTC_CNTL_XPD_SDIO_REG:
+                return "1.8V"
+            else:
+                return "OFF"
+        return None
+
+    def get_flash_voltage(self):
+        """Get flash voltage setting and print it to the console."""
+        voltage = self._get_rtc_cntl_flash_voltage()
+        source = "RTC_CNTL"
+        if not voltage:
+            voltage = self._get_efuse_flash_voltage()
+            source = "eFuse"
+        if not voltage:
+            strap_reg = self.read_reg(self.GPIO_STRAP_REG)
+            strap_reg &= self.GPIO_STRAP_VDDSPI_MASK
+            voltage = "1.8V" if strap_reg else "3.3V"
+            source = "a strapping pin"
+        print(f"Flash voltage set by {source} to {voltage}")
+
     def override_vddsdio(self, new_voltage):
         new_voltage = new_voltage.upper()
         if new_voltage not in self.OVERRIDE_VDDSDIO_CHOICES:
             raise FatalError(
-                "The only accepted VDDSDIO overrides are '1.8V', '1.9V' and 'OFF'"
+                f"The only accepted VDDSDIO overrides are {', '.join(self.OVERRIDE_VDDSDIO_CHOICES)}"
             )
-        RTC_CNTL_SDIO_CONF_REG = 0x3FF48074
-        RTC_CNTL_XPD_SDIO_REG = 1 << 31
-        RTC_CNTL_DREFH_SDIO_M = 3 << 29
-        RTC_CNTL_DREFM_SDIO_M = 3 << 27
-        RTC_CNTL_DREFL_SDIO_M = 3 << 25
-        # RTC_CNTL_SDIO_TIEH = (1 << 23)
-        # not used here, setting TIEH=1 would set 3.3V output,
+        # RTC_CNTL_SDIO_TIEH is not used here, setting TIEH=1 would set 3.3V output,
         # not safe for esptool.py to do
-        RTC_CNTL_SDIO_FORCE = 1 << 22
-        RTC_CNTL_SDIO_PD_EN = 1 << 21
 
-        reg_val = RTC_CNTL_SDIO_FORCE  # override efuse setting
-        reg_val |= RTC_CNTL_SDIO_PD_EN
+        reg_val = self.RTC_CNTL_SDIO_FORCE  # override efuse setting
+        reg_val |= self.RTC_CNTL_SDIO_PD_EN
         if new_voltage != "OFF":
-            reg_val |= RTC_CNTL_XPD_SDIO_REG  # enable internal LDO
+            reg_val |= self.RTC_CNTL_XPD_SDIO_REG  # enable internal LDO
         if new_voltage == "1.9V":
             reg_val |= (
-                RTC_CNTL_DREFH_SDIO_M | RTC_CNTL_DREFM_SDIO_M | RTC_CNTL_DREFL_SDIO_M
+                self.RTC_CNTL_DREFH_SDIO_M
+                | self.RTC_CNTL_DREFM_SDIO_M
+                | self.RTC_CNTL_DREFL_SDIO_M
             )  # boost voltage
-        self.write_reg(RTC_CNTL_SDIO_CONF_REG, reg_val)
+        self.write_reg(self.RTC_CNTL_SDIO_CONF_REG, reg_val)
         print("VDDSDIO regulator set to %s" % new_voltage)
 
     def read_flash_slow(self, offset, length, progress_fn):

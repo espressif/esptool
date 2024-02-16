@@ -112,6 +112,9 @@ class ESP32P4ROM(ESP32ROM):
         # ESP32P4 XTAL is fixed to 40MHz
         return 40
 
+    def get_flash_voltage(self):
+        pass  # not supported on ESP32-P4
+
     def override_vddsdio(self, new_voltage):
         raise NotImplementedInROMError(
             "VDD_SDIO overrides are not supported for ESP32-P4"

@@ -152,6 +152,9 @@ class ESP32C3ROM(ESP32ROM):
         # ESP32C3 XTAL is fixed to 40MHz
         return 40
 
+    def get_flash_voltage(self):
+        pass  # not supported on ESP32-C3
+
     def override_vddsdio(self, new_voltage):
         raise NotImplementedInROMError(
             "VDD_SDIO overrides are not supported for ESP32-C3"

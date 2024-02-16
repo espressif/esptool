@@ -81,6 +81,7 @@ class ESP32S2ROM(ESP32ROM):
 
     GPIO_STRAP_REG = 0x3F404038
     GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
+    GPIO_STRAP_VDDSPI_MASK = 1 << 4
     RTC_CNTL_OPTION1_REG = 0x3F408128
     RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x1  # Is download mode forced over USB?
 
@@ -98,6 +99,11 @@ class ESP32S2ROM(ESP32ROM):
         [0x40080000, 0x40800000, "IROM"],
         [0x50000000, 0x50002000, "RTC_DATA"],
     ]
+
+    EFUSE_VDD_SPI_REG = EFUSE_BASE + 0x34
+    VDD_SPI_XPD = 1 << 4
+    VDD_SPI_TIEH = 1 << 5
+    VDD_SPI_FORCE = 1 << 6
 
     UF2_FAMILY_ID = 0xBFDD4EEE
 
@@ -182,6 +188,9 @@ class ESP32S2ROM(ESP32ROM):
     def get_crystal_freq(self):
         # ESP32-S2 XTAL is fixed to 40MHz
         return 40
+
+    def _get_rtc_cntl_flash_voltage(self):
+        return None  # not supported on ESP32-S2
 
     def override_vddsdio(self, new_voltage):
         raise NotImplementedInROMError(
