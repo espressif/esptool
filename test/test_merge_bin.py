@@ -247,7 +247,7 @@ class TestMergeBin:
         data_len = int(b"0x" + line[1:3], 16)
         # : + len + addr + type + data + checksum
         assert len(line) == 1 + 2 + 4 + 2 + data_len * 2 + 2
-        # last line is allways :00000001FF
+        # last line is always :00000001FF
         assert lines[-1] == b":00000001FF"
         # convert back and verify the result against the source bin file
         with tempfile.NamedTemporaryFile(suffix=".hex", delete=False) as hex:

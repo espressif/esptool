@@ -63,7 +63,7 @@ As a Component
 
 If ``esptool.py`` is installed as a component of a development framework (e.g. `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_, `Arduino <https://docs.espressif.com/projects/arduino-esp32/>`_, or `PlatformIO <https://docs.platformio.org/en/latest/platforms/espressif32.html>`_), it is advised to follow the update guide of used framework for instructions and not to update the tool directly.
 
-If updating directly is unavoidable, make sure you update to a compatible version by staying on the same MAJOR version number (explaned in the :ref:`versions` article). For instance, if your currently installed ``esptool.py`` is ``v3.3.1``, only update to ``v3.*.*``. You risk introducing incompatible changes by updating to ``v4.*.*`` or higher.
+If updating directly is unavoidable, make sure you update to a compatible version by staying on the same MAJOR version number (explained in the :ref:`versions` article). For instance, if your currently installed ``esptool.py`` is ``v3.3.1``, only update to ``v3.*.*``. You risk introducing incompatible changes by updating to ``v4.*.*`` or higher.
 
 ::
 

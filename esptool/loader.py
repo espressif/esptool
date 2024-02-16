@@ -201,7 +201,7 @@ class ESPLoader(object):
     ESP_WRITE_REG = 0x09
     ESP_READ_REG = 0x0A
 
-    # Some comands supported by ESP32 and later chips ROM bootloader (or -8266 w/ stub)
+    # Some commands supported by ESP32 and later chips ROM bootloader (or -8266 w/ stub)
     ESP_SPI_SET_PARAMS = 0x0B
     ESP_SPI_ATTACH = 0x0D
     ESP_READ_FLASH_SLOW = 0x0E  # ROM only, much slower than the stub flash read
@@ -509,7 +509,7 @@ class ESPLoader(object):
 
         # ROM bootloaders send some non-zero "val" response. The flasher stub sends 0.
         # If we receive 0 then it probably indicates that the chip wasn't or couldn't be
-        # reseted properly and esptool is talking to the flasher stub.
+        # reset properly and esptool is talking to the flasher stub.
         self.sync_stub_detected = val == 0
 
         for _ in range(7):

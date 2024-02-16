@@ -42,14 +42,14 @@ Optional arguments:
 
 .. only:: esp32
 
-    {IDF_TARGET_NAME} supportes keys:
+    {IDF_TARGET_NAME} supports keys:
 
     * Secure boot key. Use ``secure_boot_v1`` or ``secure_boot_v2`` as block name. The key is placed in BLOCK2.
     * Flash encryption key. Use ``flash_encryption`` as block name. The key is placed in BLOCK1.
 
     Keys for ``flash_encryption`` and ``secure_boot_v1`` will be burned as read and write protected. The hardware will still have access to them.  These keys are burned in reversed byte order.
 
-    Key for ``secure_boot_v2`` will be burned only as write protected. The key must be readable because the software need acces to it.
+    Key for ``secure_boot_v2`` will be burned only as write protected. The key must be readable because the software need access to it.
 
     .. warning::
 
@@ -57,7 +57,7 @@ Optional arguments:
 
 .. only:: not esp32 and not esp32c2
 
-    {IDF_TARGET_NAME} supportes eFuse key purposes. This means that each eFuse block has a special eFuse field that indicates which key is in the eFuse block. During the burn operation this eFuse key purpose is burned as well with write protection (the ``--no-write-protect`` flag has no effect on this field). The {IDF_TARGET_NAME} chip supports the following key purposes:
+    {IDF_TARGET_NAME} supports eFuse key purposes. This means that each eFuse block has a special eFuse field that indicates which key is in the eFuse block. During the burn operation this eFuse key purpose is burned as well with write protection (the ``--no-write-protect`` flag has no effect on this field). The {IDF_TARGET_NAME} chip supports the following key purposes:
 
     .. list::
 

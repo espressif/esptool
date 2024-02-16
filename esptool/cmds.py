@@ -1275,7 +1275,7 @@ def get_security_info(esp, args):
     hard_dis_jtag = get_security_flag_status("HARD_DIS_JTAG", flags)
     soft_dis_jtag = get_security_flag_status("SOFT_DIS_JTAG", flags)
     if hard_dis_jtag:
-        print("JTAG: Permenantly Disabled")
+        print("JTAG: Permanently Disabled")
     elif soft_dis_jtag:
         print("JTAG: Software Access Disabled")
     if get_security_flag_status("DIS_USB", flags):

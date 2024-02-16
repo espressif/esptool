@@ -9,7 +9,7 @@
 # This is a modified version of rfc2217_server.py provided by the pyserial package
 # (pythonhosted.org/pyserial/examples.html#single-port-tcp-ip-serial-bridge-rfc-2217).
 # It uses a custom PortManager to properly apply the RTS & DTR signals
-# for reseting ESP chips.
+# for resetting ESP chips.
 #
 # Run the following command on the server side to make
 # connection between /dev/ttyUSB1 and TCP port 4000:

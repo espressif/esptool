@@ -52,7 +52,7 @@ all: $(BIN)
 $(BIN): $(OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
-# By default, make uses sh as script langage, use bash to generate the C file
+# By default, make uses sh as script language, use bash to generate the C file
 $(SRC): SHELL:=$(BASH)
 $(SRC):
 	@$(generate_c_code)

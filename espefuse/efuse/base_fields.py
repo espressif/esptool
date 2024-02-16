@@ -317,7 +317,7 @@ class EfuseBlockBase(EfuseProtectBase):
                                     if rd_chunk == wr_chunk:
                                         print(
                                             "wr_chunk == rd_chunk. "
-                                            "Countinue with empty chunk."
+                                            "Continue with empty chunk."
                                         )
                                         wr_data[i : i + 6 * 8 :].set(0)
                                     else:
@@ -736,7 +736,7 @@ class EfuseFieldBase(EfuseProtectBase):
         else:
             if self.name not in ["WR_DIS", "RD_DIS"]:
                 # WR_DIS, RD_DIS fields can have already set bits.
-                # Do not neeed to check below condition for them.
+                # Do not need to check below condition for them.
                 if bitarray_new_value | bitarray_old_value != bitarray_new_value:
                     error_msg = "\tNew value contains some bits that cannot be cleared "
                     error_msg += "(value will be {})".format(

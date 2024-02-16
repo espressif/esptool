@@ -96,7 +96,7 @@ Conventional Commits
 Ruff
 """"
 
-``esptool.py`` is `PEP8 <https://peps.python.org/pep-0008/>`_ compliant and enforces this style guide. For compliancy checking, we use `ruff <https://docs.astral.sh/ruff/>`_.
+``esptool.py`` is `PEP8 <https://peps.python.org/pep-0008/>`_ compliant and enforces this style guide. For compliance checking, we use `ruff <https://docs.astral.sh/ruff/>`_.
 ``Ruff`` also auto-format files in the same style as previously used ``black``.
 
 
@@ -131,7 +131,7 @@ The following tests run automatically by GitHub Actions for each Pull Request. Y
 *  ``test_mergebin.py`` tests the ``merge_bin`` command
 *  ``test_modules.py`` tests the modules used by ``esptool.py`` for regressions
 *  ``test_espsecure.py`` tests ``espsecure.py`` functionality
-*  ``test_espsecure_hsm.py`` tests support of extarnal HSM signing in ``espsecure.py``. These tests require additional prerequisites, see ``SoftHSM2 setup`` in the `tests workflow definition <https://github.com/espressif/esptool/blob/master/.github/workflows/test_esptool.yml>`_ for more information.
+*  ``test_espsecure_hsm.py`` tests support of external HSM signing in ``espsecure.py``. These tests require additional prerequisites, see ``SoftHSM2 setup`` in the `tests workflow definition <https://github.com/espressif/esptool/blob/master/.github/workflows/test_esptool.yml>`_ for more information.
 
 The following tests are not run automatically by GitHub Actions, because they need real connected hardware. Therefore, they need to be run locally in a command line:
 

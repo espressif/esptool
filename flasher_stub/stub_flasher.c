@@ -37,7 +37,7 @@ typedef struct {
 } uart_buf_t;
 static volatile uart_buf_t ub;
 
-/* esptool protcol "checksum" is XOR of 0xef and each byte of
+/* esptool protocol "checksum" is XOR of 0xef and each byte of
    data payload. */
 static uint8_t calculate_checksum(uint8_t *buf, int length)
 {
@@ -492,7 +492,7 @@ void stub_main()
   stub_io_init(&stub_handle_rx_byte);
 
   /* Configure default SPI flash functionality.
-     Can be overriden later by esptool.py. */
+     Can be overridden later by esptool.py. */
   #ifdef ESP8266
     SelectSpiFunction();
     spi_flash_attach();

@@ -31,7 +31,7 @@
 -include local.mk
 
 # Prefix for each cross compiler (can include a directory path)
-# These can be overriden via environment variables or on the make command line
+# These can be overridden via environment variables or on the make command line
 CROSS_8266 ?= xtensa-lx106-elf-
 CROSS_32 ?= xtensa-esp32-elf-
 CROSS_32S2 ?= xtensa-esp32s2-elf-

@@ -475,7 +475,7 @@ def main(argv=None, esp=None):
     parser_elf2image.add_argument(
         "--use_segments",
         help="If set, ELF segments will be used instead of ELF sections "
-        "to genereate the image.",
+        "to generate the image.",
         action="store_true",
     )
     parser_elf2image.add_argument(

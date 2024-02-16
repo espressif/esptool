@@ -10,7 +10,7 @@ There are two commands (to get the correct list of eFuse fields that can be prot
 
 Positional arguments:
 
-- eFuse name. It can recieve a list of eFuse names (like EFUSE_NAME1 EFUSE_NAME2 etc.).
+- eFuse name. It can receive a list of eFuse names (like EFUSE_NAME1 EFUSE_NAME2 etc.).
 
 Read protection prevents software from reading eFuse fields, only hardware can access such eFuses. Such eFuses are read as zero and the data is marked as ``??`` in this tool.
 

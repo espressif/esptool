@@ -137,7 +137,7 @@ class EsptoolTestCase:
         """
         Run esptool with the specified arguments. --chip, --port and --baud
         are filled in automatically from the command line.
-        (These can be overriden with their respective params.)
+        (These can be overridden with their respective params.)
 
         Additional args passed in args parameter as a string.
 
@@ -221,7 +221,7 @@ class EsptoolTestCase:
     def setup_class(self):
         print()
         print(50 * "*")
-        # Save the current working directory to be resotred later
+        # Save the current working directory to be restored later
         self.stored_dir = os.getcwd()
         os.chdir(TEST_DIR)
 
@@ -457,7 +457,7 @@ class TestFlashing(EsptoolTestCase):
         image_size = 1024
         offset = flash_size - image_size
         self.run_esptool("write_flash {} images/one_kb.bin".format(hex(offset)))
-        # Some of the functons cannot handle 32-bit addresses - i.e. addresses accessing
+        # Some of the functions cannot handle 32-bit addresses - i.e. addresses accessing
         # the higher 16MB will manipulate with the lower 16MB flash area.
         offset2 = offset & 0xFFFFFF
         self.run_esptool("write_flash {} images/one_kb_all_ef.bin".format(hex(offset2)))
@@ -469,7 +469,7 @@ class TestFlashing(EsptoolTestCase):
     def test_write_larger_area_to_32M_flash(self):
         offset = 18 * 1024 * 1024
         self.run_esptool("write_flash {} images/one_mb.bin".format(hex(offset)))
-        # Some of the functons cannot handle 32-bit addresses - i.e. addresses accessing
+        # Some of the functions cannot handle 32-bit addresses - i.e. addresses accessing
         # the higher 16MB will manipulate with the lower 16MB flash area.
         offset2 = offset & 0xFFFFFF
         self.run_esptool("write_flash {} images/one_kb_all_ef.bin".format(hex(offset2)))
@@ -1424,7 +1424,7 @@ class TestConfigFile(EsptoolTestCase):
             output = self.run_esptool("version")
             assert f"Loaded custom configuration from {config_file_path}" not in output
 
-        # Correct header, but options are unparseable
+        # Correct header, but options are unparsable
         faulty_config = "[esptool]\n" "connect_attempts = 5\n" "connect_attempts = 9\n"
         with self.ConfigFile(config_file_path, faulty_config):
             output = self.run_esptool("version")
@@ -1435,10 +1435,12 @@ class TestConfigFile(EsptoolTestCase):
             )
 
         # Correct header, unknown option (or a typo)
-        faulty_config = "[esptool]\n" "connect_attempts = 9\n" "timout = 2\n" "bits = 2"
+        faulty_config = (
+            "[esptool]\n" "connect_attempts = 9\n" "timoout = 2\n" "bits = 2"
+        )
         with self.ConfigFile(config_file_path, faulty_config):
             output = self.run_esptool("version")
-            assert "Ignoring unknown config file options: bits, timout" in output
+            assert "Ignoring unknown config file options: bits, timoout" in output
 
         # Test other config files (setup.cfg, tox.ini) are loaded
         config_file_path = os.path.join(os.getcwd(), "tox.ini")

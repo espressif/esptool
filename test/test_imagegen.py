@@ -41,7 +41,7 @@ def segment_matches_section(segment, section):
 class BaseTestCase:
     @classmethod
     def setup_class(self):
-        # Save the current working directory to be resotred later
+        # Save the current working directory to be restored later
         self.stored_dir = os.getcwd()
         os.chdir(TEST_DIR)
 
@@ -415,7 +415,7 @@ class TestELFSHA256(BaseTestCase):
                     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
     };
 
-    This leaves zeroes only for the fiels of SHA-256 and the test will fail
+    This leaves zeroes only for the fields of SHA-256 and the test will fail
     if the placement of zeroes are tested at the wrong place.
 
     00000000: e907 0020 780f 0840 ee00 0000 0000 0000  ... x..@........

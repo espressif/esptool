@@ -94,7 +94,7 @@ The ``--bytes`` argument determines how many status register bytes are read.
 
 .. note::
 
-    Not all flash chips support all of these comands. Consult the specific flash chip datasheet for details.
+    Not all flash chips support all of these commands. Consult the specific flash chip datasheet for details.
 
 .. _write-flash-status:
 

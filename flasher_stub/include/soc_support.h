@@ -358,7 +358,7 @@
 #define DR_REG_INTERRUPT_MATRIX_BASE            0x500D6000
 #define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_MATRIX_BASE + 0x58) /* USB-JTAG-Serial, CORE0_USB_DEVICE_INT_MAP_REG */
 
-#define CLIC_EXT_INTR_NUM_OFFSET 16  /* For CLIC first 16 intrrupts are reserved as internal */
+#define CLIC_EXT_INTR_NUM_OFFSET 16  /* For CLIC first 16 interrupts are reserved as internal */
 #define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
 #endif
 

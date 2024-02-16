@@ -124,7 +124,7 @@ class ESP32ROM(ESPLoader):
             # When ESP32 has not generated AES/encryption key in BLOCK1,
             # the contents will be readable and 0.
             # If the flash encryption is enabled it is expected to have a valid
-            # non-zero key. We break out on first occurance of non-zero value
+            # non-zero key. We break out on first occurrence of non-zero value
             key_word = [0] * 7
             for i in range(len(key_word)):
                 key_word[i] = self.read_efuse(14 + i)
