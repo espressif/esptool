@@ -109,6 +109,14 @@ Shinx-lint
 
 The documentation is checked for stylistic and formal issues by ``sphinx-lint``.
 
+
+Codespell check
+"""""""""""""""
+
+This repository utilizes an automatic `spell checker <https://github.com/codespell-project/codespell>`_ integrated into the pre-commit process. If any spelling issues are detected, the recommended corrections will be applied automatically to the file, ready for commit.
+In the event of false positives, you can adjust the configuration in the `.codespell.rc`. To exclude files from the spell check, utilize the `skip` keyword followed by comma-separated paths to the files (wildcards are supported). Additionally, to exclude specific words from the spell check, employ the `ignore-words-list` keyword followed by comma-separated words to be skipped.
+
+
 Automated Integration Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
