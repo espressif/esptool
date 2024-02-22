@@ -57,7 +57,7 @@ def intel_hex_to_bin(file: BinaryIO, start_addr: Optional[int] = None) -> Binary
             return bin
         else:
             return file
-    except HexRecordError:
+    except (HexRecordError, UnicodeDecodeError):
         # file started with HEX magic but the rest was not according to the standard
         return file
 
