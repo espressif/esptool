@@ -10,6 +10,7 @@ import struct
 import sys
 import time
 import zlib
+import itertools
 
 from intelhex import IntelHex
 
@@ -238,7 +239,9 @@ def detect_flash_size(esp, args=None):
     return flash_size
 
 
-def _update_image_flash_params(esp, address, args, image):
+def _update_image_flash_params(
+    esp, address, args, image
+):  # TODO check the flash params if they are valid
     """
     Modify the flash mode & size bytes if this looks like an executable bootloader image
     """
@@ -276,49 +279,60 @@ def _update_image_flash_params(esp, address, args, image):
 
     # After the 8-byte header comes the extended header for chips others than ESP8266.
     # The 15th byte of the extended header indicates if the image is protected by
-    # a SHA256 checksum. In that case we should not modify the header because
-    # the checksum check would fail.
-    sha_implies_keep = args.chip != "esp8266" and image[8 + 15] == 1
-
-    def print_keep_warning(arg_to_keep, arg_used):
-        print(
-            "Warning: Image file at {addr} is protected with a hash checksum, "
-            "so not changing the flash {arg} setting. "
-            "Use the --flash_{arg}=keep option instead of --flash_{arg}={arg_orig} "
-            "in order to remove this warning, or use the --dont-append-digest option "
-            "for the elf2image command in order to generate an image file "
-            "without a hash checksum".format(
-                addr=hex(address), arg=arg_to_keep, arg_orig=arg_used
-            )
-        )
+    # a SHA256 checksum. In that case we recalculate the SHA digest after modifying the header.
+    sha_appended = args.chip != "esp8266" and image[8 + 15] == 1
 
     if args.flash_mode != "keep":
-        new_flash_mode = FLASH_MODES[args.flash_mode]
-        if flash_mode != new_flash_mode and sha_implies_keep:
-            print_keep_warning("mode", args.flash_mode)
-        else:
-            flash_mode = new_flash_mode
+        flash_mode = FLASH_MODES[args.flash_mode]
 
     flash_freq = flash_size_freq & 0x0F
     if args.flash_freq != "keep":
-        new_flash_freq = esp.parse_flash_freq_arg(args.flash_freq)
-        if flash_freq != new_flash_freq and sha_implies_keep:
-            print_keep_warning("frequency", args.flash_freq)
-        else:
-            flash_freq = new_flash_freq
+        flash_freq = esp.parse_flash_freq_arg(args.flash_freq)
 
     flash_size = flash_size_freq & 0xF0
     if args.flash_size != "keep":
-        new_flash_size = esp.parse_flash_size_arg(args.flash_size)
-        if flash_size != new_flash_size and sha_implies_keep:
-            print_keep_warning("size", args.flash_size)
-        else:
-            flash_size = new_flash_size
+        flash_size = esp.parse_flash_size_arg(args.flash_size)
 
     flash_params = struct.pack(b"BB", flash_mode, flash_size + flash_freq)
     if flash_params != image[2:4]:
         print("Flash params set to 0x%04x" % struct.unpack(">H", flash_params))
         image = image[0:2] + flash_params + image[4:]
+
+    # recalculate the SHA digest if it was appended
+    if sha_appended:
+        # Since the changes are only made for images located in the bootloader offset,
+        # we can assume that the image is always a bootloader image.
+        # For merged binaries, we check the bootloader SHA when parameters are changed.
+        image_object = esp.BOOTLOADER_IMAGE(io.BytesIO(image))
+        # get the image header, extended header (if present) and data
+        image_data_before_sha = image[: image_object.data_length]
+        # get the image data after the SHA digest (primary for merged binaries)
+        image_data_after_sha = image[
+            (image_object.data_length + image_object.SHA256_DIGEST_LEN) :
+        ]
+
+        sha_digest_calculated = hashlib.sha256(image_data_before_sha).digest()
+        image = bytes(
+            itertools.chain(
+                image_data_before_sha, sha_digest_calculated, image_data_after_sha
+            )
+        )
+
+        # get the SHA digest newly stored in the image and compare it to the calculated one
+        image_stored_sha = image[
+            image_object.data_length : image_object.data_length
+            + image_object.SHA256_DIGEST_LEN
+        ]
+
+        if hexify(sha_digest_calculated) == hexify(image_stored_sha):
+            print("SHA digest in image updated")
+        else:
+            print(
+                "WARNING: SHA recalculation for binary failed!\n"
+                f"\tExpected calculated SHA: {hexify(sha_digest_calculated)}\n"
+                f"\tSHA stored in binary:    {hexify(image_stored_sha)}"
+            )
+
     return image
 
 

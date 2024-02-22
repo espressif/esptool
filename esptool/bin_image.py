@@ -619,6 +619,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.ram_only_header = ram_only_header
 
         self.append_digest = append_digest
+        self.data_length = None
 
         if load_file is not None:
             start = load_file.tell()
@@ -637,6 +638,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 calc_digest = hashlib.sha256()
                 calc_digest.update(load_file.read(end - start))
                 self.calc_digest = calc_digest.digest()  # TODO: decide what to do here?
+                self.data_length = end - start
 
             self.verify()
 
