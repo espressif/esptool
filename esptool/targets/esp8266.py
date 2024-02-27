@@ -178,6 +178,9 @@ class ESP8266ROM(ESPLoader):
     def check_spi_connection(self, spi_connection):
         raise NotSupportedError(self, "Setting --spi-connection")
 
+    def get_secure_boot_enabled(self):
+        return False  # ESP8266 doesn't have security features
+
 
 class ESP8266StubLoader(ESP8266ROM):
     """Access class for ESP8266 stub loader, runs on top of ROM."""

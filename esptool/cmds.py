@@ -569,7 +569,13 @@ def write_flash(esp, args):
         if len(image) == 0:
             print("WARNING: File %s is empty" % argfile.name)
             continue
-        image = _update_image_flash_params(esp, address, args, image)
+
+        if not esp.get_secure_boot_enabled():
+            image = _update_image_flash_params(esp, address, args, image)
+        else:
+            print(
+                "WARNING: Secure boot is enabled, so not changing any flash settings."
+            )
         calcmd5 = hashlib.md5(image).hexdigest()
         uncsize = len(image)
         if compress:
