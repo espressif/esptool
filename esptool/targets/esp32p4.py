@@ -86,16 +86,16 @@ class ESP32P4ROM(ESP32ROM):
     UF2_FAMILY_ID = 0x3D308E94
 
     def get_pkg_version(self):
-        # ESP32P4 TODO
-        return 0
+        num_word = 2
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 27) & 0x07
 
     def get_minor_chip_version(self):
-        # ESP32P4 TODO
-        return 0
+        num_word = 2
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x0F
 
     def get_major_chip_version(self):
-        # ESP32P4 TODO
-        return 0
+        num_word = 2
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 4) & 0x03
 
     def get_chip_description(self):
         chip_name = {
