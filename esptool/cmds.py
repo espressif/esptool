@@ -964,18 +964,29 @@ def image_info(args):
 
 
 def make_image(args):
+    if args.chip == "auto":
+        args.chip = "esp8266"
     print("Creating {} image...".format(args.chip))
-    image = ESP8266ROMFirmwareImage()
-    if len(args.segfile) == 0:
-        raise FatalError("No segments specified")
-    if len(args.segfile) != len(args.segaddr):
-        raise FatalError(
-            "Number of specified files does not match number of specified addresses"
-        )
-    for seg, addr in zip(args.segfile, args.segaddr):
-        with open(seg, "rb") as f:
-            data = f.read()
-            image.segments.append(ImageSegment(addr, data))
+    image = CHIP_DEFS[args.chip].BOOTLOADER_IMAGE()
+
+    if args.hexfile != None:
+        ih = IntelHex()
+        ih.loadhex(args.hexfile)
+        for seg in ih.segments():
+            data = ih.tobinstr(start=seg[0],end=seg[1]-1)
+            image.segments.append(ImageSegment(seg[0], data))
+    else:
+        if len(args.segfile) == 0:
+            raise FatalError("No segments specified")
+        if len(args.segfile) != len(args.segaddr):
+            raise FatalError(
+                "Number of specified files does not match number of specified addresses"
+            )
+        for seg, addr in zip(args.segfile, args.segaddr):
+            with open(seg, "rb") as f:
+                data = f.read()
+                image.segments.append(ImageSegment(addr, data))
+
     image.entrypoint = args.entrypoint
     image.save(args.output)
     print("Successfully created {} image.".format(args.chip))

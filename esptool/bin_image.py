@@ -689,10 +689,13 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             # So bootdesc will be at the very top of the binary at 0x20 offset
             # (in the first segment).
             for segment in ram_segments:
-                if segment.name == ".dram0.bootdesc":
-                    ram_segments.remove(segment)
-                    ram_segments.insert(0, segment)
-                    break
+                try:
+                    if segment.name == ".dram0.bootdesc":
+                        ram_segments.remove(segment)
+                        ram_segments.insert(0, segment)
+                        break
+                except:
+                    pass
 
             # check for multiple ELF sections that are mapped in the same
             # flash mapping region. This is usually a sign of a broken linker script,
