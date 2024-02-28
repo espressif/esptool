@@ -239,9 +239,7 @@ def detect_flash_size(esp, args=None):
     return flash_size
 
 
-def _update_image_flash_params(
-    esp, address, args, image
-):  # TODO check the flash params if they are valid
+def _update_image_flash_params(esp, address, args, image):
     """
     Modify the flash mode & size bytes if this looks like an executable bootloader image
     """

@@ -1043,11 +1043,7 @@ class TestKeepImageSettings(EsptoolTestCase):
         )
         readback = self.readback(self.flash_offset, 8)
         assert self.header[:3] == readback[:3]  # first 3 bytes unchanged
-        if arg_chip in ["esp8266", "esp32"]:
-            assert self.header[3] != readback[3]  # size_freq byte changed
-        else:
-            # Not changed because protected by SHA256 digest
-            assert self.header[3] == readback[3]  # size_freq byte unchanged
+        assert self.header[3] != readback[3]  # size_freq byte changed
         assert self.header[4:] == readback[4:]  # rest unchanged
 
     @pytest.mark.skipif(
@@ -1171,13 +1167,12 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
             f"write_flash -fm dout -ff 20m {bl_offset:#x} {bl_image}"
         )
         if arg_chip in ["esp8266", "esp32"]:
-            # There is no SHA256 digest so the header can be changed - ESP8266 doesn't
-            # support this; The test image for ESP32 just doesn't have it.
-            "Flash params set to" in output
+            # ESP8266 doesn't support this; The test image for ESP32 just doesn't have it.
+            assert "Flash params set to" in output
         else:
-            assert "Flash params set to" not in output
-            "not changing the flash mode setting" in output
-            "not changing the flash frequency setting" in output
+            assert "Flash params set to" in output
+            # Since SHA recalculation is supported for changed bootloader header
+            assert "SHA digest in image updated" in output
 
     def test_flash_header_no_magic_no_rewrite(self):
         # first image doesn't start with magic byte, second image does
