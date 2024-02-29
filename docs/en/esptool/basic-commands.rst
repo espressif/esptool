@@ -192,7 +192,7 @@ The ``elf2image`` command converts an ELF file (from compiler/linker output) int
 This command does not require a serial connection.
 
 ``elf2image`` also accepts the `Flash Modes <#flash-modes>`__ arguments ``--flash_freq`` and ``--flash_mode``, which can be used to set the default values in the image header. This is important when generating any image which will be booted directly by the chip.
-These values can also be overwritten via the ``write_flash`` command, see the `write_flash command <#write-binary-data-to-flash-write-flash>`__ for details. However, if you want to overwrite these values via the ``write_flash`` command then use the ``--dont-append-digest`` argument of the ``elf2image`` command in order to skip appending a SHA256 digest after the image. The SHA256 digest would be invalidated by rewriting the image header, therefore, it is not allowed.
+These values can also be overwritten via the ``write_flash`` command, see the `write_flash command <#write-binary-data-to-flash-write-flash>`__ for details. Overwriting these values via the ``write_flash`` command will produce an image with a recalculated SHA256 digest, otherwise, the image SHA256 digest would be invalidated by rewriting the image header. There is an option to skip appending a SHA256 digest after the image with ``--dont-append-digest`` argument of the ``elf2image`` command.
 
 By default, ``elf2image`` uses the sections in the ELF file to generate each segment in the binary executable. To use segments (PHDRs) instead, pass the ``--use_segments`` option.
 
