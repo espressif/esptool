@@ -173,7 +173,13 @@ class ESP32P4ROM(ESP32ROM):
         #     self.disable_watchdogs()
 
     def check_spi_connection(self, spi_connection):
-        pass  # TODO: Define GPIOs for --spi-connection
+        if not set(spi_connection).issubset(set(range(0, 55))):
+            raise FatalError("SPI Pin numbers must be in the range 0-54.")
+        if any([v for v in spi_connection if v in [24, 25]]):
+            print(
+                "WARNING: GPIO pins 24 and 25 are used by USB-Serial/JTAG, "
+                "consider using other pins for SPI flash connection."
+            )
 
 
 class ESP32P4StubLoader(ESP32P4ROM):
