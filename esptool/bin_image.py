@@ -19,6 +19,7 @@ from .loader import ESPLoader
 from .targets import (
     ESP32C2ROM,
     ESP32C3ROM,
+    ESP32C5ROM,
     ESP32C5BETA3ROM,
     ESP32C6BETAROM,
     ESP32C6ROM,
@@ -87,6 +88,7 @@ def LoadFirmwareImage(chip, image_file):
                 "esp32h2beta2": ESP32H2BETA2FirmwareImage,
                 "esp32c2": ESP32C2FirmwareImage,
                 "esp32c6": ESP32C6FirmwareImage,
+                "esp32c5": ESP32C5FirmwareImage,
                 "esp32c5beta3": ESP32C5BETA3FirmwareImage,
                 "esp32h2": ESP32H2FirmwareImage,
                 "esp32p4": ESP32P4FirmwareImage,
@@ -1128,6 +1130,15 @@ class ESP32C6FirmwareImage(ESP32FirmwareImage):
 
 
 ESP32C6ROM.BOOTLOADER_IMAGE = ESP32C6FirmwareImage
+
+
+class ESP32C5FirmwareImage(ESP32C6FirmwareImage):
+    """ESP32C5 Firmware Image almost exactly the same as ESP32C6FirmwareImage"""
+
+    ROM_LOADER = ESP32C5ROM
+
+
+ESP32C5ROM.BOOTLOADER_IMAGE = ESP32C5FirmwareImage
 
 
 class ESP32C5BETA3FirmwareImage(ESP32C6FirmwareImage):
