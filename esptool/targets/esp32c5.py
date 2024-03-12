@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -18,8 +18,12 @@ class ESP32C5ROM(ESP32C6ROM):
     DROM_MAP_START = 0x42800000
     DROM_MAP_END = 0x43000000
 
+    PCR_SYSCLK_CONF_REG = 0x60096110
+    PCR_SYSCLK_XTAL_FREQ_V = 0x7F << 24
+    PCR_SYSCLK_XTAL_FREQ_S = 24
+
     # Magic value for ESP32C5
-    CHIP_DETECT_MAGIC_VALUE = [0xE10D8082]
+    CHIP_DETECT_MAGIC_VALUE = [0x8082C5DC]
 
     FLASH_FREQUENCY = {
         "80m": 0xF,
@@ -43,7 +47,7 @@ class ESP32C5ROM(ESP32C6ROM):
 
     def get_chip_description(self):
         chip_name = {
-            0: "ESP32-C5 (QFN40)",
+            0: "ESP32-C5",
         }.get(self.get_pkg_version(), "unknown ESP32-C5")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
@@ -54,21 +58,31 @@ class ESP32C5ROM(ESP32C6ROM):
         # works for ESP32-C5 as well.
         return ESPLoader.get_crystal_freq(self)
 
+    def get_crystal_freq_rom_expect(self):
+        return (
+            self.read_reg(self.PCR_SYSCLK_CONF_REG) & self.PCR_SYSCLK_XTAL_FREQ_V
+        ) >> self.PCR_SYSCLK_XTAL_FREQ_S
+
     def change_baud(self, baud):
-        rom_with_48M_XTAL = not self.IS_STUB and self.get_crystal_freq() == 48
-        if rom_with_48M_XTAL:
-            # The code is copied over from ESPLoader.change_baud().
-            # Probably this is just a temporary solution until the next chip revision.
-
-            # The ROM code thinks it uses a 40 MHz XTAL. Recompute the baud rate
-            # in order to trick the ROM code to set the correct baud rate for
-            # a 48 MHz XTAL.
-            false_rom_baud = baud * 40 // 48
-
-            print(f"Changing baud rate to {baud}")
-            self.command(
-                self.ESP_CHANGE_BAUDRATE, struct.pack("<II", false_rom_baud, 0)
+        if not self.IS_STUB:
+            crystal_freq_rom_expect = self.get_crystal_freq_rom_expect()
+            crystal_freq_detect = self.get_crystal_freq()
+            print(
+                f"ROM expects crystal freq: {crystal_freq_rom_expect} MHz, detected {crystal_freq_detect} MHz"
             )
+            baud_rate = baud
+            # If detect the XTAL is 48MHz, but the ROM code expects it to be 40MHz
+            if crystal_freq_detect == 48 and crystal_freq_rom_expect == 40:
+                baud_rate = baud * 40 // 48
+            # If detect the XTAL is 40MHz, but the ROM code expects it to be 48MHz
+            elif crystal_freq_detect == 40 and crystal_freq_rom_expect == 48:
+                baud_rate = baud * 48 // 40
+            else:
+                ESPLoader.change_baud(self, baud_rate)
+                return
+
+            print(f"Changing baud rate to {baud_rate}")
+            self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", baud_rate, 0))
             print("Changed.")
             self._set_port_baudrate(baud)
             time.sleep(0.05)  # get rid of garbage sent during baud rate change
@@ -77,23 +91,4 @@ class ESP32C5ROM(ESP32C6ROM):
             ESPLoader.change_baud(self, baud)
 
 
-class ESP32C5StubLoader(ESP32C5ROM):
-    """Access class for ESP32C5 stub loader, runs on top of ROM.
-
-    (Basically the same as ESP32StubLoader, but different base class.
-    Can possibly be made into a mixin.)
-    """
-
-    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
-    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
-    IS_STUB = True
-
-    def __init__(self, rom_loader):
-        self.secure_download_mode = rom_loader.secure_download_mode
-        self._port = rom_loader._port
-        self._trace_enabled = rom_loader._trace_enabled
-        self.cache = rom_loader.cache
-        self.flush_input()  # resets _slip_reader
-
-
-ESP32C5ROM.STUB_CLASS = ESP32C5StubLoader
+# TODO: [ESP32C5] ESPTOOL-825, IDF-8631 support stub flasher
