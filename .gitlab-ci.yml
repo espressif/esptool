@@ -34,6 +34,19 @@ cache:
   paths:
     - "$CI_PROJECT_DIR/.cache/pip"
 
+.use_esp_flasher_stub: &use_esp_flasher_stub |
+  if [[ "$CI_USE_ESP_FLASHER_STUB" = "1" ]]
+  then
+    apt-get update && apt-get install -y jq
+    wget https://api.github.com/repos/esp-rs/esp-flasher-stub/releases/latest -O /tmp/esp_flasher_stub.json
+    echo "esp-flasher-stub version:"; cat /tmp/esp_flasher_stub.json | jq -r .tag_name
+    mkdir /tmp/assets
+    cat /tmp/esp_flasher_stub.json | jq -r .assets[].browser_download_url | while read -r url; do wget $url -P /tmp/assets; done
+    for f in /tmp/assets/*.json; do fname=$(basename $f); cp $f esptool/targets/stub_flasher/stub_flasher_${fname#esp}; done
+    echo "These are the changes in the repository:"
+    git diff --stat
+  fi
+
 .test_template: &test_template
   stage: test
   image: python:3.7-bullseye
@@ -59,6 +72,8 @@ version_check:
 
 .host_tests_template: &host_tests_template
   <<: *test_template
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   artifacts:
     when: always
     paths:
@@ -125,6 +140,8 @@ host_tests_hsm:
 run_pre_commit_hooks:
   stage: test
   image: python:3.7-bullseye
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   tags:
     - host_test
   script:
@@ -145,6 +162,8 @@ run_pre_commit_hooks:
 # Check all the scripts can run when installed, collect coverage
 check_install_coverage:
   <<: *test_template
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   artifacts:
     when: always
     paths:
@@ -161,6 +180,8 @@ check_install_coverage:
 # Check all the scripts can run when installed
 check_install:
   <<: *test_template
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   before_script:
     - pip install .
   script:
@@ -169,6 +190,8 @@ check_install:
 # Check all the scripts can run when installed in editable mode
 check_install_editable:
   <<: *test_template
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   before_script:
     - pip install -e .
   script:
@@ -177,6 +200,8 @@ check_install_editable:
 # Check all the scripts can run when installed in Python user install directory
 check_install_system:
   <<: *test_template
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   before_script:
     - pip install --user .
   script:
@@ -190,6 +215,8 @@ check_install_system:
 # Check all the scripts can run when installed in virtual environment
 check_install_venv:
   <<: *test_template
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   before_script:
     - python -m venv test_env
     - source test_env/bin/activate
@@ -201,6 +228,8 @@ check_install_venv:
 # as the one embedded in esptool
 check_stub_build:
   <<: *test_template
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   artifacts:
     when: always
     paths:
@@ -234,6 +263,7 @@ check_stub_build:
     - pip install -e .[dev] --prefer-binary
     # libffi (needed for espsecure) version keeps changing in python docker images. Add a symlink to the installed version on Raspberry Pi
     - if [ $(uname -m) = "armv7l" ]; then ln -sfn /usr/lib/arm-linux-gnueabihf/libffi.so.7.1.0 /usr/lib/arm-linux-gnueabihf/libffi.so.6; fi
+    - *use_esp_flasher_stub
   artifacts:
     reports:
       junit: test/report.xml
@@ -393,6 +423,8 @@ target_esp32p4:
     PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+  rules:
+    - if: $CI_USE_ESP_FLASHER_STUB != "1"
   before_script:
     - pip install -e .[dev] --prefer-binary
   artifacts:
@@ -458,6 +490,8 @@ build_docs:
   tags:
     - build_docs
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_USE_ESP_FLASHER_STUB == "1"
+      when: never
     - changes:
       - "docs/**/*"
       - "CONTRIBUTING.rst"
@@ -491,7 +525,7 @@ deploy_docs_preview:
   extends:
     - .deploy_docs_template
   rules:
-    - if: '$CI_COMMIT_REF_NAME == "master"'
+    - if: $CI_COMMIT_REF_NAME == "master" || ($CI_PIPELINE_SOURCE == "schedule" && $CI_USE_ESP_FLASHER_STUB == "1")
       when: never
     - changes:
       - "docs/**/*"
