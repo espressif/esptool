@@ -53,7 +53,7 @@ def test_check_uf2(uf2_json):
         out = []
         # there was a difference between the chip support
         for chip in diff:
-            if chip in esptool_chips:
+            if chip not in esptool_chips:
                 out.append(
                     f"Missing chip definition for '{chip}' in esptool "
                     "which was defined in Microsoft UF2 Github repo."

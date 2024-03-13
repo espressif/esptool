@@ -45,6 +45,8 @@ class ESP32C5ROM(ESP32C6ROM):
         [0x600FE000, 0x60100000, "MEM_INTERNAL2"],
     ]
 
+    UF2_FAMILY_ID = 0xF71C0343
+
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C5",

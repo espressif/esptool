@@ -58,6 +58,8 @@ class ESP32C61ROM(ESP32C6ROM):
         [0x600FE000, 0x60100000, "MEM_INTERNAL2"],
     ]
 
+    UF2_FAMILY_ID = 0x77D850C4
+
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C61",
