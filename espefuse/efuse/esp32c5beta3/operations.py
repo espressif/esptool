@@ -65,7 +65,7 @@ def add_commands(subparsers, efuses):
     )
     burn_key.add_argument(
         "keyfile",
-        help="File containing 256 bits of binary key data",
+        help="File containing 256 bits of binary key data. For the ECDSA_KEY purpose use PEM file.",
         action="append",
         type=argparse.FileType("rb"),
     )
@@ -86,7 +86,7 @@ def add_commands(subparsers, efuses):
         )
         burn_key.add_argument(
             "keyfile",
-            help="File containing 256 bits of binary key data",
+            help="File containing 256 bits of binary key data. For the ECDSA_KEY purpose use PEM file.",
             nargs="?",
             action="append",
             metavar="KEYFILE",

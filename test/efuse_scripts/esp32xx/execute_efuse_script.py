@@ -1,6 +1,6 @@
 # flake8: noqa
 # fmt: off
-espefuse(esp, efuses, args, 'burn_efuse DIS_FORCE_DOWNLOAD 1 DIS_CAN 1 DIS_DOWNLOAD_MODE 1')
+espefuse(esp, efuses, args, 'burn_efuse DIS_FORCE_DOWNLOAD 1 DIS_DOWNLOAD_MODE 1')
 espefuse(esp, efuses, args, 'burn_bit BLOCK_USR_DATA 64 66 69 72 78 82 83 90')
 espefuse(esp, efuses, args, 'read_protect_efuse BLOCK_SYS_DATA2')
 espefuse(esp, efuses, args, 'write_protect_efuse BLOCK_SYS_DATA2')
@@ -17,8 +17,6 @@ espefuse(esp, efuses, args, 'adc_info')
 # Checks written eFuses
 if efuses["DIS_FORCE_DOWNLOAD"].get() != 1:
     raise esptool.FatalError("DIS_FORCE_DOWNLOAD was not set")
-if efuses["DIS_CAN"].get() != 1:
-    raise esptool.FatalError("DIS_CAN was not set")
 if efuses["DIS_DOWNLOAD_MODE"].get() != 1:
     raise esptool.FatalError("DIS_DOWNLOAD_MODE was not set")
 

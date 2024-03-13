@@ -6,6 +6,7 @@
 
 import binascii
 import struct
+import sys
 import time
 
 from bitstring import BitArray
@@ -94,11 +95,11 @@ class EspEfuses(base_fields.EspEfusesBase):
                 for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
             ]
         else:
-            if self["BLK_VERSION_MINOR"].get() == 1:
-                self.efuses += [
-                    EfuseField.convert(self, efuse)
-                    for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
-                ]
+            # if self["BLK_VERSION_MINOR"].get() == 1:
+            #     self.efuses += [
+            #         EfuseField.convert(self, efuse)
+            #         for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
+            #     ]
             self.efuses += [
                 EfuseField.convert(self, efuse) for efuse in self.Fields.CALC
             ]
@@ -160,9 +161,13 @@ class EspEfuses(base_fields.EspEfusesBase):
     def wait_efuse_idle(self):
         deadline = time.time() + self.REGS.EFUSE_BURN_TIMEOUT
         while time.time() < deadline:
-            # if self.read_reg(self.REGS.EFUSE_CMD_REG) == 0:
-            if self.read_reg(self.REGS.EFUSE_STATUS_REG) & 0x7 == 1:
-                return
+            cmds = self.REGS.EFUSE_PGM_CMD | self.REGS.EFUSE_READ_CMD
+            if self.read_reg(self.REGS.EFUSE_CMD_REG) & cmds == 0:
+                if self.read_reg(self.REGS.EFUSE_CMD_REG) & cmds == 0:
+                    # Due to a hardware error, we have to read READ_CMD again
+                    # to make sure the efuse clock is normal.
+                    # For PGM_CMD it is not necessary.
+                    return
         raise esptool.FatalError(
             "Timed out waiting for Efuse controller command to complete"
         )
@@ -202,7 +207,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                     )
                     print("DIS_DOWNLOAD_MODE is enabled")
                     print("Successful")
-                    exit(0)  # finish without errors
+                    sys.exit(0)  # finish without errors
                 raise
 
             print("Established a connection with the chip")
@@ -216,7 +221,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                     )
                     print("ENABLE_SECURITY_DOWNLOAD is enabled")
                     print("Successful")
-                    exit(0)  # finish without errors
+                    sys.exit(0)  # finish without errors
             raise
 
     def set_efuse_timing(self):
@@ -404,6 +409,7 @@ class EfuseKeyPurposeField(EfuseField):
         ("SECURE_BOOT_DIGEST0",          9,  "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST0 (Secure Boot key digest)
         ("SECURE_BOOT_DIGEST1",          10, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST1 (Secure Boot key digest)
         ("SECURE_BOOT_DIGEST2",          11, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST2 (Secure Boot key digest)
+        ("XTS_AES_256_KEY",              -1, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
     ]
 # fmt: on
     KEY_PURPOSES_NAME = [name[0] for name in KEY_PURPOSES]
