@@ -348,6 +348,8 @@ class TestReadProtectionCommands(EfuseTestCase):
         )
 
 
+# TODO: [ESP32C5] IDF-8629
+@pytest.mark.skipif(arg_chip == "esp32c5", reason="Not supported yet")
 class TestWriteProtectionCommands(EfuseTestCase):
     def test_write_protect_efuse(self):
         self.espefuse_py("write_protect_efuse -h")
@@ -454,7 +456,17 @@ class TestBurnCustomMacCommands(EfuseTestCase):
 
 
 @pytest.mark.skipif(
-    arg_chip in ["esp32c2", "esp32h2beta1", "esp32c3", "esp32c6", "esp32h2", "esp32p4"],
+    # TODO: [ESP32C5] IDF-8629
+    arg_chip
+    in [
+        "esp32c2",
+        "esp32h2beta1",
+        "esp32c3",
+        "esp32c6",
+        "esp32h2",
+        "esp32p4",
+        "esp32c5",
+    ],
     reason=f"TODO: add support set_flash_voltage for {arg_chip}",
 )
 class TestSetFlashVoltageCommands(EfuseTestCase):
@@ -666,7 +678,8 @@ class TestBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py("get_custom_mac", check_msg=f"aa:cd:ef:01:02:03 {crc_msg}")
 
     @pytest.mark.skipif(
-        arg_chip == "esp32p4", reason="No such eFuses, will be defined later"
+        arg_chip in ["esp32p4", "esp32c5"],  # TODO: [ESP32C5] IDF-8629
+        reason="No such eFuses, will be defined later",
     )
     def test_burn_efuse(self):
         self.espefuse_py("burn_efuse -h")
@@ -1776,6 +1789,8 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
             )
 
 
+# TODO: [ESP32C5] IDF-8629
+@pytest.mark.skipif(arg_chip == "esp32c5", reason="Not supported yet")
 class TestExecuteScriptsCommands(EfuseTestCase):
     @classmethod
     def setup_class(self):
