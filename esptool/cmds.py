@@ -230,7 +230,7 @@ def detect_flash_size(esp, args=None):
         if flash_size is None:
             flash_size = "4MB"
             print(
-                "Warning: Could not auto-detect Flash size "
+                "WARNING: Could not auto-detect Flash size "
                 f"(FlashID={flash_id:#x}, SizeID={size_id:#x}), defaulting to 4MB"
             )
         else:
@@ -568,11 +568,11 @@ def write_flash(esp, args):
             print("WARNING: File %s is empty" % argfile.name)
             continue
 
-        if not esp.get_secure_boot_enabled():
+        if not esp.secure_download_mode and not esp.get_secure_boot_enabled():
             image = _update_image_flash_params(esp, address, args, image)
         else:
             print(
-                "WARNING: Secure boot is enabled, so not changing any flash settings."
+                "WARNING: Security features enabled, so not changing any flash settings."
             )
         calcmd5 = hashlib.md5(image).hexdigest()
         uncsize = len(image)

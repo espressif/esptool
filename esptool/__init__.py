@@ -906,6 +906,10 @@ def main(argv=None, esp=None):
                 flash_size = detect_flash_size(esp, args)
             elif args.flash_size == "keep":
                 flash_size = detect_flash_size(esp, args=None)
+                if not esp.IS_STUB:
+                    print(
+                        "WARNING: In case of failure, please set a specific --flash_size."
+                    )
             else:
                 flash_size = args.flash_size
 
