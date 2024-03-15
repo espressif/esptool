@@ -543,7 +543,7 @@ deploy_docs_production:
   extends:
     - .deploy_docs_template
   rules:
-    - if: '$CI_COMMIT_REF_NAME == "master"'
+    - if: $CI_COMMIT_REF_NAME == "master" && $CI_USE_ESP_FLASHER_STUB != "1"
       changes:
       - "docs/**/*"
       - "CONTRIBUTING.rst"
