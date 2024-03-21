@@ -382,14 +382,18 @@ def main(argv=None, esp=None):
         "make_image", help="Create an application image from binary files"
     )
     parser_make_image.add_argument("output", help="Output image file")
-    parser_make_image.add_argument(
+    parser_make_image_input = parser_make_image.add_mutually_exclusive_group(required=True)
+    parser_make_image_input.add_argument(
         "--segfile", "-f", action="append", help="Segment input file"
+    )
+    parser_make_image_input.add_argument(
+        "--hexfile", "-x", help="Hex input file"
     )
     parser_make_image.add_argument(
         "--segaddr",
         "-a",
         action="append",
-        help="Segment base address",
+        help="Segment base address (unused for hexfile input)",
         type=arg_auto_int,
     )
     parser_make_image.add_argument(
