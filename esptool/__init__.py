@@ -13,6 +13,7 @@ __all__ = [
     "flash_id",
     "get_security_info",
     "image_info",
+    "image2hex"
     "load_ram",
     "make_image",
     "merge_bin",
@@ -51,6 +52,7 @@ from esptool.cmds import (
     flash_id,
     get_security_info,
     image_info,
+    image2hex,
     load_ram,
     make_image,
     merge_bin,
@@ -376,6 +378,16 @@ def main(argv=None, esp=None):
         help="Output format version (1 - legacy, 2 - extended)",
         choices=["1", "2"],
         default="1",
+    )
+
+    parser_image2hex = subparsers.add_parser(
+        "image2hex", help="Convert image to intel hex"
+    )
+    parser_image2hex.add_argument(
+        "inImage", help="Image file to parse"
+    )
+    parser_image2hex.add_argument(
+        "outHex", help="Hex file to generate (processor type and entry point will be added to this filename)"
     )
 
     parser_make_image = subparsers.add_parser(
