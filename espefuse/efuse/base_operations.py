@@ -65,12 +65,11 @@ def add_common_commands(subparsers, efuses):
     )
     burn.add_argument(
         "name_value_pairs",
-        help="Name of efuse register and New value pairs to burn",
+        help="Name of efuse field and new value pairs to burn. EFUSE_NAME: "
+        "[{}].".format(", ".join([e.name for e in efuses.efuses])),
         action=ActionEfuseValuePair,
         nargs="+",
-        metavar="[EFUSE_NAME VALUE] [{} VALUE".format(
-            " VALUE] [".join([e.name for e in efuses.efuses])
-        ),
+        metavar="[EFUSE_NAME VALUE]",
         efuse_choices=[e.name for e in efuses.efuses]
         + [name for e in efuses.efuses for name in e.alt_names if name != ""],
         efuses=efuses,
