@@ -902,6 +902,9 @@ class TestBurnKeyCommands(EfuseTestCase):
             "esp32c6",
             "esp32h2",
             "esp32p4",
+            "esp32c5",
+            "esp32c5beta3",
+            "esp32c61",
         ],
         reason="Only chips with 6 keys",
     )
@@ -910,9 +913,13 @@ class TestBurnKeyCommands(EfuseTestCase):
                BLOCK_KEY0 {IMAGES_DIR}/256bit   XTS_AES_256_KEY_1 \
                BLOCK_KEY1 {IMAGES_DIR}/256bit_1 XTS_AES_256_KEY_2 \
                BLOCK_KEY2 {IMAGES_DIR}/256bit_2 XTS_AES_128_KEY"
-        if arg_chip in ["esp32c3", "esp32c6"] or arg_chip in [
+        if arg_chip in [
+            "esp32c3",
+            "esp32c6",
             "esp32h2",
             "esp32h2beta1",
+            "esp32c5",
+            "esp32c5beta3",
         ]:
             cmd = cmd.replace("XTS_AES_256_KEY_1", "XTS_AES_128_KEY")
             cmd = cmd.replace("XTS_AES_256_KEY_2", "XTS_AES_128_KEY")
@@ -986,8 +993,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_2")
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3", "esp32p4"],
-        reason="512 bit keys are only supported on ESP32-S2, S3, and P4",
+        arg_chip not in ["esp32s2", "esp32s3", "esp32p4", "esp32c61"],
+        reason="512 bit keys are only supported on ESP32-S2, S3, P4, C61",
     )
     def test_burn_key_512bit(self):
         self.espefuse_py(
@@ -1004,8 +1011,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         )
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3", "esp32p4"],
-        reason="512 bit keys are only supported on ESP32-S2, S3, and P4",
+        arg_chip not in ["esp32s2", "esp32s3", "esp32p4", "esp32c61"],
+        reason="512 bit keys are only supported on ESP32-S2, S3, P4, C61",
     )
     def test_burn_key_512bit_non_consecutive_blocks(self):
         # Burn efuses separately to test different kinds
@@ -1047,8 +1054,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3", "esp32p4"],
-        reason="512 bit keys are only supported on ESP32-S2, S3, and P4",
+        arg_chip not in ["esp32s2", "esp32s3", "esp32p4", "esp32c61"],
+        reason="512 bit keys are only supported on ESP32-S2, S3, P4, C61",
     )
     def test_burn_key_512bit_non_consecutive_blocks_loop_around(self):
         self.espefuse_py(
@@ -1080,7 +1087,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32h2", "esp32p4"],
+        arg_chip not in ["esp32h2", "esp32c5", "esp32c5beta3", "esp32c61", "esp32p4"],
         reason="These chips support ECDSA_KEY",
     )
     def test_burn_key_ecdsa_key(self):
@@ -1106,7 +1113,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32h2", "esp32p4"],
+        arg_chip not in ["esp32h2", "esp32c5", "esp32c5beta3", "esp32c61", "esp32p4"],
         reason="These chips support ECDSA_KEY",
     )
     def test_burn_key_ecdsa_key_check_byte_order(self):
@@ -1211,6 +1218,9 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             "esp32c6",
             "esp32h2",
             "esp32p4",
+            "esp32c5",
+            "esp32c5beta3",
+            "esp32c61",
         ],
         reason="Only chip with 6 keys",
     )
@@ -1349,6 +1359,9 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             "esp32c6",
             "esp32h2",
             "esp32p4",
+            "esp32c5",
+            "esp32c5beta3",
+            "esp32c61",
         ],
         reason="Only chips with 6 keys",
     )
@@ -1545,6 +1558,9 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         "esp32c6",
         "esp32h2",
         "esp32p4",
+        "esp32c5",
+        "esp32c5beta3",
+        "esp32c61",
     ],
     reason="Supports 6 key blocks",
 )
@@ -1657,6 +1673,9 @@ class TestBurnBitCommands(EfuseTestCase):
             "esp32c6",
             "esp32h2",
             "esp32p4",
+            "esp32c5",
+            "esp32c5beta3",
+            "esp32c61",
         ],
         reason="Only chip with 6 keys",
     )
