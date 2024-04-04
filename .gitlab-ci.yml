@@ -120,6 +120,19 @@ host_tests:
     # some .coverage files in sub-directories are not collected on some runners, move them first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
 
+host_tests_latest_python:
+  <<: *host_tests_template
+  image: python:3.12-bullseye
+  variables:
+    PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
+  script:
+    -  pytest ${CI_PROJECT_DIR}/test/test_imagegen.py
+    -  pytest ${CI_PROJECT_DIR}/test/test_espsecure.py
+    -  pytest ${CI_PROJECT_DIR}/test/test_merge_bin.py
+    -  pytest ${CI_PROJECT_DIR}/test/test_image_info.py
+    -  pytest ${CI_PROJECT_DIR}/test/test_modules.py
+    -  pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32
+
 # A new job "host_test_hsm" is created for the test "test_espsecure_hsm.py" which runs an ubuntu image,
 # because python-pkcs11 (v0.7.0) package is compiled using GLIBC_2.34 but docker image python:3.7-bullseye
 # support versions only upto GLIBC_2.31.
