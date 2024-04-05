@@ -151,6 +151,8 @@ The following tests are not run automatically by GitHub Actions, because they ne
 
       Some tests might fail at higher baud rates on some hardware.
 
+*  ``test_esptool_sdm.py`` contains integration tests for ``esptool.py`` with chips in secure download mode. It needs to be run against real Espressif hardware (with active SDM). The command line format is the same as for ``test_esptool.py``.
+
 The following tests are not run automatically by GitHub Actions, but can be run locally in a command line:
 
 *  ``test_espefuse.py`` tests ``espefuse.py`` functionality. To run it:

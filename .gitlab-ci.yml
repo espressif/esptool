@@ -377,6 +377,13 @@ target_esp32s3_jtag_serial:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3_JTAG_SERIAL --preload-port /dev/serial_ports/ESP32S3_PRELOAD --chip esp32s3 --baud 115200
 
+target_esp32s3_sdm:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32s3_sdm_target
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool_sdm.py --port /dev/serial_ports/ESP32S3_SDM --chip esp32s3 --baud 115200
+
 # ESP32C2
 target_esp32c2_40mhz:
   extends: .target_esptool_test

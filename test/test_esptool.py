@@ -204,7 +204,7 @@ class EsptoolTestCase:
         print(output)  # for more complete stdout logs on failure
         return output
 
-    def run_esptool_error(self, args, baud=None):
+    def run_esptool_error(self, args, baud=None, chip=None):
         """
         Run esptool.py similar to run_esptool, but expect an error.
 
@@ -212,9 +212,9 @@ class EsptoolTestCase:
         and returns the output from esptool.py as a string.
         """
         with pytest.raises(subprocess.CalledProcessError) as fail:
-            self.run_esptool(args, baud)
+            self.run_esptool(args, baud, chip)
         failure = fail.value
-        assert failure.returncode == 2  # esptool.FatalError return code
+        assert failure.returncode in [1, 2]  # UnsupportedCmdError and FatalError codes
         return failure.output.decode("utf-8")
 
     @classmethod
