@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import os
+from typing import List
 
 import yaml
 
@@ -119,7 +120,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         # if BLK_VERSION_MINOR is 1, these efuse fields are in BLOCK2
         self.BLOCK2_CALIBRATION_EFUSES = []
 
-        self.CALC = []
+        self.CALC: List = []
 
         dir_name = os.path.dirname(os.path.abspath(__file__))
         dir_name, file_name = os.path.split(dir_name)

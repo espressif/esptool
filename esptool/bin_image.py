@@ -11,7 +11,7 @@ import os
 import re
 import struct
 import tempfile
-from typing import BinaryIO, Optional
+from typing import IO, Optional
 
 from intelhex import HexRecordError, IntelHex
 
@@ -43,7 +43,7 @@ def align_file_position(f, size):
     f.seek(align, 1)
 
 
-def intel_hex_to_bin(file: BinaryIO, start_addr: Optional[int] = None) -> BinaryIO:
+def intel_hex_to_bin(file: IO[bytes], start_addr: Optional[int] = None) -> IO[bytes]:
     """Convert IntelHex file to temp binary file with padding from start_addr
     If hex file was detected return temp bin file object; input file otherwise"""
     INTEL_HEX_MAGIC = b":"

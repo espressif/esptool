@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from collections import namedtuple
+from typing import Optional, List
 
 
 class EfuseRegistersBase(object):
@@ -19,9 +20,9 @@ class EfuseRegistersBase(object):
 
 
 class EfuseBlocksBase(object):
-    BLOCKS = None
+    BLOCKS: Optional[List] = None
     NamedtupleBlock = namedtuple(
-        "Block",
+        "NamedtupleBlock",
         "name alias id rd_addr wr_addr write_disable_bit "
         "read_disable_bit len key_purpose",
     )
@@ -49,7 +50,7 @@ class Field:
     word = None
     pos = None
     bit_len = 0
-    alt_names = []
+    alt_names: List[str] = []
     type = ""
     write_disable_bit = None
     read_disable_bit = None
@@ -61,7 +62,7 @@ class Field:
 
 class EfuseFieldsBase(object):
     def __init__(self, e_desc) -> None:
-        self.ALL_EFUSES = []
+        self.ALL_EFUSES: List = []
 
         def set_category_and_class_type(efuse, name):
             def includes(name, names):

@@ -8,6 +8,8 @@ import struct
 from .esp32c3 import ESP32C3ROM
 from ..util import FatalError, NotImplementedInROMError
 
+from typing import List
+
 
 class ESP32H2BETA1ROM(ESP32C3ROM):
     CHIP_NAME = "ESP32-H2(beta1)"
@@ -66,7 +68,7 @@ class ESP32H2BETA1ROM(ESP32C3ROM):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
-    MEMORY_MAP = []
+    MEMORY_MAP: List = []
 
     FLASH_FREQUENCY = {
         "48m": 0xF,

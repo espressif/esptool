@@ -13,6 +13,8 @@ import string
 import struct
 import sys
 import time
+from typing import Optional
+
 
 from .config import load_config_file
 from .reset import (
@@ -59,7 +61,7 @@ except ImportError:
     print(
         "The installed version (%s) of pyserial appears to be too old for esptool.py "
         "(Python interpreter %s). Check the README for installation instructions."
-        % (sys.VERSION, sys.executable)
+        % (serial.VERSION, sys.executable)
     )
     raise
 except Exception:
@@ -185,6 +187,8 @@ class ESPLoader(object):
 
     CHIP_NAME = "Espressif device"
     IS_STUB = False
+    STUB_CLASS: Optional[object] = None
+    BOOTLOADER_IMAGE: Optional[object] = None
 
     DEFAULT_PORT = "/dev/ttyUSB0"
 
