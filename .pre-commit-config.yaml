@@ -11,6 +11,13 @@ repos:
       - id: sphinx-lint
         name: Lint RST files in docs folder using Sphinx Lint
         files: ^((docs/en)/.*\.(rst|inc))|CONTRIBUTING.rst$
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.4.1  # the last version running on py3.7
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+        # ignore wrapper scripts because of name colision with efuse/__init__.py etc.
+        exclude: test/|docs/|espefuse.py|espsecure.py|esptool.py
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.5
     hooks:
