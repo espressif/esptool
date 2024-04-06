@@ -19,7 +19,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     def __init__(self, efuse_file=None, debug=False):
         self.Blocks = EfuseDefineBlocks
-        self.Fields = EfuseDefineFields()
+        self.Fields = EfuseDefineFields(None)
         self.REGS = EfuseDefineRegisters
         super(EmulateEfuseController, self).__init__(efuse_file, debug)
 

@@ -56,6 +56,7 @@ Optional General Arguments Of Commands
 - ``--virt`` - For host tests. The tool will work in the virtual mode (without connecting to a chip).
 - ``--path-efuse-file`` - For host tests. Use it together with ``--virt`` option. The tool will work in the virtual mode (without connecting to a chip) and save eFuse memory to a given file. If the file does not exists the tool creates it. To reset written eFuses just delete the file. Usage: ``--path-efuse-file efuse_memory.bin``.
 - ``--do-not-confirm`` - Do not pause for confirmation before permanently writing eFuses. Use with caution. If this option is not used, a manual confirmation step is required, you need to enter the word ``BURN`` to continue burning.
+- ``--extend-efuse-table`` - CSV file from `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_ (esp_efuse_custom_table.csv).
 
 Virtual mode
 ^^^^^^^^^^^^
@@ -112,6 +113,58 @@ The example below shows how to use the two commands ``burn_key_digest`` and ``bu
     > espefuse.py -c esp32c2  \
                             burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
                             burn_key BLOCK_KEY0 images/efuse/128bit_key.bin XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
+
+Extend Efuse Table
+------------------
+
+This tool supports the use of `CSV files <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/efuse.html#description-csv-file>`_ from the `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_ (e.g., ``esp_efuse_custom_table.csv``) to add custom eFuse fields. You can use this argument with any supported commands to access these custom eFuses.
+
+.. code-block:: none
+
+    > espefuse.py -c esp32 --extend-efuse-table path/esp_efuse_custom_table.csv summary
+
+Below is an example of an ``esp_efuse_custom_table.csv`` file. This example demonstrates how to define single eFuse fields, ``structured eFuse fields`` and ``non-sequential bit fields``:
+
+.. code-block:: none
+
+    MODULE_VERSION,                EFUSE_BLK3,       56,           8,          Module version
+    DEVICE_ROLE,                   EFUSE_BLK3,       64,           3,          Device role
+    SETTING_1,                     EFUSE_BLK3,       67,           6,          [SETTING_1_ALT_NAME] Setting 1
+    SETTING_2,                     EFUSE_BLK3,       73,           5,          Setting 2
+    ID_NUM,                        EFUSE_BLK3,      140,           8,          [MY_ID_NUM] comment
+    ,                              EFUSE_BLK3,      132,           8,          [MY_ID_NUM] comment
+    ,                              EFUSE_BLK3,      122,           8,          [MY_ID_NUM] comment
+    CUSTOM_SECURE_VERSION,         EFUSE_BLK3,       78,          16,          Custom secure version
+    ID_NUMK,                       EFUSE_BLK3,      150,           8,          [MY_ID_NUMK] comment
+    ,                              EFUSE_BLK3,      182,           8,          [MY_ID_NUMK] comment
+    MY_DATA,                       EFUSE_BLK3,      190,          10,          My data
+    MY_DATA.FIELD1,                EFUSE_BLK3,      190,           7,          Field1
+
+When you include this CSV file, the tool will generate a new section in the summary called ``User fuses``.
+
+.. code-block:: none
+
+    User fuses:
+    MODULE_VERSION (BLOCK3)                            Module version (56-63)                             = 0 R/W (0x00)
+    DEVICE_ROLE (BLOCK3)                               Device role (64-66)                                = 0 R/W (0b000)
+    SETTING_1 (BLOCK3)                                 [SETTING_1_ALT_NAME] Setting 1 (67-72)             = 0 R/W (0b000000)
+    SETTING_2 (BLOCK3)                                 Setting 2 (73-77)                                  = 0 R/W (0b00000)
+    ID_NUM_0 (BLOCK3)                                  [MY_ID_NUM] comment (140-147)                      = 0 R/W (0x00)
+    ID_NUM_1 (BLOCK3)                                  [MY_ID_NUM] comment (132-139)                      = 0 R/W (0x00)
+    ID_NUM_2 (BLOCK3)                                  [MY_ID_NUM] comment (122-129)                      = 0 R/W (0x00)
+    CUSTOM_SECURE_VERSION (BLOCK3)                     Custom secure version (78-93)                      = 0 R/W (0x0000)
+    ID_NUMK_0 (BLOCK3)                                 [MY_ID_NUMK] comment (150-157)                     = 0 R/W (0x00)
+    ID_NUMK_1 (BLOCK3)                                 [MY_ID_NUMK] comment (182-189)                     = 0 R/W (0x00)
+    MY_DATA (BLOCK3)                                   My data (190-199)                                  = 0 R/W (0b0000000000)
+    MY_DATA_FIELD1 (BLOCK3)                            Field1 (190-196)                                   = 0 R/W (0b0000000)
+
+You can reference these fields using the names and aliases provided in the CSV file. For non-sequential bits, the names are modified slightly with the addition of _0 and _1 postfixes for every sub-field, to ensure safer handling.
+
+For the current example, you can reference the custom fields with the following names: MODULE_VERSION, DEVICE_ROLE, SETTING_1, SETTING_2, ID_NUM_0, ID_NUM_1, ID_NUM_2, CUSTOM_SECURE_VERSION, ID_NUMK_0, ID_NUMK_1, MY_DATA, MY_DATA_FIELD1; and alises: SETTING_1_ALT_NAME, MY_ID_NUM_0, MY_ID_NUM_1, MY_ID_NUM_2, MY_ID_NUMK_0, MY_ID_NUMK_1.
+
+For convenience, the espefuse summary command includes the used bit range of the field in a comment, such as ``(150-157)`` len = 8 bits.
+
+For more details on the structure and usage of the CSV file, refer to the `eFuse Manager <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/efuse.html#description-csv-file>`_ chapter in the ESP-IDF documentation.
 
 Recommendations
 ---------------

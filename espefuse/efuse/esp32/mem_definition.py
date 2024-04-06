@@ -89,7 +89,7 @@ class EfuseDefineBlocks(EfuseBlocksBase):
 
 
 class EfuseDefineFields(EfuseFieldsBase):
-    def __init__(self) -> None:
+    def __init__(self, extend_efuse_table) -> None:
         self.EFUSES = []
         # if MAC_VERSION is set "1", these efuse fields are in BLOCK3:
         self.CUSTOM_MAC = []
@@ -109,7 +109,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         efuse_file = os.path.join(dir_name, "efuse_defs", file_name)
         with open(f"{efuse_file}", "r") as r_file:
             e_desc = yaml.safe_load(r_file)
-        super().__init__(e_desc)
+        super().__init__(e_desc, extend_efuse_table)
 
         for i, efuse in enumerate(self.ALL_EFUSES):
             if efuse.name == "BLOCK1" or efuse.name == "BLOCK2":

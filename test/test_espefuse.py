@@ -2101,3 +2101,32 @@ class TestPostponedEfuses(EfuseTestCase):
         assert "Burn postponed efuses from BLOCK0" in output
         assert "BURN BLOCK0  - OK" in output
         assert "Successful" in output
+
+
+class TestCSVEfuseTable(EfuseTestCase):
+    def test_extend_efuse_table_with_csv_file(self):
+        csv_file = f"{IMAGES_DIR}/esp_efuse_custom_table.csv"
+        output = self.espefuse_py(f" --extend-efuse-table {csv_file} summary")
+        assert "MODULE_VERSION (BLOCK3)" in output
+        assert "DEVICE_ROLE (BLOCK3)" in output
+        assert "SETTING_2 (BLOCK3)" in output
+        assert "ID_NUM_0 (BLOCK3)" in output
+        assert "ID_NUM_1 (BLOCK3)" in output
+        assert "ID_NUM_2 (BLOCK3)" in output
+        assert "CUSTOM_SECURE_VERSION (BLOCK3)" in output
+        assert "ID_NUMK_0 (BLOCK3)" in output
+        assert "ID_NUMK_1 (BLOCK3)" in output
+
+        self.espefuse_py(
+            f"--extend-efuse-table {csv_file} burn_efuse \
+                         MODULE_VERSION 1 \
+                         CUSTOM_SECURE_VERSION 4 \
+                         SETTING_1_ALT_NAME 7 \
+                         SETTING_2 1 \
+                         ID_NUM_0 1 \
+                         ID_NUM_1 1 \
+                         ID_NUM_2 1 \
+                         MY_ID_NUMK_0 1 \
+                         MY_ID_NUMK_1 1 \
+                         MY_DATA_FIELD1 1"
+        )

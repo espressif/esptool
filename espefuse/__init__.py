@@ -101,12 +101,20 @@ def get_esp(
     return esp
 
 
-def get_efuses(esp, skip_connect=False, debug_mode=False, do_not_confirm=False):
+def get_efuses(
+    esp,
+    skip_connect=False,
+    debug_mode=False,
+    do_not_confirm=False,
+    extend_efuse_table=None,
+):
     for name in SUPPORTED_CHIPS:
         if SUPPORTED_CHIPS[name].chip_name == esp.CHIP_NAME:
             efuse = SUPPORTED_CHIPS[name].efuse_lib
             return (
-                efuse.EspEfuses(esp, skip_connect, debug_mode, do_not_confirm),
+                efuse.EspEfuses(
+                    esp, skip_connect, debug_mode, do_not_confirm, extend_efuse_table
+                ),
                 efuse.operations,
             )
     else:
@@ -228,6 +236,12 @@ def main(custom_commandline=None, esp=None):
         "(efuses which disable access to blocks or chip).",
         action="store_true",
     )
+    init_parser.add_argument(
+        "--extend-efuse-table",
+        help="CSV file from ESP-IDF (esp_efuse_custom_table.csv)",
+        type=argparse.FileType("r"),
+        default=None,
+    )
 
     common_args, remaining_args = init_parser.parse_known_args(custom_commandline)
     debug_mode = common_args.debug
@@ -257,7 +271,11 @@ def main(custom_commandline=None, esp=None):
             # TODO: Require the --port argument in the next major release, ESPTOOL-490
 
     efuses, efuse_operations = get_efuses(
-        esp, just_print_help, debug_mode, common_args.do_not_confirm
+        esp,
+        just_print_help,
+        debug_mode,
+        common_args.do_not_confirm,
+        common_args.extend_efuse_table,
     )
 
     parser = argparse.ArgumentParser(parents=[init_parser])

@@ -1,0 +1,13 @@
+# field_name,             |    efuse_block, | bit_start, | bit_count, | comment
+MODULE_VERSION,                EFUSE_BLK3,       56,           8,          Module version
+DEVICE_ROLE,                   EFUSE_BLK3,       64,           3,          Device role
+SETTING_1,                     EFUSE_BLK3,       67,           6,          [SETTING_1_ALT_NAME] Setting 1
+SETTING_2,                     EFUSE_BLK3,       73,           5,          Setting 2
+ID_NUM,                        EFUSE_BLK3,      140,           8,          [MY_ID_NUM] comment
+,                              EFUSE_BLK3,      132,           8,          [MY_ID_NUM] comment
+,                              EFUSE_BLK3,      122,           8,          [MY_ID_NUM] comment
+CUSTOM_SECURE_VERSION,         EFUSE_BLK3,       78,          16,          Custom secure version
+ID_NUMK,                       EFUSE_BLK3,      150,           8,          [MY_ID_NUMK] comment
+,                              EFUSE_BLK3,      182,           8,          [MY_ID_NUMK] comment
+MY_DATA,                       EFUSE_BLK3,      190,          10,          My data
+MY_DATA.FIELD1,                EFUSE_BLK3,      190,           7,          Field1

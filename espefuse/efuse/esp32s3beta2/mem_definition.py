@@ -112,7 +112,7 @@ class EfuseDefineBlocks(EfuseBlocksBase):
 
 
 class EfuseDefineFields(EfuseFieldsBase):
-    def __init__(self) -> None:
+    def __init__(self, extend_efuse_table) -> None:
         # List of efuse fields from TRM the chapter eFuse Controller.
         self.EFUSES = []
 
@@ -131,7 +131,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         efuse_file = efuse_file.replace("esp32s3beta2", "esp32s3")
         with open(f"{efuse_file}", "r") as r_file:
             e_desc = yaml.safe_load(r_file)
-        super().__init__(e_desc)
+        super().__init__(e_desc, extend_efuse_table)
 
         for i, efuse in enumerate(self.ALL_EFUSES):
             if efuse.name in [
