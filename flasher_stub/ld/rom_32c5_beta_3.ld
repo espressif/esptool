@@ -427,3 +427,168 @@ usb_serial_device_rx_one_char_block = 0x40000a70;
 usb_serial_device_tx_flush = 0x40000a74;
 usb_serial_device_tx_one_char = 0x40000a78;
 
+
+/***************************************
+ Group usb_dwcotg_uart
+ ***************************************/
+
+/* Functions */
+Uart_Init_USB = 0x40000a7c;
+usb_serial_otg_rx_one_char = 0x40000a80;
+usb_serial_otg_rx_one_char_block = 0x40000a84;
+usb_serial_otg_tx_flush = 0x40000a88;
+usb_serial_otg_tx_one_char = 0x40000a8c;
+/* Data (.data, .bss, .rodata) */
+uart_acm_dev = 0x4087ffc4;
+
+
+/***************************************
+ Group usb_dwcotg_module
+ ***************************************/
+
+/* Functions */
+cdc_acm_class_handle_req = 0x40000a90;
+cdc_acm_init = 0x40000a94;
+cdc_acm_fifo_fill = 0x40000a98;
+cdc_acm_rx_fifo_cnt = 0x40000a9c;
+cdc_acm_fifo_read = 0x40000aa0;
+cdc_acm_irq_tx_enable = 0x40000aa4;
+cdc_acm_irq_tx_disable = 0x40000aa8;
+cdc_acm_irq_state_enable = 0x40000aac;
+cdc_acm_irq_state_disable = 0x40000ab0;
+cdc_acm_irq_tx_ready = 0x40000ab4;
+cdc_acm_irq_rx_enable = 0x40000ab8;
+cdc_acm_irq_rx_disable = 0x40000abc;
+cdc_acm_irq_rx_ready = 0x40000ac0;
+cdc_acm_irq_is_pending = 0x40000ac4;
+cdc_acm_irq_callback_set = 0x40000ac8;
+cdc_acm_line_ctrl_set = 0x40000acc;
+cdc_acm_line_ctrl_get = 0x40000ad0;
+cdc_acm_poll_out = 0x40000ad4;
+chip_usb_dw_did_persist = 0x40000ad8;
+chip_usb_dw_init = 0x40000adc;
+chip_usb_detach = 0x40000ae0;
+chip_usb_dw_prepare_persist = 0x40000ae4;
+chip_usb_get_persist_flags = 0x40000ae8;
+chip_usb_set_persist_flags = 0x40000aec;
+cpio_start = 0x40000af0;
+cpio_feed = 0x40000af4;
+cpio_done = 0x40000af8;
+cpio_destroy = 0x40000afc;
+dfu_flash_init = 0x40000b00;
+dfu_flash_erase = 0x40000b04;
+dfu_flash_program = 0x40000b08;
+dfu_flash_read = 0x40000b0c;
+dfu_flash_attach = 0x40000b10;
+dfu_cpio_callback = 0x40000b14;
+dfu_updater_get_err = 0x40000b18;
+dfu_updater_clear_err = 0x40000b1c;
+dfu_updater_enable = 0x40000b20;
+dfu_updater_begin = 0x40000b24;
+dfu_updater_feed = 0x40000b28;
+dfu_updater_end = 0x40000b2c;
+dfu_updater_set_raw_addr = 0x40000b30;
+dfu_updater_flash_read = 0x40000b34;
+usb_dc_prepare_persist = 0x40000b38;
+usb_dw_isr_handler = 0x40000b3c;
+usb_dc_attach = 0x40000b40;
+usb_dc_detach = 0x40000b44;
+usb_dc_reset = 0x40000b48;
+usb_dc_set_address = 0x40000b4c;
+usb_dc_ep_check_cap = 0x40000b50;
+usb_dc_ep_configure = 0x40000b54;
+usb_dc_ep_set_stall = 0x40000b58;
+usb_dc_ep_clear_stall = 0x40000b5c;
+usb_dc_ep_halt = 0x40000b60;
+usb_dc_ep_is_stalled = 0x40000b64;
+usb_dc_ep_enable = 0x40000b68;
+usb_dc_ep_disable = 0x40000b6c;
+usb_dc_ep_flush = 0x40000b70;
+usb_dc_ep_write_would_block = 0x40000b74;
+usb_dc_ep_write = 0x40000b78;
+usb_dc_ep_read_wait = 0x40000b7c;
+usb_dc_ep_read_continue = 0x40000b80;
+usb_dc_ep_read = 0x40000b84;
+usb_dc_ep_set_callback = 0x40000b88;
+usb_dc_set_status_callback = 0x40000b8c;
+usb_dc_ep_mps = 0x40000b90;
+usb_dc_check_poll_for_interrupts = 0x40000b94;
+mac_addr_to_serial_str_desc = 0x40000b98;
+usb_set_current_descriptor = 0x40000b9c;
+usb_get_descriptor = 0x40000ba0;
+usb_dev_resume = 0x40000ba4;
+usb_dev_get_configuration = 0x40000ba8;
+usb_set_config = 0x40000bac;
+usb_deconfig = 0x40000bb0;
+usb_enable = 0x40000bb4;
+usb_disable = 0x40000bb8;
+usb_write_would_block = 0x40000bbc;
+usb_write = 0x40000bc0;
+usb_read = 0x40000bc4;
+usb_ep_set_stall = 0x40000bc8;
+usb_ep_clear_stall = 0x40000bcc;
+usb_ep_read_wait = 0x40000bd0;
+usb_ep_read_continue = 0x40000bd4;
+usb_transfer_ep_callback = 0x40000bd8;
+usb_transfer = 0x40000bdc;
+usb_cancel_transfer = 0x40000be0;
+usb_transfer_sync = 0x40000be4;
+usb_dfu_set_detach_cb = 0x40000be8;
+dfu_class_handle_req = 0x40000bec;
+dfu_status_cb = 0x40000bf0;
+dfu_custom_handle_req = 0x40000bf4;
+usb_dfu_init = 0x40000bf8;
+usb_dfu_force_detach = 0x40000bfc;
+usb_dev_deinit = 0x40000c00;
+usb_dw_ctrl_deinit = 0x40000c04;
+/* Data (.data, .bss, .rodata) */
+s_usb_osglue = 0x4087ffb8;
+
+
+/***************************************
+ Group lldesc
+ ***************************************/
+
+/* Functions */
+lldesc_build_chain = 0x40000c08;
+
+
+/***************************************
+ Group sip
+ ***************************************/
+
+/* Functions */
+sip_after_tx_complete = 0x40000c0c;
+sip_alloc_to_host_evt = 0x40000c10;
+sip_download_begin = 0x40000c14;
+sip_get_ptr = 0x40000c18;
+sip_get_state = 0x40000c1c;
+sip_init_attach = 0x40000c20;
+sip_install_rx_ctrl_cb = 0x40000c24;
+sip_install_rx_data_cb = 0x40000c28;
+sip_is_active = 0x40000c2c;
+sip_post_init = 0x40000c30;
+sip_reclaim_from_host_cmd = 0x40000c34;
+sip_reclaim_tx_data_pkt = 0x40000c38;
+sip_send = 0x40000c3c;
+sip_to_host_chain_append = 0x40000c40;
+sip_to_host_evt_send_done = 0x40000c44;
+
+
+/***************************************
+ Group slc
+ ***************************************/
+
+/* Functions */
+slc_add_credits = 0x40000c48;
+slc_enable = 0x40000c4c;
+slc_from_host_chain_fetch = 0x40000c50;
+slc_from_host_chain_recycle = 0x40000c54;
+slc_has_pkt_to_host = 0x40000c58;
+slc_init_attach = 0x40000c5c;
+slc_init_credit = 0x40000c60;
+slc_reattach = 0x40000c64;
+slc_send_to_host_chain = 0x40000c68;
+slc_set_host_io_max_window = 0x40000c6c;
+slc_to_host_chain_recycle = 0x40000c70;
+

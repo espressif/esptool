@@ -46,8 +46,13 @@
 #define WITH_USB_OTG 1
 #endif // ESP32S3
 
+#ifdef ESP32C5
+#define WITH_USB_JTAG_SERIAL 0 // not implemented yet
+#define IS_RISCV 1
+#endif // ESP32C5
+
 #ifdef ESP32C5BETA3
-#define WITH_USB_JTAG_SERIAL 1
+#define WITH_USB_JTAG_SERIAL 0
 #define IS_RISCV 1
 #endif // ESP32C5BETA3
 
@@ -173,7 +178,7 @@
 #define DR_REG_IO_MUX_BASE  0x60009000
 #endif
 
-#if ESP32C6 || ESP32C5BETA3
+#if ESP32C6 || ESP32C5 || ESP32C5BETA3
 #define UART_BASE_REG       0x60000000 /* UART0 */
 #define SPI_BASE_REG        0x60003000 /* SPI peripheral 1, used for SPI flash */
 #define SPI0_BASE_REG       0x60002000 /* SPI peripheral 0, inner state machine */
@@ -333,14 +338,14 @@
 #define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
 #endif // ESP32S3
 
-#if ESP32C6 || ESP32C5BETA3
+#if ESP32C6
 #define UART_USB_JTAG_SERIAL  3
 
 #define DR_REG_INTERRUPT_MATRIX_BASE            0x60010000
 #define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_MATRIX_BASE + 0xC0) /* USB-JTAG-Serial, INTMTX_CORE0_USB_INTR_MAP_REG */
 
 #define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
-#endif // ESP32C6 || ESP32C5BETA3
+#endif // ESP32C6
 
 #ifdef ESP32H2
 #define UART_USB_JTAG_SERIAL  3
@@ -403,7 +408,7 @@
 #define RTC_CNTL_SWD_AUTO_FEED_EN     (1 << 31)
 #endif
 
-#if ESP32C6 || ESP32C5BETA3 || ESP32P4
+#if ESP32C6 || ESP32C5 || ESP32C5BETA3 || ESP32P4
 #define RTC_CNTL_WDTCONFIG0_REG       (DR_REG_LP_WDT_BASE + 0x0)   // LP_WDT_RWDT_CONFIG0_REG
 #define RTC_CNTL_WDTWPROTECT_REG      (DR_REG_LP_WDT_BASE + 0x0018)  // LP_WDT_RWDT_WPROTECT_REG
 #define RTC_CNTL_SWD_CONF_REG         (DR_REG_LP_WDT_BASE + 0x001C)  // LP_WDT_SWD_CONFIG_REG
@@ -456,6 +461,14 @@
 #define SYSTEM_SOC_CLK_MAX            1
 #endif // ESP32S2
 
+#ifdef ESP32C5
+#define PCR_SYSCLK_CONF_REG          (DR_REG_PCR_BASE + 0x10c)
+#define PCR_SOC_CLK_SEL_M            ((PCR_SOC_CLK_SEL_V)<<(PCR_SOC_CLK_SEL_S))
+#define PCR_SOC_CLK_SEL_V            0x3
+#define PCR_SOC_CLK_SEL_S            16
+#define PCR_SOC_CLK_MAX              3 // CPU_CLK frequency is 240 MHz (source is PLL_F240_CLK)
+#endif // ESP32C5
+
 #ifdef ESP32C5BETA3
 #define PCR_SYSCLK_CONF_REG          (DR_REG_PCR_BASE + 0x10c)
 #define PCR_SOC_CLK_SEL_M            ((PCR_SOC_CLK_SEL_V)<<(PCR_SOC_CLK_SEL_S))
@@ -501,9 +514,9 @@
 #define ROM_SPIFLASH_LEGACY         0x3ffae270
 #endif // ESP32 || ESP32S2 || ESP32S3 || ESP32S3BETA2
 
-#if ESP32C3 || ESP32C6BETA || ESP32C2 || ESP32C6 || ESP32C5BETA3
+#if ESP32C3 || ESP32C6BETA || ESP32C2 || ESP32C6 || ESP32C5 || ESP32C5BETA3
 #define ROM_SPIFLASH_LEGACY         0x3fcdfff4
-#endif // ESP32C3 || ESP32C6BETA || ESP32C2 || ESP32C6
+#endif // ESP32C3 || ESP32C6BETA || ESP32C2 || ESP32C6 || ESP32C5 || ESP32C5BETA3
 
 #if ESP32H2BETA1 || ESP32H2BETA2
 #define ROM_SPIFLASH_LEGACY         0x3fcdfff0
@@ -567,13 +580,13 @@
 #define FUNC_GPIO 1
 #endif // ESP32C2
 
-#if ESP32C6 || ESP32C6BETA || ESP32C5BETA3
+#if ESP32C6 || ESP32C6BETA || ESP32C5 || ESP32C5BETA3
 #define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x78)
 #define PERIPHS_IO_MUX_SPIQ_U             (DR_REG_IO_MUX_BASE + 0x68)
 #define PERIPHS_IO_MUX_SPID_U             (DR_REG_IO_MUX_BASE + 0x7c)
 #define PERIPHS_IO_MUX_SPICS0_U           (DR_REG_IO_MUX_BASE + 0x64)
 #define FUNC_GPIO 1
-#endif // ESP32C6 || ESP32C6BETA
+#endif // ESP32C6 || ESP32C6BETA || ESP32C5 || ESP32C5BETA3
 
 #if ESP32H2 || ESP32H2BETA1 || ESP32H2BETA2
 #define PERIPHS_IO_MUX_SPICLK_U           (DR_REG_IO_MUX_BASE + 0x50)

@@ -9,6 +9,7 @@ from typing import Dict
 from .esp32c6 import ESP32C6ROM
 from ..loader import ESPLoader
 from ..reset import HardReset
+from ..util import FatalError
 
 
 class ESP32C5ROM(ESP32C6ROM):
@@ -29,7 +30,7 @@ class ESP32C5ROM(ESP32C6ROM):
     UARTDEV_BUF_NO = 0x4085F51C  # Variable in ROM .bss which indicates the port in use
 
     # Magic value for ESP32C5
-    CHIP_DETECT_MAGIC_VALUE = [0x8082C5DC]
+    CHIP_DETECT_MAGIC_VALUE = [0x1101406F]
 
     FLASH_FREQUENCY = {
         "80m": 0xF,
@@ -119,5 +120,33 @@ class ESP32C5ROM(ESP32C6ROM):
         else:
             ESPLoader.change_baud(self, baud)
 
+    def check_spi_connection(self, spi_connection):
+        if not set(spi_connection).issubset(set(range(0, 29))):
+            raise FatalError("SPI Pin numbers must be in the range 0-28.")
+        if any([v for v in spi_connection if v in [13, 14]]):
+            print(
+                "WARNING: GPIO pins 13 and 14 are used by USB-Serial/JTAG, "
+                "consider using other pins for SPI flash connection."
+            )
 
-# TODO: [ESP32C5] ESPTOOL-825, IDF-8631 support stub flasher
+
+class ESP32C5StubLoader(ESP32C5ROM):
+    """Access class for ESP32C5 stub loader, runs on top of ROM.
+
+    (Basically the same as ESP32StubLoader, but different base class.
+    Can possibly be made into a mixin.)
+    """
+
+    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
+    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
+    IS_STUB = True
+
+    def __init__(self, rom_loader):
+        self.secure_download_mode = rom_loader.secure_download_mode
+        self._port = rom_loader._port
+        self._trace_enabled = rom_loader._trace_enabled
+        self.cache = rom_loader.cache
+        self.flush_input()  # resets _slip_reader
+
+
+ESP32C5ROM.STUB_CLASS = ESP32C5StubLoader

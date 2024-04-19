@@ -68,9 +68,8 @@ if __name__ == "__main__":
     same = True
     for chip in esptool.CHIP_LIST:
         print("Comparing {} stub: ".format(chip), end="")
-        # TODO: [ESP32C5] ESPTOOL-825 remove when supported stub flasher
         # TODO: [ESP32C61] IDF-9241 remove when supported stub flasher
-        if chip in ["esp32c5", "esp32c61"]:
+        if chip in ["esp32c61"]:
             print(f"{chip} has not supported stub yet, skipping...")
             continue
 
