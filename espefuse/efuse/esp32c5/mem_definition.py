@@ -20,7 +20,7 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_MEM_SIZE = 0x01FC + 4
 
     # EFUSE registers & command/conf values
-    DR_REG_EFUSE_BASE = 0x600B0800
+    DR_REG_EFUSE_BASE = 0x600B4800
     EFUSE_PGM_DATA0_REG = DR_REG_EFUSE_BASE
     EFUSE_CHECK_VALUE0_REG = DR_REG_EFUSE_BASE + 0x020
     EFUSE_CLK_REG = DR_REG_EFUSE_BASE + 0x1C8
