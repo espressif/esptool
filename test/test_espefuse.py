@@ -184,6 +184,15 @@ class TestReadCommands(EfuseTestCase):
     def test_summary_json(self):
         self.espefuse_py("summary --format json")
 
+    def test_summary_filter(self):
+        self.espefuse_py("summary MAC")
+        self.espefuse_py("summary --format value_only MAC")
+        self.espefuse_py(
+            "summary --format value_only MAC WR_DIS",
+            check_msg="The 'value_only' format can be used exactly for one efuse.",
+            ret_code=2,
+        )
+
     @pytest.mark.skipif(
         arg_chip == "esp32p4", reason="No Custom MAC Address defined yet"
     )

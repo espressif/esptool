@@ -182,7 +182,7 @@ def add_common_commands(subparsers, efuses):
     summary_cmd.add_argument(
         "--format",
         help="Select the summary format",
-        choices=["summary", "json"],
+        choices=["summary", "json", "value_only"],
         default="summary",
     )
     summary_cmd.add_argument(
@@ -190,6 +190,11 @@ def add_common_commands(subparsers, efuses):
         help="File to save the efuse summary",
         type=argparse.FileType("w"),
         default=sys.stdout,
+    )
+    summary_cmd.add_argument(
+        "efuses_to_show",
+        help="The efuses to show. If not provided, all efuses will be shown.",
+        nargs="*",
     )
 
     execute_scripts = subparsers.add_parser(
@@ -245,14 +250,21 @@ def add_show_sensitive_info_option(p):
 
 
 def summary(esp, efuses, args):
-    """Print a human-readable summary of efuse contents"""
+    """Print a human-readable or json summary of efuse contents"""
     ROW_FORMAT = "%-50s %-50s%s = %s %s %s"
-    human_output = args.format == "summary"
+    human_output = args.format in ["summary", "value_only"]
+    value_only = args.format == "value_only"
+    if value_only and len(args.efuses_to_show) != 1:
+        raise esptool.FatalError(
+            "The 'value_only' format can be used exactly for one efuse."
+        )
+    do_filtering = bool(args.efuses_to_show)
     json_efuse = {}
+    summary_efuse = []
     if args.file != sys.stdout:
         print("Saving efuse values to " + args.file.name)
-    if human_output:
-        print(
+    if human_output and not value_only:
+        summary_efuse.append(
             ROW_FORMAT.replace("-50", "-12")
             % (
                 "EFUSE_NAME (Block)",
@@ -261,13 +273,12 @@ def summary(esp, efuses, args):
                 "[Meaningful Value]",
                 "[Readable/Writeable]",
                 "(Hex Value)",
-            ),
-            file=args.file,
+            )
         )
-        print("-" * 88, file=args.file)
+        summary_efuse.append("-" * 88)
     for category in sorted(set(e.category for e in efuses), key=lambda c: c.title()):
-        if human_output:
-            print("%s fuses:" % category.title(), file=args.file)
+        if human_output and not value_only:
+            summary_efuse.append(f"{category.title()} fuses:")
         for e in (e for e in efuses if e.category == category):
             if e.efuse_type.startswith("bytes"):
                 raw = ""
@@ -296,8 +307,12 @@ def summary(esp, efuses, args):
                     value = "".join(v)
                 else:
                     value = value.replace("0", "?")
-            if human_output:
-                print(
+            if (
+                human_output
+                and (not do_filtering or e.name in args.efuses_to_show)
+                and not value_only
+            ):
+                summary_efuse.append(
                     ROW_FORMAT
                     % (
                         e.get_info(),
@@ -306,18 +321,20 @@ def summary(esp, efuses, args):
                         value,
                         perms,
                         raw,
-                    ),
-                    file=args.file,
+                    )
                 )
                 desc_len = len(e.description[50:])
                 if desc_len:
                     desc_len += 50
                     for i in range(50, desc_len, 50):
-                        print(
-                            "%-50s %-50s" % ("", e.description[i : (50 + i)]),
-                            file=args.file,
+                        summary_efuse.append(
+                            f"{'':<50} {e.description[i : (50 + i)]:<50}"
                         )
-            if args.format == "json":
+            elif human_output and value_only and e.name in args.efuses_to_show:
+                summary_efuse.append(f"{value}")
+            elif args.format == "json" and (
+                not do_filtering or e.name in args.efuses_to_show
+            ):
                 json_efuse[e.name] = {
                     "name": e.name,
                     "value": base_value if readable else value,
@@ -331,19 +348,26 @@ def summary(esp, efuses, args):
                     "efuse_type": e.efuse_type,
                     "bit_len": e.bit_len,
                 }
-        if human_output:
-            print("", file=args.file)
-    if human_output:
-        print(efuses.summary(), file=args.file)
+        if human_output and not value_only:
+            # Remove empty category if efuses are filtered and there are none to show
+            if do_filtering and summary_efuse[-1] == f"{category.title()} fuses:":
+                summary_efuse.pop()
+            else:
+                summary_efuse.append("")
+    if human_output and not value_only:
+        summary_efuse.append(efuses.summary())
         warnings = efuses.get_coding_scheme_warnings()
         if warnings:
-            print(
-                "WARNING: Coding scheme has encoding bit error warnings", file=args.file
+            summary_efuse.append(
+                "WARNING: Coding scheme has encoding bit error warnings"
             )
+    if human_output:
+        for line in summary_efuse:
+            print(line, file=args.file)
         if args.file != sys.stdout:
             args.file.close()
             print("Done")
-    if args.format == "json":
+    elif args.format == "json":
         json.dump(json_efuse, args.file, sort_keys=True, indent=4)
         print("")
 
