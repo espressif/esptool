@@ -181,7 +181,8 @@ class ESPLoader(object):
 
     Don't instantiate this base class directly, either instantiate a subclass or
     call cmds.detect_chip() which will interrogate the chip and return the
-    appropriate subclass instance.
+    appropriate subclass instance. You can also use a context manager as
+    "with detect_chip() as esp:" to ensure the serial port is closed when done.
 
     """
 
@@ -281,7 +282,8 @@ class ESPLoader(object):
         """Base constructor for ESPLoader bootloader interaction
 
         Don't call this constructor, either instantiate a specific
-        ROM class directly, or use cmds.detect_chip().
+        ROM class directly, or use cmds.detect_chip(). You can use the with
+        statement to ensure the serial port is closed when done.
 
         This base class has all of the instance methods for bootloader
         functionality supported across various chips & stub
@@ -364,6 +366,12 @@ class ESPLoader(object):
             # no write timeout for RFC2217 ports
             # need to set the property back to None or it will continue to fail
             self._port.write_timeout = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._port.close()
 
     @property
     def serial_port(self):
