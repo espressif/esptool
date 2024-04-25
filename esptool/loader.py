@@ -278,6 +278,9 @@ class ESPLoader(object):
     # Chip IDs that are no longer supported by esptool
     UNSUPPORTED_CHIPS = {6: "ESP32-S3(beta 3)"}
 
+    # Number of attempts to write flash data
+    WRITE_FLASH_ATTEMPTS = 2
+
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False):
         """Base constructor for ESPLoader bootloader interaction
 
