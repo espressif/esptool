@@ -8,7 +8,7 @@ Flashing Firmware
 Esptool is used under the hood of many development frameworks for Espressif SoCs, such as `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_, `Arduino <https://docs.espressif.com/projects/arduino-esp32/>`_, or `PlatformIO <https://docs.platformio.org/en/latest/platforms/espressif32.html>`_.
 After the resulting firmware binary files are compiled, esptool is used to flash these into the device.
 
-Sometimes there might be a need to comfortably flash a bigger amount of decives with the same binaries or to share flashing instructions with a third party.
+Sometimes there might be a need to comfortably flash a bigger amount of devices with the same binaries or to share flashing instructions with a third party.
 It is possible to compile the firmware just once and then repeatedly use esptool (manually or :ref:`in a custom script <scripting>`) to flash the files.
 
 Sharing these instructions and below mentioned assets with a third party (for example a manufacturer) should suffice to allow reproducible and quick flashing of your application into an Espressif chip.
