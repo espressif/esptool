@@ -116,7 +116,7 @@ def detect_chip(
         else:
             err_msg = f"Unexpected chip ID value {chip_id}."
     except (UnsupportedCommandError, struct.error, FatalError) as e:
-        # UnsupportedCommmanddError: ESP8266/ESP32 ROM
+        # UnsupportedCommandError: ESP8266/ESP32 ROM
         # struct.error: ESP32-S2
         # FatalError: ESP8266/ESP32 STUB
         print(" Unsupported detection protocol, switching and trying again...")

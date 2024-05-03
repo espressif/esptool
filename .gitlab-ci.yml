@@ -144,8 +144,10 @@ host_tests_hsm:
     PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
   before_script:
     - apt-get update
-    - apt-get install -y python3 python3-pip softhsm2
+    - apt-get install -y python3 python3-pip python3-venv softhsm2
     - ./ci/setup_softhsm2.sh || exit 1
+    - python3 -m venv esptoolenv
+    - source esptoolenv/bin/activate
     - pip3 install -e .[dev,hsm] --prefer-binary
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espsecure_hsm.py
