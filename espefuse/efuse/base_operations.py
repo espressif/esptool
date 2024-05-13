@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import argparse
+import os
 import json
 import sys
 
@@ -173,12 +174,22 @@ def add_common_commands(subparsers, efuses):
         help="Display information about ADC calibration data stored in efuse.",
     )
 
-    dump_cmd = subparsers.add_parser("dump", help="Dump raw hex values of all efuses")
+    dump_cmd = subparsers.add_parser("dump", help="Dump raw hex values of all eFuses")
+    dump_cmd.add_argument(
+        "--format",
+        help="Select the dump format: "
+        "default - usual console eFuse dump; "
+        "united - all eFuse blocks are stored in one file; "
+        "separated - each eFuse block is placed in a separate file. Tool will create multiple files based on "
+        "the given --file_name (/path/blk.bin): blk0.bin, blk1.bin ... blkN.bin. Use the burn_block_data cmd "
+        "to write it back to another chip.",
+        choices=["default", "separated", "united"],
+        default="default",
+    )
     dump_cmd.add_argument(
         "--file_name",
-        help="Saves dump for each block into separate file. Provide the common "
-        "path name /path/blk.bin, it will create: blk0.bin, blk1.bin ... blkN.bin. "
-        "Use burn_block_data to write it back to another chip.",
+        help="The path to the file in which to save the dump, if not specified, output to the console.",
+        default=sys.stdout,
     )
 
     summary_cmd = subparsers.add_parser(
@@ -379,23 +390,48 @@ def summary(esp, efuses, args):
 
 def dump(esp, efuses, args):
     """Dump raw efuse data registers"""
-    # Using --debug option allows to print dump.
-    # Nothing to do here. The log will be printed
-    # during EspEfuses.__init__() in self.read_blocks()
-    if args.file_name:
-        # save dump to the file
+    dump_file = args.file_name
+    to_console = args.file_name == sys.stdout
+
+    def output_block_to_file(block, f, to_console):
+        block_dump = BitStream(block.get_bitstring())
+        block_dump.byteswap()
+        if to_console:
+            f.write(block_dump.hex + "\n")
+        else:
+            block_dump.tofile(f)
+
+    if args.format == "default":
+        if to_console:
+            # for "espefuse.py dump" cmd
+            for block in efuses.blocks:
+                block.print_block(block.get_bitstring(), "dump", debug=True)
+            return
+        else:
+            # for back compatibility to support "espefuse.py dump --file_name dump.bin"
+            args.format = "separated"
+
+    if args.format == "separated":
+        # each efuse block is placed in a separate file
         for block in efuses.blocks:
-            file_dump_name = args.file_name
-            place_for_index = file_dump_name.find(".bin")
-            file_dump_name = (
-                file_dump_name[:place_for_index]
-                + str(block.id)
-                + file_dump_name[place_for_index:]
-            )
-            print(file_dump_name)
-            with open(file_dump_name, "wb") as f:
-                block.get_bitstring().byteswap()
-                block.get_bitstring().tofile(f)
+            if not to_console:
+                file_dump_name = args.file_name
+                fname, fextension = os.path.splitext(file_dump_name)
+                file_dump_name = f"{fname}{block.id}{fextension}"
+                print(f"Dump efuse block{block.id} -> {file_dump_name}")
+                dump_file = open(file_dump_name, "wb")
+            output_block_to_file(block, dump_file, to_console)
+            if not to_console:
+                dump_file.close()
+    elif args.format == "united":
+        # all efuse blocks are stored in one file
+        if not to_console:
+            print(f"Dump efuse blocks -> {args.file_name}")
+            dump_file = open(args.file_name, "wb")
+        for block in efuses.blocks:
+            output_block_to_file(block, dump_file, to_console)
+        if not to_console:
+            dump_file.close()
 
 
 def burn_efuse(esp, efuses, args):

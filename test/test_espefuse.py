@@ -73,6 +73,7 @@ class EfuseTestCase:
                 f"{sys.executable} -m espefuse --chip {arg_chip} "
                 f"--virt --path-efuse-file {self.efuse_file.name} -d"
             )
+            self._set_target_wafer_version()
         else:
             self.base_cmd = (
                 f"{sys.executable} -m espefuse --chip {arg_chip} "
@@ -116,6 +117,11 @@ class EfuseTestCase:
 
     def _set_none_recovery_coding_scheme(self):
         self.espefuse_py("burn_efuse CODING_SCHEME 3")
+
+    def _set_target_wafer_version(self):
+        # ESP32 has to be ECO3 (v3.0) for tests
+        if arg_chip == "esp32":
+            self.espefuse_py("burn_efuse CHIP_VER_REV1 1 CHIP_VER_REV2 1")
 
     def check_data_block_in_log(
         self, log, file_path, repeat=1, reverse_order=False, offset=0
@@ -176,6 +182,18 @@ class TestReadCommands(EfuseTestCase):
     def test_dump(self):
         self.espefuse_py("dump -h")
         self.espefuse_py("dump")
+
+    def test_dump_format_united(self):
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        self.espefuse_py(f"dump --format united --file_name {tmp_file.name}")
+
+    def test_dump_separated_default(self):
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        self.espefuse_py(f"dump --file_name {tmp_file.name}")
+
+    def test_dump_separated(self):
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        self.espefuse_py(f"dump --format separated --file_name {tmp_file.name}")
 
     def test_summary(self):
         self.espefuse_py("summary -h")

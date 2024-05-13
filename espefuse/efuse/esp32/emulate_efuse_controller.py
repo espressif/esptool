@@ -38,12 +38,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
         if addr == self.REGS.APB_CTL_DATE_ADDR:
             return self.REGS.APB_CTL_DATE_V << self.REGS.APB_CTL_DATE_S
         else:
-            val = 0
-            if addr == self.REGS.EFUSE_BLK0_RDATA3_REG:
-                val = self.REGS.EFUSE_RD_CHIP_VER_REV1
-            if addr == self.REGS.EFUSE_BLK0_RDATA5_REG:
-                val = self.REGS.EFUSE_RD_CHIP_VER_REV2
-            return val | super(EmulateEfuseController, self).read_reg(addr)
+            return super(EmulateEfuseController, self).read_reg(addr)
 
     """ << esptool method end """
 

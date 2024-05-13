@@ -39,13 +39,15 @@ SUPPORTED_BURN_COMMANDS = [
     "execute_scripts",
 ]
 
-SUPPORTED_COMMANDS = [
+SUPPORTED_READ_COMMANDS = [
     "summary",
     "dump",
     "get_custom_mac",
     "adc_info",
     "check_error",
-] + SUPPORTED_BURN_COMMANDS
+]
+
+SUPPORTED_COMMANDS = SUPPORTED_READ_COMMANDS + SUPPORTED_BURN_COMMANDS
 
 SUPPORTED_CHIPS = {
     "esp32": DefChip("ESP32", esp32_efuse, esptool.targets.ESP32ROM),
@@ -228,7 +230,7 @@ def main(custom_commandline=None, esp=None):
     )
 
     common_args, remaining_args = init_parser.parse_known_args(custom_commandline)
-    debug_mode = common_args.debug or ("dump" in remaining_args)
+    debug_mode = common_args.debug
     just_print_help = [
         True for arg in remaining_args if arg in ["--help", "-h"]
     ] or remaining_args == []
@@ -304,6 +306,22 @@ def main(custom_commandline=None, esp=None):
             if not efuses.burn_all(check_batch_mode=True):
                 raise esptool.FatalError("BURN was not done")
             print("Successful")
+
+        if (
+            sum(cmd in SUPPORTED_BURN_COMMANDS for cmd in used_cmds) > 0
+            and sum(cmd in SUPPORTED_READ_COMMANDS for cmd in used_cmds) > 0
+        ):
+            # [burn_cmd1] [burn_cmd2] [read_cmd1] [burn_cmd3] [read_cmd2]
+            print("\n=== Run read commands after burn commands ===")
+            for rem_args in grouped_remaining_args:
+                args, unused_args = parser.parse_known_args(
+                    rem_args, namespace=common_args
+                )
+                current_cmd = args.operation
+                if current_cmd in SUPPORTED_READ_COMMANDS:
+                    print(f"\n=== Run {args.operation} command ===")
+                    operation_func = vars(efuse_operations)[current_cmd]
+                    operation_func(esp, efuses, args)
     finally:
         if not external_esp and not common_args.virt and esp._port:
             esp._port.close()
