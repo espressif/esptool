@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import struct
+from typing import Dict
 
 from .esp32c6 import ESP32C6ROM
 
@@ -59,6 +60,26 @@ class ESP32C61ROM(ESP32C6ROM):
     ]
 
     UF2_FAMILY_ID = 0x77D850C4
+
+    EFUSE_MAX_KEY = 5
+    KEY_PURPOSES: Dict[int, str] = {
+        0: "USER/EMPTY",
+        1: "ECDSA_KEY",
+        2: "XTS_AES_256_KEY_1",
+        3: "XTS_AES_256_KEY_2",
+        4: "XTS_AES_128_KEY",
+        5: "HMAC_DOWN_ALL",
+        6: "HMAC_DOWN_JTAG",
+        7: "HMAC_DOWN_DIGITAL_SIGNATURE",
+        8: "HMAC_UP",
+        9: "SECURE_BOOT_DIGEST0",
+        10: "SECURE_BOOT_DIGEST1",
+        11: "SECURE_BOOT_DIGEST2",
+        12: "KM_INIT_KEY",
+        13: "XTS_AES_256_KEY_1_PSRAM",
+        14: "XTS_AES_256_KEY_2_PSRAM",
+        15: "XTS_AES_128_KEY_PSRAM",
+    }
 
     def get_chip_description(self):
         chip_name = {

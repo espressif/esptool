@@ -1284,7 +1284,16 @@ def get_security_info(esp, args):
     print(title)
     print("=" * len(title))
     print("Flags: {:#010x} ({})".format(si["flags"], bin(si["flags"])))
-    print("Key Purposes: {}".format(si["key_purposes"]))
+    if esp.KEY_PURPOSES:
+        print(f"Key Purposes: {si['key_purposes']}")
+        desc = "\n  ".join(
+            [
+                f"BLOCK_KEY{key_num} - {esp.KEY_PURPOSES.get(purpose, 'UNKNOWN')}"
+                for key_num, purpose in enumerate(si["key_purposes"])
+                if key_num <= esp.EFUSE_MAX_KEY
+            ]
+        )
+        print(f"  {desc}")
     if si["chip_id"] is not None and si["api_version"] is not None:
         print("Chip ID: {}".format(si["chip_id"]))
         print("API Version: {}".format(si["api_version"]))

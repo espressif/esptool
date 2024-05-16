@@ -5,7 +5,7 @@
 
 import struct
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 from ..loader import ESPLoader
 from ..util import FatalError, NotSupportedError
@@ -124,6 +124,8 @@ class ESP32ROM(ESPLoader):
     FLASH_ENCRYPTED_WRITE_ALIGN = 32
 
     UF2_FAMILY_ID = 0x1C5F21B0
+
+    KEY_PURPOSES: Dict[int, str] = {}
 
     """ Try to read the BLOCK1 (encryption key) and check if it is valid """
 

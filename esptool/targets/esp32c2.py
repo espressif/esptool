@@ -5,6 +5,7 @@
 
 import struct
 import time
+from typing import Dict
 
 from .esp32c3 import ESP32C3ROM
 from ..loader import ESPLoader
@@ -63,6 +64,8 @@ class ESP32C2ROM(ESP32C3ROM):
     ]
 
     UF2_FAMILY_ID = 0x2B88D29C
+
+    KEY_PURPOSES: Dict[int, str] = {}
 
     def get_pkg_version(self):
         num_word = 1

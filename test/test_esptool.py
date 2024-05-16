@@ -670,7 +670,8 @@ class TestSecurityInfo(EsptoolTestCase):
         res = self.run_esptool("get_security_info")
         assert "Flags" in res
         assert "Crypt Count" in res
-        assert "Key Purposes" in res
+        if arg_chip != "esp32c2":
+            assert "Key Purposes" in res
         if arg_chip != "esp32s2":
             try:
                 esp = esptool.get_default_connected_device(
