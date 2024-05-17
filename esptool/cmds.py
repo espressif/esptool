@@ -1039,8 +1039,6 @@ def elf2image(args):
         args.chip = "esp8266"
 
     print("Creating {} image...".format(args.chip))
-    if args.ram_only_header:
-        print("ROM segments hidden - only RAM segments are visible to the ROM loader!")
 
     if args.chip != "esp8266":
         image = CHIP_DEFS[args.chip].BOOTLOADER_IMAGE()
@@ -1075,6 +1073,10 @@ def elf2image(args):
     if args.elf_sha256_offset:
         image.elf_sha256 = e.sha256()
         image.elf_sha256_offset = args.elf_sha256_offset
+
+    if args.ram_only_header:
+        print("ROM segments hidden - only RAM segments are visible to the ROM loader!")
+        image.sort_segments()
 
     before = len(image.segments)
     image.merge_adjacent_segments()

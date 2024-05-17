@@ -352,6 +352,11 @@ class BaseFirmwareImage(object):
         irom_segment = self.get_irom_segment()
         return [s for s in self.segments if s != irom_segment]
 
+    def sort_segments(self):
+        if not self.segments:
+            return  # nothing to sort
+        self.segments = sorted(self.segments, key=lambda s: s.addr)
+
     def merge_adjacent_segments(self):
         if not self.segments:
             return  # nothing to merge
