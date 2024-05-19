@@ -760,8 +760,10 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                         self.ROM_LOADER.BOOTLOADER_FLASH_OFFSET - self.SEG_HEADER_LEN
                     )
                     if pad_len < align_min:
-                        print("Unable to align the segment!")
-                        break
+                        # in case pad_len does not fit minimum alignment,
+                        # pad it to next aligned boundary
+                        pad_len += self.IROM_ALIGN
+
                     pad_len -= self.ROM_LOADER.BOOTLOADER_FLASH_OFFSET
                     pad_segment = ImageSegment(0, b"\x00" * pad_len, f.tell())
                     self.save_segment(f, pad_segment)
