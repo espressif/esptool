@@ -26,6 +26,31 @@ if os.name != "nt":
 DEFAULT_RESET_DELAY = 0.05  # default time to wait before releasing boot pin after reset
 
 
+def reconnect(f):
+    def wrapper(*args):
+        """
+        On targets with native USB, the reset process can cause the port to
+        disconnect / reconnect during reset.
+        This will retry reconnections for up to 10 seconds on ports that drop
+        out during the RTS/DTS reset process.
+        """
+        self = args[0]
+        for retry in reversed(range(20)):
+            try:
+                if not self.port.isOpen():
+                    self.port.open()
+                ret = f(*args)
+                break
+            except OSError:
+                if not retry:
+                    raise
+                self.port.close()
+                time.sleep(0.5)
+        return ret
+
+    return wrapper
+
+
 class ResetStrategy(object):
     print_once = PrintOnce()
 
@@ -51,9 +76,11 @@ class ResetStrategy(object):
     def reset(self):
         pass
 
+    @reconnect
     def _setDTR(self, state):
         self.port.setDTR(state)
 
+    @reconnect
     def _setRTS(self, state):
         self.port.setRTS(state)
         # Work-around for adapters on Windows using the usbser.sys driver:
@@ -61,6 +88,7 @@ class ResetStrategy(object):
         # request is sent with the updated RTS state and the same DTR state
         self.port.setDTR(self.port.dtr)
 
+    @reconnect
     def _setDTRandRTS(self, dtr=False, rts=False):
         status = struct.unpack(
             "I", fcntl.ioctl(self.port.fileno(), TIOCMGET, struct.pack("I", 0))
