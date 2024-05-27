@@ -211,6 +211,7 @@ class TestSigning(EspSecureTestCase):
             "rsa_secure_boot_signing_key.pem",
             "ecdsa192_secure_boot_signing_key.pem",
             "ecdsa_secure_boot_signing_key.pem",
+            "ecdsa384_secure_boot_signing_key.pem",
         ]
         for key in signing_keys:
             try:
@@ -411,11 +412,13 @@ class TestSigning(EspSecureTestCase):
             "rsa_secure_boot_signing_pubkey.pem",
             "ecdsa192_secure_boot_signing_pubkey.pem",
             "ecdsa_secure_boot_signing_pubkey.pem",
+            "ecdsa384_secure_boot_signing_pubkey.pem",
         ]
         pre_calculated_signatures = [
             "pre_calculated_bootloader_signature_rsa.bin",
             "pre_calculated_bootloader_signature_ecdsa192.bin",
             "pre_calculated_bootloader_signature_ecdsa256.bin",
+            "pre_calculated_bootloader_signature_ecdsa384.bin",
         ]
         for pub_key, signature in zip(signing_keys, pre_calculated_signatures):
             try:
@@ -497,6 +500,16 @@ class TestSigning(EspSecureTestCase):
         )
         espsecure.verify_signature(args)
 
+        # correct key v2 (ecdsa384)
+        args = self.VerifyArgs(
+            "2",
+            False,
+            None,
+            self._open("ecdsa384_secure_boot_signing_key.pem"),
+            self._open("bootloader_signed_v2_ecdsa384.bin"),
+        )
+        espsecure.verify_signature(args)
+
         # correct key v2 (ecdsa256)
         args = self.VerifyArgs(
             "2",
@@ -552,6 +565,18 @@ class TestSigning(EspSecureTestCase):
         with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
         assert "Invalid datafile" in str(cm.value)
+
+        # wrong key v2 (ecdsa384)
+        args = self.VerifyArgs(
+            "2",
+            False,
+            None,
+            self._open("ecdsa384_secure_boot_signing_key2.pem"),
+            self._open("bootloader_signed_v2_ecdsa384.bin"),
+        )
+        with pytest.raises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        assert "Signature could not be verified with the provided key." in str(cm.value)
 
         # wrong key v2 (ecdsa256)
         args = self.VerifyArgs(
@@ -610,6 +635,16 @@ class TestSigning(EspSecureTestCase):
         )
         espsecure.verify_signature(args)
 
+        # correct key v2 (ecdsa384)
+        args = self.VerifyArgs(
+            "2",
+            False,
+            None,
+            self._open("ecdsa384_secure_boot_signing_pubkey.pem"),
+            self._open("bootloader_signed_v2_ecdsa384.bin"),
+        )
+        espsecure.verify_signature(args)
+
         # correct key v2 (ecdsa256)
         args = self.VerifyArgs(
             "2",
@@ -649,6 +684,18 @@ class TestSigning(EspSecureTestCase):
             None,
             self._open("rsa_secure_boot_signing_pubkey2.pem"),
             self._open("bootloader_signed_v2.bin"),
+        )
+        with pytest.raises(esptool.FatalError) as cm:
+            espsecure.verify_signature(args)
+        assert "Signature could not be verified with the provided key." in str(cm.value)
+
+        # wrong key v2 (ecdsa384)
+        args = self.VerifyArgs(
+            "2",
+            False,
+            None,
+            self._open("ecdsa384_secure_boot_signing_pubkey2.pem"),
+            self._open("bootloader_signed_v2_ecdsa384.bin"),
         )
         with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
@@ -728,7 +775,7 @@ class TestSigning(EspSecureTestCase):
             # We need to manually delete the keyfile as we are iterating over
             # different schemes with the same keyfile so instead of using addCleanup,
             # we remove it using os.remove at the end of each pass
-            for scheme in ["rsa3072", "ecdsa192", "ecdsa256"]:
+            for scheme in ["rsa3072", "ecdsa192", "ecdsa256", "ecdsa384"]:
                 args = self.GenerateKeyArgs("2", scheme, keyfile_name)
                 espsecure.generate_signing_key(args)
 
