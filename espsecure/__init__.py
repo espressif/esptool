@@ -31,9 +31,14 @@ SIG_BLOCK_MAGIC = 0xE7
 SIG_BLOCK_VERSION_RSA = 0x02
 SIG_BLOCK_VERSION_ECDSA = 0x03
 
+# SHA scheme used in Secure Boot V2 ECDSA signature blocks
+ECDSA_SHA_256 = 0x0
+ECDSA_SHA_384 = 0x1
+
 # Curve IDs used in Secure Boot V2 ECDSA signature blocks
 CURVE_ID_P192 = 1
 CURVE_ID_P256 = 2
+CURVE_ID_P384 = 3
 
 SECTOR_SIZE = 4096
 SIG_BLOCK_SIZE = (
@@ -182,23 +187,21 @@ def generate_signing_key(args):
             )
             with open(args.keyfile, "wb") as f:
                 f.write(private_key)
-            print("RSA 3072 private key in PEM format written to %s" % args.keyfile)
+            print(f"RSA 3072 private key in PEM format written to {args.keyfile}")
         elif args.scheme == "ecdsa192":
             """Generate a ECDSA 192 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ecdsa.NIST192p, args.keyfile)
-            print(
-                "ECDSA NIST192p private key in PEM format written to %s" % args.keyfile
-            )
+            print(f"ECDSA NIST192p private key in PEM format written to {args.keyfile}")
         elif args.scheme == "ecdsa256":
             """Generate a ECDSA 256 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ecdsa.NIST256p, args.keyfile)
-            print(
-                "ECDSA NIST256p private key in PEM format written to %s" % args.keyfile
-            )
+            print(f"ECDSA NIST256p private key in PEM format written to {args.keyfile}")
+        elif args.scheme == "ecdsa384":
+            """Generate a ECDSA 384 signing key for signing secure boot images"""
+            _generate_ecdsa_signing_key(ecdsa.NIST384p, args.keyfile)
+            print(f"ECDSA NIST384p private key in PEM format written to {args.keyfile}")
         else:
-            raise esptool.FatalError(
-                "ERROR: Unsupported signing scheme (%s)" % args.scheme
-            )
+            raise esptool.FatalError("ERROR: Unsupported signing scheme {args.scheme}")
 
 
 def load_ecdsa_signing_key(keyfile):
@@ -260,12 +263,10 @@ def _load_sbv2_signing_key(keydata):
             )
         return sk
     if isinstance(sk, ec.EllipticCurvePrivateKey):
-        if not (
-            isinstance(sk.curve, ec.SECP192R1) or isinstance(sk.curve, ec.SECP256R1)
-        ):
+        if not isinstance(sk.curve, (ec.SECP192R1, ec.SECP256R1, ec.SECP384R1)):
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
-                "NIST192p, NIST256p (aka prime192v1, prime256v1)"
+                "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, prime256v1 / secp256r1, secp384r1)"
             )
         return sk
 
@@ -285,12 +286,10 @@ def _load_sbv2_pub_key(keydata):
             )
         return vk
     if isinstance(vk, ec.EllipticCurvePublicKey):
-        if not (
-            isinstance(vk.curve, ec.SECP192R1) or isinstance(vk.curve, ec.SECP256R1)
-        ):
+        if not isinstance(vk.curve, (ec.SECP192R1, ec.SECP256R1, ec.SECP384R1)):
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
-                "NIST192p, NIST256p (aka prime192v1, prime256v1)"
+                "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, prime256v1 / secp256r1, secp384r1)"
             )
         return vk
 
@@ -338,7 +337,7 @@ def _microecc_format(a, b, curve_len):
     """
     byte_len = int(curve_len / 8)
     ab = int_to_bytes(a, byte_len)[::-1] + int_to_bytes(b, byte_len)[::-1]
-    assert len(ab) == 48 or len(ab) == 64
+    assert len(ab) in [48, 64, 96]
     return ab
 
 
@@ -402,7 +401,7 @@ def sign_secure_boot_v1(args):
 def sign_secure_boot_v2(args):
     """
     Sign a firmware app image with an RSA private key using RSA-PSS,
-    or ECDSA private key using P192 or P256.
+    or ECDSA private key using P192 or P256 or P384.
 
     Write output file with a Secure Boot V2 header appended.
     """
@@ -496,20 +495,16 @@ def sign_secure_boot_v2(args):
         )
 
     print(f"{key_count} signing key(s) found.")
-    # Calculate digest of data file
-    digest = hashlib.sha256()
-    digest.update(contents)
-    digest = digest.digest()
 
     # Generate signature block using pre-calculated signatures
     if signature:
         signature_block = generate_signature_block_using_pre_calculated_signature(
-            signature, pub_key, digest
+            signature, pub_key, contents
         )
     # Generate signature block by signing using private keys
     else:
         signature_block = generate_signature_block_using_private_key(
-            args.keyfile, digest
+            args.keyfile, contents
         )
 
     if signature_block is None or len(signature_block) == 0:
@@ -560,13 +555,17 @@ def generate_signature_using_hsm(config, contents):
     return [temp_signature_file]
 
 
-def generate_signature_block_using_pre_calculated_signature(signature, pub_key, digest):
+def generate_signature_block_using_pre_calculated_signature(
+    signature, pub_key, contents
+):
     signature_blocks = b""
     for sig, pk in zip(signature, pub_key):
         try:
             public_key = _get_sbv2_pub_key(pk)
             signature = sig.read()
             if isinstance(public_key, rsa.RSAPublicKey):
+                # Calculate digest of data file
+                digest = _sha256_digest(contents)
                 # RSA signature
                 rsa_primitives = _get_sbv2_rsa_primitives(public_key)
                 # Verify the signature
@@ -586,15 +585,24 @@ def generate_signature_block_using_pre_calculated_signature(signature, pub_key, 
                 if isinstance(numbers.curve, ec.SECP192R1):
                     curve_len = 192
                     curve_id = CURVE_ID_P192
+                    hash_type = hashes.SHA256()
+                    digest = _sha256_digest(contents)
                 elif isinstance(numbers.curve, ec.SECP256R1):
                     curve_len = 256
                     curve_id = CURVE_ID_P256
+                    hash_type = hashes.SHA256()
+                    digest = _sha256_digest(contents)
+                elif isinstance(numbers.curve, ec.SECP384R1):
+                    curve_len = 384
+                    curve_id = CURVE_ID_P384
+                    hash_type = hashes.SHA384()
+                    digest = _sha384_digest(contents)
                 else:
                     raise esptool.FatalError("Invalid ECDSA curve instance.")
 
                 # Verify the signature
                 public_key.verify(
-                    signature, digest, ec.ECDSA(utils.Prehashed(hashes.SHA256()))
+                    signature, digest, ec.ECDSA(utils.Prehashed(hash_type))
                 )
 
                 pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
@@ -619,13 +627,14 @@ def generate_signature_block_using_pre_calculated_signature(signature, pub_key, 
     return signature_blocks
 
 
-def generate_signature_block_using_private_key(keyfiles, digest):
+def generate_signature_block_using_private_key(keyfiles, contents):
     signature_blocks = b""
     for keyfile in keyfiles:
         private_key = _load_sbv2_signing_key(keyfile.read())
 
         # Sign
         if isinstance(private_key, rsa.RSAPrivateKey):
+            digest = _sha256_digest(contents)
             # RSA signature
             signature = private_key.sign(
                 digest,
@@ -640,20 +649,27 @@ def generate_signature_block_using_private_key(keyfiles, digest):
                 digest, rsa_primitives, signature
             )
         else:
-            # ECDSA signature
-            signature = private_key.sign(
-                digest, ec.ECDSA(utils.Prehashed(hashes.SHA256()))
-            )
-
             numbers = private_key.public_key().public_numbers()
             if isinstance(private_key.curve, ec.SECP192R1):
                 curve_len = 192
                 curve_id = CURVE_ID_P192
+                hash_type = hashes.SHA256()
+                digest = _sha256_digest(contents)
             elif isinstance(numbers.curve, ec.SECP256R1):
                 curve_len = 256
                 curve_id = CURVE_ID_P256
+                hash_type = hashes.SHA256()
+                digest = _sha256_digest(contents)
+            elif isinstance(numbers.curve, ec.SECP384R1):
+                curve_len = 384
+                curve_id = CURVE_ID_P384
+                hash_type = hashes.SHA384()
+                digest = _sha384_digest(contents)
             else:
                 raise esptool.FatalError("Invalid ECDSA curve instance.")
+
+            # ECDSA signatures
+            signature = private_key.sign(digest, ec.ECDSA(utils.Prehashed(hash_type)))
 
             pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
 
@@ -703,15 +719,34 @@ def generate_ecdsa_signature_block(digest, curve_id, pubkey_point, signature_rs)
     # block is padded out to the much larger size
     # of the RSA version of this structure
     """
-    signature_block = struct.pack(
-        "<BBxx32sB64s64s1031x",
-        SIG_BLOCK_MAGIC,
-        SIG_BLOCK_VERSION_ECDSA,
-        digest,
-        curve_id,
-        pubkey_point,
-        signature_rs,
-    )
+
+    if curve_id in [CURVE_ID_P192, CURVE_ID_P256]:
+        signature_block = struct.pack(
+            "<BBBx32sB64s64s1031x",
+            SIG_BLOCK_MAGIC,
+            SIG_BLOCK_VERSION_ECDSA,
+            ECDSA_SHA_256,
+            digest,
+            curve_id,
+            pubkey_point,
+            signature_rs,
+        )
+    elif curve_id == CURVE_ID_P384:
+        signature_block = struct.pack(
+            "<BBBx48sB96s96s951x",
+            SIG_BLOCK_MAGIC,
+            SIG_BLOCK_VERSION_ECDSA,
+            ECDSA_SHA_384,
+            digest,
+            curve_id,
+            pubkey_point,
+            signature_rs,
+        )
+    else:
+        raise esptool.FatalError(
+            "Invalid ECDSA curve ID detected while generating ECDSA signature block."
+        )
+
     return signature_block
 
 
@@ -818,10 +853,6 @@ def verify_signature_v2(args):
             "Invalid datafile. Data size should be non-zero & a multiple of 4096."
         )
 
-    digest = digest = hashlib.sha256()
-    digest.update(image_content[:-SECTOR_SIZE])
-    digest = digest.digest()
-
     valid = False
 
     for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
@@ -829,7 +860,14 @@ def verify_signature_v2(args):
         if sig_blk is None:
             print(f"Signature block {sig_blk_num} invalid. Skipping.")
             continue
-        _, version, blk_digest = struct.unpack("<BBxx32s", sig_blk[:36])
+        _, version, ecdsa_sha_version = struct.unpack("<BBBx", sig_blk[:4])
+
+        if version == SIG_BLOCK_VERSION_ECDSA and ecdsa_sha_version == ECDSA_SHA_384:
+            blk_digest = struct.unpack("<48s", sig_blk[4:52])[0]
+            digest = _sha384_digest(image_content[:-SECTOR_SIZE])
+        else:
+            blk_digest = struct.unpack("<32s", sig_blk[4:36])[0]
+            digest = _sha256_digest(image_content[:-SECTOR_SIZE])
 
         if blk_digest != digest:
             raise esptool.FatalError(
@@ -849,22 +887,34 @@ def verify_signature_v2(args):
                     utils.Prehashed(hashes.SHA256()),
                 )
             else:
-                curve_id, _pubkey, encoded_rs = struct.unpack(
-                    "B64s64s1031x4x16x", sig_blk[36:]
-                )
+                if ecdsa_sha_version == ECDSA_SHA_256:
+                    curve_id, _pubkey, encoded_rs = struct.unpack(
+                        "B64s64s1031x4x16x", sig_blk[36:]
+                    )
+                elif ecdsa_sha_version == ECDSA_SHA_384:
+                    curve_id, _pubkey, encoded_rs = struct.unpack(
+                        "B96s96s951x4x16x", sig_blk[52:]
+                    )
 
-                assert curve_id in (CURVE_ID_P192, CURVE_ID_P256)
+                assert curve_id in (CURVE_ID_P192, CURVE_ID_P256, CURVE_ID_P384)
 
-                keylen = (
-                    24 if curve_id == CURVE_ID_P192 else 32
-                )  # length of each number in the keypair
+                # length of each number in the keypair
+                if curve_id == CURVE_ID_P192:
+                    keylen = 24
+                    hash_type = hashes.SHA256()
+                elif curve_id == CURVE_ID_P256:
+                    keylen = 32
+                    hash_type = hashes.SHA256()
+                elif curve_id == CURVE_ID_P384:
+                    keylen = 48
+                    hash_type = hashes.SHA384()
 
                 r = int.from_bytes(encoded_rs[:keylen], "little")
                 s = int.from_bytes(encoded_rs[keylen : keylen * 2], "little")
 
                 signature = utils.encode_dss_signature(r, s)
 
-                vk.verify(signature, digest, ec.ECDSA(utils.Prehashed(hashes.SHA256())))
+                vk.verify(signature, digest, ec.ECDSA(utils.Prehashed(hash_type)))
 
             key_type = "RSA" if isinstance(vk, rsa.RSAPublicKey) else "ECDSA"
 
@@ -937,6 +987,13 @@ def _sha256_digest(data):
     return digest.digest()
 
 
+def _sha384_digest(contents):
+    # Calculate digest of data file
+    digest = hashlib.sha384()
+    digest.update(contents)
+    return digest.digest()
+
+
 def signature_info_v2(args):
     """
     Validates the signature block and prints the RSA/ECDSA public key
@@ -950,8 +1007,6 @@ def signature_info_v2(args):
             "Invalid datafile. Data size should be non-zero & a multiple of 4096."
         )
 
-    digest = _sha256_digest(image_content[:-SECTOR_SIZE])
-
     for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
         sig_blk = validate_signature_block(image_content, sig_blk_num)
         if sig_blk is None:
@@ -961,7 +1016,15 @@ def signature_info_v2(args):
             )
             return
 
-        sig_data = struct.unpack("<BBxx32s384sI384sI384sI16x", sig_blk)
+        _, version, ecdsa_sha_version = struct.unpack("<BBBx", sig_blk[:4])
+
+        if version == SIG_BLOCK_VERSION_ECDSA and ecdsa_sha_version == ECDSA_SHA_384:
+            sig_data = struct.unpack("<BBxx48s1164x", sig_blk)
+            digest = _sha384_digest(image_content[:-SECTOR_SIZE])
+        else:
+            sig_data = struct.unpack("<BBxx32s1180x", sig_blk)
+            digest = _sha256_digest(image_content[:-SECTOR_SIZE])
+
         if sig_data[2] != digest:
             raise esptool.FatalError(
                 "Digest in signature block %d doesn't match the image digest."
@@ -973,7 +1036,10 @@ def signature_info_v2(args):
         if sig_data[1] == SIG_BLOCK_VERSION_RSA:
             key_digest = _sha256_digest(sig_blk[36:812])
         elif sig_data[1] == SIG_BLOCK_VERSION_ECDSA:
-            key_digest = _sha256_digest(sig_blk[36:101])
+            if ecdsa_sha_version == ECDSA_SHA_384:
+                key_digest = _sha256_digest(sig_blk[52:149])
+            else:
+                key_digest = _sha256_digest(sig_blk[36:101])
         else:
             raise esptool.FatalError(
                 "Unsupported scheme in signature block %d" % (sig_blk_num)
@@ -1009,16 +1075,27 @@ def _digest_sbv2_public_key(keyfile):
         if isinstance(public_key.curve, ec.SECP192R1):
             curve_len = 192
             curve_id = CURVE_ID_P192
-        else:
+        elif isinstance(public_key.curve, ec.SECP256R1):
             curve_len = 256
             curve_id = CURVE_ID_P256
+        elif isinstance(public_key.curve, ec.SECP384R1):
+            curve_len = 384
+            curve_id = CURVE_ID_P384
+
         pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
 
-        binary_format = struct.pack(
-            "<B64s",
-            curve_id,
-            pubkey_point,
-        )
+        if curve_id == CURVE_ID_P384:
+            binary_format = struct.pack(
+                "<B96s",
+                curve_id,
+                pubkey_point,
+            )
+        else:
+            binary_format = struct.pack(
+                "<B64s",
+                curve_id,
+                pubkey_point,
+            )
 
     return hashlib.sha256(binary_format).digest()
 
@@ -1465,7 +1542,7 @@ def main(custom_commandline=None):
         "as per the secure boot version. "
         "Key file is generated in PEM format, "
         "Secure Boot V1 - ECDSA NIST256p private key. "
-        "Secure Boot V2 - RSA 3072, ECDSA NIST256p, ECDSA NIST192p private key.",
+        "Secure Boot V2 - RSA 3072, ECDSA NIST384p, ECDSA NIST256p, ECDSA NIST192p private key.",
     )
     p.add_argument(
         "--version",
@@ -1478,7 +1555,7 @@ def main(custom_commandline=None):
         "--scheme",
         "-s",
         help="Scheme of secure boot signing.",
-        choices=["rsa3072", "ecdsa192", "ecdsa256"],
+        choices=["rsa3072", "ecdsa192", "ecdsa256", "ecdsa384"],
         required=False,
     )
     p.add_argument(
@@ -1489,7 +1566,7 @@ def main(custom_commandline=None):
         "sign_data",
         help="Sign a data file for use with secure boot. "
         "Signing algorithm is deterministic ECDSA w/ SHA-512 (V1) "
-        "or either RSA-PSS or ECDSA w/ SHA-256 (V2).",
+        "or either RSA-PSS or ECDSA w/ SHA-256 or ECDSA w/ SHA-384 (V2).",
     )
     p.add_argument(
         "--version",
@@ -1509,7 +1586,7 @@ def main(custom_commandline=None):
         "--append_signatures",
         "-a",
         help="Append signature block(s) to already signed image. "
-        "Valid only for ESP32-S2.",
+        "Not valid for ESP32 and ESP32-C2.",
         action="store_true",
     )
     p.add_argument(
