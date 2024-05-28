@@ -496,7 +496,7 @@ def main(argv=None, esp=None):
         "quantity. This will make the other segments invisible to the ROM "
         "loader. Use this argument with care because the ROM loader will load "
         "only the RAM segments although the other segments being present in "
-        "the output.",
+        "the output. Implies --dont-append-digest",
         action="store_true",
         default=None,
     )

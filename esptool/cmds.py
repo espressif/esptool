@@ -1050,7 +1050,10 @@ def elf2image(args):
         image.min_rev_full = args.min_rev_full
         image.max_rev_full = args.max_rev_full
         image.ram_only_header = args.ram_only_header
-        image.append_digest = args.append_digest
+        if image.ram_only_header:
+            image.append_digest = False
+        else:
+            image.append_digest = args.append_digest
     elif args.version == "1":  # ESP8266
         image = ESP8266ROMFirmwareImage()
     elif args.version == "2":
@@ -1075,7 +1078,10 @@ def elf2image(args):
         image.elf_sha256_offset = args.elf_sha256_offset
 
     if args.ram_only_header:
-        print("ROM segments hidden - only RAM segments are visible to the ROM loader!")
+        print(
+            "Image has only RAM segments visible. "
+            "ROM segments are hidden and SHA256 digest is not appended."
+        )
         image.sort_segments()
 
     before = len(image.segments)
