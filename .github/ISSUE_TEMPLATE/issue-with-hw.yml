@@ -7,7 +7,7 @@ body:
       value: |
         * Most failures to connect, flash, etc. are problems with the hardware.
         * Please check any guide that came with your hardware, and also check [the esptool troubleshooting guide](https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html).
-        * If your board is a custom design, consider using our [free-of-charge schematic and PCB review service](https://www.espressif.com/en/contact-us/circuit-schematic-pcb-design-review).
+        * If your board is a custom design, check the [ESP Hardware Design Guidelines](https://docs.espressif.com/projects/esp-hardware-design-guidelines/) and consider using our [free-of-charge schematic and PCB review service](https://www.espressif.com/en/contact-us/circuit-schematic-pcb-design-review).
         * If still experiencing the issue, please provide as many details as possible below about your hardware and computer setup.
   - type: input
     id: os
