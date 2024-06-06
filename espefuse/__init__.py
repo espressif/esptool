@@ -94,6 +94,8 @@ def get_esp(
             )
             if not skip_connect:
                 esp.connect(connect_mode)
+                if esp.sync_stub_detected:
+                    esp = esp.STUB_CLASS(esp)
     return esp
 
 
