@@ -7,6 +7,7 @@ import time
 
 from .esp32c6 import ESP32C6ROM
 from ..loader import ESPLoader
+from ..reset import HardReset
 
 
 class ESP32C5ROM(ESP32C6ROM):
@@ -23,6 +24,8 @@ class ESP32C5ROM(ESP32C6ROM):
     PCR_SYSCLK_CONF_REG = 0x60096110
     PCR_SYSCLK_XTAL_FREQ_V = 0x7F << 24
     PCR_SYSCLK_XTAL_FREQ_S = 24
+
+    UARTDEV_BUF_NO = 0x4085F51C  # Variable in ROM .bss which indicates the port in use
 
     # Magic value for ESP32C5
     CHIP_DETECT_MAGIC_VALUE = [0x8082C5DC]
@@ -66,6 +69,10 @@ class ESP32C5ROM(ESP32C6ROM):
         return (
             self.read_reg(self.PCR_SYSCLK_CONF_REG) & self.PCR_SYSCLK_XTAL_FREQ_V
         ) >> self.PCR_SYSCLK_XTAL_FREQ_S
+
+    def hard_reset(self):
+        print("Hard resetting via RTS pin...")
+        HardReset(self._port, self.uses_usb_jtag_serial())()
 
     def change_baud(self, baud):
         if not self.IS_STUB:

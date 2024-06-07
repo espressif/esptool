@@ -148,13 +148,13 @@ class HardReset(ResetStrategy):
     Can be used to reset out of the bootloader or to restart a running app.
     """
 
-    def __init__(self, port, uses_usb_otg=False):
+    def __init__(self, port, uses_usb=False):
         super().__init__(port)
-        self.uses_usb_otg = uses_usb_otg
+        self.uses_usb = uses_usb
 
     def reset(self):
         self._setRTS(True)  # EN->LOW
-        if self.uses_usb_otg:
+        if self.uses_usb:
             # Give the chip some time to come out of reset,
             # to be able to handle further DTR/RTS transitions
             time.sleep(0.2)
