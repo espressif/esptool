@@ -68,6 +68,13 @@ class ESP32P4ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
+    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
+
+    GPIO_STRAP_REG = 0x500E0038
+    GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
+    RTC_CNTL_OPTION1_REG = 0x50110008
+    RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x4  # Is download mode forced over USB?
+
     SUPPORTS_ENCRYPTED_FLASH = True
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
@@ -206,6 +213,8 @@ class ESP32P4ROM(ESP32ROM):
         ESPLoader.change_baud(self, baud)
 
     def _post_connect(self):
+        if self.uses_usb_otg():
+            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
         if not self.sync_stub_detected:  # Don't run if stub is reused
             self.disable_watchdogs()
 
@@ -262,7 +271,7 @@ class ESP32P4ROM(ESP32ROM):
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)  # lock
 
     def hard_reset(self):
-        if self.uses_usb_jtag_serial():
+        if self.uses_usb_jtag_serial() or self.uses_usb_otg():
             self.rtc_wdt_reset()
         else:
             ESPLoader.hard_reset(self)
@@ -285,6 +294,10 @@ class ESP32P4StubLoader(ESP32P4ROM):
         self._trace_enabled = rom_loader._trace_enabled
         self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
+
+        if rom_loader.uses_usb_otg():
+            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
+            self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
 
 
 ESP32P4ROM.STUB_CLASS = ESP32P4StubLoader
