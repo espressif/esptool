@@ -10,6 +10,10 @@ Positional arguments:
 - ``eFuse name``
 - ``value``
 
+Optional arguments:
+
+* ``--force``. Suppress an error to burn eFuses. The tool checks for incompatible eFuse states to prevent them from burning and potentially **bricking the chip**. Use this flag only if you are sure. This will suppress the eFuse incompatibility error.
+
 It can be list of eFuse names and values (like EFUSE_NAME1 1 EFUSE_NAME2 7 EFUSE_NAME3 10 etc.).
 
 New values can be a numeric value in decimal or hex (with "0x" prefix). eFuse bits can only be burned from 0 to 1, attempting to set any back to 0 will have no effect. Most eFuses have a limited bit width (many are only 1-bit flags). Longer eFuses (MAC addresses, keys) can be set with this command, but it's better to use a specific command (``burn_custom_mac``, ``burn_key``) for a specific field.

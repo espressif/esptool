@@ -296,6 +296,28 @@ class EspEfuses(base_fields.EspEfusesBase):
             output = "Flash voltage (VDD_SPI) set to 3.3V by efuse."
         return output
 
+    def is_efuses_incompatible_for_burn(self):
+        # getting chip version: self._esp.get_chip_revision()
+        if (
+            (
+                self["DIS_USB_JTAG"].get(from_read=True)
+                and self["DIS_USB_SERIAL_JTAG"].get(from_read=False)
+            )
+            or (
+                self["DIS_USB_JTAG"].get(from_read=False)
+                and self["DIS_USB_SERIAL_JTAG"].get(from_read=True)
+            )
+            or (
+                self["DIS_USB_JTAG"].get(from_read=False)
+                and self["DIS_USB_SERIAL_JTAG"].get(from_read=False)
+            )
+        ):
+            print(
+                "DIS_USB_JTAG and DIS_USB_SERIAL_JTAG cannot be set together due to a bug in the ROM bootloader"
+            )
+            return True
+        return False
+
 
 class EfuseField(base_fields.EfuseFieldBase):
     @staticmethod

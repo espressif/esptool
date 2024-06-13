@@ -649,6 +649,10 @@ class EspEfusesBase(object):
         """Returns (error count, failure boolean flag)"""
         return self.blocks[block_num].num_errors, self.blocks[block_num].fail
 
+    def is_efuses_incompatible_for_burn(self):
+        # Overwrite this function for a specific target if you want to check if a certain eFuse(s) can be burned.
+        return False
+
 
 class EfuseFieldBase(EfuseProtectBase):
     def __init__(self, parent, param):

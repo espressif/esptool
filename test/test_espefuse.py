@@ -801,6 +801,24 @@ class TestBurnEfuseCommands(EfuseTestCase):
             ADC2_TP_HIGH 45"
         )
 
+    @pytest.mark.skipif(
+        arg_chip != "esp32s3",
+        reason="Currently S3 only has this efuse incompatibility check",
+    )
+    def test_burn_efuse_incompatibility_check(self):
+        self.espefuse_py(
+            "burn_efuse DIS_USB_JTAG 1 DIS_USB_SERIAL_JTAG 1",
+            check_msg="Incompatible eFuse settings detected, abort",
+            ret_code=2,
+        )
+        self.espefuse_py("burn_efuse DIS_USB_JTAG 1")
+        self.espefuse_py(
+            "burn_efuse DIS_USB_SERIAL_JTAG 1",
+            check_msg="Incompatible eFuse settings detected, abort",
+            ret_code=2,
+        )
+        self.espefuse_py("burn_efuse DIS_USB_SERIAL_JTAG 1 --force")
+
 
 class TestBurnKeyCommands(EfuseTestCase):
     @pytest.mark.skipif(arg_chip != "esp32", reason="ESP32-only")

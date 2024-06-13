@@ -74,6 +74,11 @@ def add_common_commands(subparsers, efuses):
         + [name for e in efuses.efuses for name in e.alt_names if name != ""],
         efuses=efuses,
     )
+    burn.add_argument(
+        "--force",
+        help="Suppress an error to burn eFuses",
+        action="store_true",
+    )
 
     read_protect_efuse = subparsers.add_parser(
         "read_protect_efuse",
@@ -479,6 +484,14 @@ def burn_efuse(esp, efuses, args):
             "but after that connection to the chip will become impossible."
         )
         print("                        espefuse/esptool will not work.")
+
+    if efuses.is_efuses_incompatible_for_burn():
+        if args.force:
+            print("Ignore incompatible eFuse settings.")
+        else:
+            raise esptool.FatalError(
+                "Incompatible eFuse settings detected, abort. (use --force flag to skip it)."
+            )
 
     if not efuses.burn_all(check_batch_mode=True):
         return
