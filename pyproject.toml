@@ -69,3 +69,97 @@
 
 [tool.setuptools.packages]
     find = {exclude = ["ci", "flasher_stub", "test", "docs"]}
+
+[tool.setuptools.dynamic]
+    version = {attr = "esptool.__init__.__version__"}
+
+[tool.commitizen]
+    version = "4.7.0"
+    update_changelog_on_bump = true
+    tag_format = "v$version"
+    changelog_start_rev = "v4.2.1"
+    changelog_merge_prerelease = true
+    annotated_tag = true
+    bump_message = "change: Update version to $new_version"
+    version_files = [
+        "esptool/__init__.py:__version__"
+    ]
+    change_type_order = [
+        "BREAKING CHANGE",
+        "New Features",
+        "Bug Fixes",
+        "Code Refactoring",
+        "Performance Improvements"
+    ]
+
+[tool.commitizen.change_type_map]
+    feat = "New Features"
+    fix = "Bug Fixes"
+    refactor = "Code Refactoring"
+    perf = "Performance Improvements"
+
+[tool.codespell]
+    skip = '*.bin,*test/images/efuse/*,*docs/en/espefuse/inc/*'
+    ignore-words-list = 'bloc,ser,dout,exten'
+    write-changes = false
+
+[tool.mypy]
+    disallow_incomplete_defs = false # Disallows defining functions with incomplete type annotations
+    disallow_untyped_defs    = false # Disallows defining functions without type annotations or with incomplete type annotations
+    ignore_missing_imports   = true  # Suppress error messages about imports that cannot be resolved
+    python_version           = "3.7" # Specifies the Python version used to parse and check the target program
+    warn_no_return           = true  # Shows errors for missing return statements on some execution paths
+    warn_return_any          = true  # Shows a warning when returning a value with type Any from a function declared with a non- Any return type
+
+[tool.ruff]
+    # https://docs.astral.sh/ruff/settings/
+    # Exclude a variety of commonly ignored directories.
+    exclude = [
+        ".eggs",
+        ".git",
+        "__pycache__"
+    ]
+
+    line-length = 88
+
+    select = ['E', 'F', 'W']
+    ignore = ["E203"]
+
+    target-version = "py37"
+
+[tool.ruff.lint]
+    # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.
+    # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+    # McCabe complexity (`C901`) by default.
+    select = ["E4", "E7", "E9", "F"]
+    ignore = []
+
+    # Allow fix for all enabled rules (when `--fix`) is provided.
+    fixable = ["ALL"]
+    unfixable = []
+
+    # Allow unused variables when underscore-prefixed.
+    dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+    # tests often manipulate sys.path before importing the main tools, so ignore import order violations
+    "test/*.py" = ["E402"]
+
+    # multiple spaces after ',' and long lines - used for visual layout of eFuse data
+    "espefuse/efuse/*/mem_definition.py" =  ["E241", "E501"]
+    "espefuse/efuse/*/operations.py" =   ["E241", "E501", "F401"]
+    "espefuse/efuse/*/fields.py" =   ["E241", "E501"]
+
+    # ignore long lines - used for RS encoding pairs
+    "test/test_modules.py" = ["E501"]
+
+    # don't check for unused imports in __init__.py files
+    "__init__.py" = ["F401"]
+
+    # allow definition from star imports in docs config
+    "docs/conf_common.py" =  ["F405"]
+
+[tool.ruff.format]
+    quote-style = "double"
+    indent-style = "space"
+    docstring-code-format = true

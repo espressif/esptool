@@ -1,4 +1,0 @@
-[codespell]
-skip = *.bin,test/images/efuse/*,docs/en/espefuse/inc/*
-ignore-words-list = bloc,ser,dout,exten
-write-changes = false
