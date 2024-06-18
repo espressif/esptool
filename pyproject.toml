@@ -1,0 +1,71 @@
+[build-system]
+    requires = ["setuptools>=64"]
+    build-backend = "setuptools.build_meta"
+
+[project]
+    name = "esptool"
+    authors = [
+        {name = "Fredrik Ahlberg (themadinventor)"},
+        {name = "Angus Gratton (projectgus)"},
+        {name = "Espressif Systems"}
+    ]
+    readme = {file = "README.md", content-type = "text/markdown"}
+    license = {text = "GPLv2+"}
+    description = "A serial utility to communicate & flash code to Espressif chips."
+    classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Natural Language :: English",
+        "Operating System :: POSIX",
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: MacOS :: MacOS X",
+        "Topic :: Software Development :: Embedded Systems",
+        "Environment :: Console",
+        "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+    ]
+    requires-python = ">=3.7"
+    dynamic = ["version", "scripts"]
+
+    dependencies = [
+        "bitstring>=3.1.6",
+        "cryptography>=2.1.4",
+        "ecdsa>=0.16.0",
+        "pyserial>=3.3",
+        "reedsolo>=1.5.3,<1.8",
+        "PyYAML>=5.1",
+        "intelhex",
+    ]
+
+[project.urls]
+    Homepage = "https://github.com/espressif/esptool/"
+    Documentation = "https://docs.espressif.com/projects/esptool/"
+    Source = "https://github.com/espressif/esptool/"
+    Tracker = "https://github.com/espressif/esptool/issues/"
+    Changelog = "https://github.com/espressif/esptool/blob/master/CHANGELOG.md"
+
+[project.optional-dependencies]
+    dev = [
+        "pyelftools",
+        "coverage~=6.0",
+        "pre-commit",
+        "pytest",
+        "pytest-rerunfailures",
+        "requests",
+        "commitizen",
+    ]
+    hsm = ["python-pkcs11"]
+
+[tool.setuptools]
+    include-package-data = true
+
+[tool.setuptools.package-data]
+    "*" = ["esptool/targets/stub_flasher/*.json"]
+
+[tool.setuptools.packages]
+    find = {exclude = ["ci", "flasher_stub", "test", "docs"]}
