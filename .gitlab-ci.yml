@@ -104,19 +104,33 @@ host_tests:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_merge_bin.py
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_image_info.py
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_modules.py
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32c2
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32c3
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32s2
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32s3
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32s3beta2
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32h2beta1
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32c5
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32c5beta3
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32c6
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32c61
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32h2
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32p4
+    # some .coverage files in sub-directories are not collected on some runners, move them firs
+    - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
+
+host_tests_espefuse:
+  <<: *host_tests_template
+  variables:
+    PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+    PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
+  parallel:
+    matrix:
+      - TARGET:
+        - esp32
+        - esp32c2
+        - esp32c3
+        - esp32c5
+        - esp32c5beta3
+        - esp32c6
+        - esp32c61
+        - esp32h2
+        - esp32h2beta1
+        - esp32p4
+        - esp32s2
+        - esp32s3
+        - esp32s3beta2
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip ${TARGET}
     # some .coverage files in sub-directories are not collected on some runners, move them first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
 
