@@ -336,8 +336,9 @@ class ESPLoader(object):
                         [  # permission denied error
                             re.compile(r"Permission denied", re.IGNORECASE),
                             (
-                                "Try to add user into dialout group: "
-                                "sudo usermod -a -G dialout $USER"
+                                "Try to add user into a group that has serial port permissions: "
+                                "Ubuntu and ubuntu-based: sudo usermod -a -G dialout $USER"
+                                "Arch: sudo usermod -a -G uucp $USER"
                             ),
                         ],
                     )
