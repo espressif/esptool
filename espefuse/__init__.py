@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2016-2022 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+# PYTHON_ARGCOMPLETE_OK
 
 import argparse
 import os
@@ -284,6 +285,15 @@ def main(custom_commandline=None, esp=None):
     )
 
     efuse_operations.add_commands(subparsers, efuses)
+
+    # Enable argcomplete only on Unix-like systems
+    if sys.platform != "win32":
+        try:
+            import argcomplete
+
+            argcomplete.autocomplete(parser)
+        except ImportError:
+            pass
 
     grouped_remaining_args, used_cmds = split_on_groups(remaining_args)
     if len(grouped_remaining_args) == 0:

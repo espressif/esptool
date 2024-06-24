@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-
+# PYTHON_ARGCOMPLETE_OK
 import argparse
 import hashlib
 import operator
@@ -1866,6 +1866,15 @@ def main(custom_commandline=None):
         help="File with plaintext content for encrypting",
         type=argparse.FileType("rb"),
     )
+
+    # Enable argcomplete only on Unix-like systems
+    if sys.platform != "win32":
+        try:
+            import argcomplete
+
+            argcomplete.autocomplete(parser)
+        except ImportError:
+            pass
 
     args = parser.parse_args(custom_commandline)
     print("espsecure.py v%s" % esptool.__version__)

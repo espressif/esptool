@@ -40,6 +40,7 @@
         "reedsolo>=1.5.3,<1.8",
         "PyYAML>=5.1",
         "intelhex",
+        'argcomplete>=3; sys_platform != "win32"',
     ]
 
 [project.urls]

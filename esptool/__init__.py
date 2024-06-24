@@ -2,7 +2,7 @@
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-
+# PYTHON_ARGCOMPLETE_OK
 __all__ = [
     "chip_id",
     "detect_chip",
@@ -689,6 +689,15 @@ def main(argv=None, esp=None):
     # internal sanity check - every operation matches a module function of the same name
     for operation in subparsers.choices.keys():
         assert operation in globals(), "%s should be a module function" % operation
+
+    # Enable argcomplete only on Unix-like systems
+    if sys.platform != "win32":
+        try:
+            import argcomplete
+
+            argcomplete.autocomplete(parser)
+        except ImportError:
+            pass
 
     argv = expand_file_arguments(argv or sys.argv[1:])
 

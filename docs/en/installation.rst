@@ -68,3 +68,41 @@ If updating directly is unavoidable, make sure you update to a compatible versio
 ::
 
    $ pip install esptool==3.3.2
+
+Shell completions
+-----------------
+
+To activate autocompletion, you can manually add commands provided below to your shell's config file
+or run them in your current terminal session for one-time activation.
+You will likely have to restart or re-login for the autocompletion to start working.
+
+bash:
+::
+
+   eval "$(register-python-argcomplete esptool.py espsecure.py espefuse.py)"
+
+zsh:
+
+To activate completions in zsh, first make sure `compinit` is marked for
+autoload and run autoload:
+
+.. code-block:: bash
+
+   autoload -U compinit
+   compinit
+
+Afterwards you can enable completions for esptool.py, espsecure.py and espefuse.py:
+
+::
+
+   eval "$(register-python-argcomplete esptool.py espsecure.py espefuse.py)"
+
+fish:
+
+Not required to be in the config file, only run once
+
+::
+
+   register-python-argcomplete --shell fish esptool.py espsecure.py espefuse.py >~/.config/fish/completions/esptool.py.fish
+
+Other shells nor OS Windows are not supported.
