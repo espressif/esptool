@@ -1006,7 +1006,14 @@ def get_port_list():
             "Please try to specify the port when running esptool.py or update "
             "the pyserial package to the latest version"
         )
-    return sorted(ports.device for ports in list_ports.comports())
+    port_list = sorted(ports.device for ports in list_ports.comports())
+    if sys.platform == "darwin":
+        port_list = [
+            port
+            for port in port_list
+            if not port.endswith(("Bluetooth-Incoming-Port", "wlan-debug"))
+        ]
+    return port_list
 
 
 def expand_file_arguments(argv):
