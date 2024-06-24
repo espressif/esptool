@@ -2,7 +2,7 @@
 
 A Python-based, open-source, platform-independent utility to communicate with the ROM bootloader in Espressif chips.
 
-[![Test esptool](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml) [![Build esptool](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml)
+[![Test esptool](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml) [![Build esptool](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml) [![esptool Downloads Last Month](https://assets.piptrends.com/get-last-month-downloads-badge/esptool.svg 'esptool Downloads Last Month by pip Trends')](https://piptrends.com/package/esptool)
 
 ## Documentation
 
