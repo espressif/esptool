@@ -25,7 +25,7 @@ repos:
       additional_dependencies:
         - tomli
   - repo: https://github.com/espressif/conventional-precommit-linter
-    rev: v1.4.0
+    rev: v1.9.0
     hooks:
       - id: conventional-precommit-linter
         stages: [commit-msg]
