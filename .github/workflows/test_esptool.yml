@@ -69,6 +69,11 @@ jobs:
         - name: Checkout
           uses: actions/checkout@master
 
+        - name: Set up Python 3.7
+          uses: actions/setup-python@master
+          with:
+            python-version: 3.7
+
         - name: Run pre-commit hooks
           run: |
             pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev]
