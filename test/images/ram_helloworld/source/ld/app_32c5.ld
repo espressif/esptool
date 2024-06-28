@@ -1,6 +1,6 @@
 MEMORY {
-  iram : org = 0x40800d44, len = 0x100
-  dram : org = 0x40800e44, len = 0x100
+  iram : org = 0x40810f5c, len = 0x100
+  dram : org = 0x4081105c, len = 0x100
 }
 
 ENTRY(ram_main)

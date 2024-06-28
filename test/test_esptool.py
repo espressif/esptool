@@ -184,7 +184,14 @@ class EsptoolTestCase:
             preload
             and arg_preload_port
             and arg_chip
-            in ["esp32c3", "esp32s3", "esp32c6", "esp32h2", "esp32p4"]  # With U-JS
+            in [
+                "esp32c3",
+                "esp32s3",
+                "esp32c6",
+                "esp32h2",
+                "esp32p4",
+                "esp32c5",
+            ]  # With U-JS
         ):
             port_index = base_cmd.index("--port") + 1
             base_cmd[port_index] = arg_preload_port  # Set the port to the preload one

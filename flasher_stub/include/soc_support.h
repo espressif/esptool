@@ -47,7 +47,7 @@
 #endif // ESP32S3
 
 #ifdef ESP32C5
-#define WITH_USB_JTAG_SERIAL 0 // not implemented yet
+#define WITH_USB_JTAG_SERIAL 1
 #define IS_RISCV 1
 #endif // ESP32C5
 
@@ -346,6 +346,16 @@
 
 #define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
 #endif // ESP32C6
+
+#if ESP32C5
+#define UART_USB_JTAG_SERIAL  3
+
+#define DR_REG_INTERRUPT_MATRIX_BASE            0x60010000
+#define INTERRUPT_CORE0_USB_INTR_MAP_REG        (DR_REG_INTERRUPT_MATRIX_BASE + 0xD0) /* USB-JTAG-Serial, INTMTX_CORE0_USB_INTR_MAP_REG */
+
+#define CLIC_EXT_INTR_NUM_OFFSET 16  /* For CLIC first 16 interrupts are reserved as internal */
+#define ETS_USB_INUM 17  /* arbitrary level 1 level interrupt */
+#endif // ESP32C5
 
 #ifdef ESP32H2
 #define UART_USB_JTAG_SERIAL  3
