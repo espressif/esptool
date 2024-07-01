@@ -124,6 +124,14 @@ def main(argv=None, esp=None):
     )
 
     parser.add_argument(
+        "--port-filter",
+        action="append",
+        help="Serial port device filter, can be vid=NUMBER, pid=NUMBER, name=SUBSTRING",
+        type=str,
+        default=[],
+    )
+
+    parser.add_argument(
         "--before",
         help="What to do before connecting to the chip",
         choices=["default_reset", "usb_reset", "no_reset", "no_reset_no_sync"],
@@ -690,6 +698,23 @@ def main(argv=None, esp=None):
 
     StubFlasher.set_preferred_stub_subdir(args.stub_version)
 
+    # Parse filter arguments into separate lists
+    args.filterVids = []
+    args.filterPids = []
+    args.filterNames = []
+    for f in args.port_filter:
+        kvp = f.split("=")
+        if len(kvp) != 2:
+            raise FatalError("Option --port-filter argument must consist of key=value")
+        if kvp[0] == "vid":
+            args.filterVids.append(arg_auto_int(kvp[1]))
+        elif kvp[0] == "pid":
+            args.filterPids.append(arg_auto_int(kvp[1]))
+        elif kvp[0] == "name":
+            args.filterNames.append(kvp[1])
+        else:
+            raise FatalError("Option --port-filter argument key not recognized")
+
     # operation function can take 1 arg (args), 2 args (esp, arg)
     # or be a member function of the ESPLoader class.
 
@@ -725,7 +750,7 @@ def main(argv=None, esp=None):
             initial_baud = args.baud
 
         if args.port is None:
-            ser_list = get_port_list()
+            ser_list = get_port_list(args.filterVids, args.filterPids, args.filterNames)
             print("Found %d serial ports" % len(ser_list))
         else:
             ser_list = [args.port]
@@ -1010,21 +1035,29 @@ def arg_auto_chunk_size(string: str) -> int:
     return num
 
 
-def get_port_list():
+def get_port_list(vids=[], pids=[], names=[]):
     if list_ports is None:
         raise FatalError(
             "Listing all serial ports is currently not available. "
             "Please try to specify the port when running esptool.py or update "
             "the pyserial package to the latest version"
         )
-    port_list = sorted(ports.device for ports in list_ports.comports())
-    if sys.platform == "darwin":
-        port_list = [
-            port
-            for port in port_list
-            if not port.endswith(("Bluetooth-Incoming-Port", "wlan-debug"))
-        ]
-    return port_list
+    ports = []
+    for port in list_ports.comports():
+        if sys.platform == "darwin" and port.device.endswith(
+            ("Bluetooth-Incoming-Port", "wlan-debug")
+        ):
+            continue
+        if vids and (port.vid is None or port.vid not in vids):
+            continue
+        if pids and (port.pid is None or port.pid not in pids):
+            continue
+        if names and (
+            port.name is None or all(name not in port.name for name in names)
+        ):
+            continue
+        ports.append(port.device)
+    return sorted(ports)
 
 
 def expand_file_arguments(argv):
