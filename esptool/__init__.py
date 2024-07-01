@@ -124,6 +124,20 @@ def main(argv=None, esp=None):
     )
 
     parser.add_argument(
+        "--usbVid",
+        help="Serial port device USB VID",
+        type=arg_auto_int,
+        default=os.environ.get("ESPTOOL_USBVID", None),
+    )
+
+    parser.add_argument(
+        "--usbPid",
+        help="Serial port device USB PID",
+        type=arg_auto_int,
+        default=os.environ.get("ESPTOOL_USBPID", None),
+    )
+
+    parser.add_argument(
         "--before",
         help="What to do before connecting to the chip",
         choices=["default_reset", "usb_reset", "no_reset", "no_reset_no_sync"],
@@ -714,7 +728,7 @@ def main(argv=None, esp=None):
             initial_baud = args.baud
 
         if args.port is None:
-            ser_list = get_port_list()
+            ser_list = get_port_list(args.usbVid, args.usbPid)
             print("Found %d serial ports" % len(ser_list))
         else:
             ser_list = [args.port]
@@ -999,21 +1013,25 @@ def arg_auto_chunk_size(string: str) -> int:
     return num
 
 
-def get_port_list():
+def get_port_list(usbVid=None, usbPid=None):
     if list_ports is None:
         raise FatalError(
             "Listing all serial ports is currently not available. "
             "Please try to specify the port when running esptool.py or update "
             "the pyserial package to the latest version"
         )
-    port_list = sorted(ports.device for ports in list_ports.comports())
-    if sys.platform == "darwin":
-        port_list = [
-            port
-            for port in port_list
-            if not port.endswith(("Bluetooth-Incoming-Port", "wlan-debug"))
-        ]
-    return port_list
+    ports = []
+    for port in list_ports.comports():
+        if sys.platform == "darwin" and port.device.endswith(
+            ("Bluetooth-Incoming-Port", "wlan-debug")
+        ):
+            continue
+        if usbVid is not None and (port.vid is None or port.vid != usbVid):
+            continue
+        if usbPid is not None and (port.pid is None or port.pid != usbPid):
+            continue
+        ports.append(port.device)
+    return sorted(ports)
 
 
 def expand_file_arguments(argv):
