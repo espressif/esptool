@@ -164,6 +164,7 @@ Manual Bootloader
 Depending on the kind of hardware you have, it may also be possible to manually put your {IDF_TARGET_NAME} board into Firmware Download mode (reset).
 
 - For development boards produced by Espressif, this information can be found in the respective getting started guides or user guides. For example, to manually reset a development board, hold down the **Boot** button (``{IDF_TARGET_STRAP_BOOT_GPIO}``) and press the **EN** button (``EN`` (``CHIP_PU``)).
+- Note: Only release **Boot** button when connection is established.
 - For other types of hardware, try pulling ``{IDF_TARGET_STRAP_BOOT_GPIO}`` down.
 
 .. only:: esp8266
