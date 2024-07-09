@@ -31,7 +31,7 @@ def read_image(filename):
 
 @pytest.mark.host_test
 class TestMergeBin:
-    def run_merge_bin(self, chip, offsets_names, options=[]):
+    def run_merge_bin(self, chip, offsets_names, options=[], allow_warnings=False):
         """Run merge_bin on a list of (offset, filename) tuples
         with output to a named temporary file.
 
@@ -62,9 +62,10 @@ class TestMergeBin:
             )
             output = output.decode("utf-8")
             print(output)
-            assert (
-                "warning" not in output.lower()
-            ), "merge_bin should not output warnings"
+            if not allow_warnings:
+                assert (
+                    "warning" not in output.lower()
+                ), "merge_bin should not output warnings"
 
             with open(output_file.name, "rb") as f:
                 return f.read()
@@ -203,6 +204,7 @@ class TestMergeBin:
             "esp32",
             [(0x1000, "bootloader_esp32.bin")],
             options=["--format", "hex"],
+            allow_warnings=True,
         )
         # create a temp file with hex content
         with tempfile.NamedTemporaryFile(suffix=".hex", delete=False) as f:
@@ -233,6 +235,7 @@ class TestMergeBin:
                 (0x1000, "bootloader_esp32.bin"),
             ],
             options=["--format", "hex"],
+            allow_warnings=True,
         )
         lines = merged.splitlines()
         # hex format - :0300300002337A1E

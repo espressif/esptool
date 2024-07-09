@@ -1413,6 +1413,13 @@ def merge_bin(args):
             )
     elif args.format == "hex":
         out = IntelHex()
+        if len(input_files) == 1:
+            print(
+                "WARNING: Only one input file specified, output may include "
+                "additional padding if input file was previously merged. "
+                "Please refer to the documentation for more information: "
+                "https://docs.espressif.com/projects/esptool/en/latest/esptool/basic-commands.html#hex-output-format"  # noqa E501
+            )
         for addr, argfile in input_files:
             ihex = IntelHex()
             image = argfile.read()

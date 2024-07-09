@@ -285,6 +285,11 @@ Intel Hex format offers distinct advantages when compared to the binary format, 
 
     esptool.py --chip {IDF_TARGET_NAME} merge_bin --format hex -o merged-flash.hex --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
 
+.. note::
+
+    Please note that during the conversion to the `Intel Hex` format, the binary input file is treated as a black box. The conversion process does not consider the actual contents of the binary file. This means that the `Intel Hex` file will contain the same data as the binary file (including the padding), but the data will be represented in a different format.
+    When merging multiple files, the `Intel Hex` format, unlike the binary format, does not include any padding between the input files.
+    It is recommended to merge multiple files instead of converting one already merged to get smaller merged outputs.
 
 RAW Output Format
 ^^^^^^^^^^^^^^^^^
