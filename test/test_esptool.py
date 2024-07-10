@@ -667,6 +667,15 @@ class TestFlashing(EsptoolTestCase):
         assert "Chip erase completed successfully" in output
         assert "Hash of data verified" in output
 
+    @pytest.mark.quick_test
+    def test_flash_not_aligned_nostub(self):
+        output = self.run_esptool("--no-stub write_flash 0x1 images/one_kb.bin")
+        assert (
+            "WARNING: Flash address 0x00000001 is not aligned to a 0x1000 byte flash sector. 0x1 bytes before this address will be erased."
+            in output
+        )
+        assert "Hard resetting via RTS pin..." in output
+
 
 @pytest.mark.skipif(
     arg_chip in ["esp8266", "esp32"],

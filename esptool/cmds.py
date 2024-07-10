@@ -560,14 +560,23 @@ def write_flash(esp, args):
             print("Will flash %s uncompressed" % argfile.name)
             compress = False
 
-        if args.no_stub:
-            print("Erasing flash...")
-        image = pad_to(
-            argfile.read(), esp.FLASH_ENCRYPTED_WRITE_ALIGN if encrypted else 4
-        )
+        image = argfile.read()
+
         if len(image) == 0:
             print("WARNING: File %s is empty" % argfile.name)
             continue
+
+        image = pad_to(image, esp.FLASH_ENCRYPTED_WRITE_ALIGN if encrypted else 4)
+
+        if args.no_stub:
+            print("Erasing flash...")
+
+            # It is not possible to write to not aligned addresses without stub,
+            # so there are added 0xFF (erase) bytes at the beginning of the image
+            # to align it.
+            bytes_over = address % esp.FLASH_SECTOR_SIZE
+            address -= bytes_over
+            image = b"\xFF" * bytes_over + image
 
         if not esp.secure_download_mode and not esp.get_secure_boot_enabled():
             image = _update_image_flash_params(esp, address, args, image)
