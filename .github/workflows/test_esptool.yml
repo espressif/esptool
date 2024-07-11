@@ -46,22 +46,21 @@ jobs:
         pytest -m host_test
         pytest test/test_espsecure_hsm.py
 
-    - name: Build stub (Python 3.7 only)
-      if: matrix.python-version == 3.7
-      run: |
-        export TOOLCHAIN_DIR=$HOME/toolchain
+  check_stubs:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@master
 
-        export ESP8266_BINDIR=$TOOLCHAIN_DIR/xtensa-lx106-elf/bin
-        export ESP32_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32-elf/bin
-        export ESP32S2_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s2-elf/bin
-        export ESP32S3_BINDIR=$TOOLCHAIN_DIR/xtensa-esp32s3-elf/bin
-        export ESP32C3_BINDIR=$TOOLCHAIN_DIR/riscv32-esp-elf/bin
+        - name: Set up Python 3.12
+          uses: actions/setup-python@master
+          with:
+            python-version: 3.12
 
-        export PATH=$PATH:$ESP8266_BINDIR:$ESP32_BINDIR:$ESP32S2_BINDIR:$ESP32S3_BINDIR:$ESP32C3_BINDIR
-
-        ./ci/setup_ci_build_env.sh
-        make -C flasher_stub V=1
-        cd flasher_stub && python ./compare_stubs.py
+        - name: Check if flasher stubs are up-to-date
+          run: |
+            ./ci/download_flasher_stubs.py
+            git diff --exit-code
 
   lint_esptool:
       runs-on: ubuntu-latest

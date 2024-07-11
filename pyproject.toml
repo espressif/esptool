@@ -65,7 +65,7 @@
     include-package-data = true
 
 [tool.setuptools.package-data]
-    "*" = ["esptool/targets/stub_flasher/*.json"]
+    "*" = ["esptool/targets/stub_flasher/1/*", "esptool/targets/stub_flasher/2/*"]
 
 [tool.setuptools.packages]
     find = {exclude = ["ci", "flasher_stub", "test", "docs"]}

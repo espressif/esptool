@@ -66,7 +66,7 @@ from esptool.cmds import (
     write_mem,
 )
 from esptool.config import load_config_file
-from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, ESPLoader, list_ports
+from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, StubFlasher, ESPLoader, list_ports
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
@@ -143,6 +143,15 @@ def main(argv=None, esp=None):
         help="Disable launching the flasher stub, only talk to ROM bootloader. "
         "Some features will not be available.",
         action="store_true",
+    )
+
+    # --stub-version can be set with --no-stub so the tests wouldn't fail if this option is implied globally
+    parser.add_argument(
+        "--stub-version",
+        default=os.environ.get("ESPTOOL_STUB_VERSION", StubFlasher.STUB_SUBDIRS[0]),
+        choices=StubFlasher.STUB_SUBDIRS,
+        # not a public option and is not subject to the semantic versioning policy
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -678,6 +687,8 @@ def main(argv=None, esp=None):
     args = parser.parse_args(argv)
     print("esptool.py v%s" % __version__)
     load_config_file(verbose=True)
+
+    StubFlasher.set_preferred_stub_subdir(args.stub_version)
 
     # operation function can take 1 arg (args), 2 args (esp, arg)
     # or be a member function of the ESPLoader class.
