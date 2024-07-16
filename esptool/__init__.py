@@ -35,6 +35,7 @@ import inspect
 import os
 import shlex
 import sys
+import termios
 import time
 import traceback
 
@@ -66,7 +67,7 @@ from esptool.cmds import (
     write_mem,
 )
 from esptool.config import load_config_file
-from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, StubFlasher, ESPLoader, list_ports
+from esptool.loader import DEFAULT_CONNECT_ATTEMPTS, StubFlasher, ESPLoader, list_ports, cfg
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
@@ -76,6 +77,9 @@ from esptool.util import (
 )
 
 import serial
+
+# Retry opening the serial port indefinitely
+DEFAULT_RETRY_OPEN_SERIAL = cfg.getboolean("retry_open_serial", False)
 
 
 def main(argv=None, esp=None):
@@ -184,6 +188,16 @@ def main(argv=None, esp=None):
         ),
         type=int,
         default=os.environ.get("ESPTOOL_CONNECT_ATTEMPTS", DEFAULT_CONNECT_ATTEMPTS),
+    )
+
+    parser.add_argument(
+        "--retry-open-serial",
+        help=(
+            "Retry opening the serial port indefinitely. "
+            "Default: %s" % DEFAULT_RETRY_OPEN_SERIAL
+        ),
+        default=os.environ.get("ESPTOOL_RETRY_OPEN_SERIAL", DEFAULT_RETRY_OPEN_SERIAL),
+        action="store_true",
     )
 
     subparsers = parser.add_subparsers(
@@ -768,6 +782,7 @@ def main(argv=None, esp=None):
             port=args.port,
             connect_attempts=args.connect_attempts,
             initial_baud=initial_baud,
+            retry_open_serial=args.retry_open_serial,
             chip=args.chip,
             trace=args.trace,
             before=args.before,
@@ -1092,11 +1107,50 @@ def expand_file_arguments(argv):
     return argv
 
 
+def get_default_specific_connected_device(
+    chip, each_port, initial_baud, trace, before, connect_attempts, retry_open_serial
+):
+    retry_attempts = 0
+    _esp = None
+    while True:
+        try:
+            chip_class = CHIP_DEFS[chip]
+            _esp = chip_class(each_port, initial_baud, trace)
+            _esp.connect(before, connect_attempts)
+            if retry_attempts > 0:
+                # break the retrying line
+                print("")
+            return _esp
+        except (
+            FatalError,
+            serial.serialutil.SerialException,
+            IOError,
+            OSError,
+            termios.error,
+        ) as e:
+            if not retry_open_serial:
+                raise
+            if _esp and _esp._port:
+                _esp._port.close()
+            _esp = None
+            if retry_attempts == 0:
+                print(e)
+                print("Retrying failed connection ", end="", flush=True)
+            else:
+                if retry_attempts % 9 == 0:
+                    # print a dot every second
+                    print(".", end="", flush=True)
+            time.sleep(0.1)
+            retry_attempts += 1
+            continue
+
+
 def get_default_connected_device(
     serial_list,
     port,
     connect_attempts,
     initial_baud,
+    retry_open_serial=False,
     chip="auto",
     trace=False,
     before="default_reset",
@@ -1110,9 +1164,15 @@ def get_default_connected_device(
                     each_port, initial_baud, before, trace, connect_attempts
                 )
             else:
-                chip_class = CHIP_DEFS[chip]
-                _esp = chip_class(each_port, initial_baud, trace)
-                _esp.connect(before, connect_attempts)
+                _esp = get_default_specific_connected_device(
+                    chip,
+                    each_port,
+                    initial_baud,
+                    trace,
+                    before,
+                    connect_attempts,
+                    retry_open_serial,
+                )
             break
         except (FatalError, OSError) as err:
             if port is not None:
@@ -1229,6 +1289,7 @@ def _main():
     try:
         main()
     except FatalError as e:
+        print(traceback.format_exc())
         print(f"\nA fatal error occurred: {e}")
         sys.exit(2)
     except serial.serialutil.SerialException as e:
