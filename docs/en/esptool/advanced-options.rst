@@ -36,6 +36,27 @@ The ``--after`` argument allows you to specify whether the chip should be reset 
     * ``--after no_reset`` leaves the chip in the serial bootloader, no reset is performed.
     * ``--after no_reset_stub`` leaves the chip in the stub bootloader, no reset is performed.
 
+
+Connect Loop
+------------
+
+Esptool supports connection loops, where the user can specify how many times to try to open a port. The delay between retries is 0.1 seconds. This can be useful for example when the chip is in deep sleep or esptool was started before the chip was connected to the PC. A connection loop can be created by setting the ``ESPTOOL_OPEN_PORT_ATTEMPTS`` environment variable.
+This feature can also be enabled by using the ``open_port_attempts`` configuration option, for more details regarding config options see :ref:`Configuration file <config>` section.
+There are 3 possible values for this option:
+
+.. list::
+
+    * ``0`` will keep trying to connect to the chip indefinitely
+    * ``1`` will try to connect to the chip only once (default)
+    * ``N`` will try to connect to the chip N times
+
+
+.. note::
+
+    This option is only available if both the ``--port`` and ``--chip`` arguments are set.
+
+
+
 .. _disable_stub:
 
 Disabling the Stub Loader

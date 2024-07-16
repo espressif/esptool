@@ -78,7 +78,7 @@ Sample configuration file:
 Options
 -------
 
-Complete list configurable options:
+Complete list of configurable options:
 
 +------------------------------+-----------------------------------------------------------+----------+
 | Option                       | Description                                               | Default  |
@@ -106,6 +106,8 @@ Complete list configurable options:
 | write_block_attempts         | Number of times to try writing a data block               | 3        |
 +------------------------------+-----------------------------------------------------------+----------+
 | reset_delay                  | Time to wait before the boot pin is released after reset  | 0.05 s   |
++------------------------------+-----------------------------------------------------------+----------+
+| open_port_attempts           | Number of attempts to open the port (0 - infinite)        | 1        |
 +------------------------------+-----------------------------------------------------------+----------+
 | custom_reset_sequence        | Custom reset sequence for resetting into the bootloader   |          |
 +------------------------------+-----------------------------------------------------------+----------+
