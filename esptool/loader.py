@@ -12,7 +12,6 @@ import re
 import string
 import struct
 import sys
-import termios
 import time
 from typing import Optional
 
@@ -97,8 +96,6 @@ MEM_END_ROM_TIMEOUT = cfg.getfloat("mem_end_rom_timeout", 0.2)
 DEFAULT_SERIAL_WRITE_TIMEOUT = cfg.getfloat("serial_write_timeout", 10)
 # Default number of times to try connection
 DEFAULT_CONNECT_ATTEMPTS = cfg.getint("connect_attempts", 7)
-# Default number of times to try connection
-DEFAULT_RETRY_OPEN_SERIAL = cfg.getboolean("retry_open_serial", False)
 # Number of times to try writing a data block
 WRITE_BLOCK_ATTEMPTS = cfg.getint("write_block_attempts", 3)
 
@@ -195,7 +192,6 @@ class ESPLoader(object):
     BOOTLOADER_IMAGE: Optional[object] = None
 
     DEFAULT_PORT = "/dev/ttyUSB0"
-    DEFAULT_RETRY_OPEN_SERIAL = False
 
     USES_RFC2217 = False
 
@@ -285,13 +281,7 @@ class ESPLoader(object):
     # Number of attempts to write flash data
     WRITE_FLASH_ATTEMPTS = 2
 
-    def __init__(
-        self,
-        port=DEFAULT_PORT,
-        baud=ESP_ROM_BAUD,
-        trace_enabled=False,
-        retry_open_serial=DEFAULT_RETRY_OPEN_SERIAL,
-    ):
+    def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False):
         """Base constructor for ESPLoader bootloader interaction
 
         Don't call this constructor, either instantiate a specific
@@ -318,75 +308,51 @@ class ESPLoader(object):
         }
 
         if isinstance(port, str):
-            printed_failure = False
-            retry_attempts = 0
-            while True:
-                try:
-                    self._port = serial.serial_for_url(
-                        port, exclusive=True, do_not_open=True
-                    )
-                    if sys.platform == "win32":
-                        # When opening a port on Windows,
-                        # the RTS/DTR (active low) lines
-                        # need to be set to False (pulled high)
-                        # to avoid unwanted chip reset
-                        self._port.rts = False
-                        self._port.dtr = False
-                    self._port.open()
-                    if retry_attempts > 0:
-                        # break the retrying line
-                        print("")
-                    break
-                except (
-                    serial.serialutil.SerialException,
-                    IOError,
-                    OSError,
-                    termios.error,
-                ) as e:
-                    if retry_open_serial:
-                        if not printed_failure:
-                            print(e)
-                            print("Retrying to open port ", end="", flush=True)
-                            printed_failure = True
-                        else:
-                            if retry_attempts % 9 == 0:
-                                # print a dot every second
-                                print(".", end="", flush=True)
-                        time.sleep(0.1)
-                        retry_attempts += 1
-                        continue
-                    port_issues = [
-                        [  # does not exist error
-                            re.compile(r"Errno 2|FileNotFoundError", re.IGNORECASE),
-                            "Check if the port is correct and ESP connected",
+            try:
+                self._port = serial.serial_for_url(
+                    port, exclusive=True, do_not_open=True
+                )
+                if sys.platform == "win32":
+                    # When opening a port on Windows,
+                    # the RTS/DTR (active low) lines
+                    # need to be set to False (pulled high)
+                    # to avoid unwanted chip reset
+                    self._port.rts = False
+                    self._port.dtr = False
+                self._port.open()
+            except serial.serialutil.SerialException as e:
+                port_issues = [
+                    [  # does not exist error
+                        re.compile(r"Errno 2|FileNotFoundError", re.IGNORECASE),
+                        "Check if the port is correct and ESP connected",
+                    ],
+                    [  # busy port error
+                        re.compile(r"Access is denied", re.IGNORECASE),
+                        "Check if the port is not used by another task",
+                    ],
+                ]
+                if sys.platform.startswith("linux"):
+                    port_issues.append(
+                        [  # permission denied error
+                            re.compile(r"Permission denied", re.IGNORECASE),
+                            (
+                                "Try to add user into dialout group: "
+                                "sudo usermod -a -G dialout $USER"
+                            ),
                         ],
-                        [  # busy port error
-                            re.compile(r"Access is denied", re.IGNORECASE),
-                            "Check if the port is not used by another task",
-                        ],
-                    ]
-                    if sys.platform.startswith("linux"):
-                        port_issues.append(
-                            [  # permission denied error
-                                re.compile(r"Permission denied", re.IGNORECASE),
-                                (
-                                    "Try to add user into dialout group: "
-                                    "sudo usermod -a -G dialout $USER"
-                                ),
-                            ],
-                        )
-
-                    hint_msg = ""
-                    for port_issue in port_issues:
-                        if port_issue[0].search(str(e)):
-                            hint_msg = f"\nHint: {port_issue[1]}\n"
-                            break
-
-                    raise FatalError(
-                        f"Could not open {port}, the port is busy or doesn't exist."
-                        f"\n({e})\n"
-                        f"{hint_msg}"
                     )
+
+                hint_msg = ""
+                for port_issue in port_issues:
+                    if port_issue[0].search(str(e)):
+                        hint_msg = f"\nHint: {port_issue[1]}\n"
+                        break
+
+                raise FatalError(
+                    f"Could not open {port}, the port is busy or doesn't exist."
+                    f"\n({e})\n"
+                    f"{hint_msg}"
+                )
         else:
             self._port = port
         self._slip_reader = slip_reader(self._port, self.trace)
