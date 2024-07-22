@@ -706,7 +706,10 @@ class ESP32FirmwareImage(BaseFirmwareImage):
             # So bootdesc will be at the very top of the binary at 0x20 offset
             # (in the first segment).
             for segment in ram_segments:
-                if segment.name == ".dram0.bootdesc":
+                if (
+                    isinstance(segment, ELFSection)
+                    and segment.name == ".dram0.bootdesc"
+                ):
                     ram_segments.remove(segment)
                     ram_segments.insert(0, segment)
                     break
@@ -985,7 +988,7 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
             while len(flash_segments) > 0:
                 segment = flash_segments[0]
                 # remove 8 bytes empty data for insert segment header
-                if segment.name == ".flash.rodata":
+                if isinstance(segment, ELFSection) and segment.name == ".flash.rodata":
                     segment.data = segment.data[8:]
                 # write the flash segment
                 checksum = self.save_segment(f, segment, checksum)
