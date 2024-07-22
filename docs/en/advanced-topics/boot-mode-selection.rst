@@ -166,6 +166,10 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 - For development boards produced by Espressif, this information can be found in the respective getting started guides or user guides. For example, to manually reset a development board, hold down the **Boot** button (``{IDF_TARGET_STRAP_BOOT_GPIO}``) and press the **EN** button (``EN`` (``CHIP_PU``)).
 - For other types of hardware, try pulling ``{IDF_TARGET_STRAP_BOOT_GPIO}`` down.
 
+.. note::
+
+   If esptool is able to reset the chip but for some reason the chip is not entering into bootloader mode then hold down the Boot button (or pull down ``{IDF_TARGET_STRAP_BOOT_GPIO}``) while you start esptool and keep it down during reset.
+
 .. only:: esp8266
 
    .. _boot-log-esp8266:
