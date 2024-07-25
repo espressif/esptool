@@ -109,6 +109,8 @@ Complete list configurable options:
 +------------------------------+-----------------------------------------------------------+----------+
 | custom_reset_sequence        | Custom reset sequence for resetting into the bootloader   |          |
 +------------------------------+-----------------------------------------------------------+----------+
+| retry_open_serial            | Retry opening the serial port indefinitely                   | False    |
++------------------------------+-----------------------------------------------------------+----------+
 
 Custom Reset Sequence
 ---------------------

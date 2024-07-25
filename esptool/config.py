@@ -20,6 +20,7 @@ CONFIG_OPTIONS = [
     "write_block_attempts",
     "reset_delay",
     "custom_reset_sequence",
+    "retry_open_serial",
 ]
 
 
