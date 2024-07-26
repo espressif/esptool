@@ -1164,7 +1164,7 @@ def run(esp, args):
     esp.run()
 
 
-def flash_id(esp, args):
+def detect_flash_id(esp):
     flash_id = esp.flash_id()
     print("Manufacturer: %02x" % (flash_id & 0xFF))
     flid_lowbyte = (flash_id >> 16) & 0xFF
@@ -1172,12 +1172,27 @@ def flash_id(esp, args):
     print(
         "Detected flash size: %s" % (DETECTED_FLASH_SIZES.get(flid_lowbyte, "Unknown"))
     )
+
+
+def flash_id(esp, args):
+    detect_flash_id(esp)
     flash_type = esp.flash_type()
     flash_type_dict = {0: "quad (4 data lines)", 1: "octal (8 data lines)"}
     flash_type_str = flash_type_dict.get(flash_type)
     if flash_type_str:
         print(f"Flash type set in eFuse: {flash_type_str}")
     esp.get_flash_voltage()
+
+
+def read_flash_sfdp(esp, args):
+    detect_flash_id(esp)
+
+    sfdp = esp.read_spiflash_sfdp(args.addr, args.bytes * 8)
+    print(f"SFDP[{args.addr}..{args.addr+args.bytes-1}]: ", end="")
+    for i in range(args.bytes):
+        print(f"{sfdp&0xff:02X} ", end="")
+        sfdp = sfdp >> 8
+    print()
 
 
 def read_flash(esp, args):

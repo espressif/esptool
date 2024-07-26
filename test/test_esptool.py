@@ -841,6 +841,14 @@ class TestFlashDetection(EsptoolTestCase):
         for line in lines:
             assert "embedded flash" not in line.lower()
 
+    @pytest.mark.quick_test
+    def test_flash_sfdp(self):
+        """Test manufacturer and device response of flash detection."""
+        res = self.run_esptool("read_flash_sfdp 0 4")
+        assert "SFDP[0..3]: 53 46 44 50" in res
+        res = self.run_esptool("read_flash_sfdp 1 3")
+        assert "SFDP[1..3]: 46 44 50 " in res
+
 
 @pytest.mark.skipif(
     os.getenv("ESPTOOL_TEST_SPI_CONN") is None, reason="Needs external flash"

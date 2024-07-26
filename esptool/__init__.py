@@ -49,6 +49,7 @@ from esptool.cmds import (
     erase_flash,
     erase_region,
     flash_id,
+    read_flash_sfdp,
     get_security_info,
     image_info,
     load_ram,
@@ -626,6 +627,14 @@ def main(argv=None, esp=None):
         "Use `ALL` to erase to the end of flash.",
         type=arg_auto_size,
     )
+
+    parser_read_flash_sfdp = subparsers.add_parser(
+        "read_flash_sfdp",
+        help="Read SPI flash SFDP (Serial Flash Discoverable Parameters)",
+    )
+    add_spi_flash_subparsers(parser_read_flash_sfdp, allow_keep=True, auto_detect=True)
+    parser_read_flash_sfdp.add_argument("addr", type=arg_auto_int)
+    parser_read_flash_sfdp.add_argument("bytes", type=int)
 
     parser_merge_bin = subparsers.add_parser(
         "merge_bin",

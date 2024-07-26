@@ -338,6 +338,7 @@ The following commands are less commonly used, or only of interest to advanced u
     *  :ref:`read-mem-write-mem`
     *  :ref:`read-flash-status`
     *  :ref:`write-flash-status`
+    *  :ref:`read-flash-sfdp`
     :esp8266: *  :ref:`chip-id`
     :esp8266: *  :ref:`make-image`
     :esp8266: *  :ref:`run`

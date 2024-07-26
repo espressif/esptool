@@ -32,6 +32,8 @@ class ESP32S2ROM(ESP32ROM):
     SPI_MISO_DLEN_OFFS = 0x28
     SPI_W0_OFFS = 0x58
 
+    SPI_ADDR_REG_MSB = False
+
     MAC_EFUSE_REG = 0x3F41A044  # ESP32-S2 has special block for MAC efuses
 
     UART_CLKDIV_REG = 0x3F400014

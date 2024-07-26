@@ -28,6 +28,8 @@ class ESP32C3ROM(ESP32ROM):
     SPI_MISO_DLEN_OFFS = 0x28
     SPI_W0_OFFS = 0x58
 
+    SPI_ADDR_REG_MSB = False
+
     BOOTLOADER_FLASH_OFFSET = 0x0
 
     # Magic values for ESP32-C3 eco 1+2, eco 3, eco 6, and eco 7 respectively

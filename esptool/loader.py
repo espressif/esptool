@@ -268,6 +268,9 @@ class ESPLoader(object):
 
     UART_DATE_REG_ADDR = 0x60000078
 
+    # Whether the SPI peripheral sends from MSB of 32-bit register, or the MSB of valid LSB bits.
+    SPI_ADDR_REG_MSB = True
+
     # This ROM address has a different value on each chip model
     CHIP_DETECT_MAGIC_REG_ADDR = 0x40001000
 
@@ -1392,7 +1395,9 @@ class ESPLoader(object):
         self.write_reg(
             SPI_USR2_REG, (7 << SPI_USR2_COMMAND_LEN_SHIFT) | spiflash_command
         )
-        if addr and addr_len > 0:
+        if addr_len > 0:
+            if self.SPI_ADDR_REG_MSB:
+                addr = addr << (32 - addr_len)
             self.write_reg(SPI_ADDR_REG, addr)
         if data_bits == 0:
             self.write_reg(SPI_W0_REG, 0)  # clear data register before we read it
