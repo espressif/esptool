@@ -12,7 +12,7 @@ STUBS = (
         "STUB_SET_VERSION": "1",
         "DOWNLOAD_URL": "https://github.com/espressif/esptool-legacy-flasher-stub/releases/download",
         "TAG_URL": "https://github.com/espressif/esptool-legacy-flasher-stub/releases/tag",
-        "VERSION": "v1.2.0",
+        "VERSION": "v1.3.0",
         "FILE_LIST": (
             "esp32",
             "esp32c2",
@@ -20,6 +20,7 @@ STUBS = (
             "esp32c5",
             "esp32c5beta3",
             "esp32c6",
+            "esp32c61",
             "esp32c6beta",
             "esp32h2",
             "esp32h2beta1",
@@ -50,7 +51,7 @@ STUBS = (
     },
 )
 
-DESTINATION_DIR = "esptool/targets/stub_flasher"
+DESTINATION_DIR = os.path.join("esptool", "targets", "stub_flasher")
 
 README_TEMPLATE = """# Licensing
 

@@ -13,7 +13,7 @@ class ESP32C61ROM(ESP32C6ROM):
     IMAGE_CHIP_ID = 20
 
     # Magic value for ESP32C61
-    CHIP_DETECT_MAGIC_VALUE = [0x33F0206F]
+    CHIP_DETECT_MAGIC_VALUE = [0x33F0206F, 0x2421606F]
 
     UART_DATE_REG_ADDR = 0x60000000 + 0x7C
 
@@ -104,4 +104,23 @@ class ESP32C61ROM(ESP32C6ROM):
         return macs.get(mac_type, None)
 
 
-# TODO: IDF-9241, stub flasher support
+class ESP32C61StubLoader(ESP32C61ROM):
+    """Access class for ESP32C61 stub loader, runs on top of ROM.
+
+    (Basically the same as ESP32StubLoader, but different base class.
+    Can possibly be made into a mixin.)
+    """
+
+    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
+    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
+    IS_STUB = True
+
+    def __init__(self, rom_loader):
+        self.secure_download_mode = rom_loader.secure_download_mode
+        self._port = rom_loader._port
+        self._trace_enabled = rom_loader._trace_enabled
+        self.cache = rom_loader.cache
+        self.flush_input()  # resets _slip_reader
+
+
+ESP32C61ROM.STUB_CLASS = ESP32C61StubLoader

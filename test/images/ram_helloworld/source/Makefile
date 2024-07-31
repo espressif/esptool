@@ -26,6 +26,7 @@ APP_ELF_32S3 = $(BUILD_DIR)/$(APP)-esp32s3.elf
 APP_ELF_32C3 = $(BUILD_DIR)/$(APP)-esp32c3.elf
 APP_ELF_32C2 = $(BUILD_DIR)/$(APP)-esp32c2.elf
 APP_ELF_32C6 = $(BUILD_DIR)/$(APP)-esp32c6.elf
+APP_ELF_32C61 = $(BUILD_DIR)/$(APP)-esp32c61.elf
 APP_ELF_32H2 = $(BUILD_DIR)/$(APP)-esp32h2.elf
 APP_ELF_32P4 = $(BUILD_DIR)/$(APP)-esp32p4.elf
 APP_ELF_32C5 = $(BUILD_DIR)/$(APP)-esp32c5.elf
@@ -34,7 +35,7 @@ APP_ELF_32C5 = $(BUILD_DIR)/$(APP)-esp32c5.elf
 
 all: $(APP_ELF_8266) $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6) $(APP_ELF_32H2) $(APP_ELF_32P4) $(APP_ELF_32C5)
 
-esp32: $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6) $(APP_ELF_32H2) $(APP_ELF_32P4) $(APP_ELF_32C5)
+esp32: $(APP_ELF_32) $(APP_ELF_32S2) $(APP_ELF_32C3) $(APP_ELF_32S3) $(APP_ELF_32C2) $(APP_ELF_32C6) $(APP_ELF_32C61) $(APP_ELF_32H2) $(APP_ELF_32P4) $(APP_ELF_32C5)
 
 $(BUILD_DIR):
 	$(Q) mkdir $@
@@ -79,6 +80,10 @@ $(APP_ELF_32C2): $(SRCS) $(BUILD_DIR) ld/app_32c2.ld
 $(APP_ELF_32C6): $(SRCS) $(BUILD_DIR) ld/app_32c6.ld
 	@echo "  CC(32C6)   $^ -> $@"
 	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32C6=1 -Tapp_32c6.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
+
+$(APP_ELF_32C61): $(SRCS) $(BUILD_DIR) ld/app_32c61.ld
+	@echo "  CC(32C61)   $^ -> $@"
+	$(Q) $(CROSS_ESPRISCV32)gcc $(CFLAGS_ESPRISCV32) -DESP32C61=1 -Tapp_32c61.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 $(APP_ELF_32H2): $(SRCS) $(BUILD_DIR) ld/app_32h2.ld
 	@echo "  CC(32H2)   $^ -> $@"

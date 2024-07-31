@@ -191,6 +191,7 @@ class EsptoolTestCase:
                 "esp32h2",
                 "esp32p4",
                 "esp32c5",
+                "esp32c61",
             ]  # With U-JS
         ):
             port_index = base_cmd.index("--port") + 1
@@ -1277,8 +1278,15 @@ class TestReadWriteMemory(EsptoolTestCase):
         ]:  # find a probably-unused memory type
             region = esp.get_memory_region(test_region)
             if region:
-                # Write at the end of DRAM on ESP32-C2 to avoid overwriting the stub
-                test_addr = region[1] - 8 if arg_chip == "esp32c2" else region[0]
+                if arg_chip == "esp32c61":
+                    # Write into the "BYTE_ACCESSIBLE" space and after the stub
+                    region = esp.get_memory_region("DRAM")
+                    test_addr = region[1] - 0x2FFFF
+                elif arg_chip == "esp32c2":
+                    # Write at the end of DRAM on ESP32-C2 to avoid overwriting the stub
+                    test_addr = region[1] - 8
+                else:
+                    test_addr = region[0]
                 break
 
         print(f"Using test address {test_addr:#x}")
