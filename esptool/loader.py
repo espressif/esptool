@@ -351,10 +351,7 @@ class ESPLoader(object):
                     port_issues.append(
                         [  # permission denied error
                             re.compile(r"Permission denied", re.IGNORECASE),
-                            (
-                                "Try to add user into dialout group: "
-                                "sudo usermod -a -G dialout $USER"
-                            ),
+                            ("Try to add user into dialout or uucp group."),
                         ],
                     )
 

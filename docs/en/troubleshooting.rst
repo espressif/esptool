@@ -197,15 +197,7 @@ A serial exception error occurred
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``esptool.py`` uses the `pySerial <https://pyserial.readthedocs.io/en/latest/>`_ Python module for accessing the serial port.
-If pySerial cannot operate normally, it raises an error and terminates. Some of the most common pySerial error causes are:
-
-.. list::
-
-   * You don't have permission to access the port.
-   * The port is being already used by other software.
-   * The port doesn't exist.
-   * The device gets unexpectedly disconnected.
-   * The necessary serial port drivers are not installed or are faulty.
+If pySerial cannot operate normally, it raises an error and terminates.
 
 An example of a pySerial error:
 
@@ -214,3 +206,15 @@ An example of a pySerial error:
    A serial exception error occurred: read failed: [Errno 6] Device not configured
 
 Errors originating from pySerial are, therefore, not a problem with ``esptool.py``, but are usually caused by a problem with hardware or drivers.
+
+Some of the most common pySerial error causes are:
+
+.. list::
+
+   * The port is being already used by other software.
+   * The port doesn't exist.
+   * The device gets unexpectedly disconnected.
+   * The necessary serial port drivers are not installed or are faulty.
+   * You don't have permission to access the port.
+
+On Linux, read and write access the serial port over USB is necessary. You can add your user to the ``dialout`` or ``uucp`` group to grant access to the serial port. See `Adding user to dialout or uucp on Linux <https://docs.espressif.com/projects/esp-idf/en/stable/get-started/establish-serial-connection.html#adding-user-to-dialout-or-uucp-on-linux>`_.
