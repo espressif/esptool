@@ -183,17 +183,17 @@ class TestReadCommands(EfuseTestCase):
         self.espefuse_py("dump -h")
         self.espefuse_py("dump")
 
-    def test_dump_format_united(self):
+    def test_dump_format_joint(self):
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
-        self.espefuse_py(f"dump --format united --file_name {tmp_file.name}")
+        self.espefuse_py(f"dump --format joint --file_name {tmp_file.name}")
 
-    def test_dump_separated_default(self):
+    def test_dump_split_default(self):
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
         self.espefuse_py(f"dump --file_name {tmp_file.name}")
 
-    def test_dump_separated(self):
+    def test_dump_split(self):
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
-        self.espefuse_py(f"dump --format separated --file_name {tmp_file.name}")
+        self.espefuse_py(f"dump --format split --file_name {tmp_file.name}")
 
     def test_summary(self):
         self.espefuse_py("summary -h")

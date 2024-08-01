@@ -179,11 +179,11 @@ def add_common_commands(subparsers, efuses):
         "--format",
         help="Select the dump format: "
         "default - usual console eFuse dump; "
-        "united - all eFuse blocks are stored in one file; "
-        "separated - each eFuse block is placed in a separate file. Tool will create multiple files based on "
+        "joint - all eFuse blocks are stored in one file; "
+        "split - each eFuse block is placed into its own file. The tool will create multiple files based on "
         "the given --file_name (/path/blk.bin): blk0.bin, blk1.bin ... blkN.bin. Use the burn_block_data cmd "
         "to write it back to another chip.",
-        choices=["default", "separated", "united"],
+        choices=["default", "split", "joint"],
         default="default",
     )
     dump_cmd.add_argument(
@@ -409,10 +409,10 @@ def dump(esp, efuses, args):
             return
         else:
             # for back compatibility to support "espefuse.py dump --file_name dump.bin"
-            args.format = "separated"
+            args.format = "split"
 
-    if args.format == "separated":
-        # each efuse block is placed in a separate file
+    if args.format == "split":
+        # each efuse block is placed into its own file
         for block in efuses.blocks:
             if not to_console:
                 file_dump_name = args.file_name
@@ -423,7 +423,7 @@ def dump(esp, efuses, args):
             output_block_to_file(block, dump_file, to_console)
             if not to_console:
                 dump_file.close()
-    elif args.format == "united":
+    elif args.format == "joint":
         # all efuse blocks are stored in one file
         if not to_console:
             print(f"Dump efuse blocks -> {args.file_name}")

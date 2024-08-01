@@ -12,8 +12,8 @@ Optional arguments:
 
 - ``--format`` - Selects the dump format:
     - ``default`` - Usual console eFuse dump;
-    - ``united`` - All eFuse blocks are stored in one file;
-    - ``separated`` - Each eFuse block is placed in a separate file. The tool will create multiple files based on the given the ``--file_name`` argument. Example: "--file_name /path/blk.bin", blk0.bin, blk1.bin ... blkN.bin. Use the ``burn_block_data`` cmd to write it back to another chip.
+    - ``joint`` - All eFuse blocks are stored in one file;
+    - ``split`` - Each eFuse block is placed in its own file. The tool will create multiple files based on the given the ``--file_name`` argument. Example: "--file_name /path/blk.bin", blk0.bin, blk1.bin ... blkN.bin. Use the ``burn_block_data`` cmd to write it back to another chip.
 - ``--file_name`` - The path to the file in which to save the dump, if not specified, output to the console.
 
 Raw Values Of Efuse Registers
@@ -93,7 +93,7 @@ This command saves dump for each block into a separate file. You need to provide
 
 .. code-block:: none
 
-    > espefuse.py dump --format separated --file_name backup/chip1/blk.bin
+    > espefuse.py dump --format split --file_name backup/chip1/blk.bin
 
     === Run "dump" command ===
     backup/chip1/blk0.bin
@@ -120,7 +120,7 @@ To save all eFuse blocks in one file, use the following command:
 
 .. code-block:: none
 
-    > espefuse.py dump --format united --file_name backup/chip1/efuses.bin
+    > espefuse.py dump --format joint --file_name backup/chip1/efuses.bin
 
     === Run "dump" command ===
     backup/chip1/efuses.bin
