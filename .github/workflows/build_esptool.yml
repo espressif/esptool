@@ -92,6 +92,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') && !(contains(github.ref_name, 'dev'))
     needs: build-esptool-binaries
     runs-on: ubuntu-latest
+    env:
+      PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
     permissions:
       contents: write
     steps:
