@@ -105,7 +105,7 @@ class ESP32P4ROM(ESP32ROM):
 
     def get_pkg_version(self):
         num_word = 2
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 27) & 0x07
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 20) & 0x07
 
     def get_minor_chip_version(self):
         num_word = 2
