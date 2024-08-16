@@ -11,7 +11,7 @@ else:
             "esptool.py=esptool.__init__:_main",
             "espsecure.py=espsecure.__init__:_main",
             "espefuse.py=espefuse.__init__:_main",
-            "esp_rfc2217_server.py=esp_rfc2217_server:main",
+            "esp_rfc2217_server.py=esp_rfc2217_server.__init__:main",
         ],
     }
 

@@ -17,7 +17,7 @@ repos:
       - id: mypy
         additional_dependencies: ['types-PyYAML<=6.0.12.12']
         # ignore wrapper scripts because of name colision with efuse/__init__.py etc.
-        exclude: test/|docs/|espefuse.py|espsecure.py|esptool.py
+        exclude: test/|docs/|espefuse.py|espsecure.py|esptool.py|esp_rfc2217_server.py
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.5
     hooks:
