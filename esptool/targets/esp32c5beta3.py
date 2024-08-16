@@ -59,6 +59,18 @@ class ESP32C5BETA3ROM(ESP32C6ROM):
         12: "KM_INIT_KEY",
     }
 
+    def get_pkg_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 26) & 0x07
+
+    def get_minor_chip_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x0F
+
+    def get_major_chip_version(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 4) & 0x03
+
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C5 beta3 (QFN40)",
