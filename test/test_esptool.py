@@ -1513,3 +1513,20 @@ class TestConfigFile(EsptoolTestCase):
             output = self.run_esptool_error("flash_id")
             assert f"Loaded custom configuration from {config_file_path}" in output
             assert 'Invalid "custom_reset_sequence" option format:' in output
+
+    def test_open_port_attempts(self):
+        # Test that the open_port_attempts option is loaded correctly
+        connect_attempts = 5
+        config = (
+            "[esptool]\n"
+            f"open_port_attempts = {connect_attempts}\n"
+            "connect_attempts = 1\n"
+            "custom_reset_sequence = D0\n"  # Invalid reset sequence to make sure connection fails
+        )
+        config_file_path = os.path.join(os.getcwd(), "esptool.cfg")
+        with self.ConfigFile(config_file_path, config):
+            output = self.run_esptool_error("flash_id")
+            assert f"Loaded custom configuration from {config_file_path}" in output
+            assert "Retrying failed connection" in output
+            for _ in range(connect_attempts):
+                assert "Connecting........" in output
