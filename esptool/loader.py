@@ -708,6 +708,14 @@ class ESPLoader(object):
                 "Connection may fail if the chip is not in bootloader "
                 "or flasher stub mode.",
             )
+
+        if self._port.name.startswith("socket:"):
+            mode = "no_reset"  # not possible to toggle DTR/RTS over a TCP socket
+            print(
+                "Note: It's not possible to reset the chip over a TCP socket. "
+                "Resetting to bootloader has been disabled."
+            )
+
         print("Connecting...", end="")
         sys.stdout.flush()
         last_error = None
