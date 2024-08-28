@@ -478,19 +478,32 @@ def write_flash(esp, args):
                     "Use --force to override the warning."
                 )
 
-    # verify file sizes fit in flash
-    flash_end = flash_size_bytes(
-        detect_flash_size(esp) if args.flash_size == "keep" else args.flash_size
+    set_flash_size = (
+        flash_size_bytes(args.flash_size)
+        if args.flash_size not in ["detect", "keep"]
+        else None
     )
-    if flash_end is not None:  # Not in secure download mode
+    if esp.secure_download_mode:
+        flash_end = set_flash_size
+    else:  # Check against real flash chip size if not in SDM
+        flash_end_str = detect_flash_size(esp)
+        flash_end = flash_size_bytes(flash_end_str)
+        if set_flash_size and set_flash_size > flash_end:
+            print(
+                f"WARNING: Set --flash_size {args.flash_size} "
+                f"is larger than the available flash size of {flash_end_str}."
+            )
+
+    # Verify file sizes fit in the set --flash_size, or real flash size if smaller
+    flash_end = min(set_flash_size, flash_end) if set_flash_size else flash_end
+    if flash_end is not None:
         for address, argfile in args.addr_filename:
             argfile.seek(0, os.SEEK_END)
             if address + argfile.tell() > flash_end:
                 raise FatalError(
-                    "File %s (length %d) at offset %d "
-                    "will not fit in %d bytes of flash. "
-                    "Use --flash_size argument, or change flashing address."
-                    % (argfile.name, argfile.tell(), address, flash_end)
+                    f"File {argfile.name} (length {argfile.tell()}) at offset "
+                    f"{address} will not fit in {flash_end} bytes of flash. "
+                    "Change the --flash_size argument, or flashing address."
                 )
             argfile.seek(0)
 
@@ -955,9 +968,7 @@ def image_info(args):
             ESP8266V2FirmwareImage.IMAGE_V2_MAGIC,
         ]:
             raise FatalError(
-                "This is not a valid image " "(invalid magic number: {:#x})".format(
-                    magic
-                )
+                f"This is not a valid image (invalid magic number: {magic:#x})"
             )
 
         if args.chip == "auto":
