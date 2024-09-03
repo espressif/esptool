@@ -677,6 +677,90 @@ class TestFlashing(EsptoolTestCase):
         )
         assert "Hard resetting via RTS pin..." in output
 
+    @pytest.mark.skipif(arg_preload_port is False, reason="USB-JTAG/Serial only")
+    @pytest.mark.skipif(arg_chip != "esp32c3", reason="ESP32-C3 only")
+    def test_flash_overclocked(self):
+        SYSTEM_BASE_REG = 0x600C0000
+        SYSTEM_CPU_PER_CONF_REG = SYSTEM_BASE_REG + 0x008
+        SYSTEM_CPUPERIOD_SEL_S = 0
+        SYSTEM_CPUPERIOD_MAX = 1  # CPU_CLK frequency is 160 MHz
+
+        SYSTEM_SYSCLK_CONF_REG = SYSTEM_BASE_REG + 0x058
+        SYSTEM_SOC_CLK_SEL_S = 10
+        SYSTEM_SOC_CLK_MAX = 1
+
+        output = self.run_esptool(
+            "--after no_reset_stub write_flash 0x0 images/one_mb.bin", preload=False
+        )
+        faster = re.search(r"(\d+(\.\d+)?)\s+seconds", output)
+        assert faster, "Duration summary not found in the output"
+
+        with esptool.cmds.detect_chip(
+            port=arg_port, connect_mode="no_reset"
+        ) as reg_mod:
+            reg_mod.write_reg(
+                SYSTEM_SYSCLK_CONF_REG,
+                0,
+                mask=(SYSTEM_SOC_CLK_MAX << SYSTEM_SOC_CLK_SEL_S),
+            )
+            sleep(0.1)
+            reg_mod.write_reg(
+                SYSTEM_CPU_PER_CONF_REG,
+                0,
+                mask=(SYSTEM_CPUPERIOD_MAX << SYSTEM_CPUPERIOD_SEL_S),
+            )
+
+        output = self.run_esptool(
+            "--before no_reset write_flash 0x0 images/one_mb.bin", preload=False
+        )
+        slower = re.search(r"(\d+(\.\d+)?)\s+seconds", output)
+        assert slower, "Duration summary not found in the output"
+        assert (
+            float(slower.group(1)) - float(faster.group(1)) > 1
+        ), "Overclocking failed"
+
+    @pytest.mark.skipif(arg_preload_port is False, reason="USB-JTAG/Serial only")
+    @pytest.mark.skipif(arg_chip != "esp32c3", reason="ESP32-C3 only")
+    def test_flash_watchdogs(self):
+        RTC_WDT_ENABLE = 0xC927FA00  # Valid only for ESP32-C3
+
+        with esptool.cmds.detect_chip(port=arg_port) as reg_mod:
+            # Enable RTC WDT
+            reg_mod.write_reg(
+                reg_mod.RTC_CNTL_WDTWPROTECT_REG, reg_mod.RTC_CNTL_WDT_WKEY
+            )
+            reg_mod.write_reg(reg_mod.RTC_CNTL_WDTCONFIG0_REG, RTC_WDT_ENABLE)
+            reg_mod.write_reg(reg_mod.RTC_CNTL_WDTWPROTECT_REG, 0)
+
+            # Disable automatic feeding of SWD
+            reg_mod.write_reg(
+                reg_mod.RTC_CNTL_SWD_WPROTECT_REG, reg_mod.RTC_CNTL_SWD_WKEY
+            )
+            reg_mod.write_reg(
+                reg_mod.RTC_CNTL_SWD_CONF_REG, 0, mask=reg_mod.RTC_CNTL_SWD_AUTO_FEED_EN
+            )
+            reg_mod.write_reg(reg_mod.RTC_CNTL_SWD_WPROTECT_REG, 0)
+
+            reg_mod.sync_stub_detected = False
+            reg_mod.run_stub()
+
+        output = self.run_esptool(
+            "--before no_reset --after no_reset_stub flash_id", preload=False
+        )
+        assert "Stub is already running. No upload is necessary." in output
+
+        time.sleep(10)  # Wait if RTC WDT triggers
+
+        with esptool.cmds.detect_chip(
+            port=arg_port, connect_mode="no_reset"
+        ) as reg_mod:
+            output = reg_mod.read_reg(reg_mod.RTC_CNTL_WDTCONFIG0_REG)
+            assert output == 0, "RTC WDT is not disabled"
+
+            output = reg_mod.read_reg(reg_mod.RTC_CNTL_SWD_CONF_REG)
+            print(f"RTC_CNTL_SWD_CONF_REG: {output}")
+            assert output & 0x80000000, "SWD auto feeding is not disabled"
+
 
 @pytest.mark.skipif(
     arg_chip in ["esp8266", "esp32"],
