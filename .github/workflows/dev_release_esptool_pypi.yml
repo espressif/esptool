@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install twine 'setuptools>=64'
+        python -m pip install twine build
 
     - name: Create development release ${{ github.ref_name }}
       env:
@@ -36,6 +36,5 @@ jobs:
         python -m pip download esptool==$(python setup.py -V) && echo "Version ${{ github.ref_name }} already published, skipping..." && exit 1
 
         echo "Packaging and publishing new esptool development release: ${{ github.ref_name }}"
-        python setup.py sdist
-        tar -ztvf dist/*
+        python -m build
         twine upload dist/*

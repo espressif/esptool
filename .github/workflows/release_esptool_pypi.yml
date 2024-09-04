@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install 'setuptools>=64' twine
+        pip install twine build
     - name: Build and upload esptool ${{ github.event.release.tag_name }}
       env:
         TWINE_USERNAME: __token__
@@ -34,7 +34,6 @@ jobs:
           exit 1
         else
           echo "Packaging and publishing new esptool version: ${CURRENT_VERSION}"
-          python setup.py sdist
-          tar -ztvf dist/*
+          python -m build
           twine upload dist/*
         fi
