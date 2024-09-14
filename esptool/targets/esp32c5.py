@@ -98,15 +98,15 @@ class ESP32C5ROM(ESP32C6ROM):
     }
 
     def get_pkg_version(self):
-        num_word = 3
+        num_word = 2
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 26) & 0x07
 
     def get_minor_chip_version(self):
-        num_word = 3
+        num_word = 2
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x0F
 
     def get_major_chip_version(self):
-        num_word = 3
+        num_word = 2
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 4) & 0x03
 
     def get_chip_description(self):
