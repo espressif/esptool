@@ -27,7 +27,7 @@ jobs:
           CONTAINER: python:3.8-bullseye
           TARGET: linux-arm32
           SEPARATOR: ':'
-          RUN_ON: [ARM, self-hosted, linux]
+          RUN_ON: [ARM, self-hosted, linux, docker]
         - platform: linux-arm64
           CONTAINER: python:3.8-bullseye
           TARGET: linux-arm64
