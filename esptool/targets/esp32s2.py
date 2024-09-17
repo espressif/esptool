@@ -9,7 +9,6 @@ from typing import Dict
 
 from .esp32 import ESP32ROM
 from ..loader import ESPLoader
-from ..reset import HardReset
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -310,8 +309,7 @@ class ESP32S2ROM(ESP32ROM):
         if uses_usb_otg:
             self._check_if_can_reset()
 
-        print("Hard resetting via RTS pin...")
-        HardReset(self._port, uses_usb_otg)()
+        ESPLoader.hard_reset(self, uses_usb_otg)
 
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)

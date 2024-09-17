@@ -205,5 +205,5 @@ class CustomReset(ResetStrategy):
             cmds = seq_str.split("|")
             fn_calls_list = [self.format_dict[cmd[0]].format(cmd[1:]) for cmd in cmds]
         except Exception as e:
-            raise FatalError(f'Invalid "custom_reset_sequence" option format: {e}')
+            raise FatalError(f"Invalid custom reset sequence option format: {e}")
         return "\n".join(fn_calls_list)

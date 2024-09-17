@@ -8,7 +8,6 @@ from typing import Dict
 
 from .esp32c6 import ESP32C6ROM
 from ..loader import ESPLoader
-from ..reset import HardReset
 from ..util import FatalError
 
 
@@ -128,8 +127,7 @@ class ESP32C5ROM(ESP32C6ROM):
         ) >> self.PCR_SYSCLK_XTAL_FREQ_S
 
     def hard_reset(self):
-        print("Hard resetting via RTS pin...")
-        HardReset(self._port, self.uses_usb_jtag_serial())()
+        ESPLoader.hard_reset(self, self.uses_usb_jtag_serial())
 
     def change_baud(self, baud):
         if not self.IS_STUB:

@@ -1525,9 +1525,13 @@ class ESPLoader(object):
             )
         return norm_xtal
 
-    def hard_reset(self):
+    def hard_reset(self, uses_usb=False):
         print("Hard resetting via RTS pin...")
-        HardReset(self._port)()
+        cfg_custom_hard_reset_sequence = cfg.get("custom_hard_reset_sequence")
+        if cfg_custom_hard_reset_sequence is not None:
+            CustomReset(self._port, cfg_custom_hard_reset_sequence)()
+        else:
+            HardReset(self._port, uses_usb)()
 
     def soft_reset(self, stay_in_bootloader):
         if not self.IS_STUB:

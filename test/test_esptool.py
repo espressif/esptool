@@ -1604,7 +1604,7 @@ class TestConfigFile(EsptoolTestCase):
         with self.ConfigFile(config_file_path, invalid_reset_seq_config):
             output = self.run_esptool_error("flash_id")
             assert f"Loaded custom configuration from {config_file_path}" in output
-            assert 'Invalid "custom_reset_sequence" option format:' in output
+            assert "Invalid custom reset sequence option format:" in output
 
     def test_open_port_attempts(self):
         # Test that the open_port_attempts option is loaded correctly

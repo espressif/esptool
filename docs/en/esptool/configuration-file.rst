@@ -111,14 +111,19 @@ Complete list of configurable options:
 +------------------------------+-----------------------------------------------------------+----------+
 | custom_reset_sequence        | Custom reset sequence for resetting into the bootloader   |          |
 +------------------------------+-----------------------------------------------------------+----------+
+| custom_hard_reset_sequence   | Custom reset sequence for hard resetting the chip         |          |
++------------------------------+-----------------------------------------------------------+----------+
 
-Custom Reset Sequence
----------------------
+Custom Reset Sequences
+----------------------
 
 The ``custom_reset_sequence`` configuration option allows you to define a reset sequence which will get
 used when an :ref:`automatic reset into the serial bootloader <automatic-bootloader>` is performed.
 
-The sequence is defined with a string in the following format:
+The ``custom_hard_reset_sequence`` option allows you to define a reset sequence which will get
+used when a hard reset (a reset out of the bootloader) is performed.
+
+A sequence is defined with a string in the following format:
 
 - Consists of individual commands divided by ``|`` (e.g. ``R0|D1|W0.5``).
 - Commands (e.g. ``R0``) are defined by a code (``R``) and an argument (``0``).
@@ -148,3 +153,11 @@ For example: ``D0|R1|W0.1|D1|R0|W0.5|D0`` represents the following classic reset
     _setRTS(False)  # EN=HIGH, chip out of reset
     time.sleep(0.05)
     _setDTR(False)  # IO0=HIGH, done
+
+Similarly, ``R1|W0.1|R0`` represents the classic hard reset sequence:
+
+.. code-block:: python
+
+    _setRTS(True)   # EN=LOW, chip in reset
+    time.sleep(0.1)
+    _setRTS(False)  # EN=HIGH, chip out of reset
