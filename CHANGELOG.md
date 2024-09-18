@@ -16,7 +16,7 @@
 - **espefuse**: Adds support extend efuse table by user CSV file
 - **espefuse**: Adds efuse dump formats: separated(default) and united(new)
 - **espefuse**: Adds incompatible eFuse settings check for S3
-- **reset**: Apply recconections to the whole reset sequence, not line transitions
+- **reset**: Apply reconnections to the whole reset sequence, not line transitions
 - **reset**: Automatically reconnect if port disconnects during reset
 - **esp32-p4**: Add ECO1 magic number
 - **espsecure**: Add support for secure boot v2 using ECDSA-P384 signatures
@@ -72,7 +72,7 @@
 - **espefuse**: Fix burn_key for ECDSA_KEY, it can read pem file
 - **secure_download_mode**: Disable secure boot detection and print more info
 - **esptool**: clear boot control register on ESP32-S3
-- **intelhex**: catch unicode decode errors when convering hex to binary
+- **intelhex**: catch unicode decode errors when converting hex to binary
 - ROM doesn't attach in-package flash chips
 - close file gracefully in espsecure
 - Fixed glitches on RTS line when no_reset option on Windows
