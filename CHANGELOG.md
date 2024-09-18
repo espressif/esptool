@@ -1,3 +1,95 @@
+## v4.8.0 (2024-09-18)
+
+### New Features
+
+- **espefuse**: Supports wafer efuse versions for esp32c61
+- **esptool**: add new command SFDP read
+- **esptool**: Add option to retry connection in a loop
+- **efuse**: Updates efuse table for esp32c5
+- **efuse**: Updates efuse table for esp32p4
+- **esp32c61**: Added stub flasher support
+- **cli**: add autocompletions
+- **esptool**: allow picking UART by VID/PID/Name
+- **esp32c5**: Add USB-serial/JTAG stub support
+- **esp32c5**: Add UART stub support
+- **esptool**: Print key_purpose name for get_security_info cmd
+- **espefuse**: Adds support extend efuse table by user CSV file
+- **espefuse**: Adds efuse dump formats: separated(default) and united(new)
+- **espefuse**: Adds incompatible eFuse settings check for S3
+- **reset**: Apply recconections to the whole reset sequence, not line transitions
+- **reset**: Automatically reconnect if port disconnects during reset
+- **esp32-p4**: Add ECO1 magic number
+- **espsecure**: Add support for secure boot v2 using ECDSA-P384 signatures
+- **write_flash**: retry flashing if chip disconnects
+- **espefuse**: Allow filtering efuses based on command line arguments
+- **esploader**: Enable context manager for esp instances
+- **espefuse**: Added check for correctness of written data
+- **espefuse**: Improves help for burn_efuse cmd
+- **esp32s3**: clear boot control register on hard reset
+- **esp32-p4**: add spi-connection restriction to ROM class
+- add UF2 IDs for ESP32-C5 and ESP32-C61
+- **espefuse**: Updates efuses for C5 and C61
+- **esp32c61**: add c61 basic flash support (no_stub)
+- **esp32c5**: skipped the stub check for esp32c5 mp
+- **esp32c5**: base support of esp32c5 mp (no stub)
+- Added warning when secure boot enabled
+- **cmds/write_flash**: Recalculated SHA digest for image binary
+- print flash voltage in flash_id command
+- **esptool**: Adds wafer and pkg versions
+- **espefuse**: Update adc_info commands for all chips
+- **espefuse**: Adds new efuses for esp32p4
+- **espefuse**: Allow the espefuse.py to work when coding scheme == 3
+- **err_defs**: Add ROM bootloader flash error definitions
+- Use ruff instead of flake8 and black both in pre-commit and CI
+- **esp32p4**: Enable USB-serial/JTAG in flasher stub
+- **espefuse**: Postpone some efuses to burn them at the very end
+- add advisory port locking
+- **espefuse**: check_error --recover chip even if there are num_errors
+- **espefuse**: Adds new efuses for esp32c6 and esp32h2
+- **esp32c5**: add target esp32c5 beta3
+
+### Bug Fixes
+
+- **esptool**: Fix esp32c61 flash frequency config
+- **esptool**: Fix incorrect chip version for esp32c5
+- **write_flash**: Verify if files will fit against the real flash size when possible
+- **remote_ports**: Disable reset sequence when a socket is used
+- **bitstring**: Restricted bitstring dependency to fix 32-bit compatibility
+- **esp32_d0wdr2_v3**: Print correct chip name
+- pass error message to exception in OTG mode
+- **bin_image**: add check for ELF file segment when saving RAM segments
+- **docs**: Add a note about entering manual bootloader mode
+- **esp32c5**: Fix MAC reading for esptool
+- Erase non-aligned bytes with --no-stub
+- **esp32-c5**: Use a longer reset delay with usb-serial/jtag to stabilize boot-up
+- **espefuse**: Use stub class if stub flasher is running
+- Do not append SHA256 when `--ram-only-header`
+- **elf2image**: add ELF flags to merge condition
+- ram_only_header: pad flash segment to next boundary
+- sort segments if ram_only_header is used
+- **espefuse**: Fix efuse base addr for esp32c5 MP
+- fix type annotation to comply with mypy
+- **espefuse**: Fix burn_key for ECDSA_KEY, it can read pem file
+- **secure_download_mode**: Disable secure boot detection and print more info
+- **esptool**: clear boot control register on ESP32-S3
+- **intelhex**: catch unicode decode errors when convering hex to binary
+- ROM doesn't attach in-package flash chips
+- close file gracefully in espsecure
+- Fixed glitches on RTS line when no_reset option on Windows
+- **merge_bin**: treat files starting with colon as raw files
+- Index image segments from 0 instead of 1
+- **read_flash**: add flash size arg to enable reading past 2MB without stub
+- **read_flash**: flush transmit buffer less often to inrease throughput
+- **esptool**: Proper alignment for SoCs with offset load
+- ignore resetting on unsupported ports
+- **esptool**: Remove the shebang from uf2_writer.py
+
+### Code Refactoring
+
+- Migrated esp_rfc2217_server into standalone subpackage
+- **test/esptool**: Updated tests according to SHA recomputation for binary
+- **style**: Comply with black>=24.0.0
+
 ## v4.7.0 (2023-12-13)
 
 ### New Features
