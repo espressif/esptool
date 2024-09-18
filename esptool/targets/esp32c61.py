@@ -45,6 +45,12 @@ class ESP32C61ROM(ESP32C6ROM):
     EFUSE_SECURE_BOOT_EN_REG = EFUSE_BASE + 0x034
     EFUSE_SECURE_BOOT_EN_MASK = 1 << 26
 
+    FLASH_FREQUENCY = {
+        "80m": 0xF,
+        "40m": 0x0,
+        "20m": 0x2,
+    }
+
     MEMORY_MAP = [
         [0x00000000, 0x00010000, "PADDING"],
         [0x41800000, 0x42000000, "DROM"],
