@@ -170,7 +170,7 @@ Wrote 8192 bytes (47 compressed) at 0x0000e000 in 0.2 seconds (effective 430.8 k
 Hash of data verified.
 ```
 
-* [SetupWifi AP and BTC Address](https://github.com/universalbit-dev/esptool/images)
+* [SetupWifi AP and BTC Address](https://github.com/universalbit-dev/esptool/tree/master/images)
 * [nerdminer_v2 supported-boards](https://github.com/BitMaker-hub/NerdMiner_v2?tab=readme-ov-file#current-supported-boards)
 
 
