@@ -34,6 +34,6 @@ jobs:
           exit 1
         else
           echo "Packaging and publishing new esptool version: ${CURRENT_VERSION}"
-          python -m build
+          python -m build --sdist
           twine upload dist/*
         fi

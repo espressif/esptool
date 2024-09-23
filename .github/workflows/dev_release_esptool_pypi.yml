@@ -36,5 +36,5 @@ jobs:
         python -m pip download esptool==$(python setup.py -V) && echo "Version ${{ github.ref_name }} already published, skipping..." && exit 1
 
         echo "Packaging and publishing new esptool development release: ${{ github.ref_name }}"
-        python -m build
+        python -m build --sdist
         twine upload dist/*
