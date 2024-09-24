@@ -21,7 +21,10 @@ sudo add-apt-repository universe
 sudo apt install libfuse2
 python3 setup.py install
 ```
-
+```bash
+git clone https://github.com/universalbit-dev/esptool.git
+cd esptool
+```
 #### Flashing Firmware ESP32 NodeMCU WiFi CP2102
 ##### hardware:
 [ESP32](https://www.az-delivery.de/products/esp32-developmentboard)
