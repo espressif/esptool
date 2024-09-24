@@ -23,6 +23,8 @@ python3 setup.py install
 #### Flashing Firmware ESP32 NodeMCU WiFi CP2102
 ##### hardware:
 [ESP32](https://www.az-delivery.de/products/esp32-developmentboard)
+<img src="https://github.com/universalbit-dev/esptool/blob/master/ESP32_NodeMCU_Module%20.png" width="30%"></img>
+
 ##### firmware:
 [bin ESP32-devKit- no pass](https://github.com/BitMaker-hub/NerdMiner_v2/tree/dev/bin/bin%20ESP32-devKit-%20no%20pass)
 
