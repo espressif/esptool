@@ -1,5 +1,7 @@
 ## BTC MicroMiner using ESP32 NodeMCU WiFi CP2102 
 #### example of operation "Ubuntu 24.04 LTS"
+<img src="https://github.com/universalbit-dev/esptool/blob/master/images/serial_monitor_arduino-1.8.19.png" width=auto></img>
+
 
 * [esptool.py](https://github.com/espressif/esptool)
 A Python-based, open-source, platform-independent utility to communicate with the ROM bootloader in Espressif chips.
