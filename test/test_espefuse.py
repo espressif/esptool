@@ -233,7 +233,7 @@ class TestReadCommands(EfuseTestCase):
             self.espefuse_py("burn_efuse BLK_VERSION_MAJOR 1")
         elif arg_chip in ["esp32c2", "esp32s2", "esp32c6"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MINOR 1")
-        elif arg_chip in ["esp32h2", "esp32h2beta1"]:
+        elif arg_chip in ["esp32h2", "esp32h2beta1", "esp32p4"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MINOR 2")
         self.espefuse_py("adc_info")
 
@@ -280,6 +280,9 @@ class TestReadProtectionCommands(EfuseTestCase):
         output = self.espefuse_py(cmd)
         assert count_protects == output.count("is already read protected")
 
+    @pytest.mark.skipif(
+        arg_chip == "esp32p4", reason="BLOCK_SYS_DATA2 is used by ADC calib"
+    )
     def test_read_protect_efuse2(self):
         self.espefuse_py("write_protect_efuse RD_DIS")
         if arg_chip == "esp32":
@@ -1286,13 +1289,15 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         ) in output
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
 
-        self.espefuse_py(
-            f"burn_block_data \
-            BLOCK10 {IMAGES_DIR}/256bit_1"
-        )
-        self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/256bit_1"
-        )
+        if arg_chip != "esp32p4":
+            # BLOCK10 is free. In P4 it is used for ADC calib data.
+            self.espefuse_py(
+                f"burn_block_data \
+                BLOCK10 {IMAGES_DIR}/256bit_3"
+            )
+            self.check_data_block_in_log(
+                self.espefuse_py("summary -d"), f"{IMAGES_DIR}/256bit_3"
+            )
 
         self.espefuse_py(
             f"burn_block_data \
@@ -1306,7 +1311,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             in output
         )
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
-        self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_1", 2)
+        self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_2")
 
     def test_burn_block_data_check_errors(self):
