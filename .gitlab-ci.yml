@@ -419,6 +419,22 @@ target_esp32p4:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32P4 --chip esp32p4 --baud 115200
 
+# ESP32C5
+target_esp32c5:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32c5_target
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C5 --chip esp32c5 --baud 115200
+
+# ESP32C61
+target_esp32c61:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32c61_target
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C61 --chip esp32c61 --baud 115200    
+
 .windows_test:
   stage: test
   variables:
