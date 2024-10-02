@@ -122,12 +122,13 @@ A second option ``--non-volatile`` can be used in order to send a ``WREN`` (06h)
 
 .. _read-flash-sfdp:
 
-Read Serial Flash Discoverable Parameters (SFDP)
-------------------------------------------------
+Read Serial Flash Discoverable Parameters (SFDP): read_flash_sfdp
+-----------------------------------------------------------------
 
 The Serial Flash Discoverable Parameters (SFDP) store essential vendor-specific configuration data of the flash memory chip. These parameters help identify and interact with different flash devices. Usage:
 
 ::
+
     esptool.py read_flash_sfdp 16 4
 
 This will read 4 bytes from SFDP address 16.
