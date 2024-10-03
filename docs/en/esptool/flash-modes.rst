@@ -4,7 +4,7 @@
 
 {IDF_TARGET_FLASH_FREQ_0:default="40", esp32c2="30", esp32h2="24"}
 
-{IDF_TARGET_FLASH_FREQ:default="``40m``, ``26m``, ``20m``, ``80m``", esp32c2="``30m``, ``20m``, ``15m``, ``60m``", esp32h2="``24m``, ``16m``, ``12m``, ``48m``", esp32c6="``40m``, ``20m``, ``80m``"}
+{IDF_TARGET_FLASH_FREQ:default="``40m``, ``26m``, ``20m``, ``80m``", esp32c2="``30m``, ``20m``, ``15m``, ``60m``", esp32h2="``24m``, ``16m``, ``12m``, ``48m``", esp32c6="``40m``, ``20m``, ``80m``, esp32c5="``40m``, ``20m``, ``80m``, esp32c61="``40m``, ``20m``, ``80m``"}
 
 
 .. _flash-modes:
@@ -56,7 +56,7 @@ Size of the SPI flash, given in megabytes.
 
     Valid values are: ``keep``, ``detect``, ``256KB``, ``512KB``, ``1MB``, ``2MB``, ``4MB``, ``2MB-c1``, ``4MB-c1``, ``8MB``, ``16MB``
 
-.. only:: esp32 or esp32c3 or esp32c6 or esp32c2 or esp32h2
+.. only:: esp32 or esp32c3 or esp32c6 or esp32c2 or esp32h2 or esp32c5 or esp32c61
 
     Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``
 

@@ -433,7 +433,7 @@ target_esp32c61:
   tags:
     - esptool_esp32c61_target
   script:
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C61 --chip esp32c61 --baud 115200    
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C61 --chip esp32c61 --baud 115200
 
 .windows_test:
   stage: test
@@ -523,7 +523,7 @@ build_docs:
   script:
     - cd docs
     - pip install -r requirements.txt --prefer-binary
-    - build-docs -l en -t {esp8266,esp32,esp32s2,esp32c3,esp32s3,esp32c2,esp32c6,esp32h2,esp32p4}
+    - build-docs -l en -t {esp8266,esp32,esp32s2,esp32c3,esp32s3,esp32c2,esp32c6,esp32h2,esp32p4,esp32c5,esp32c61}
 
 .deploy_docs_template:
   stage: deploy_docs

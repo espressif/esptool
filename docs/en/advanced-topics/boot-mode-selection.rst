@@ -1,6 +1,6 @@
-{IDF_TARGET_STRAP_BOOT_GPIO:default="GPIO9", esp32="GPIO0", esp32s2="GPIO0", esp32s3="GPIO0", esp32p4="GPIO35"}
+{IDF_TARGET_STRAP_BOOT_GPIO:default="GPIO9", esp32="GPIO0", esp32s2="GPIO0", esp32s3="GPIO0", esp32p4="GPIO35", esp32c5="GPIO28"}
 
-{IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO8", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32p4="GPIO36"}
+{IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO8", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32p4="GPIO36", esp32c5="GPIO27"}
 
 {IDF_TARGET_BOOTLOADER_OFFSET:default="0", esp32="1000", esp32s2="1000", esp32p4="2000"}
 
@@ -87,7 +87,7 @@ This guide explains how to select the boot mode correctly and describes the boot
 
       {IDF_TARGET_STRAP_BOOT_2_GPIO} must also be either left unconnected/floating, or driven Low, in order to enter the serial bootloader.
 
-   .. only:: esp32c3 or esp32c2 or esp32h2 or esp32c6 or esp32p4
+   .. only:: esp32c3 or esp32c2 or esp32h2 or esp32c6 or esp32p4 or esp32c5 or esp32c61
 
       {IDF_TARGET_STRAP_BOOT_2_GPIO} must also be driven High, in order to enter the serial bootloader reliably. The strapping combination of {IDF_TARGET_STRAP_BOOT_2_GPIO} = 0 and {IDF_TARGET_STRAP_BOOT_GPIO} = 0 is invalid and will trigger unexpected behavior.
 
