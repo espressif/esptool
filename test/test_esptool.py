@@ -48,6 +48,7 @@ from conftest import (
 try:
     import espefuse
     import esptool
+    from esptool import FatalError
     from esptool.cmds import (
         attach_flash,
         detect_chip,
@@ -745,6 +746,73 @@ class TestFlashing(EsptoolTestCase):
             "write-flash 0xd00 images/one_kb.bin 0x1d00 images/one_kb.bin"
         )
         assert "Detected overlap at address: 0x1d00" in output
+
+    def _esp_mock_for_encryption_check(
+        self,
+        flash_encryption_enabled=True,
+        encrypted_download_disabled=True,
+    ):
+        """
+        Minimal esp mock so write_flash reaches the Production-mode plaintext check.
+
+        Production mode: flash encryption on + UART manual encrypt disabled.
+        Development mode: set encrypted_download_disabled=False (plaintext allowed).
+        """
+        esp = MagicMock()
+        esp.get_flash_encryption_enabled.return_value = flash_encryption_enabled
+        esp.get_encrypted_download_disabled.return_value = encrypted_download_disabled
+        esp.CHIP_NAME = "esp32"
+        esp.IMAGE_CHIP_ID = 0
+        esp.secure_download_mode = False
+        esp.get_secure_boot_v1_enabled.return_value = False
+        esp.IS_STUB = True
+        esp.get_major_chip_version.return_value = 0
+        esp.get_minor_chip_version.return_value = 0
+        esp.get_chip_revision.return_value = 0
+        return esp
+
+    @pytest.mark.quick_test
+    @pytest.mark.host_test
+    def test_write_flash_production_plaintext_guard(self):
+        """
+        Single cheap pass through write_flash to validate Production-mode guard:
+        reject flashing without --force (both image and non-image payloads), allow
+        with --force, and allow in Development (UART encrypt not disabled).
+        """
+        with open(os.path.join(TEST_DIR, "images", "bootloader_esp32.bin"), "rb") as f:
+            bootloader = f.read()
+        payload_plain = [(0x10000, bootloader)]
+        payload_non_image = [(0x20000, b"\x00" * 64)]
+
+        esp_prod = self._esp_mock_for_encryption_check(True, True)
+        with pytest.raises(FatalError) as exc_info:
+            write_flash(esp_prod, payload_plain, force=False)
+        msg = str(exc_info.value)
+        assert "Detected flash encryption enabled" in msg
+        assert "download manual encrypt disabled" in msg
+        with pytest.raises(FatalError):
+            write_flash(esp_prod, payload_non_image, force=False)
+
+        try:
+            write_flash(esp_prod, payload_plain, force=True)
+        except FatalError as e:
+            assert "download manual encrypt disabled" not in str(e)
+        except Exception:
+            pass
+        try:
+            write_flash(esp_prod, payload_non_image, force=True)
+        except FatalError as e:
+            assert "download manual encrypt disabled" not in str(e)
+        except Exception:
+            pass
+
+        esp_dev = self._esp_mock_for_encryption_check(True, False)
+        try:
+            write_flash(esp_dev, payload_plain, force=False)
+        except FatalError as e:
+            assert "download manual encrypt disabled" not in str(e)
+        except Exception:
+            pass
 
     def test_write_no_overlap(self):
         output = self.run_esptool(

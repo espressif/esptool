@@ -1148,7 +1148,8 @@ def write_flash(
                 raise FatalError(
                     "Detected flash encryption enabled and "
                     "download manual encrypt disabled.\n"
-                    "Flashing plaintext binary may brick your device! "
+                    "Data must be encrypted appropriately before flashing.\n"
+                    "Flashing plaintext data may brick your device! "
                     "Use the force argument to override the warning."
                 )
 
