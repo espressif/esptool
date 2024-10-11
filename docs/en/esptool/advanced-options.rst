@@ -31,8 +31,8 @@ The ``--after`` argument allows you to specify whether the chip should be reset 
 
 .. list::
 
-    * ``--after hard_reset`` is the default. The DTR serial control line is used to reset the chip into a normal boot sequence.
-    :esp8266:* ``--after soft_reset`` This runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
+    * ``--after hard_reset`` is the default. The RTS serial control line is used to reset the chip into a normal boot sequence.
+    :esp8266: * ``--after soft_reset`` runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
     * ``--after no_reset`` leaves the chip in the serial bootloader, no reset is performed.
     * ``--after no_reset_stub`` leaves the chip in the stub bootloader, no reset is performed.
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2024 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -72,6 +72,7 @@ class ESP32C6ROM(ESP32C3ROM):
 
     DR_REG_LP_WDT_BASE = 0x600B1C00
     RTC_CNTL_WDTCONFIG0_REG = DR_REG_LP_WDT_BASE + 0x0  # LP_WDT_RWDT_CONFIG0_REG
+    RTC_CNTL_WDTCONFIG1_REG = DR_REG_LP_WDT_BASE + 0x0004  # LP_WDT_RWDT_CONFIG1_REG
     RTC_CNTL_WDTWPROTECT_REG = DR_REG_LP_WDT_BASE + 0x0018  # LP_WDT_RWDT_WPROTECT_REG
 
     RTC_CNTL_SWD_CONF_REG = DR_REG_LP_WDT_BASE + 0x001C  # LP_WDT_SWD_CONFIG_REG

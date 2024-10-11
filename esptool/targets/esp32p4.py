@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2024 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -72,6 +72,10 @@ class ESP32P4ROM(ESP32ROM):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
+    UARTDEV_BUF_NO = 0x4FF3FEC8  # Variable in ROM .bss which indicates the port in use
+    UARTDEV_BUF_NO_USB_OTG = 5  # The above var when USB-OTG is used
+    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 6  # The above var when USB-JTAG/Serial is used
+
     MEMORY_MAP = [
         [0x00000000, 0x00010000, "PADDING"],
         [0x40000000, 0x4C000000, "DROM"],
@@ -104,6 +108,17 @@ class ESP32P4ROM(ESP32ROM):
         11: "SECURE_BOOT_DIGEST2",
         12: "KM_INIT_KEY",
     }
+
+    DR_REG_LP_WDT_BASE = 0x50116000
+    RTC_CNTL_WDTCONFIG0_REG = DR_REG_LP_WDT_BASE + 0x0  # LP_WDT_CONFIG0_REG
+    RTC_CNTL_WDTCONFIG1_REG = DR_REG_LP_WDT_BASE + 0x0004  # LP_WDT_CONFIG1_REG
+    RTC_CNTL_WDTWPROTECT_REG = DR_REG_LP_WDT_BASE + 0x0018  # LP_WDT_WPROTECT_REG
+    RTC_CNTL_WDT_WKEY = 0x50D83AA1
+
+    RTC_CNTL_SWD_CONF_REG = DR_REG_LP_WDT_BASE + 0x001C  # RTC_WDT_SWD_CONFIG_REG
+    RTC_CNTL_SWD_AUTO_FEED_EN = 1 << 18
+    RTC_CNTL_SWD_WPROTECT_REG = DR_REG_LP_WDT_BASE + 0x0020  # RTC_WDT_SWD_WPROTECT_REG
+    RTC_CNTL_SWD_WKEY = 0x50D83AA1  # RTC_WDT_SWD_WKEY, same as WDT key in this case
 
     def get_pkg_version(self):
         num_word = 2
@@ -191,10 +206,42 @@ class ESP32P4ROM(ESP32ROM):
         ESPLoader.change_baud(self, baud)
 
     def _post_connect(self):
-        pass
-        # TODO: Disable watchdogs when USB modes are supported in the stub
-        # if not self.sync_stub_detected:  # Don't run if stub is reused
-        #     self.disable_watchdogs()
+        if not self.sync_stub_detected:  # Don't run if stub is reused
+            self.disable_watchdogs()
+
+    def uses_usb_otg(self):
+        """
+        Check the UARTDEV_BUF_NO register to see if USB-OTG console is being used
+        """
+        if self.secure_download_mode:
+            return False  # can't detect native USB in secure download mode
+        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_OTG
+
+    def uses_usb_jtag_serial(self):
+        """
+        Check the UARTDEV_BUF_NO register to see if USB-JTAG/Serial is being used
+        """
+        if self.secure_download_mode:
+            return False  # can't detect USB-JTAG/Serial in secure download mode
+        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL
+
+    def disable_watchdogs(self):
+        # When USB-JTAG/Serial is used, the RTC WDT and SWD watchdog are not reset
+        # and can then reset the board during flashing. Disable them.
+        if self.uses_usb_jtag_serial():
+            # Disable RTC WDT
+            self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_SWD_WKEY)
+            self.write_reg(self.RTC_CNTL_WDTCONFIG0_REG, 0)
+            self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)
+
+            # Automatically feed SWD
+            self.write_reg(self.RTC_CNTL_SWD_WPROTECT_REG, self.RTC_CNTL_SWD_WKEY)
+            self.write_reg(
+                self.RTC_CNTL_SWD_CONF_REG,
+                self.read_reg(self.RTC_CNTL_SWD_CONF_REG)
+                | self.RTC_CNTL_SWD_AUTO_FEED_EN,
+            )
+            self.write_reg(self.RTC_CNTL_SWD_WPROTECT_REG, 0)
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 55))):
@@ -204,6 +251,21 @@ class ESP32P4ROM(ESP32ROM):
                 "WARNING: GPIO pins 24 and 25 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
+
+    def rtc_wdt_reset(self):
+        print("Hard resetting with RTC WDT...")
+        self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
+        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 5000)  # set WDT timeout
+        self.write_reg(
+            self.RTC_CNTL_WDTCONFIG0_REG, (1 << 31) | (5 << 28) | (1 << 8) | 2
+        )  # enable WDT
+        self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)  # lock
+
+    def hard_reset(self):
+        if self.uses_usb_jtag_serial():
+            self.rtc_wdt_reset()
+        else:
+            ESPLoader.hard_reset(self)
 
 
 class ESP32P4StubLoader(ESP32P4ROM):

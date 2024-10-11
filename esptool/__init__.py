@@ -18,6 +18,7 @@ __all__ = [
     "merge_bin",
     "read_flash",
     "read_flash_status",
+    "read_flash_sfdp",
     "read_mac",
     "read_mem",
     "run",

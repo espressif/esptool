@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2024 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -83,6 +83,7 @@ class ESP32C3ROM(ESP32ROM):
     RTC_CNTL_SWD_WKEY = 0x8F1D312A
 
     RTC_CNTL_WDTCONFIG0_REG = RTCCNTL_BASE_REG + 0x0090
+    RTC_CNTL_WDTCONFIG1_REG = RTCCNTL_BASE_REG + 0x0094
     RTC_CNTL_WDTWPROTECT_REG = RTCCNTL_BASE_REG + 0x00A8
     RTC_CNTL_WDT_WKEY = 0x50D83AA1
 
@@ -251,6 +252,21 @@ class ESP32C3ROM(ESP32ROM):
     def _post_connect(self):
         if not self.sync_stub_detected:  # Don't run if stub is reused
             self.disable_watchdogs()
+
+    def hard_reset(self):
+        if self.uses_usb_jtag_serial():
+            self.rtc_wdt_reset()
+        else:
+            ESPLoader.hard_reset(self)
+
+    def rtc_wdt_reset(self):
+        print("Hard resetting with RTC WDT...")
+        self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
+        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 5000)  # set WDT timeout
+        self.write_reg(
+            self.RTC_CNTL_WDTCONFIG0_REG, (1 << 31) | (5 << 28) | (1 << 8) | 2
+        )  # enable WDT
+        self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)  # lock
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 22))):
