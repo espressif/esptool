@@ -125,7 +125,7 @@ host_tests_espefuse:
 
 host_tests_latest_python:
   <<: *host_tests_template
-  image: python:3.12-bullseye
+  image: python:3.13-bullseye
   variables:
     PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
   script:
