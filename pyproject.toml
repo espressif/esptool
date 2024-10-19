@@ -28,6 +28,7 @@
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ]
     requires-python = ">=3.7"
     dynamic = ["version", "scripts"]
@@ -69,13 +70,13 @@
     "*" = ["esptool/targets/stub_flasher/1/*", "esptool/targets/stub_flasher/2/*"]
 
 [tool.setuptools.packages]
-    find = {exclude = ["ci", "flasher_stub", "test", "docs"]}
+    find = {exclude = ["ci*", "test*", "docs*"]}
 
 [tool.setuptools.dynamic]
     version = {attr = "esptool.__init__.__version__"}
 
 [tool.commitizen]
-    version = "4.8.0"
+    version = "4.8.1"
     update_changelog_on_bump = true
     tag_format = "v$version"
     changelog_start_rev = "v4.2.1"

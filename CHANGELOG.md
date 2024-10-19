@@ -1,3 +1,10 @@
+## v4.8.1 (2024-09-25)
+
+### Bug Fixes
+
+- **esp32c2**: Add esp32c2 eco4 rom magic value
+- **packaging**: Correctly exclude the unwanted sub/modules
+
 ## v4.8.0 (2024-09-18)
 
 ### New Features
