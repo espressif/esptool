@@ -1011,6 +1011,13 @@ def image_info(args):
         segs = seg.get_memory_type(image)
         seg_name = ",".join(segs)
         print("Segment {}: {} [{}]".format(idx, seg, seg_name))
+        if args.extract:
+            # Create filename for the extracted segment
+            filename = f"/tmp/seg{idx}_len0x{len(seg.data):x}_addr0x{seg.addr:x}"
+            with open(filename, "wb") as f:
+                f.write(seg.data)
+            print(f"  Extracted to: {filename}")
+
     calc_checksum = image.calculate_checksum()
     print(
         "Checksum: {:02x} ({})".format(

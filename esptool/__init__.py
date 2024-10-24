@@ -403,6 +403,11 @@ def main(argv=None, esp=None):
         default="1",
     )
 
+    parser_image_info.add_argument(
+        '--extract', '-x', action='store_true',
+        help='Extract image segments to files'
+    )
+
     parser_make_image = subparsers.add_parser(
         "make_image", help="Create an application image from binary files"
     )
