@@ -20,6 +20,7 @@ from .bin_image import (
     ESP8266ROMFirmwareImage,
     ESP8266V2FirmwareImage,
     ESP8266V3FirmwareImage,
+    ESP32FirmwareImage
 )
 from .loader import (
     DEFAULT_CONNECT_ATTEMPTS,
@@ -1036,8 +1037,16 @@ def image_info(args):
 
 
 def make_image(args):
+    image = None
+    if args.chip == 'esp8266':
+        image = ESP8266ROMFirmwareImage()
+    elif args.chip == 'esp32':
+        image = ESP32FirmwareImage()
+    else:
+        raise FatalError(f"Chip '{args.chip}' is not supported for make_image command")
+    
     print("Creating {} image...".format(args.chip))
-    image = ESP8266ROMFirmwareImage()
+
     if len(args.segfile) == 0:
         raise FatalError("No segments specified")
     if len(args.segfile) != len(args.segaddr):
@@ -1049,6 +1058,7 @@ def make_image(args):
             data = f.read()
             image.segments.append(ImageSegment(addr, data))
     image.entrypoint = args.entrypoint
+    image.verify()
     image.save(args.output)
     print("Successfully created {} image.".format(args.chip))
 
