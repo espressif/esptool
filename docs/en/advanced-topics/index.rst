@@ -10,3 +10,4 @@ This sections contains advanced topics and technical documentation useful if you
    Serial Protocol <serial-protocol>
    SPI Flash Modes <spi-flash-modes>
    Boot Mode Selection <boot-mode-selection>
+   Flashing from your python code <flashing-from-python-code>
