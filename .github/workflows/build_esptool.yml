@@ -8,12 +8,16 @@ jobs:
     runs-on: ${{ matrix.RUN_ON }}
     strategy:
       matrix:
-        platform: [macos, windows, linux-amd64, linux-arm32, linux-arm64]
+        platform: [macos-amd64, macos-arm64, windows, linux-amd64, linux-arm32, linux-arm64]
         include:
-        - platform: macos
-          TARGET: macos
+        - platform: macos-amd64
+          TARGET: macos-amd64
           SEPARATOR: ':'
-          RUN_ON: macos-latest
+          RUN_ON: macos-13 # Versions 13 and lower are Intel-based.
+        - platform: macos-arm64
+          TARGET: macos-arm64
+          SEPARATOR: ':'
+          RUN_ON: macos-latest # Versions 14 and higher are ARM-based.
         - platform: windows
           TARGET: win64
           EXTEN: .exe
