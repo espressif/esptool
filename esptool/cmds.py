@@ -1151,12 +1151,27 @@ def erase_flash(esp, args):
                 "please use with caution, otherwise it may brick your device!"
             )
     print("Erasing flash (this may take a while)...")
+    if esp.CHIP_NAME != "ESP8266" and not esp.IS_STUB:
+        print(
+            "Note: You can use the erase_region command in ROM bootloader "
+            "mode to erase a specific region."
+        )
     t = time.time()
     esp.erase_flash()
-    print("Chip erase completed successfully in %.1fs" % (time.time() - t))
+    print(f"Chip erase completed successfully in {time.time() - t:.1f} seconds.")
 
 
 def erase_region(esp, args):
+    if args.address % ESPLoader.FLASH_SECTOR_SIZE != 0:
+        raise FatalError(
+            "Offset to erase from must be a multiple "
+            f"of {ESPLoader.FLASH_SECTOR_SIZE}"
+        )
+    if args.size % ESPLoader.FLASH_SECTOR_SIZE != 0:
+        raise FatalError(
+            "Size of data to erase must be a multiple "
+            f"of {ESPLoader.FLASH_SECTOR_SIZE}"
+        )
     if not args.force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
         if esp.get_flash_encryption_enabled() or esp.get_secure_boot_enabled():
             raise FatalError(
@@ -1167,8 +1182,12 @@ def erase_region(esp, args):
             )
     print("Erasing region (may be slow depending on size)...")
     t = time.time()
-    esp.erase_region(args.address, args.size)
-    print("Erase completed successfully in %.1f seconds." % (time.time() - t))
+    if esp.CHIP_NAME != "ESP8266" and not esp.IS_STUB:
+        # flash_begin triggers a flash erase, enabling erasing in ROM and SDM
+        esp.flash_begin(args.size, args.address, logging=False)
+    else:
+        esp.erase_region(args.address, args.size)
+    print(f"Erase completed successfully in {time.time() - t:.1f} seconds.")
 
 
 def run(esp, args):

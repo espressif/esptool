@@ -1067,6 +1067,18 @@ class TestErase(EsptoolTestCase):
         # verifies that erasing a large region doesn't time out
         self.run_esptool("erase_region 0x0 0x100000")
 
+    @pytest.mark.skipif(arg_chip == "esp8266", reason="Not supported on ESP8266")
+    def test_region_erase_no_stub(self):
+        self.run_esptool("write_flash 0x10000 images/one_kb.bin")
+        self.run_esptool("write_flash 0x11000 images/sector.bin")
+        self.verify_readback(0x10000, 0x400, "images/one_kb.bin")
+        self.verify_readback(0x11000, 0x1000, "images/sector.bin")
+        # erase only the flash sector containing one_kb.bin
+        self.run_esptool("--no-stub erase_region 0x10000 0x1000")
+        self.verify_readback(0x11000, 0x1000, "images/sector.bin")
+        empty = self.readback(0x10000, 0x1000)
+        assert empty == b"\xFF" * 0x1000
+
 
 class TestSectorBoundaries(EsptoolTestCase):
     def test_end_sector(self):

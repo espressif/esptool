@@ -891,7 +891,7 @@ class ESPLoader(object):
                 raise
             pass
 
-    def flash_begin(self, size, offset, begin_rom_encrypted=False):
+    def flash_begin(self, size, offset, begin_rom_encrypted=False, logging=True):
         """
         Start downloading to Flash (performs an erase)
 
@@ -916,7 +916,7 @@ class ESPLoader(object):
         self.check_command(
             "enter Flash download mode", self.ESP_FLASH_BEGIN, params, timeout=timeout
         )
-        if size != 0 and not self.IS_STUB:
+        if size != 0 and not self.IS_STUB and logging:
             print("Took %.2fs to erase flash block" % (time.time() - t))
         return num_blocks
 
@@ -1196,10 +1196,6 @@ class ESPLoader(object):
 
     @stub_function_only
     def erase_region(self, offset, size):
-        if offset % self.FLASH_SECTOR_SIZE != 0:
-            raise FatalError("Offset to erase from must be a multiple of 4096")
-        if size % self.FLASH_SECTOR_SIZE != 0:
-            raise FatalError("Size of data to erase must be a multiple of 4096")
         timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)
         self.check_command(
             "erase region",
