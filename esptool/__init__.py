@@ -135,7 +135,7 @@ def main(argv=None, esp=None):
     parser.add_argument(
         "--port-filter",
         action="append",
-        help="Serial port device filter, can be vid=NUMBER, pid=NUMBER, name=SUBSTRING",
+        help="Serial port device filter, can be vid=NUMBER, pid=NUMBER, name=SUBSTRING, serial=SUBSTRING",
         type=str,
         default=[],
     )
@@ -728,6 +728,7 @@ def main(argv=None, esp=None):
     args.filterVids = []
     args.filterPids = []
     args.filterNames = []
+    args.filterSerials = []
     for f in args.port_filter:
         kvp = f.split("=")
         if len(kvp) != 2:
@@ -738,6 +739,8 @@ def main(argv=None, esp=None):
             args.filterPids.append(arg_auto_int(kvp[1]))
         elif kvp[0] == "name":
             args.filterNames.append(kvp[1])
+        elif kvp[0] == "serial":
+            args.filterSerials.append(kvp[1])
         else:
             raise FatalError("Option --port-filter argument key not recognized")
 
@@ -776,7 +779,9 @@ def main(argv=None, esp=None):
             initial_baud = args.baud
 
         if args.port is None:
-            ser_list = get_port_list(args.filterVids, args.filterPids, args.filterNames)
+            ser_list = get_port_list(
+                args.filterVids, args.filterPids, args.filterNames, args.filterSerials
+            )
             print("Found %d serial ports" % len(ser_list))
         else:
             ser_list = [args.port]
@@ -1082,7 +1087,7 @@ def arg_auto_chunk_size(string: str) -> int:
     return num
 
 
-def get_port_list(vids=[], pids=[], names=[]):
+def get_port_list(vids=[], pids=[], names=[], serials=[]):
     if list_ports is None:
         raise FatalError(
             "Listing all serial ports is currently not available. "
@@ -1101,6 +1106,11 @@ def get_port_list(vids=[], pids=[], names=[]):
             continue
         if names and (
             port.name is None or all(name not in port.name for name in names)
+        ):
+            continue
+        if serials and (
+            port.serial_number is None
+            or all(serial not in port.serial_number for serial in serials)
         ):
             continue
         ports.append(port.device)

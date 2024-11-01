@@ -158,5 +158,6 @@ at least one FilterValue for each specified FilterType to be considered. Example
     * ``--port-filter vid=0x303A --port-filter pid=0x0002`` matches Espressif ESP32-S2 in USB-OTG mode by VID and PID.
     * ``--port-filter vid=0x303A --port-filter pid=0x1001`` matches Espressif USB-Serial/JTAG unit used by multiple chips by VID and PID.
     * ``--port-filter name=ttyUSB`` matches ports where the port name contains the specified text.
+    * ``--port-filter serial=7c98d1065267ee11bcc4c8ab93cd958c`` matches ports where the serial number contains the specified text.
 
 See also the `Espressif USB customer-allocated PID repository <https://github.com/espressif/usb-pids>`_
