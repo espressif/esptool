@@ -140,7 +140,20 @@ class EfuseFieldsBase(object):
                 if name == "OPTIONAL_UNIQUE_ID":
                     efuse.class_type = "keyblock"
 
-            elif includes(name, ["ADC", "LDO", "DBIAS", "_HVT", "CALIB", "OCODE"]):
+            elif includes(
+                name,
+                [
+                    "ADC",
+                    "LDO",
+                    "DBIAS",
+                    "_HVT",
+                    "CALIB",
+                    "OCODE",
+                    "TEMPERATURE",
+                    "LSLP",
+                    "DSLP",
+                ],
+            ):
                 efuse.category = "calibration"
                 if name == "ADC_VREF":
                     efuse.class_type = "vref"

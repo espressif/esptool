@@ -97,10 +97,7 @@ class EfuseDefineFields(EfuseFieldsBase):
     def __init__(self, extend_efuse_table) -> None:
         # List of efuse fields from TRM the chapter eFuse Controller.
         self.EFUSES = []
-
         self.KEYBLOCKS = []
-
-        # if BLK_VERSION_MINOR is 1, these efuse fields are in BLOCK2
         self.BLOCK2_CALIBRATION_EFUSES = []
 
         dir_name = os.path.dirname(os.path.abspath(__file__))

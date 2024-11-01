@@ -653,6 +653,42 @@ class EspEfusesBase(object):
         # Overwrite this function for a specific target if you want to check if a certain eFuse(s) can be burned.
         return False
 
+    def get_major_chip_version(self):
+        try:
+            return self["WAFER_VERSION_MAJOR"].get()
+        except KeyError:
+            return 0
+
+    def get_minor_chip_version(self):
+        try:
+            return self["WAFER_VERSION_MINOR"].get()
+        except KeyError:
+            return 0
+
+    def get_chip_version(self):
+        return self.get_major_chip_version() * 100 + self.get_minor_chip_version()
+
+    def get_major_block_version(self):
+        try:
+            return self["BLK_VERSION_MAJOR"].get()
+        except KeyError:
+            return 0
+
+    def get_minor_block_version(self):
+        try:
+            return self["BLK_VERSION_MINOR"].get()
+        except KeyError:
+            return 0
+
+    def get_block_version(self):
+        return self.get_major_block_version() * 100 + self.get_minor_block_version()
+
+    def get_pkg_version(self):
+        try:
+            return self["PKG_VERSION"].get()
+        except KeyError:
+            return 0
+
 
 class EfuseFieldBase(EfuseProtectBase):
     def __init__(self, parent, param):
