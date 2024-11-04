@@ -209,7 +209,12 @@ class ESP32S3ROM(ESP32ROM):
 
     def get_psram_cap(self):
         num_word = 4
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 3) & 0x03
+        psram_cap = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 3) & 0x03
+        num_word = 5
+        psram_cap_hi_bit = (
+            self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 19
+        ) & 0x01
+        return (psram_cap_hi_bit << 2) | psram_cap
 
     def get_psram_vendor(self):
         num_word = 4
@@ -231,6 +236,8 @@ class ESP32S3ROM(ESP32ROM):
             0: None,
             1: "Embedded PSRAM 8MB",
             2: "Embedded PSRAM 2MB",
+            3: "Embedded PSRAM 16MB",
+            4: "Embedded PSRAM 4MB",
         }.get(self.get_psram_cap(), "Unknown Embedded PSRAM")
         if psram is not None:
             features += [psram + f" ({self.get_psram_vendor()})"]

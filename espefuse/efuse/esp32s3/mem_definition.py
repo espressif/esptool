@@ -159,6 +159,16 @@ class EfuseDefineFields(EfuseFieldsBase):
         f.description = "calc WAFER VERSION MINOR = WAFER_VERSION_MINOR_HI << 3 + WAFER_VERSION_MINOR_LO (read only)"
         self.CALC.append(f)
 
+        f = Field()
+        f.name = "PSRAM_CAPACITY"
+        f.block = 0
+        f.bit_len = 3
+        f.type = f"uint:{f.bit_len}"
+        f.category = "identity"
+        f.class_type = "psram_cap"
+        f.description = "calc as = PSRAM_CAP_3 << 2 + PSRAM_CAP (read only)"
+        self.CALC.append(f)
+
         for efuse in self.ALL_EFUSES:
             if efuse is not None:
                 self.EFUSES.append(efuse)
