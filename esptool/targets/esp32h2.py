@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2024 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -6,6 +6,7 @@
 from typing import Dict
 
 from .esp32c6 import ESP32C6ROM
+from ..loader import ESPLoader
 from ..util import FatalError
 
 
@@ -18,6 +19,7 @@ class ESP32H2ROM(ESP32C6ROM):
 
     DR_REG_LP_WDT_BASE = 0x600B1C00
     RTC_CNTL_WDTCONFIG0_REG = DR_REG_LP_WDT_BASE + 0x0  # LP_WDT_RWDT_CONFIG0_REG
+    RTC_CNTL_WDTCONFIG1_REG = DR_REG_LP_WDT_BASE + 0x0004  # LP_WDT_RWDT_CONFIG1_REG
     RTC_CNTL_WDTWPROTECT_REG = DR_REG_LP_WDT_BASE + 0x001C  # LP_WDT_RWDT_WPROTECT_REG
 
     RTC_CNTL_SWD_CONF_REG = DR_REG_LP_WDT_BASE + 0x0020  # LP_WDT_SWD_CONFIG_REG
@@ -76,6 +78,9 @@ class ESP32H2ROM(ESP32C6ROM):
     def get_crystal_freq(self):
         # ESP32H2 XTAL is fixed to 32MHz
         return 32
+
+    def hard_reset(self):
+        ESPLoader.hard_reset(self)
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 28))):

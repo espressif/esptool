@@ -8,12 +8,16 @@ jobs:
     runs-on: ${{ matrix.RUN_ON }}
     strategy:
       matrix:
-        platform: [macos, windows, linux-amd64, linux-arm32, linux-arm64]
+        platform: [macos-amd64, macos-arm64, windows, linux-amd64, linux-arm32, linux-arm64]
         include:
-        - platform: macos
-          TARGET: macos
+        - platform: macos-amd64
+          TARGET: macos-amd64
           SEPARATOR: ':'
-          RUN_ON: macos-latest
+          RUN_ON: macos-13 # Versions 13 and lower are Intel-based.
+        - platform: macos-arm64
+          TARGET: macos-arm64
+          SEPARATOR: ':'
+          RUN_ON: macos-latest # Versions 14 and higher are ARM-based.
         - platform: windows
           TARGET: win64
           EXTEN: .exe
@@ -118,7 +122,12 @@ jobs:
       - name: Compress and rename binaries
         run: |
           for dir in esptool-*; do
-            zip -r "esptool-v${{ steps.get_version.outputs.VERSION }}-${dir#esptool-}.zip" "$dir"
+            if [[ "$dir" == esptool-win* ]]; then
+              zip -r "esptool-v${{ steps.get_version.outputs.VERSION }}-${dir#esptool-}.zip" "$dir"
+            else
+              chmod -R u=rwx,g=rx,o=rx "$dir"
+              tar -cvzf "esptool-v${{ steps.get_version.outputs.VERSION }}-${dir#esptool-}.tar.gz" "$dir"
+            fi
           done
       - name: Create release
         id: create_release
@@ -130,4 +139,6 @@ jobs:
           name: Version ${{ steps.get_version.outputs.VERSION }}
           draft: true
           prerelease: false
-          files: esptool-v${{ steps.get_version.outputs.VERSION }}-*.zip
+          files: |
+            esptool-v${{ steps.get_version.outputs.VERSION }}-*.zip
+            esptool-v${{ steps.get_version.outputs.VERSION }}-*.tar.gz

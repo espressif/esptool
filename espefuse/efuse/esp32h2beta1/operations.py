@@ -191,9 +191,9 @@ def set_flash_voltage(esp, efuses, args):
 
 
 def adc_info(esp, efuses, args):
-    print("")
     # fmt: off
-    if efuses["BLK_VERSION_MINOR"].get() == 2:
+    print("Block version:", efuses.get_block_version())
+    if efuses.get_block_version() >= 2:
         print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_CALIB"].get()))
         print("")
         print("ADC1:")
@@ -210,8 +210,6 @@ def adc_info(esp, efuses, args):
         print("CH2_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH2_ATTEN0_INITCODE_DIFF"].get())
         print("CH3_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH3_ATTEN0_INITCODE_DIFF"].get())
         print("CH4_ATTEN0_INITCODE_DIFF = ", efuses["ADC1_CH4_ATTEN0_INITCODE_DIFF"].get())
-    else:
-        print("BLK_VERSION_MINOR = {}".format(efuses["BLK_VERSION_MINOR"].get()))
     # fmt: on
 
 

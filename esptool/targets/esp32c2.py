@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2024 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -62,6 +62,12 @@ class ESP32C2ROM(ESP32C3ROM):
         [0x42000000, 0x42400000, "IROM"],
         [0x4037C000, 0x403C0000, "IRAM"],
     ]
+
+    RTCCNTL_BASE_REG = 0x60008000
+    RTC_CNTL_WDTCONFIG0_REG = RTCCNTL_BASE_REG + 0x0084
+    RTC_CNTL_WDTCONFIG1_REG = RTCCNTL_BASE_REG + 0x0088
+    RTC_CNTL_WDTWPROTECT_REG = RTCCNTL_BASE_REG + 0x009C
+    RTC_CNTL_WDT_WKEY = 0x50D83AA1
 
     UF2_FAMILY_ID = 0x2B88D29C
 
@@ -129,6 +135,9 @@ class ESP32C2ROM(ESP32C3ROM):
         if not self.secure_download_mode and self.get_chip_revision() == 0:
             self.stub_is_disabled = True
             self.IS_STUB = False
+
+    def hard_reset(self):
+        ESPLoader.hard_reset(self)
 
     """ Try to read (encryption key) and check if it is valid """
 

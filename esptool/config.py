@@ -21,6 +21,7 @@ CONFIG_OPTIONS = [
     "reset_delay",
     "open_port_attempts",
     "custom_reset_sequence",
+    "custom_hard_reset_sequence",
 ]
 
 

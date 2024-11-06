@@ -235,9 +235,9 @@ def set_flash_voltage(esp, efuses, args):
 
 
 def adc_info(esp, efuses, args):
-    print("")
     # fmt: off
-    if efuses["BLK_VERSION_MINOR"].get() == 1:
+    print("Block version:", efuses.get_block_version())
+    if efuses.get_block_version() >= 1:
         print("Temperature Sensor Calibration = {}C".format(efuses["TEMP_CALIB"].get()))
         print("TADC_CALIB          = {}C".format(efuses["ADC_CALIB"].get()))
         print("RTCCALIB_V1IDX_A10H = ", efuses["RTCCALIB_V1IDX_A10H"].get())
@@ -256,8 +256,6 @@ def adc_info(esp, efuses, args):
         print("RTCCALIB_V1IDX_A21L = ", efuses["RTCCALIB_V1IDX_A21L"].get())
         print("RTCCALIB_V1IDX_A22L = ", efuses["RTCCALIB_V1IDX_A22L"].get())
         print("RTCCALIB_V1IDX_A23L = ", efuses["RTCCALIB_V1IDX_A23L"].get())
-    else:
-        print("BLK_VERSION_MINOR = ", efuses["BLK_VERSION_MINOR"].get_meaning())
     # fmt: on
 
 

@@ -192,7 +192,11 @@ def set_flash_voltage(esp, efuses, args):
 
 
 def adc_info(esp, efuses, args):
-    print("not supported yet")
+    print("Block version:", efuses.get_block_version())
+    if efuses.get_block_version() >= 1:
+        for efuse in efuses:
+            if efuse.category == "calibration":
+                print(f"{efuse.name:<30} = ", efuses[efuse.name].get())
 
 
 def burn_key(esp, efuses, args, digest=None):

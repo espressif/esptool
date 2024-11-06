@@ -74,7 +74,11 @@ class EspPortManager(serial.rfc2217.PortManager):
         """
         if self.logger:
             self.logger.info("Activating hard reset in thread")
-        HardReset(self.serial)()
+        cfg_custom_hard_reset_sequence = cfg.get("custom_hard_reset_sequence")
+        if cfg_custom_hard_reset_sequence is not None:
+            CustomReset(self.serial, cfg_custom_hard_reset_sequence)()
+        else:
+            HardReset(self.serial)()
 
     def _reset_thread(self):
         """

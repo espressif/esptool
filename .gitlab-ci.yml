@@ -297,6 +297,8 @@ target_esp32s2_usbcdc:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s2_cdc_target
+  variables:
+    ESPTOOL_TEST_USB_OTG: "1"
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S2_USBCDC --chip esp32s2 --baud 115200
 
@@ -347,6 +349,8 @@ target_esp32s3_usbcdc:
   extends: .target_esptool_test
   tags:
     - esptool_esp32s3_cdc_target
+  variables:
+    ESPTOOL_TEST_USB_OTG: "1"
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32S3_USBCDC --chip esp32s3 --baud 115200
 

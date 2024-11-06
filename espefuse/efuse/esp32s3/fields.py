@@ -102,7 +102,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
             ]
         else:
-            if self["BLK_VERSION_MAJOR"].get() == 1:
+            if self.get_block_version() >= 100:
                 self.efuses += [
                     EfuseField.convert(self, efuse)
                     for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
@@ -335,7 +335,20 @@ class EfuseField(base_fields.EfuseFieldBase):
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
             "wafer": EfuseWafer,
+            "psram_cap": EfusePsramCap,
         }.get(efuse.class_type, EfuseField)(parent, efuse)
+
+
+class EfusePsramCap(EfuseField):
+    def get(self, from_read=True):
+        hi_bits = self.parent["PSRAM_CAP_3"].get(from_read)
+        assert self.parent["PSRAM_CAP_3"].bit_len == 1
+        lo_bits = self.parent["PSRAM_CAP"].get(from_read)
+        assert self.parent["PSRAM_CAP"].bit_len == 2
+        return (hi_bits << 2) + lo_bits
+
+    def save(self, new_value):
+        raise esptool.FatalError("Burning %s is not supported" % self.name)
 
 
 class EfuseWafer(EfuseField):
