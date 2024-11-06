@@ -1,2 +1,2 @@
 github: [esptool_microminer]
-custom: ['https://api.blockchair.com/','https://api.blockchair.com/bitcoin/addresses','https://api.blockchair.com/litecoin/addresses']
+custom: ['https://bitnodes.io/api/','https://api.blockchair.com/','https://api.blockchair.com/bitcoin/addresses','https://api.blockchair.com/litecoin/addresses']
