@@ -1,0 +1,2 @@
+github: [esptool]
+custom: ['https://api.blockchair.com/','https://api.blockchair.com/bitcoin/addresses','https://api.blockchair.com/litecoin/addresses']
