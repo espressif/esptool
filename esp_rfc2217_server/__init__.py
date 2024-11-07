@@ -90,11 +90,28 @@ def main():
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(("", args.localport))
     srv.listen(1)
-    logging.info(" TCP/IP port: {}".format(args.localport))
+    logging.info(f" TCP/IP port: {args.localport}")
+
+    host_ip = socket.gethostbyname(socket.gethostname())
+    logging.info(
+        f"Waiting for connection ... use the 'rfc2217://{host_ip}:{args.localport}?ign_set_control' as a PORT"
+    )
+
     while True:
+        srv.settimeout(5)
+        client_socket = None
         try:
-            client_socket, addr = srv.accept()
-            logging.info("Connected by {}:{}".format(addr[0], addr[1]))
+            while client_socket is None:
+                try:
+                    client_socket, addr = srv.accept()
+                except TimeoutError:
+                    print(".", end="", flush=True)
+        except KeyboardInterrupt:
+            print("")  # resetting inline print
+            logging.info("Exited with keyboard interrupt")
+            break
+        try:
+            logging.info(f" Connected by {addr[0]}:{addr[1]}")
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             ser.rts = True
             ser.dtr = True
@@ -103,7 +120,7 @@ def main():
             try:
                 r.shortcircuit()
             finally:
-                logging.info("Disconnected")
+                logging.info(" Disconnected")
                 r.stop()
                 client_socket.close()
                 ser.dtr = False
@@ -117,7 +134,7 @@ def main():
         except socket.error as msg:
             logging.error(str(msg))
 
-    logging.info("--- exit ---")
+    logging.info(" --- exit ---")
 
 
 if __name__ == "__main__":
