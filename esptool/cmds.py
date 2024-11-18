@@ -724,7 +724,7 @@ def write_flash(esp, args):
                     print("Flash md5: %s" % res)
                     print(
                         "MD5 of 0xFF is %s"
-                        % (hashlib.md5(b"\xff" * uncsize).hexdigest())
+                        % (hashlib.md5(b"\xFF" * uncsize).hexdigest())
                     )
                     raise FatalError("MD5 of file does not match data in flash!")
                 else:
@@ -1457,7 +1457,7 @@ def merge_bin(args):
 
             def pad_to(flash_offs):
                 # account for output file offset if there is any
-                of.write(b"\xff" * (flash_offs - args.target_offset - of.tell()))
+                of.write(b"\xFF" * (flash_offs - args.target_offset - of.tell()))
 
             for addr, argfile in input_files:
                 pad_to(addr)

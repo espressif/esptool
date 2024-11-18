@@ -326,8 +326,8 @@ class TestESP32Image(BaseTestCase):
         # this ELF will produce 8 segments in the bin
         image = self._test_elf2image(ELF, BIN)
         # Adjacent sections are now merged, len(image.segments) should
-        # equal 5 (instead of 8).
-        assert len(image.segments) == 5
+        # equal 4 (instead of 8).
+        assert len(image.segments) == 4
 
         # --use_segments uses ELF segments(phdrs), produces just 2 segments in the bin
         image = self._test_elf2image(ELF, BIN, ["--use_segments"])

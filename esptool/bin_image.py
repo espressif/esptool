@@ -115,11 +115,10 @@ class ImageSegment(object):
     """Wrapper class for a segment in an ESP image
     (very similar to a section in an ELFImage also)"""
 
-    def __init__(self, addr, data, file_offs=None, flags=0):
+    def __init__(self, addr, data, file_offs=None):
         self.addr = addr
         self.data = data
         self.file_offs = file_offs
-        self.flags = flags
         self.include_in_checksum = True
         if self.addr != 0:
             self.pad_to_alignment(
@@ -168,8 +167,8 @@ class ELFSection(ImageSegment):
     """Wrapper class for a section in an ELF image, has a section
     name as well as the common properties of an ImageSegment."""
 
-    def __init__(self, name, addr, data, flags):
-        super(ELFSection, self).__init__(addr, data, flags=flags)
+    def __init__(self, name, addr, data):
+        super(ELFSection, self).__init__(addr, data)
         self.name = name.decode("utf-8")
 
     def __repr__(self):
@@ -179,9 +178,6 @@ class ELFSection(ImageSegment):
 class BaseFirmwareImage(object):
     SEG_HEADER_LEN = 8
     SHA256_DIGEST_LEN = 32
-    ELF_FLAG_WRITE = 0x1
-    ELF_FLAG_READ = 0x2
-    ELF_FLAG_EXEC = 0x4
 
     """ Base class with common firmware image functions """
 
@@ -377,8 +373,6 @@ class BaseFirmwareImage(object):
                     elem.get_memory_type(self) == next_elem.get_memory_type(self),
                     elem.include_in_checksum == next_elem.include_in_checksum,
                     next_elem.addr == elem.addr + len(elem.data),
-                    next_elem.flags & self.ELF_FLAG_EXEC
-                    == elem.flags & self.ELF_FLAG_EXEC,
                 )
             ):
                 # Merge any segment that ends where the next one starts,
@@ -1285,7 +1279,7 @@ class ELFFile(object):
             name_offs, sec_type, _flags, lma, sec_offs, size = struct.unpack_from(
                 "<LLLLLL", section_header[offs:]
             )
-            return (name_offs, sec_type, lma, size, sec_offs, _flags)
+            return (name_offs, sec_type, lma, size, sec_offs)
 
         all_sections = [read_section_header(offs) for offs in section_header_offsets]
         prog_sections = [s for s in all_sections if s[1] in ELFFile.PROG_SEC_TYPES]
@@ -1294,7 +1288,7 @@ class ELFFile(object):
         # search for the string table section
         if (shstrndx * self.LEN_SEC_HEADER) not in section_header_offsets:
             raise FatalError("ELF file has no STRTAB section at shstrndx %d" % shstrndx)
-        _, sec_type, _, sec_size, sec_offs, _ = read_section_header(
+        _, sec_type, _, sec_size, sec_offs = read_section_header(
             shstrndx * self.LEN_SEC_HEADER
         )
         if sec_type != ELFFile.SEC_TYPE_STRTAB:
@@ -1316,14 +1310,14 @@ class ELFFile(object):
             return f.read(size)
 
         prog_sections = [
-            ELFSection(lookup_string(n_offs), lma, read_data(offs, size), flags=_flags)
-            for (n_offs, _type, lma, size, offs, _flags) in prog_sections
+            ELFSection(lookup_string(n_offs), lma, read_data(offs, size))
+            for (n_offs, _type, lma, size, offs) in prog_sections
             if lma != 0 and size > 0
         ]
         self.sections = prog_sections
         self.nobits_sections = [
-            ELFSection(lookup_string(n_offs), lma, b"", flags=_flags)
-            for (n_offs, _type, lma, size, offs, _flags) in nobits_secitons
+            ELFSection(lookup_string(n_offs), lma, b"")
+            for (n_offs, _type, lma, size, offs) in nobits_secitons
             if lma != 0 and size > 0
         ]
 
@@ -1356,7 +1350,7 @@ class ELFFile(object):
                 _flags,
                 _align,
             ) = struct.unpack_from("<LLLLLLLL", segment_header[offs:])
-            return (seg_type, lma, size, seg_offs, _flags)
+            return (seg_type, lma, size, seg_offs)
 
         all_segments = [read_segment_header(offs) for offs in segment_header_offsets]
         prog_segments = [s for s in all_segments if s[0] == ELFFile.SEG_TYPE_LOAD]
@@ -1366,8 +1360,8 @@ class ELFFile(object):
             return f.read(size)
 
         prog_segments = [
-            ELFSection(b"PHDR", lma, read_data(offs, size), flags=_flags)
-            for (_type, lma, size, offs, _flags) in prog_segments
+            ELFSection(b"PHDR", lma, read_data(offs, size))
+            for (_type, lma, size, offs) in prog_segments
             if lma != 0 and size > 0
         ]
         self.segments = prog_segments
