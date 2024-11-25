@@ -3,12 +3,72 @@ name: Build esptool
 on: [push, pull_request]
 
 jobs:
+  build-esptool-binaries-arm:
+    name: Build esptool binaries for ${{ matrix.platform }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [armv7, aarch64]
+    env:
+      DISTPATH: esptool-${{ matrix.platform }}
+      STUBS_DIR: ./esptool/targets/stub_flasher/
+      EFUSE_DIR: ./espefuse/efuse_defs/
+      PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@master
+      - uses: uraimo/run-on-arch-action@v2
+        name: Build and test in ${{ matrix.platform }}
+        with:
+          distro: ubuntu20.04
+          shell: /bin/bash
+          # Not required, but speeds up builds by storing container images in
+          # a GitHub package registry.
+          githubToken: ${{ github.token }}
+          # Create an artifacts directory
+          setup: mkdir -p "${PWD}/${{ env.DISTPATH }}"
+          dockerRunArgs: --volume "${PWD}/${{ env.DISTPATH }}:/${{ env.DISTPATH }}"
+          install: |
+            apt-get update -y
+            apt-get install -y python3 python3-pip python3-setuptools libffi-dev
+          run: |
+            adduser --disabled-password --gecos "" builder
+            chmod -R a+rwx /home/runner/work/esptool
+            su builder <<EOF
+            export PATH=\$PATH:/home/builder/.local/bin
+            # Install dependencies
+            python -m pip install --upgrade pip
+            # PyInstaller >=6.0 results in significantly more antivirus false positives
+            pip install pyinstaller==5.13.2
+            pip install --user -e .
+
+            # Build with PyInstaller
+            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.STUBS_DIR }}1/*.json:${{ env.STUBS_DIR }}1/" --add-data="${{ env.STUBS_DIR }}2/*.json:${{ env.STUBS_DIR }}2/" esptool.py
+            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.EFUSE_DIR }}*.yaml:${{ env.EFUSE_DIR }}" espefuse.py
+            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
+            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
+            
+            # Test binaries
+            ./${{ env.DISTPATH }}/esptool -h
+            ./${{ env.DISTPATH }}/espefuse -h
+            ./${{ env.DISTPATH }}/espsecure -h
+            ./${{ env.DISTPATH }}/esp_rfc2217_server -h
+            
+            # Add license and readme
+            mv LICENSE README.md ./${{ env.DISTPATH }}
+
+      - name: Archive artifact
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ env.DISTPATH }}
+          path: ${{ env.DISTPATH }}
+
   build-esptool-binaries:
     name: Build esptool binaries for ${{ matrix.platform }}
     runs-on: ${{ matrix.RUN_ON }}
     strategy:
       matrix:
-        platform: [macos-amd64, macos-arm64, windows, linux-amd64, linux-arm32, linux-arm64]
+        platform: [macos-amd64, macos-arm64, windows, linux-amd64]
         include:
         - platform: macos-amd64
           TARGET: macos-amd64
@@ -27,17 +87,6 @@ jobs:
           TARGET: linux-amd64
           SEPARATOR: ':'
           RUN_ON: ubuntu-20.04
-        - platform: linux-arm32
-          CONTAINER: python:3.8-bullseye
-          TARGET: linux-arm32
-          SEPARATOR: ':'
-          RUN_ON: [ARM, self-hosted, linux, docker]
-        - platform: linux-arm64
-          CONTAINER: python:3.8-bullseye
-          TARGET: linux-arm64
-          SEPARATOR: ':'
-          RUN_ON: [ARM64, self-hosted, linux]
-    container: ${{ matrix.CONTAINER }} # use python container on ARM
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
       STUBS_DIR: ./esptool/targets/stub_flasher/
@@ -47,8 +96,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@master
       - name: Set up Python 3.8
-        # Skip setting python on ARM because of missing compatibility: https://github.com/actions/setup-python/issues/108
-        if: matrix.platform != 'linux-arm32' && matrix.platform != 'linux-arm64'
         uses: actions/setup-python@master
         with:
           python-version: 3.8
@@ -94,7 +141,7 @@ jobs:
   create_release:
     name: Create GitHub release
     if: startsWith(github.ref, 'refs/tags/') && !(contains(github.ref_name, 'dev'))
-    needs: build-esptool-binaries
+    needs: [build-esptool-binaries, build-esptool-binaries-arm]
     runs-on: ubuntu-latest
     env:
       PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
