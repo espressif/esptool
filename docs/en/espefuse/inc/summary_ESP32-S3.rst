@@ -57,7 +57,7 @@
     DIS_PAD_JTAG (BLOCK0)                              Set this bit to disable JTAG in the hard way. JTAG = False R/W (0b0)
                                                         is disabled permanently
     STRAP_JTAG_SEL (BLOCK0)                            Set this bit to enable selection between usb_to_jt = False R/W (0b0)
-                                                       ag and pad_to_jtag through strapping gpio10 when b
+                                                       ag and pad_to_jtag through strapping gpio3 when b
                                                        oth reg_dis_usb_jtag and reg_dis_pad_jtag are equa
                                                        l to 0
 
