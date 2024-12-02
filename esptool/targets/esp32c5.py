@@ -54,8 +54,8 @@ class ESP32C5ROM(ESP32C6ROM):
 
     UARTDEV_BUF_NO = 0x4085F51C  # Variable in ROM .bss which indicates the port in use
 
-    # Magic value for ESP32C5
-    CHIP_DETECT_MAGIC_VALUE = [0x1101406F]
+    # Magic values for ESP32C5 ECO0 and ECO1, respectively
+    CHIP_DETECT_MAGIC_VALUE = [0x1101406F, 0x63E1406F]
 
     FLASH_FREQUENCY = {
         "80m": 0xF,
