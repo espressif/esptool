@@ -6,6 +6,7 @@
 import struct
 
 from .esp32c3 import ESP32C3ROM
+from ..loader import ESPLoader
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -193,6 +194,11 @@ class ESP32C6ROM(ESP32C3ROM):
                 "WARNING: GPIO pins 12 and 13 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
+
+    def hard_reset(self):
+        # Bug in the USB-Serial/JTAG controller can cause the port to disappear
+        # if the chip is reset with RTC WDT, do a classic reset
+        ESPLoader.hard_reset(self)
 
 
 class ESP32C6StubLoader(ESP32C6ROM):

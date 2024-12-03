@@ -80,6 +80,7 @@ class ESP32H2ROM(ESP32C6ROM):
         return 32
 
     def hard_reset(self):
+        # RTC WDT reset not available, do a classic reset
         ESPLoader.hard_reset(self)
 
     def check_spi_connection(self, spi_connection):
