@@ -914,7 +914,7 @@ def image_info(args):
             pass  # ESP8266 image has no append_digest field
 
         if app_desc:
-            APP_DESC_STRUCT_FMT = "<II" + "8s" + "32s32s16s16s32s32s" + "80s"
+            APP_DESC_STRUCT_FMT = "<II" + "8s" + "32s32s16s16s32s32sHHB" + "3s" + "72s"
             (
                 magic_word,
                 secure_version,
@@ -925,6 +925,10 @@ def image_info(args):
                 date,
                 idf_ver,
                 app_elf_sha256,
+                min_efuse_blk_rev_full,
+                max_efuse_blk_rev_full,
+                mmu_page_size,
+                reserv3,
                 reserv2,
             ) = struct.unpack(APP_DESC_STRUCT_FMT, app_desc)
 
@@ -938,6 +942,13 @@ def image_info(args):
                 print(f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}')
                 print(f"ELF file SHA256: {hexify(app_elf_sha256, uppercase=False)}")
                 print(f'ESP-IDF: {idf_ver.decode("utf-8")}')
+                print(
+                    f"Minimal eFuse block revision: {min_efuse_blk_rev_full // 100}.{min_efuse_blk_rev_full % 100}"
+                )
+                print(
+                    f"Maximal eFuse block revision: {max_efuse_blk_rev_full // 100}.{max_efuse_blk_rev_full % 100}"
+                )
+                print(f"MMU page size: {2 ** mmu_page_size // 1024} KB")
                 print(f"Secure version: {secure_version}")
 
         elif bootloader_desc:
