@@ -31,7 +31,7 @@ jobs:
           dockerRunArgs: --volume "${PWD}/${{ env.DISTPATH }}:/${{ env.DISTPATH }}"
           install: |
             apt-get update -y
-            apt-get install -y python3 python3-pip python3-setuptools libffi-dev
+            apt-get install --ignore-missing -y python3 python3-pip python3-setuptools python-is-python3 pkg-config openssl libffi-dev libssl-dev cargo rustc
           run: |
             adduser --disabled-password --gecos "" builder
             chmod -R a+rwx /home/runner/work/esptool
@@ -48,13 +48,13 @@ jobs:
             pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.EFUSE_DIR }}*.yaml:${{ env.EFUSE_DIR }}" espefuse.py
             pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
             pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
-            
+
             # Test binaries
-            ./${{ env.DISTPATH }}/esptool -h
-            ./${{ env.DISTPATH }}/espefuse -h
-            ./${{ env.DISTPATH }}/espsecure -h
-            ./${{ env.DISTPATH }}/esp_rfc2217_server -h
-            
+            ./${{ env.DISTPATH }}/esptool -h || exit 1
+            ./${{ env.DISTPATH }}/espefuse -h || exit 1
+            ./${{ env.DISTPATH }}/espsecure -h || exit 1
+            ./${{ env.DISTPATH }}/esp_rfc2217_server -h || exit 1
+
             # Add license and readme
             mv LICENSE README.md ./${{ env.DISTPATH }}
 
