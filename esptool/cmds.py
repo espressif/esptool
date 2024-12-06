@@ -108,10 +108,10 @@ def detect_chip(
     try:
         print("Detecting chip type...", end="")
         chip_id = detect_port.get_chip_id()
-        for cls in [
-            n for n in ROM_LIST if n.CHIP_NAME not in ("ESP8266", "ESP32", "ESP32-S2")
-        ]:
+        for cls in ROM_LIST:
             # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip_id
+            if cls.USES_MAGIC_VALUE:
+                continue
             if chip_id == cls.IMAGE_CHIP_ID:
                 inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                 try:
@@ -144,11 +144,12 @@ def detect_chip(
             )
 
             for cls in ROM_LIST:
-                if chip_magic_value in cls.CHIP_DETECT_MAGIC_VALUE:
+                if not cls.USES_MAGIC_VALUE:
+                    continue
+                if chip_magic_value == cls.MAGIC_VALUE:
                     inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
                     inst = check_if_stub(inst)
                     inst._post_connect()
-                    inst.check_chip_id()
                     break
             else:
                 err_msg = f"Unexpected chip magic value {chip_magic_value:#010x}."

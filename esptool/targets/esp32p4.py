@@ -22,8 +22,6 @@ class ESP32P4ROM(ESP32ROM):
 
     BOOTLOADER_FLASH_OFFSET = 0x2000  # First 2 sectors are reserved for FE purposes
 
-    CHIP_DETECT_MAGIC_VALUE = [0x0, 0x0ADDBAD0]
-
     UART_DATE_REG_ADDR = 0x500CA000 + 0x8C
 
     EFUSE_BASE = 0x5012D000
@@ -39,6 +37,8 @@ class ESP32P4ROM(ESP32ROM):
     SPI_W0_OFFS = 0x58
 
     SPI_ADDR_REG_MSB = False
+
+    USES_MAGIC_VALUE = False
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
 
