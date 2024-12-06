@@ -875,7 +875,8 @@ def image_info(args):
         for idx, seg in enumerate(image.segments):
             segs = seg.get_memory_type(image)
             seg_name = ", ".join(segs)
-            if "DROM" in segs:  # The DROM segment starts with the esp_app_desc_t struct
+            # The DROM segment starts with the esp_app_desc_t struct
+            if "DROM" in segs and app_desc is None:
                 app_desc = seg.data[:256]
             elif "DRAM" in segs:
                 # The DRAM segment starts with the esp_bootloader_desc_t struct
