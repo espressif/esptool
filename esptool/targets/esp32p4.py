@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import struct
+from time import sleep
 from typing import Dict
 
 from .esp32 import ESP32ROM
@@ -264,7 +265,7 @@ class ESP32P4ROM(ESP32ROM):
     def rtc_wdt_reset(self):
         print("Hard resetting with RTC WDT...")
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
-        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 5000)  # set WDT timeout
+        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 2000)  # set WDT timeout
         self.write_reg(
             self.RTC_CNTL_WDTCONFIG0_REG, (1 << 31) | (5 << 28) | (1 << 8) | 2
         )  # enable WDT
@@ -273,6 +274,7 @@ class ESP32P4ROM(ESP32ROM):
     def hard_reset(self):
         if self.uses_usb_jtag_serial() or self.uses_usb_otg():
             self.rtc_wdt_reset()
+            sleep(0.5)  # wait for reset to take effect
         else:
             ESPLoader.hard_reset(self)
 
