@@ -11,6 +11,7 @@ import sys
 import time
 import zlib
 import itertools
+import re
 
 from intelhex import IntelHex
 from serial import SerialException
@@ -950,7 +951,15 @@ def image_info(args):
                 print(
                     f"Maximal eFuse block revision: {max_efuse_blk_rev_full // 100}.{max_efuse_blk_rev_full % 100}"
                 )
-                print(f"MMU page size: {2 ** mmu_page_size // 1024} KB")
+
+                # MMU page size is only available in ESP-IDF v5.4 and later
+                # regex matches major and minor version numbers, idf_ver can look like "v5.4.1-dirty"
+                ver = re.match(r"v(\d+)\.(\d+)", idf_ver.decode("utf-8"))
+                if ver:
+                    major, minor = ver.groups()
+                    if int(major) >= 5 and int(minor) >= 4:
+                        print(f"MMU page size: {2 ** mmu_page_size // 1024} KB")
+
                 print(f"Secure version: {secure_version}")
 
         elif bootloader_desc:
