@@ -64,8 +64,7 @@ def main():
     level = (logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)[
         args.verbosity
     ]
-    logging.basicConfig(level=logging.INFO)
-    # logging.getLogger('root').setLevel(logging.INFO)
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
     logging.getLogger("rfc2217").setLevel(level)
 
     # connect to serial port
@@ -75,26 +74,42 @@ def main():
     ser.dtr = False
     ser.rts = False
 
-    logging.info(" RFC 2217 TCP/IP to Serial redirector - type Ctrl-C / BREAK to quit")
+    logging.info("RFC 2217 TCP/IP to Serial redirector - type Ctrl-C / BREAK to quit")
 
     try:
         ser.open()
     except serial.SerialException as e:
-        logging.error(" Could not open serial port {}: {}".format(ser.name, e))
+        logging.error(f"Could not open serial port {ser.name}: {e}")
         sys.exit(1)
 
-    logging.info(" Serving serial port: {}".format(ser.name))
+    logging.info(f"Serving serial port: {ser.name}")
     settings = ser.get_settings()
 
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(("", args.localport))
     srv.listen(1)
-    logging.info(" TCP/IP port: {}".format(args.localport))
+    logging.info(f"TCP/IP port: {args.localport}")
+
+    host_ip = socket.gethostbyname(socket.gethostname())
+    wait_msg = f"Waiting for connection ... use the 'rfc2217://{host_ip}:{args.localport}?ign_set_control' as a PORT"
+    logging.info(wait_msg)
+
     while True:
+        srv.settimeout(5)
+        client_socket = None
         try:
-            client_socket, addr = srv.accept()
-            logging.info("Connected by {}:{}".format(addr[0], addr[1]))
+            while client_socket is None:
+                try:
+                    client_socket, addr = srv.accept()
+                except TimeoutError:
+                    print(".", end="", flush=True)
+        except KeyboardInterrupt:
+            print("")  # resetting inline print
+            logging.info("Exited with keyboard interrupt")
+            break
+        try:
+            logging.info(f"Connected by {addr[0]}:{addr[1]}")
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             ser.rts = True
             ser.dtr = True

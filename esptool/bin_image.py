@@ -115,11 +115,10 @@ class ImageSegment(object):
     """Wrapper class for a segment in an ESP image
     (very similar to a section in an ELFImage also)"""
 
-    def __init__(self, addr, data, file_offs=None, flags=0):
+    def __init__(self, addr, data, file_offs=None):
         self.addr = addr
         self.data = data
         self.file_offs = file_offs
-        self.flags = flags
         self.include_in_checksum = True
         if self.addr != 0:
             self.pad_to_alignment(
@@ -168,8 +167,8 @@ class ELFSection(ImageSegment):
     """Wrapper class for a section in an ELF image, has a section
     name as well as the common properties of an ImageSegment."""
 
-    def __init__(self, name, addr, data, flags):
-        super(ELFSection, self).__init__(addr, data, flags=flags)
+    def __init__(self, name, addr, data):
+        super(ELFSection, self).__init__(addr, data)
         self.name = name.decode("utf-8")
 
     def __repr__(self):
@@ -179,9 +178,6 @@ class ELFSection(ImageSegment):
 class BaseFirmwareImage(object):
     SEG_HEADER_LEN = 8
     SHA256_DIGEST_LEN = 32
-    ELF_FLAG_WRITE = 0x1
-    ELF_FLAG_READ = 0x2
-    ELF_FLAG_EXEC = 0x4
 
     """ Base class with common firmware image functions """
 
@@ -274,13 +270,24 @@ class BaseFirmwareImage(object):
             )
         return segment_data
 
-    def save_segment(self, f, segment, checksum=None):
+    def save_segment(self, f, segment, checksum=None, segment_name=None):
         """
         Save the next segment to the image file,
         return next checksum value if provided
         """
         segment_data = self.maybe_patch_segment_data(f, segment.data)
-        f.write(struct.pack("<II", segment.addr, len(segment_data)))
+        segment_len = len(segment_data)
+        segment_name = segment_name if segment_name is not None else ""
+        if segment_len & 3:
+            raise FatalError(
+                f"Invalid {segment_name} segment length {segment_len:#x}. It has to be multiple of 4."
+            )
+        SIXTEEN_MB = 0x1000000
+        if segment_len >= SIXTEEN_MB:
+            raise FatalError(
+                f"Invalid {segment_name} segment length {segment_len:#x}. The 16 MB limit has been exceeded."
+            )
+        f.write(struct.pack("<II", segment.addr, segment_len))
         f.write(segment_data)
         if checksum is not None:
             return ESPLoader.checksum(segment_data, checksum)
@@ -297,7 +304,8 @@ class BaseFirmwareImage(object):
             segment_len_remainder = segment_end_pos % self.IROM_ALIGN
             if segment_len_remainder < 0x24:
                 segment.data += b"\x00" * (0x24 - segment_len_remainder)
-        return self.save_segment(f, segment, checksum)
+        segment_name = getattr(segment, "name", None)
+        return self.save_segment(f, segment, checksum, segment_name)
 
     def read_checksum(self, f):
         """Return ESPLoader checksum from end of just-read image"""
@@ -377,8 +385,6 @@ class BaseFirmwareImage(object):
                     elem.get_memory_type(self) == next_elem.get_memory_type(self),
                     elem.include_in_checksum == next_elem.include_in_checksum,
                     next_elem.addr == elem.addr + len(elem.data),
-                    next_elem.flags & self.ELF_FLAG_EXEC
-                    == elem.flags & self.ELF_FLAG_EXEC,
                 )
             ):
                 # Merge any segment that ends where the next one starts,
@@ -754,7 +760,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 # and checksum (ROM bootloader will only care for RAM segments and its
                 # correct checksums)
                 for segment in ram_segments:
-                    checksum = self.save_segment(f, segment, checksum)
+                    checksum = self.save_segment(f, segment, checksum, segment.name)
                     total_segments += 1
                 self.append_checksum(f, checksum)
 
@@ -775,7 +781,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
                     pad_len -= self.ROM_LOADER.BOOTLOADER_FLASH_OFFSET
                     pad_segment = ImageSegment(0, b"\x00" * pad_len, f.tell())
-                    self.save_segment(f, pad_segment)
+                    self.save_segment(f, pad_segment, None, segment.name)
                     total_segments += 1
                     # check the alignment
                     assert (f.tell() + 8 + self.ROM_LOADER.BOOTLOADER_FLASH_OFFSET) % (
@@ -799,7 +805,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                                 ram_segments.pop(0)
                         else:
                             pad_segment = ImageSegment(0, b"\x00" * pad_len, f.tell())
-                        checksum = self.save_segment(f, pad_segment, checksum)
+                        checksum = self.save_segment(
+                            f, pad_segment, checksum, segment.name
+                        )
                         total_segments += 1
                     else:
                         # write the flash segment
@@ -812,7 +820,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
                 # flash segments all written, so write any remaining RAM segments
                 for segment in ram_segments:
-                    checksum = self.save_segment(f, segment, checksum)
+                    checksum = self.save_segment(f, segment, checksum, segment.name)
                     total_segments += 1
 
             if self.secure_pad:
@@ -1285,7 +1293,7 @@ class ELFFile(object):
             name_offs, sec_type, _flags, lma, sec_offs, size = struct.unpack_from(
                 "<LLLLLL", section_header[offs:]
             )
-            return (name_offs, sec_type, lma, size, sec_offs, _flags)
+            return (name_offs, sec_type, lma, size, sec_offs)
 
         all_sections = [read_section_header(offs) for offs in section_header_offsets]
         prog_sections = [s for s in all_sections if s[1] in ELFFile.PROG_SEC_TYPES]
@@ -1294,7 +1302,7 @@ class ELFFile(object):
         # search for the string table section
         if (shstrndx * self.LEN_SEC_HEADER) not in section_header_offsets:
             raise FatalError("ELF file has no STRTAB section at shstrndx %d" % shstrndx)
-        _, sec_type, _, sec_size, sec_offs, _ = read_section_header(
+        _, sec_type, _, sec_size, sec_offs = read_section_header(
             shstrndx * self.LEN_SEC_HEADER
         )
         if sec_type != ELFFile.SEC_TYPE_STRTAB:
@@ -1316,14 +1324,14 @@ class ELFFile(object):
             return f.read(size)
 
         prog_sections = [
-            ELFSection(lookup_string(n_offs), lma, read_data(offs, size), flags=_flags)
-            for (n_offs, _type, lma, size, offs, _flags) in prog_sections
+            ELFSection(lookup_string(n_offs), lma, read_data(offs, size))
+            for (n_offs, _type, lma, size, offs) in prog_sections
             if lma != 0 and size > 0
         ]
         self.sections = prog_sections
         self.nobits_sections = [
-            ELFSection(lookup_string(n_offs), lma, b"", flags=_flags)
-            for (n_offs, _type, lma, size, offs, _flags) in nobits_secitons
+            ELFSection(lookup_string(n_offs), lma, b"")
+            for (n_offs, _type, lma, size, offs) in nobits_secitons
             if lma != 0 and size > 0
         ]
 
@@ -1356,7 +1364,7 @@ class ELFFile(object):
                 _flags,
                 _align,
             ) = struct.unpack_from("<LLLLLLLL", segment_header[offs:])
-            return (seg_type, lma, size, seg_offs, _flags)
+            return (seg_type, lma, size, seg_offs)
 
         all_segments = [read_segment_header(offs) for offs in segment_header_offsets]
         prog_segments = [s for s in all_segments if s[0] == ELFFile.SEG_TYPE_LOAD]
@@ -1366,8 +1374,8 @@ class ELFFile(object):
             return f.read(size)
 
         prog_segments = [
-            ELFSection(b"PHDR", lma, read_data(offs, size), flags=_flags)
-            for (_type, lma, size, offs, _flags) in prog_segments
+            ELFSection(b"PHDR", lma, read_data(offs, size))
+            for (_type, lma, size, offs) in prog_segments
             if lma != 0 and size > 0
         ]
         self.segments = prog_segments

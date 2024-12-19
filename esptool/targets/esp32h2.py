@@ -14,9 +14,6 @@ class ESP32H2ROM(ESP32C6ROM):
     CHIP_NAME = "ESP32-H2"
     IMAGE_CHIP_ID = 16
 
-    # Magic value for ESP32H2
-    CHIP_DETECT_MAGIC_VALUE = [0xD7B73E80]
-
     DR_REG_LP_WDT_BASE = 0x600B1C00
     RTC_CNTL_WDTCONFIG0_REG = DR_REG_LP_WDT_BASE + 0x0  # LP_WDT_RWDT_CONFIG0_REG
     RTC_CNTL_WDTCONFIG1_REG = DR_REG_LP_WDT_BASE + 0x0004  # LP_WDT_RWDT_CONFIG1_REG
@@ -80,6 +77,7 @@ class ESP32H2ROM(ESP32C6ROM):
         return 32
 
     def hard_reset(self):
+        # RTC WDT reset not available, do a classic reset
         ESPLoader.hard_reset(self)
 
     def check_spi_connection(self, spi_connection):

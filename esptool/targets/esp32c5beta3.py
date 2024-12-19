@@ -19,9 +19,6 @@ class ESP32C5BETA3ROM(ESP32C6ROM):
     DROM_MAP_START = 0x41000000
     DROM_MAP_END = 0x41800000
 
-    # Magic value for ESP32C5(beta3)
-    CHIP_DETECT_MAGIC_VALUE = [0xE10D8082]
-
     FLASH_FREQUENCY = {
         "80m": 0xF,
         "40m": 0x0,

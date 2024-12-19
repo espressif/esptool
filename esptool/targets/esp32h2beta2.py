@@ -10,8 +10,6 @@ class ESP32H2BETA2ROM(ESP32H2BETA1ROM):
     CHIP_NAME = "ESP32-H2(beta2)"
     IMAGE_CHIP_ID = 14
 
-    CHIP_DETECT_MAGIC_VALUE = [0x6881B06F]
-
     def get_chip_description(self):
         chip_name = {
             1: "ESP32-H2(beta2)",

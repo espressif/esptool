@@ -6,6 +6,7 @@
 import struct
 
 from .esp32c3 import ESP32C3ROM
+from ..loader import ESPLoader
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -19,9 +20,6 @@ class ESP32C6ROM(ESP32C3ROM):
     DROM_MAP_END = 0x43000000
 
     BOOTLOADER_FLASH_OFFSET = 0x0
-
-    # Magic value for ESP32C6
-    CHIP_DETECT_MAGIC_VALUE = [0x2CE0806F]
 
     SPI_REG_BASE = 0x60003000
     SPI_USR_OFFS = 0x18
@@ -88,12 +86,12 @@ class ESP32C6ROM(ESP32C3ROM):
 
     MEMORY_MAP = [
         [0x00000000, 0x00010000, "PADDING"],
-        [0x42800000, 0x43000000, "DROM"],
+        [0x42000000, 0x43000000, "DROM"],
         [0x40800000, 0x40880000, "DRAM"],
         [0x40800000, 0x40880000, "BYTE_ACCESSIBLE"],
         [0x4004AC00, 0x40050000, "DROM_MASK"],
         [0x40000000, 0x4004AC00, "IROM_MASK"],
-        [0x42000000, 0x42800000, "IROM"],
+        [0x42000000, 0x43000000, "IROM"],
         [0x40800000, 0x40880000, "IRAM"],
         [0x50000000, 0x50004000, "RTC_IRAM"],
         [0x50000000, 0x50004000, "RTC_DRAM"],
@@ -193,6 +191,11 @@ class ESP32C6ROM(ESP32C3ROM):
                 "WARNING: GPIO pins 12 and 13 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
+
+    def hard_reset(self):
+        # Bug in the USB-Serial/JTAG controller can cause the port to disappear
+        # if the chip is reset with RTC WDT, do a classic reset
+        ESPLoader.hard_reset(self)
 
 
 class ESP32C6StubLoader(ESP32C6ROM):

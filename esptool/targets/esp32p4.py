@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import struct
+from time import sleep
 from typing import Dict
 
 from .esp32 import ESP32ROM
@@ -22,8 +23,6 @@ class ESP32P4ROM(ESP32ROM):
 
     BOOTLOADER_FLASH_OFFSET = 0x2000  # First 2 sectors are reserved for FE purposes
 
-    CHIP_DETECT_MAGIC_VALUE = [0x0, 0x0ADDBAD0]
-
     UART_DATE_REG_ADDR = 0x500CA000 + 0x8C
 
     EFUSE_BASE = 0x5012D000
@@ -39,6 +38,8 @@ class ESP32P4ROM(ESP32ROM):
     SPI_W0_OFFS = 0x58
 
     SPI_ADDR_REG_MSB = False
+
+    USES_MAGIC_VALUE = False
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
 
@@ -67,6 +68,13 @@ class ESP32P4ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES256_KEY_1 = 2
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
+
+    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
+
+    GPIO_STRAP_REG = 0x500E0038
+    GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
+    RTC_CNTL_OPTION1_REG = 0x50110008
+    RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x4  # Is download mode forced over USB?
 
     SUPPORTS_ENCRYPTED_FLASH = True
 
@@ -206,6 +214,8 @@ class ESP32P4ROM(ESP32ROM):
         ESPLoader.change_baud(self, baud)
 
     def _post_connect(self):
+        if self.uses_usb_otg():
+            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
         if not self.sync_stub_detected:  # Don't run if stub is reused
             self.disable_watchdogs()
 
@@ -255,15 +265,16 @@ class ESP32P4ROM(ESP32ROM):
     def rtc_wdt_reset(self):
         print("Hard resetting with RTC WDT...")
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
-        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 5000)  # set WDT timeout
+        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 2000)  # set WDT timeout
         self.write_reg(
             self.RTC_CNTL_WDTCONFIG0_REG, (1 << 31) | (5 << 28) | (1 << 8) | 2
         )  # enable WDT
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)  # lock
 
     def hard_reset(self):
-        if self.uses_usb_jtag_serial():
+        if self.uses_usb_jtag_serial() or self.uses_usb_otg():
             self.rtc_wdt_reset()
+            sleep(0.5)  # wait for reset to take effect
         else:
             ESPLoader.hard_reset(self)
 
@@ -285,6 +296,10 @@ class ESP32P4StubLoader(ESP32P4ROM):
         self._trace_enabled = rom_loader._trace_enabled
         self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
+
+        if rom_loader.uses_usb_otg():
+            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
+            self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
 
 
 ESP32P4ROM.STUB_CLASS = ESP32P4StubLoader

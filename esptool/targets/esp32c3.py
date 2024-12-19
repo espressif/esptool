@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import struct
+from time import sleep
 from typing import Dict
 
 from .esp32 import ESP32ROM
@@ -30,10 +31,9 @@ class ESP32C3ROM(ESP32ROM):
 
     SPI_ADDR_REG_MSB = False
 
-    BOOTLOADER_FLASH_OFFSET = 0x0
+    USES_MAGIC_VALUE = False
 
-    # Magic values for ESP32-C3 eco 1+2, eco 3, eco 6, and eco 7 respectively
-    CHIP_DETECT_MAGIC_VALUE = [0x6921506F, 0x1B31506F, 0x4881606F, 0x4361606F]
+    BOOTLOADER_FLASH_OFFSET = 0x0
 
     UART_DATE_REG_ADDR = 0x60000000 + 0x7C
 
@@ -256,13 +256,14 @@ class ESP32C3ROM(ESP32ROM):
     def hard_reset(self):
         if self.uses_usb_jtag_serial():
             self.rtc_wdt_reset()
+            sleep(0.5)  # wait for reset to take effect
         else:
             ESPLoader.hard_reset(self)
 
     def rtc_wdt_reset(self):
         print("Hard resetting with RTC WDT...")
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
-        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 5000)  # set WDT timeout
+        self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 2000)  # set WDT timeout
         self.write_reg(
             self.RTC_CNTL_WDTCONFIG0_REG, (1 << 31) | (5 << 28) | (1 << 8) | 2
         )  # enable WDT
