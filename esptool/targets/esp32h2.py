@@ -24,6 +24,9 @@ class ESP32H2ROM(ESP32C6ROM):
     RTC_CNTL_SWD_WPROTECT_REG = DR_REG_LP_WDT_BASE + 0x0024  # LP_WDT_SWD_WPROTECT_REG
     RTC_CNTL_SWD_WKEY = 0x50D83AA1  # LP_WDT_SWD_WKEY, same as WDT key in this case
 
+    UARTDEV_BUF_NO = 0x4084FEFC  # Variable in ROM .bss which indicates the port in use
+    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 3  # The above var when USB-JTAG/Serial is used
+
     FLASH_FREQUENCY = {
         "48m": 0xF,
         "24m": 0x0,

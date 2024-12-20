@@ -829,11 +829,14 @@ def main(argv=None, esp=None):
             )
 
         if esp.secure_download_mode:
-            print("Chip is %s in Secure Download Mode" % esp.CHIP_NAME)
+            print(f"Chip is {esp.CHIP_NAME} in Secure Download Mode")
         else:
-            print("Chip is %s" % (esp.get_chip_description()))
-            print("Features: %s" % ", ".join(esp.get_chip_features()))
-            print("Crystal is %dMHz" % esp.get_crystal_freq())
+            print(f"Chip is {esp.get_chip_description()}")
+            print(f"Features: {', '.join(esp.get_chip_features())}")
+            print(f"Crystal is {esp.get_crystal_freq()}MHz")
+            usb_mode = esp.get_usb_mode()
+            if usb_mode is not None:
+                print(f"USB mode: {usb_mode}")
             read_mac(esp, args)
 
         if not args.no_stub:

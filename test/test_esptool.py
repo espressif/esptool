@@ -1353,6 +1353,22 @@ class TestAutoDetect(EsptoolTestCase):
         self._check_output(output)
 
 
+class TestUSBMode(EsptoolTestCase):
+    @pytest.mark.quick_test
+    def test_usb_mode(self):
+        output = self.run_esptool("chip_id")
+        expected_usb_mode = (
+            "USB-OTG"
+            if os.environ.get("ESPTOOL_TEST_USB_OTG") == "1"
+            else "USB-Serial/JTAG"
+            if arg_preload_port
+            else None
+        )
+
+        if expected_usb_mode:
+            assert f"USB mode: {expected_usb_mode}" in output
+
+
 @pytest.mark.flaky(reruns=5)
 @pytest.mark.skipif(arg_preload_port is not False, reason="USB-to-UART bridge only")
 @pytest.mark.skipif(os.name == "nt", reason="Linux/MacOS only")
