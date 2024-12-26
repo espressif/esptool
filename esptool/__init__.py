@@ -843,6 +843,12 @@ def main(argv=None, esp=None):
                     "setting --no-stub"
                 )
                 args.no_stub = True
+            elif esp.CHIP_NAME == "ESP32-H21":  # TODO: [ESP32H21] IDF-11509
+                print(
+                    f"WARNING: Stub loader is not yet supported on {esp.CHIP_NAME}, "
+                    "setting --no-stub"
+                )
+                args.no_stub = True
             else:
                 try:
                     esp = esp.run_stub()
