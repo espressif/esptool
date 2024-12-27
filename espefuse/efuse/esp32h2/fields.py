@@ -111,6 +111,10 @@ class EspEfuses(base_fields.EspEfusesBase):
                 EfuseField.convert(self, efuse) for efuse in self.Fields.CALC
             ]
 
+        if self.get_chip_version() <= 101:
+            rev = EfuseDefineFields(None, revision="esp32h2_v0.0_v1.1")
+            self.efuses += [EfuseField.convert(self, efuse) for efuse in rev.EFUSES]
+
     def __getitem__(self, efuse_name):
         """Return the efuse field with the given name"""
         for e in self.efuses:

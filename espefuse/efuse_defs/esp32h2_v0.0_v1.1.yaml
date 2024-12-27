@@ -1,0 +1,3 @@
+VER_NO: 44563d2af4ebdba4db6c0a34a50c94f9
+EFUSES:
+  ECDSA_FORCE_USE_HARDWARE_K       : {show: y, blk : 0, word: 3, pos: 18, len  : 1, start: 114, type      : bool, wr_dis  : 17, rd_dis: null, alt                            : '', dict             : '', desc: 'Represents whether hardware random number k is forced used in ESDCA. 1: force used. 0: not force used', rloc: 'EFUSE_RD_REPEAT_DATA2_REG[18]', bloc: 'B14[2]'}
