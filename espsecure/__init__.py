@@ -65,7 +65,7 @@ def swap_word_order(source):
     return struct.pack(words, *reversed(struct.unpack(words, source)))
 
 
-def _load_hardware_key(keyfile):
+def _load_hardware_key(keyfile, is_flash_encryption_key, aes_xts=None):
     """Load a 128/256/512-bit key, similar to stored in efuse, from a file
 
     128-bit keys will be extended to 256-bit using the SHA256 of the key
@@ -78,6 +78,17 @@ def _load_hardware_key(keyfile):
             "Key file contains wrong length (%d bytes), 16, 24, 32 or 64 expected."
             % len(key)
         )
+    if is_flash_encryption_key:
+        if aes_xts:
+            if len(key) not in [16, 32, 64]:
+                raise esptool.FatalError(
+                    f"AES_XTS supports only 128, 256, and 512-bit keys. Provided key is {len(key) * 8} bits."
+                )
+        else:
+            if len(key) not in [24, 32]:
+                raise esptool.FatalError(
+                    f"ESP32 supports only 192 and 256-bit keys. Provided key is {len(key) * 8} bits. Use --aes_xts for other chips."
+                )
     if len(key) == 16:
         key = _sha256_digest(key)
         print("Using 128-bit key (extended)")
@@ -129,7 +140,7 @@ def digest_secure_bootloader(args):
     # produce the digest. Each block in/out of ECB is reordered
     # (due to hardware quirks not for security.)
 
-    key = _load_hardware_key(args.keyfile)
+    key = _load_hardware_key(args.keyfile, False)
     backend = default_backend()
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
     encryptor = cipher.encryptor()
@@ -1233,7 +1244,19 @@ def generate_flash_encryption_key(args):
 def _flash_encryption_operation_esp32(
     output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt
 ):
-    key = _load_hardware_key(keyfile)
+    """
+    Perform flash encryption or decryption operation for ESP32.
+
+    This function handles the encryption or decryption of flash data for the ESP32 chip.
+    It reads data from the input file, processes it in 16-byte blocks, and writes the
+    processed data to the output file. The function ensures that the key length is either
+    192 or 256 bits, as required by the ESP32 chip. It also checks that the flash address
+    is a multiple of 16.
+
+    Note: This function is specific to the ESP32 chip. For other chips, use the --aes_xts
+    flag to call the correct function.
+    """
+    key = _load_hardware_key(keyfile, True, aes_xts=False)
 
     if flash_address % 16 != 0:
         raise esptool.FatalError(
@@ -1322,7 +1345,7 @@ def _flash_encryption_operation_aes_xts(
     """
 
     backend = default_backend()
-    key = _load_hardware_key(keyfile)
+    key = _load_hardware_key(keyfile, True, aes_xts=True)
     indata = input_file.read()
 
     if flash_address % 16 != 0:
@@ -1789,8 +1812,7 @@ def main(custom_commandline=None):
     p.add_argument(
         "--aes_xts",
         "-x",
-        help="Decrypt data using AES-XTS as used on "
-        "ESP32-S2, ESP32-C2, ESP32-C3, ESP32-C6, ESP32-C5, ESP32-C61 and ESP32-P4",
+        help="Decrypt data using AES-XTS (not applicable for ESP32)",
         action="store_true",
     )
     p.add_argument(
@@ -1816,7 +1838,7 @@ def main(custom_commandline=None):
     )
     p.add_argument(
         "--flash_crypt_conf",
-        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF).",
+        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for ESP32).",
         required=False,
         default=0xF,
         type=esptool.arg_auto_int,
@@ -1829,8 +1851,7 @@ def main(custom_commandline=None):
     p.add_argument(
         "--aes_xts",
         "-x",
-        help="Encrypt data using AES-XTS as used on "
-        "ESP32-S2, ESP32-C2, ESP32-C3, ESP32-C6, ESP32-C5, ESP32-C61 and ESP32-P4",
+        help="Encrypt data using AES-XTS (not applicable for ESP32)",
         action="store_true",
     )
     p.add_argument(
@@ -1856,7 +1877,7 @@ def main(custom_commandline=None):
     )
     p.add_argument(
         "--flash_crypt_conf",
-        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF).",
+        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for ESP32)",
         required=False,
         default=0xF,
         type=esptool.arg_auto_int,
