@@ -5,6 +5,7 @@
 import struct
 from typing import Dict
 
+from .esp32c3 import ESP32C3ROM
 from .esp32c6 import ESP32C6ROM
 
 
@@ -117,6 +118,10 @@ class ESP32C61ROM(ESP32C6ROM):
             "BASE_MAC": tuple(base_mac),
         }
         return macs.get(mac_type, None)
+
+    def watchdog_reset(self):
+        # Watchdog reset disabled in parent (ESP32-C6) ROM, re-enable it
+        ESP32C3ROM.watchdog_reset(self)
 
 
 class ESP32C61StubLoader(ESP32C61ROM):

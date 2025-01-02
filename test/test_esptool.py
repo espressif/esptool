@@ -1535,28 +1535,23 @@ class TestMakeImage(EsptoolTestCase):
 
 
 @pytest.mark.skipif(
-    arg_chip in ["esp8266", "esp32", "esp32h2"], reason="Not supported on this chip"
-)
-@pytest.mark.skipif(
     "ESPTOOL_TEST_USB_OTG" in os.environ or arg_preload_port is not False,
     reason="Boot mode strapping pin pulled constantly low, can't reset out of bootloader",
 )
 class TestReset(EsptoolTestCase):
-    def test_rtc_wdt_reset(self):
-        # Erase the bootloader to get "invalid header" output + test RTC WDT reset
-        res = self.run_esptool("--after no_reset erase_region 0x0 0x4000")
-        assert "Erase completed" in res
-        try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+    def test_watchdog_reset(self):
+        # Erase the bootloader to get "invalid header" output + test watchdog reset
+        res = self.run_esptool("--after watchdog_reset erase_region 0x0 0x4000")
+        if arg_chip in ["esp8266", "esp32", "esp32h2", "esp32c6"]:
+            assert "Watchdog hard reset is not supported" in res
+            assert "Hard resetting via RTS pin..." in res
+        else:
+            assert "Hard resetting with a watchdog..." in res
+            # If there is no output, the chip did not reset
+            # Mangled bytes are for C2 26 MHz when the baudrate doesn't match
+            self.verify_output(
+                [b"invalid header", b"\x02b\xe2n\x9e\xe0p\x12n\x9c\x0cn"]
             )
-            esp.rtc_wdt_reset()
-        finally:
-            esp._port.close()
-        sleep(0.2)  # Give the chip time to reset
-        # If there is no output, the chip did not reset
-        # Mangled bytes are for C2 26 MHz when the baudrate doesn't match
-        self.verify_output([b"invalid header", b"\x02b\xe2n\x9e\xe0p\x12n\x9c\x0cn"])
 
 
 @pytest.mark.skipif(arg_chip != "esp32", reason="Don't need to test multiple times")

@@ -1581,6 +1581,13 @@ class ESPLoader(object):
                 # in the stub loader
                 self.command(self.ESP_RUN_USER_CODE, wait_response=False)
 
+    def watchdog_reset(self):
+        print(
+            f"WARNING: Watchdog hard reset is not supported on {self.CHIP_NAME}, "
+            "attempting classic hard reset instead."
+        )
+        self.hard_reset()
+
 
 def slip_reader(port, trace_function):
     """Generator to read SLIP packets from a serial port.

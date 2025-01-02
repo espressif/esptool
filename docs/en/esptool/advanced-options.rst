@@ -35,6 +35,7 @@ The ``--after`` argument allows you to specify whether the chip should be reset 
     :esp8266: * ``--after soft_reset`` runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
     * ``--after no_reset`` leaves the chip in the serial bootloader, no reset is performed.
     * ``--after no_reset_stub`` leaves the chip in the stub bootloader, no reset is performed.
+    :not esp8266 and not esp32 and not esp32h2 and not esp32c6: * ``--after watchdog_reset`` hard-resets the chip by triggering an internal watchdog reset. This is useful when the RTS control line is not available, especially in the USB-OTG and USB-Serial/JTAG modes. Use this if a chip is getting stuck in download mode when using the default reset method in USB-Serial/JTAG mode. Using this may cause the port to re-enumerate on Linux (e.g. ``/dev/ttyACM0`` -> ``/dev/ttyACM1``).
 
 
 Connect Loop

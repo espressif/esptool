@@ -262,19 +262,19 @@ class ESP32P4ROM(ESP32ROM):
                 "consider using other pins for SPI flash connection."
             )
 
-    def rtc_wdt_reset(self):
-        print("Hard resetting with RTC WDT...")
+    def watchdog_reset(self):
+        print("Hard resetting with a watchdog...")
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
         self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 2000)  # set WDT timeout
         self.write_reg(
             self.RTC_CNTL_WDTCONFIG0_REG, (1 << 31) | (5 << 28) | (1 << 8) | 2
         )  # enable WDT
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, 0)  # lock
+        sleep(0.5)  # wait for reset to take effect
 
     def hard_reset(self):
-        if self.uses_usb_jtag_serial() or self.uses_usb_otg():
-            self.rtc_wdt_reset()
-            sleep(0.5)  # wait for reset to take effect
+        if self.uses_usb_otg():
+            self.watchdog_reset()
         else:
             ESPLoader.hard_reset(self)
 

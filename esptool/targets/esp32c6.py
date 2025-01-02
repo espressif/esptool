@@ -192,10 +192,10 @@ class ESP32C6ROM(ESP32C3ROM):
                 "consider using other pins for SPI flash connection."
             )
 
-    def hard_reset(self):
+    def watchdog_reset(self):
         # Bug in the USB-Serial/JTAG controller can cause the port to disappear
-        # if the chip is reset with RTC WDT, do a classic reset
-        ESPLoader.hard_reset(self)
+        # if watchdog reset happens, disable it on ESP32-C6
+        ESPLoader.watchdog_reset(self)
 
 
 class ESP32C6StubLoader(ESP32C6ROM):

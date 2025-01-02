@@ -151,7 +151,13 @@ def main(argv=None, esp=None):
         "--after",
         "-a",
         help="What to do after esptool.py is finished",
-        choices=["hard_reset", "soft_reset", "no_reset", "no_reset_stub"],
+        choices=[
+            "hard_reset",
+            "soft_reset",
+            "no_reset",
+            "no_reset_stub",
+            "watchdog_reset",
+        ],
         default=os.environ.get("ESPTOOL_AFTER", "hard_reset"),
     )
 
@@ -1065,6 +1071,15 @@ def main(argv=None, esp=None):
             esp.soft_reset(False)
         elif args.after == "no_reset_stub":
             print("Staying in flasher stub.")
+        elif args.after == "watchdog_reset":
+            if esp.secure_download_mode:
+                print(
+                    "WARNING: Watchdog hard reset is not supported in Secure Download "
+                    "Mode, attempting classic hard reset instead."
+                )
+                esp.hard_reset()
+            else:
+                esp.watchdog_reset()
         else:  # args.after == 'no_reset'
             print("Staying in bootloader.")
             if esp.IS_STUB:

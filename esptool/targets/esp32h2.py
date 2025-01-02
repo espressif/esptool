@@ -76,9 +76,9 @@ class ESP32H2ROM(ESP32C6ROM):
         # ESP32H2 XTAL is fixed to 32MHz
         return 32
 
-    def hard_reset(self):
-        # RTC WDT reset not available, do a classic reset
-        ESPLoader.hard_reset(self)
+    # Watchdog reset is not supported on ESP32-H2
+    def watchdog_reset(self):
+        ESPLoader.watchdog_reset(self)
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 28))):
