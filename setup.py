@@ -18,4 +18,7 @@ else:
 setup(
     scripts=scripts,
     entry_points=entry_points,
+    data_files=[
+        ('share/metainfo', ['com.github.espressif.esptool.metainfo.xml'])
+    ],
 )
