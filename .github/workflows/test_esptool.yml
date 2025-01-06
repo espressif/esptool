@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   test_esptool:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # 22.04 is the last version with Python 3.7
 
     strategy:
       matrix:
@@ -63,7 +63,7 @@ jobs:
             git diff --exit-code
 
   lint_esptool:
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-22.04  # 22.04 is the last version with Python 3.7
       steps:
         - name: Checkout
           uses: actions/checkout@master
