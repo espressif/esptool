@@ -737,7 +737,7 @@ class ESPLoader(object):
                     " if ESP32-C2 doesn't connect"
                     " (at least 115200 Bd is recommended)."
                 )
-
+            self._port.close()
             raise FatalError(
                 "Failed to connect to {}: {}"
                 f"{additional_msg}"
