@@ -495,7 +495,7 @@ def write_flash(esp, args):
     else:  # Check against real flash chip size if not in SDM
         flash_end_str = detect_flash_size(esp)
         flash_end = flash_size_bytes(flash_end_str)
-        if set_flash_size and set_flash_size > flash_end:
+        if set_flash_size and flash_end and set_flash_size > flash_end:
             print(
                 f"WARNING: Set --flash_size {args.flash_size} "
                 f"is larger than the available flash size of {flash_end_str}."
