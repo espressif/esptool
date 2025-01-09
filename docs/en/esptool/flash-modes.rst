@@ -36,7 +36,7 @@ These set Quad Flash I/O or Dual Flash I/O modes. Valid values are ``keep``, ``q
 
     Most {IDF_TARGET_NAME} modules use ``qio``, but are also dual I/O.
 
-In ``qio`` mode, two additional GPIOs (9 and 10) are used for SPI flash communications. If flash mode is set to ``dio`` then these pins are available for other purposes.
+In ``qio`` mode, two additional GPIOs are used for SPI flash communications. If flash mode is set to ``dio`` then these pins are available for other purposes. Search for ``SPIWP`` and ``SPIHD`` pins in the `{IDF_TARGET_NAME} Technical Reference Manual <https://www.espressif.com/en/support/documents/technical-documents?keys={IDF_TARGET_NAME}+Technical+Reference+Manual>`__ to learn more.
 
 For a full explanation of these modes, see the :ref:`SPI Flash Modes page <spi-flash-modes>`.
 
