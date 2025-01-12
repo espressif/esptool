@@ -6,6 +6,7 @@ import struct
 import time
 from typing import Dict
 
+from .esp32c3 import ESP32C3ROM
 from .esp32c6 import ESP32C6ROM
 from ..loader import ESPLoader
 from ..util import FatalError
@@ -161,6 +162,10 @@ class ESP32C5ROM(ESP32C6ROM):
                 "WARNING: GPIO pins 13 and 14 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
+
+    def watchdog_reset(self):
+        # Watchdog reset disabled in parent (ESP32-C6) ROM, re-enable it
+        ESP32C3ROM.watchdog_reset(self)
 
 
 class ESP32C5StubLoader(ESP32C5ROM):

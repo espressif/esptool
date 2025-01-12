@@ -1,6 +1,6 @@
-# This file describes eFuses for ESP32-H2 chip
+# This file describes eFuses for ESP32-H21 chip
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -74,9 +74,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         self._esp = esp
         self.debug = debug
         self.do_not_confirm = do_not_confirm
-        if esp.CHIP_NAME != "ESP32-H2":
+        if esp.CHIP_NAME != "ESP32-H21":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-H2 chip but got for '%s'."
+                "Expected the 'esp' param for ESP32-H21 chip but got for '%s'."
                 % (esp.CHIP_NAME)
             )
         if not skip_connect:
@@ -110,10 +110,6 @@ class EspEfuses(base_fields.EspEfusesBase):
             self.efuses += [
                 EfuseField.convert(self, efuse) for efuse in self.Fields.CALC
             ]
-
-        if self.get_chip_version() <= 101:
-            rev = EfuseDefineFields(None, revision="esp32h2_v0.0_v1.1")
-            self.efuses += [EfuseField.convert(self, efuse) for efuse in rev.EFUSES]
 
     def __getitem__(self, efuse_name):
         """Return the efuse field with the given name"""
@@ -244,17 +240,7 @@ class EspEfuses(base_fields.EspEfusesBase):
             raise esptool.FatalError(
                 "The eFuse supports only xtal=32M (xtal was %d)" % apb_freq
             )
-
-        self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_NUM_M, 0xFF)
-        self.update_reg(
-            self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_CLK_DIV_M, 0x28
-        )
-        self.update_reg(
-            self.REGS.EFUSE_WR_TIM_CONF1_REG, self.REGS.EFUSE_PWR_ON_NUM_M, 0x3000
-        )
-        self.update_reg(
-            self.REGS.EFUSE_WR_TIM_CONF2_REG, self.REGS.EFUSE_PWR_OFF_NUM_M, 0x190
-        )
+        # TODO: [ESP32H21] IDF-11506
 
     def get_coding_scheme_warnings(self, silent=False):
         """Check if the coding scheme has detected any errors."""
@@ -306,7 +292,17 @@ class EfuseField(base_fields.EfuseFieldBase):
             "keypurpose": EfuseKeyPurposeField,
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
+            "wafer": EfuseWafer,
         }.get(efuse.class_type, EfuseField)(parent, efuse)
+
+
+class EfuseWafer(EfuseField):
+    def get(self, from_read=True):
+        # TODO: [ESP32H21] IDF-11506
+        return 0
+
+    def save(self, new_value):
+        raise esptool.FatalError("Burning %s is not supported" % self.name)
 
 
 class EfuseTempSensor(EfuseField):
@@ -450,7 +446,4 @@ class EfuseKeyPurposeField(EfuseField):
 
     def save(self, new_value):
         raw_val = int(self.check_format(str(new_value)))
-        str_new_value = self.get_name(raw_val)
-        if self.name == "KEY_PURPOSE_5" and str_new_value in ["XTS_AES_128_KEY", "ECDSA_KEY"]:
-            raise esptool.FatalError(f"{self.name} can not have {str_new_value} key due to a hardware bug (please see TRM for more details)")
         return super(EfuseKeyPurposeField, self).save(raw_val)

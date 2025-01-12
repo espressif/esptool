@@ -1,6 +1,6 @@
-# This file describes eFuses fields and registers for ESP32-H2 chip
+# This file describes eFuses fields and registers for ESP32-H21 chip
 #
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -20,7 +20,7 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_MEM_SIZE = 0x01FC + 4
 
     # EFUSE registers & command/conf values
-    DR_REG_EFUSE_BASE = 0x600B0800
+    DR_REG_EFUSE_BASE = 0x600B4000
     EFUSE_PGM_DATA0_REG = DR_REG_EFUSE_BASE
     EFUSE_CHECK_VALUE0_REG = DR_REG_EFUSE_BASE + 0x020
     EFUSE_CLK_REG = DR_REG_EFUSE_BASE + 0x1C8
@@ -111,7 +111,7 @@ class EfuseDefineBlocks(EfuseBlocksBase):
 
 
 class EfuseDefineFields(EfuseFieldsBase):
-    def __init__(self, extend_efuse_table, revision=None) -> None:
+    def __init__(self, extend_efuse_table) -> None:
         # List of efuse fields from TRM the chapter eFuse Controller.
         self.EFUSES = []
         self.KEYBLOCKS = []
@@ -120,8 +120,6 @@ class EfuseDefineFields(EfuseFieldsBase):
 
         dir_name = os.path.dirname(os.path.abspath(__file__))
         dir_name, file_name = os.path.split(dir_name)
-        if revision is not None:
-            file_name = revision
         file_name = file_name + ".yaml"
         dir_name, _ = os.path.split(dir_name)
         efuse_file = os.path.join(dir_name, "efuse_defs", file_name)

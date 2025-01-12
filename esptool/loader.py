@@ -737,7 +737,7 @@ class ESPLoader(object):
                     " if ESP32-C2 doesn't connect"
                     " (at least 115200 Bd is recommended)."
                 )
-
+            self._port.close()
             raise FatalError(
                 "Failed to connect to {}: {}"
                 f"{additional_msg}"
@@ -1047,9 +1047,34 @@ class ESPLoader(object):
         """
         Read the UARTDEV_BUF_NO register to get the number of the currently used console
         """
-        if self.cache["uart_no"] is None:
-            self.cache["uart_no"] = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-        return self.cache["uart_no"]
+        # Some ESP chips do not have this register
+        try:
+            if self.cache["uart_no"] is None:
+                self.cache["uart_no"] = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
+            return self.cache["uart_no"]
+        except AttributeError:
+            return None
+
+    def uses_usb_jtag_serial(self):
+        """
+        Check if the chip uses USB JTAG/SERIAL mode.
+        """
+        return False
+
+    def uses_usb_otg(self):
+        """
+        Check if the chip uses USB OTG mode.
+        """
+        return False
+
+    def get_usb_mode(self):
+        """
+        Get the USB mode of the chip: USB-Serial/JTAG or USB-OTG. If the usb_mode is None, external USB-UART is used.
+        """
+        usb_jtag_serial = self.uses_usb_jtag_serial()
+        usb_otg = self.uses_usb_otg()
+
+        return "USB-Serial/JTAG" if usb_jtag_serial else "USB-OTG" if usb_otg else None
 
     @classmethod
     def parse_flash_size_arg(cls, arg):
@@ -1580,6 +1605,13 @@ class ESPLoader(object):
                 # running user code from stub loader requires some hacks
                 # in the stub loader
                 self.command(self.ESP_RUN_USER_CODE, wait_response=False)
+
+    def watchdog_reset(self):
+        print(
+            f"WARNING: Watchdog hard reset is not supported on {self.CHIP_NAME}, "
+            "attempting classic hard reset instead."
+        )
+        self.hard_reset()
 
 
 def slip_reader(port, trace_function):

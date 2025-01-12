@@ -7,6 +7,7 @@ from .esp32c6 import ESP32C6ROM
 from .esp32c61 import ESP32C61ROM
 from .esp32c6beta import ESP32C6BETAROM
 from .esp32h2 import ESP32H2ROM
+from .esp32h21 import ESP32H21ROM
 from .esp32h2beta1 import ESP32H2BETA1ROM
 from .esp32h2beta2 import ESP32H2BETA2ROM
 from .esp32p4 import ESP32P4ROM
@@ -32,6 +33,7 @@ CHIP_DEFS = {
     "esp32c5": ESP32C5ROM,
     "esp32c5beta3": ESP32C5BETA3ROM,
     "esp32h2": ESP32H2ROM,
+    "esp32h21": ESP32H21ROM,
     "esp32p4": ESP32P4ROM,
 }
 

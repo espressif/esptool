@@ -243,6 +243,8 @@ class TestReadCommands(EfuseTestCase):
         self.espefuse_py("check_error --recovery")
 
 
+# TODO: [ESP32H21] IDF-11506
+@pytest.mark.skipif(arg_chip == "esp32h21", reason="Not supported yet")
 class TestReadProtectionCommands(EfuseTestCase):
     def test_read_protect_efuse(self):
         self.espefuse_py("read_protect_efuse -h")
@@ -383,6 +385,8 @@ class TestReadProtectionCommands(EfuseTestCase):
         )
 
 
+# TODO: [ESP32H21] IDF-11506
+@pytest.mark.skipif(arg_chip == "esp32h21", reason="Not supported yet")
 class TestWriteProtectionCommands(EfuseTestCase):
     def test_write_protect_efuse(self):
         self.espefuse_py("write_protect_efuse -h")
@@ -710,6 +714,14 @@ class TestBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py("burn_efuse CUSTOM_MAC AA:CD:EF:01:02:03")
         self.espefuse_py("get_custom_mac", check_msg=f"aa:cd:ef:01:02:03 {crc_msg}")
 
+    # TODO: [ESP32H21] IDF-11506
+    @pytest.mark.skipif(
+        arg_chip
+        in [
+            "esp32h21",
+        ],
+        reason="No such eFuses, will be defined later",
+    )
     def test_burn_efuse(self):
         self.espefuse_py("burn_efuse -h")
         if arg_chip == "esp32":
@@ -1855,6 +1867,8 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
             )
 
 
+# TODO: [ESP32H21] IDF-11506
+@pytest.mark.skipif(arg_chip == "esp32h21", reason="Not supported yet")
 class TestExecuteScriptsCommands(EfuseTestCase):
     @classmethod
     def setup_class(self):

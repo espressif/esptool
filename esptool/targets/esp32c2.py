@@ -133,9 +133,6 @@ class ESP32C2ROM(ESP32C3ROM):
             self.stub_is_disabled = True
             self.IS_STUB = False
 
-    def hard_reset(self):
-        ESPLoader.hard_reset(self)
-
     """ Try to read (encryption key) and check if it is valid """
 
     def is_flash_encryption_key_valid(self):
