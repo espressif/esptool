@@ -1,9 +1,9 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2025 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from ..loader import ESPLoader
+from ..loader import ESPLoader, StubMixin
 from ..util import FatalError, NotSupportedError
 
 
@@ -182,18 +182,8 @@ class ESP8266ROM(ESPLoader):
         return False  # ESP8266 doesn't have security features
 
 
-class ESP8266StubLoader(ESP8266ROM):
-    """Access class for ESP8266 stub loader, runs on top of ROM."""
-
-    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
-    IS_STUB = True
-
-    def __init__(self, rom_loader):
-        self.secure_download_mode = rom_loader.secure_download_mode
-        self._port = rom_loader._port
-        self._trace_enabled = rom_loader._trace_enabled
-        self.cache = rom_loader.cache
-        self.flush_input()  # resets _slip_reader
+class ESP8266StubLoader(StubMixin, ESP8266ROM):
+    """Stub loader for ESP8266, runs on top of ROM."""
 
     def get_erase_size(self, offset, size):
         return size  # stub doesn't have same size bug as ROM loader

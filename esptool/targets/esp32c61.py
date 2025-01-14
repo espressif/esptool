@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024-2025 Fredrik Ahlberg, Angus Gratton,
+# Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,6 +8,7 @@ from typing import Dict
 
 from .esp32c3 import ESP32C3ROM
 from .esp32c6 import ESP32C6ROM
+from ..loader import StubMixin
 
 
 class ESP32C61ROM(ESP32C6ROM):
@@ -124,23 +126,10 @@ class ESP32C61ROM(ESP32C6ROM):
         ESP32C3ROM.watchdog_reset(self)
 
 
-class ESP32C61StubLoader(ESP32C61ROM):
-    """Access class for ESP32C61 stub loader, runs on top of ROM.
+class ESP32C61StubLoader(StubMixin, ESP32C61ROM):
+    """Stub loader for ESP32-C61, runs on top of ROM."""
 
-    (Basically the same as ESP32StubLoader, but different base class.
-    Can possibly be made into a mixin.)
-    """
-
-    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
-    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
-    IS_STUB = True
-
-    def __init__(self, rom_loader):
-        self.secure_download_mode = rom_loader.secure_download_mode
-        self._port = rom_loader._port
-        self._trace_enabled = rom_loader._trace_enabled
-        self.cache = rom_loader.cache
-        self.flush_input()  # resets _slip_reader
+    pass
 
 
 ESP32C61ROM.STUB_CLASS = ESP32C61StubLoader

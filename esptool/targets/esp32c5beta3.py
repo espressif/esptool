@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,7 +7,7 @@ import time
 from typing import Dict
 
 from .esp32c6 import ESP32C6ROM
-from ..loader import ESPLoader
+from ..loader import ESPLoader, StubMixin
 
 
 class ESP32C5BETA3ROM(ESP32C6ROM):
@@ -104,23 +104,10 @@ class ESP32C5BETA3ROM(ESP32C6ROM):
             ESPLoader.change_baud(self, baud)
 
 
-class ESP32C5BETA3StubLoader(ESP32C5BETA3ROM):
-    """Access class for ESP32C5BETA3 stub loader, runs on top of ROM.
+class ESP32C5BETA3StubLoader(StubMixin, ESP32C5BETA3ROM):
+    """Stub loader for ESP32-C5(beta3), runs on top of ROM."""
 
-    (Basically the same as ESP32StubLoader, but different base class.
-    Can possibly be made into a mixin.)
-    """
-
-    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
-    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
-    IS_STUB = True
-
-    def __init__(self, rom_loader):
-        self.secure_download_mode = rom_loader.secure_download_mode
-        self._port = rom_loader._port
-        self._trace_enabled = rom_loader._trace_enabled
-        self.cache = rom_loader.cache
-        self.flush_input()  # resets _slip_reader
+    pass
 
 
 ESP32C5BETA3ROM.STUB_CLASS = ESP32C5BETA3StubLoader

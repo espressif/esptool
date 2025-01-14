@@ -1614,6 +1614,26 @@ class ESPLoader(object):
         self.hard_reset()
 
 
+class StubMixin:
+    """
+    Mixin class bundling the stub loader-specific properties.
+    Not intended for direct instantiation.
+    A child class (e.g. ESP32StubLoader) uses multiple inheritance
+    to combine this mixin class (StubMixin) with a parent class (e.g. ESP32ROM).
+    """
+
+    FLASH_WRITE_SIZE = 0x4000  # Default value, can be overridden
+    STATUS_BYTES_LENGTH = 2
+    IS_STUB = True
+
+    def __init__(self, rom_loader):
+        self.secure_download_mode = rom_loader.secure_download_mode
+        self._port = rom_loader._port
+        self._trace_enabled = rom_loader._trace_enabled
+        self.cache = rom_loader.cache
+        self.flush_input()  # resets _slip_reader
+
+
 def slip_reader(port, trace_function):
     """Generator to read SLIP packets from a serial port.
     Yields one full SLIP packet at a time, raises exception on timeout or invalid data.
