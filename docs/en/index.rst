@@ -51,5 +51,6 @@ More Information
    Troubleshooting <troubleshooting>
    Contribute <contributing>
    Versions <versions>
+   Migration Guide <migration-guide>
    Resources <resources>
    About <about>

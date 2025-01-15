@@ -25,7 +25,7 @@ def read_image(filename):
 
 @pytest.mark.host_test
 class TestImageInfo:
-    def run_image_info(self, chip, file, version=None):
+    def run_image_info(self, chip, file):
         """Runs image_info on a binary file.
         Returns the command output.
         Filenames are relative to the 'test/images' directory.
@@ -39,8 +39,6 @@ class TestImageInfo:
             chip,
             "image_info",
         ]
-        if version is not None:
-            cmd += ["--version", str(version)]
         # if path was passed use the whole path
         # if file does not exists try to use file from IMAGES_DIR directory
         cmd += [file] if os.path.isfile(file) else ["".join([IMAGES_DIR, os.sep, file])]
@@ -58,28 +56,8 @@ class TestImageInfo:
             print(e.output)
             raise
 
-    def test_v1_esp32(self):
-        out = self.run_image_info("esp32", "bootloader_esp32.bin")
-        assert "Entry point: 4009816c" in out, "Wrong entry point"
-        assert "Checksum: 83 (valid)" in out, "Invalid checksum"
-        assert "4 segments" in out, "Wrong number of segments"
-        assert (
-            "Segment 3: len 0x01068 load 0x40078000 file_offs 0x00000b64 [CACHE_APP]"
-            in out
-        ), "Wrong segment info"
-
-    def test_v1_esp8266(self):
-        out = self.run_image_info("esp8266", ESP8266_BIN)
-        assert "Image version: 1" in out, "Wrong image version"
-        assert "Entry point: 40101844" in out, "Wrong entry point"
-        assert "Checksum: 6b (valid)" in out, "Invalid checksum"
-        assert "1 segments" in out, "Wrong number of segments"
-        assert (
-            "Segment 1: len 0x00014 load 0x40100000 file_offs 0x00000008 [IRAM]" in out
-        ), "Wrong segment info"
-
-    def test_v2_esp32c3(self):
-        out = self.run_image_info("esp32c3", "bootloader_esp32c3.bin", "2")
+    def test_esp32c3(self):
+        out = self.run_image_info("esp32c3", "bootloader_esp32c3.bin")
 
         # Header
         assert "Entry point: 0x403c0000" in out, "Wrong entry point"
@@ -117,8 +95,8 @@ class TestImageInfo:
         if ex_hdr[15] == 1:  # Hash appended
             assert "Validation hash: 4faeab1bd3fd" in out, "Invalid hash"
 
-    def test_v2_esp8266(self):
-        out = self.run_image_info("esp8266", ESP8266_BIN, "2")
+    def test_esp8266(self):
+        out = self.run_image_info("esp8266", ESP8266_BIN)
         assert "Image version: 1" in out, "Wrong image version"
         assert "Entry point: 0x40101844" in out, "Wrong entry point"
         assert "Flash size: 512KB" in out, "Wrong flash size"
@@ -129,45 +107,40 @@ class TestImageInfo:
         assert "0  0x00014  0x40100000  0x00000008  IRAM" in out, "Wrong segment info"
 
     def test_image_type_detection(self):
-        # ESP8266, version 1 and 2
-        out = self.run_image_info("auto", ESP8266_BIN, "1")
-        assert "Detected image type: ESP8266" in out
-        assert "Segment 1: len 0x00014" in out
-        out = self.run_image_info("auto", ESP8266_BIN, "2")
+        # ESP8266
+        out = self.run_image_info("auto", ESP8266_BIN)
         assert "Detected image type: ESP8266" in out
         assert "Flash freq: 40m" in out
-        out = self.run_image_info("auto", "esp8266_deepsleep.bin", "2")
+        out = self.run_image_info("auto", "esp8266_deepsleep.bin")
         assert "Detected image type: ESP8266" in out
 
         # ESP32, with and without detection
-        out = self.run_image_info("auto", "bootloader_esp32.bin", "2")
+        out = self.run_image_info("auto", "bootloader_esp32.bin")
         assert "Detected image type: ESP32" in out
-        out = self.run_image_info(
-            "auto", "ram_helloworld/helloworld-esp32_edit.bin", "2"
-        )
+        out = self.run_image_info("auto", "ram_helloworld/helloworld-esp32_edit.bin")
         assert "Detected image type: ESP32" in out
-        out = self.run_image_info("esp32", "bootloader_esp32.bin", "2")
+        out = self.run_image_info("esp32", "bootloader_esp32.bin")
         assert "Detected image type: ESP32" not in out
 
         # ESP32-C3
-        out = self.run_image_info("auto", "bootloader_esp32c3.bin", "2")
+        out = self.run_image_info("auto", "bootloader_esp32c3.bin")
         assert "Detected image type: ESP32-C3" in out
 
         # ESP32-S3
-        out = self.run_image_info("auto", "esp32s3_header.bin", "2")
+        out = self.run_image_info("auto", "esp32s3_header.bin")
         assert "Detected image type: ESP32-S3" in out
 
     def test_invalid_image_type_detection(self, capsys):
         with pytest.raises(subprocess.CalledProcessError):
             # Invalid image
-            self.run_image_info("auto", "one_kb.bin", "2")
+            self.run_image_info("auto", "one_kb.bin")
         assert (
             "This is not a valid image (invalid magic number: 0xed)"
             in capsys.readouterr().out
         )
 
     def test_application_info(self):
-        out = self.run_image_info("auto", "esp_idf_blink_esp32s2.bin", "2")
+        out = self.run_image_info("auto", "esp_idf_blink_esp32s2.bin")
         assert "Application information" in out
         assert "Project name: blink" in out
         assert "App version: qa-test-v5.0-20220830-4-g4532e6" in out
@@ -178,15 +151,15 @@ class TestImageInfo:
         assert "cd0dab311febb0a3ea79eaa223ac2b0" in out
         assert "ESP-IDF: v5.0-beta1-427-g4532e6e0b2-dirt" in out
         # No application info in image
-        out = self.run_image_info("auto", "bootloader_esp32.bin", "2")
+        out = self.run_image_info("auto", "bootloader_esp32.bin")
         assert "Application information" not in out
-        out = self.run_image_info("auto", ESP8266_BIN, "2")
+        out = self.run_image_info("auto", ESP8266_BIN)
         assert "Application information" not in out
 
     def test_bootloader_info(self):
         # This bootloader binary is built from "hello_world" project
         # with default settings, IDF version is v5.2.
-        out = self.run_image_info("esp32", "bootloader_esp32_v5_2.bin", "2")
+        out = self.run_image_info("esp32", "bootloader_esp32_v5_2.bin")
         assert "File size: 26768 (bytes)" in out
         assert "Bootloader information" in out
         assert "Bootloader version: 1" in out
@@ -219,7 +192,7 @@ class TestImageInfo:
         fd, file = tempfile.mkstemp(suffix=".hex")
         try:
             convert_bin2hex(file)
-            out = self.run_image_info("esp32", file, "2")
+            out = self.run_image_info("esp32", file)
             assert "File size: 26768 (bytes)" in out
             assert "Bootloader information" in out
             assert "Bootloader version: 1" in out
