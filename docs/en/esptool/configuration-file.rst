@@ -72,8 +72,8 @@ Sample configuration file:
     connect_attempts = 7
     write_block_attempts = 2
     reset_delay = 0.75
-    # Overriding the default reset sequence to work in an abnormal environment
-    custom_reset_sequence = D0|R1|W0.1|D1|R0|W0.5|D0
+    # Overriding the default reset sequence to work in an abnormal environment (prolonged delay):
+    custom_reset_sequence = D0|R1|W1.3|D1|R0|W0.5|D0
 
 Options
 -------
@@ -142,7 +142,7 @@ A sequence is defined with a string in the following format:
 +------+-----------------------------------------------------------+-----------------+
 
 
-For example: ``D0|R1|W0.1|D1|R0|W0.5|D0`` represents the following classic reset sequence:
+For example: ``D0|R1|W0.1|D1|R0|W0.05|D0`` represents the following classic reset sequence:
 
 .. code-block:: python
 
