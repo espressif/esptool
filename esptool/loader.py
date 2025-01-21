@@ -17,6 +17,7 @@ from typing import Optional
 
 
 from .config import load_config_file
+from .logger import log
 from .reset import (
     ClassicReset,
     CustomReset,
@@ -31,9 +32,9 @@ from .util import byte, hexify, mask_to_shift, pad_to, strip_chip_name
 try:
     import serial
 except ImportError:
-    print(
-        "Pyserial is not installed for %s. "
-        "Check the README for installation instructions." % (sys.executable)
+    log.print(
+        f"Pyserial is not installed for {sys.executable}. "
+        "Check the README for installation instructions."
     )
     raise
 
@@ -42,7 +43,7 @@ except ImportError:
 try:
     if "serialization" in serial.__doc__ and "deserialization" in serial.__doc__:
         raise ImportError(
-            "esptool.py depends on pyserial, but there is a conflict with a currently "
+            "esptool.py depends on pySerial, but there is a conflict with a currently "
             "installed package named 'serial'.\n"
             "You may work around this by 'pip uninstall serial; pip install pyserial' "
             "but this may break other installed Python software "
@@ -53,20 +54,20 @@ try:
             " for discussion of the underlying issue(s)."
         )
 except TypeError:
-    pass  # __doc__ returns None for pyserial
+    pass  # __doc__ returns None for pySerial
 
 try:
     import serial.tools.list_ports as list_ports
 except ImportError:
-    print(
-        "The installed version (%s) of pyserial appears to be too old for esptool.py "
-        "(Python interpreter %s). Check the README for installation instructions."
-        % (serial.VERSION, sys.executable)
+    log.print(
+        f"The installed version ({serial.VERSION}) of pySerial appears to be too old "
+        f"for esptool.py (Python interpreter {sys.executable}). "
+        "Check the documentation for installation instructions."
     )
     raise
 except Exception:
     if sys.platform == "darwin":
-        # swallow the exception, this is a known issue in pyserial+macOS Big Sur preview
+        # swallow the exception, this is a known issue in pySerial+macOS Big Sur preview
         # ref https://github.com/espressif/esptool/issues/540
         list_ports = None
     else:
@@ -171,8 +172,9 @@ class StubFlasher:
             json_path = os.path.join(self.STUB_DIR, subdir, f"{chip_name}.json")
             if os.path.exists(json_path):
                 if i:
-                    print(
-                        f"Warning: Stub version {self.STUB_SUBDIRS[0]} doesn't exist, using {subdir} instead"
+                    log.warning(
+                        f"Stub version {self.STUB_SUBDIRS[0]} doesn't exist, "
+                        f"using {subdir} instead"
                     )
 
                 return json_path
@@ -426,7 +428,7 @@ class ESPLoader(object):
                 delta = 0.0
             self._last_trace = now
             prefix = "TRACE +%.3f " % delta
-            print(prefix + (message % format_args))
+            log.print(prefix + (message % format_args))
 
     @staticmethod
     def checksum(data, state=ESP_CHECKSUM_MAGIC):
@@ -550,7 +552,7 @@ class ESPLoader(object):
             return self.cache["usb_pid"]
 
         if list_ports is None:
-            print(
+            log.print(
                 "\nListing all serial ports is currently not available. "
                 "Can't get device PID."
             )
@@ -559,7 +561,7 @@ class ESPLoader(object):
 
         # Pyserial only identifies regular ports, URL handlers are not supported
         if not active_port.lower().startswith(("com", "/dev/")):
-            print(
+            log.print(
                 "\nDevice PID identification is only supported on "
                 "COM and /dev/ serial ports."
             )
@@ -578,7 +580,7 @@ class ESPLoader(object):
             if p.device in active_ports:
                 self.cache["usb_pid"] = p.pid
                 return p.pid
-        print(
+        log.print(
             f"\nFailed to get PID of a device on {active_port}, "
             "using standard reset sequence."
         )
@@ -619,7 +621,7 @@ class ESPLoader(object):
                 self.sync()
                 return None
             except FatalError as e:
-                print(".", end="")
+                log.print(".", end="")
                 sys.stdout.flush()
                 time.sleep(0.05)
                 last_error = e
@@ -699,21 +701,21 @@ class ESPLoader(object):
     ):
         """Try connecting repeatedly until successful, or giving up"""
         if warnings and mode in ["no_reset", "no_reset_no_sync"]:
-            print(
-                'WARNING: Pre-connection option "{}" was selected.'.format(mode),
+            log.note(
+                f'Pre-connection option "{mode}" was selected. '
                 "Connection may fail if the chip is not in bootloader "
-                "or flasher stub mode.",
+                "or flasher stub mode."
             )
 
         if self._port.name.startswith("socket:"):
             mode = "no_reset"  # not possible to toggle DTR/RTS over a TCP socket
-            print(
-                "Note: It's not possible to reset the chip over a TCP socket. "
+            log.note(
+                "It's not possible to reset the chip over a TCP socket. "
                 "Automatic resetting to bootloader has been disabled, "
                 "reset the chip manually."
             )
 
-        print("Connecting...", end="")
+        log.print("Connecting...", end="")
         sys.stdout.flush()
         last_error = None
 
@@ -727,7 +729,7 @@ class ESPLoader(object):
                 if last_error is None:
                     break
         finally:
-            print("")  # end 'Connecting...' line
+            log.print("")  # end 'Connecting...' line
 
         if last_error is not None:
             additional_msg = ""
@@ -791,8 +793,8 @@ class ESPLoader(object):
                     chip_arg_wrong = True
                     detected = "ESP32 or ESP32-S2"
                 else:
-                    print(
-                        f"WARNING: Can't verify this chip is {self.CHIP_NAME} "
+                    log.warning(
+                        f"Can't verify this chip is {self.CHIP_NAME} "
                         "because of active Secure Download Mode. "
                         "Please check it manually."
                     )
@@ -804,8 +806,8 @@ class ESPLoader(object):
                         if chip_id
                         else f"(read chip magic value {chip_magic_value:#08x})"
                     )
-                    print(
-                        f"WARNING: This chip doesn't appear to be an {self.CHIP_NAME} "
+                    log.warning(
+                        f"This chip doesn't appear to be an {self.CHIP_NAME} "
                         f"{specifier}. Probably it is unsupported by this version "
                         "of esptool. Will attempt to continue anyway."
                     )
@@ -947,7 +949,7 @@ class ESPLoader(object):
             "enter Flash download mode", self.ESP_FLASH_BEGIN, params, timeout=timeout
         )
         if size != 0 and not self.IS_STUB and logging:
-            print("Took %.2fs to erase flash block" % (time.time() - t))
+            log.print(f"Took {time.time() - t:.2f}s to erase flash block")
         return num_blocks
 
     def flash_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
@@ -955,7 +957,7 @@ class ESPLoader(object):
         for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
             try:
                 self.check_command(
-                    "write to target Flash after seq %d" % seq,
+                    f"write to target Flash after seq {seq}",
                     self.ESP_FLASH_DATA,
                     struct.pack("<IIII", len(data), seq, 0, 0) + data,
                     self.checksum(data),
@@ -1105,11 +1107,11 @@ class ESPLoader(object):
             stub = StubFlasher(self.CHIP_NAME)
 
         if self.sync_stub_detected:
-            print("Stub is already running. No upload is necessary.")
+            log.print("Stub is already running. No upload is necessary.")
             return self.STUB_CLASS(self)
 
         # Upload
-        print("Uploading stub...")
+        log.print("Uploading stub...")
         for field in [stub.text, stub.data]:
             if field is not None:
                 offs = stub.text_start if field == stub.text else stub.data_start
@@ -1120,7 +1122,7 @@ class ESPLoader(object):
                     from_offs = seq * self.ESP_RAM_BLOCK
                     to_offs = from_offs + self.ESP_RAM_BLOCK
                     self.mem_block(field[from_offs:to_offs], seq)
-        print("Running stub...")
+        log.print("Running stub...")
         self.mem_finish(stub.entry)
         try:
             p = self.read()
@@ -1133,7 +1135,7 @@ class ESPLoader(object):
 
         if p != b"OHAI":
             raise FatalError(f"Failed to start stub. Unexpected response: {p}")
-        print("Stub running...")
+        log.print("Stub running...")
         return self.STUB_CLASS(self)
 
     @stub_and_esp32_function_only
@@ -1159,7 +1161,7 @@ class ESPLoader(object):
             timeout = timeout_per_mb(
                 ERASE_REGION_TIMEOUT_PER_MB, write_size
             )  # ROM performs the erase up front
-        print("Compressed %d bytes to %d..." % (size, compsize))
+        log.print(f"Compressed {size} bytes to {compsize}...")
         params = struct.pack(
             "<IIII", write_size, num_blocks, self.FLASH_WRITE_SIZE, offset
         )
@@ -1175,7 +1177,7 @@ class ESPLoader(object):
         )
         if size != 0 and not self.IS_STUB:
             # (stub erases as it writes, but ROM loaders erase on begin)
-            print("Took %.2fs to erase flash block" % (time.time() - t))
+            log.print(f"Took {time.time() - t:.2f}s to erase flash block")
         return num_blocks
 
     @stub_and_esp32_function_only
@@ -1232,11 +1234,11 @@ class ESPLoader(object):
 
     @stub_and_esp32_function_only
     def change_baud(self, baud):
-        print("Changing baud rate to %d" % baud)
+        log.print(f"Changing baud rate to {baud}")
         # stub takes the new baud rate and the old one
         second_arg = self._port.baudrate if self.IS_STUB else 0
         self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", baud, second_arg))
-        print("Changed.")
+        log.print("Changed.")
         self._set_port_baudrate(baud)
         time.sleep(0.05)  # get rid of crap sent during baud rate change
         self.flush_input()
@@ -1284,8 +1286,6 @@ class ESPLoader(object):
             self.write(struct.pack("<I", len(data)))
             if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
                 progress_fn(len(data), length)
-        if progress_fn:
-            progress_fn(len(data), length)
         if len(data) > length:
             raise FatalError("Read more than expected")
 
@@ -1568,15 +1568,15 @@ class ESPLoader(object):
         else:
             norm_xtal = 26
         if abs(norm_xtal - est_xtal) > 1:
-            print(
-                "WARNING: Detected crystal freq %.2fMHz is quite different to "
-                "normalized freq %dMHz. Unsupported crystal in use?"
-                % (est_xtal, norm_xtal)
+            log.warning(
+                f"Detected crystal freq {est_xtal:.2f} MHz is quite different to "
+                f"normalized freq {norm_xtal} MHz. Unsupported crystal in use?"
             )
+
         return norm_xtal
 
     def hard_reset(self, uses_usb=False):
-        print("Hard resetting via RTS pin...")
+        log.print("Hard resetting via RTS pin...")
         cfg_custom_hard_reset_sequence = cfg.get("custom_hard_reset_sequence")
         if cfg_custom_hard_reset_sequence is not None:
             CustomReset(self._port, cfg_custom_hard_reset_sequence)()
@@ -1607,8 +1607,8 @@ class ESPLoader(object):
                 self.command(self.ESP_RUN_USER_CODE, wait_response=False)
 
     def watchdog_reset(self):
-        print(
-            f"WARNING: Watchdog hard reset is not supported on {self.CHIP_NAME}, "
+        log.note(
+            f"Watchdog hard reset is not supported on {self.CHIP_NAME}, "
             "attempting classic hard reset instead."
         )
         self.hard_reset()

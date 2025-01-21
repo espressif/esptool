@@ -8,6 +8,7 @@ import time
 from typing import Dict, Optional
 
 from ..loader import ESPLoader, StubMixin
+from ..logger import log
 from ..util import FatalError, NotSupportedError
 
 
@@ -365,7 +366,7 @@ class ESP32ROM(ESPLoader):
             strap_reg &= self.GPIO_STRAP_VDDSPI_MASK
             voltage = "1.8V" if strap_reg else "3.3V"
             source = "a strapping pin"
-        print(f"Flash voltage set by {source} to {voltage}")
+        log.print(f"Flash voltage set by {source} to {voltage}")
 
     def override_vddsdio(self, new_voltage):
         new_voltage = new_voltage.upper()
@@ -387,7 +388,7 @@ class ESP32ROM(ESPLoader):
                 | self.RTC_CNTL_DREFL_SDIO_M
             )  # boost voltage
         self.write_reg(self.RTC_CNTL_SDIO_CONF_REG, reg_val)
-        print("VDDSDIO regulator set to %s" % new_voltage)
+        log.print(f"VDDSDIO regulator set to {new_voltage}")
 
     def read_flash_slow(self, offset, length, progress_fn):
         BLOCK_LEN = 64  # ROM read limit per command (this limit is why it's so slow)
@@ -402,14 +403,12 @@ class ESP32ROM(ESPLoader):
                     struct.pack("<II", offset + len(data), block_len),
                 )
             except FatalError:
-                print(
-                    "Hint: Consider specifying flash size using '--flash_size' argument"
-                )
+                log.note("Consider specifying flash size using '--flash_size' argument")
                 raise
             if len(r) < block_len:
                 raise FatalError(
-                    "Expected %d byte block, got %d bytes. Serial errors?"
-                    % (block_len, len(r))
+                    f"Expected {block_len} byte block, got {len(r)} bytes. "
+                    "Serial errors?"
                 )
             # command always returns 64 byte buffer,
             # regardless of how many bytes were actually read from flash
@@ -439,9 +438,9 @@ class ESP32ROM(ESPLoader):
         valid_freq = 40000000 if rom_calculated_freq > 33000000 else 26000000
         false_rom_baud = int(baud * rom_calculated_freq // valid_freq)
 
-        print(f"Changing baud rate to {baud}")
+        log.print(f"Changing baud rate to {baud}")
         self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", false_rom_baud, 0))
-        print("Changed.")
+        log.print("Changed.")
         self._set_port_baudrate(baud)
         time.sleep(0.05)  # get rid of garbage sent during baud rate change
         self.flush_input()

@@ -7,6 +7,7 @@ from typing import Dict
 
 from .esp32c6 import ESP32C6ROM
 from ..loader import ESPLoader, StubMixin
+from ..logger import log
 from ..util import FatalError
 
 
@@ -87,8 +88,8 @@ class ESP32H2ROM(ESP32C6ROM):
         if not set(spi_connection).issubset(set(range(0, 28))):
             raise FatalError("SPI Pin numbers must be in the range 0-27.")
         if any([v for v in spi_connection if v in [26, 27]]):
-            print(
-                "WARNING: GPIO pins 26 and 27 are used by USB-Serial/JTAG, "
+            log.warning(
+                "GPIO pins 26 and 27 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
 

@@ -639,7 +639,7 @@ class TestFlashing(EsptoolTestCase):
         )
         assert "Flash will be erased from 0x00001000 to 0x00001fff..." in output
         assert (
-            "WARNING: Flash address 0x0000fc00 is not aligned to a 0x1000 "
+            "Flash address 0x0000fc00 is not aligned to a 0x1000 "
             "byte flash sector. 0xc00 bytes before this address will be erased."
             in output
         )
@@ -655,7 +655,7 @@ class TestFlashing(EsptoolTestCase):
         output = self.run_esptool_error(
             "write_flash 0x0 images/esp32s3_header.bin 0x1000 images/one_kb.bin"
         )
-        assert "Unexpected chip id in image." in output
+        assert "Unexpected chip ID in image." in output
         assert "value was 9. Is this image for a different chip model?" in output
         assert "images/esp32s3_header.bin is not an " in output
         assert "image. Use --force to flash anyway." in output
@@ -698,8 +698,8 @@ class TestFlashing(EsptoolTestCase):
     def test_flash_not_aligned_nostub(self):
         output = self.run_esptool("--no-stub write_flash 0x1 images/one_kb.bin")
         assert (
-            "WARNING: Flash address 0x00000001 is not aligned to a 0x1000 byte flash sector. 0x1 bytes before this address will be erased."
-            in output
+            "Flash address 0x00000001 is not aligned to a 0x1000 byte flash sector. "
+            "0x1 bytes before this address will be erased." in output
         )
         if "ESPTOOL_TEST_USB_OTG" not in os.environ:
             assert "Hard resetting" in output
@@ -1110,7 +1110,7 @@ class TestVerifyCommand(EsptoolTestCase):
             "verify_flash --diff=yes 0x6000 images/one_kb.bin"
         )
         assert "verify FAILED" in output
-        assert "first @ 0x00006000" in output
+        assert "first at 0x00006000" in output
 
     def test_verify_unaligned_length(self):
         self.run_esptool("write_flash 0x0 images/not_4_byte_aligned.bin")
@@ -1414,7 +1414,7 @@ class TestVirtualPort(TestAutoDetect):
         assert output.returncode != 0
         output = output.stdout.decode("utf-8")
         print(output)  # for logging
-        assert "WARNING: Chip was NOT reset." in output
+        assert "Chip was NOT reset." in output
 
 
 @pytest.mark.quick_test

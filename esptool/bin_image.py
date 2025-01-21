@@ -16,6 +16,7 @@ from typing import IO, Optional
 from intelhex import HexRecordError, IntelHex
 
 from .loader import ESPLoader
+from .logger import log
 from .targets import (
     ESP32C2ROM,
     ESP32C3ROM,
@@ -228,7 +229,7 @@ class BaseFirmwareImage(object):
     def warn_if_unusual_segment(self, offset, size, is_irom_segment):
         if not is_irom_segment:
             if offset > 0x40200000 or offset < 0x3FFE0000 or size > 65536:
-                print("WARNING: Suspicious segment 0x%x, length %d" % (offset, size))
+                log.warning(f"Suspicious segment 0x{offset:x}, length {size}")
 
     def maybe_patch_segment_data(self, f, segment_data):
         """
@@ -417,9 +418,9 @@ class BaseFirmwareImage(object):
         If supported, this should be overridden by the chip-specific class.
         Gets called in elf2image.
         """
-        print(
-            "WARNING: Changing MMU page size is not supported on {}! "
-            "Defaulting to 64KB.".format(self.ROM_LOADER.CHIP_NAME)
+        log.warning(
+            f"Changing MMU page size is not supported on {self.ROM_LOADER.CHIP_NAME}! "
+            "Defaulting to 64KB."
         )
 
 
@@ -493,9 +494,8 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             if segments != self.IMAGE_V2_SEGMENT:
                 # segment count is not really segment count here,
                 # but we expect to see '4'
-                print(
-                    'Warning: V2 header has unexpected "segment" count %d (usually 4)'
-                    % segments
+                log.warning(
+                    f'V2 header has unexpected "segment" count {segments} (usually 4)'
                 )
 
             # irom segment comes before the second header
@@ -515,22 +515,19 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
 
             if first_flash_mode != self.flash_mode:
-                print(
-                    "WARNING: Flash mode value in first header (0x%02x) disagrees "
-                    "with second (0x%02x). Using second value."
-                    % (first_flash_mode, self.flash_mode)
+                log.warning(
+                    f"Flash mode value in first header (0x{first_flash_mode:02x}) "
+                    f"disagrees with second (0x{self.flash_mode:02x}). Using second value."
                 )
             if first_flash_size_freq != self.flash_size_freq:
-                print(
-                    "WARNING: Flash size/freq value in first header (0x%02x) disagrees "
-                    "with second (0x%02x). Using second value."
-                    % (first_flash_size_freq, self.flash_size_freq)
+                log.warning(
+                    f"Flash size/freq value in first header (0x{first_flash_size_freq:02x}) "
+                    f"disagrees with second (0x{self.flash_size_freq:02x}). Using second value."
                 )
             if first_entrypoint != self.entrypoint:
-                print(
-                    "WARNING: Entrypoint address in first header (0x%08x) disagrees "
-                    "with second header (0x%08x). Using second value."
-                    % (first_entrypoint, self.entrypoint)
+                log.warning(
+                    f"Entrypoint address in first header (0x{first_entrypoint:08x}) "
+                    f"disagrees with second header (0x{self.entrypoint:08x}). Using second value."
                 )
 
             # load all the usual segments
@@ -906,12 +903,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
         self.chip_id = fields[4]
         if self.chip_id != self.ROM_LOADER.IMAGE_CHIP_ID:
-            print(
-                (
-                    "Unexpected chip id in image. Expected %d but value was %d. "
-                    "Is this image for a different chip model?"
-                )
-                % (self.ROM_LOADER.IMAGE_CHIP_ID, self.chip_id)
+            log.warning(
+                f"Unexpected chip ID in image. Expected {self.ROM_LOADER.IMAGE_CHIP_ID}"
+                f" but value was {self.chip_id}. Is this image for a different chip model?"
             )
 
         self.min_rev = fields[5]
@@ -1054,8 +1048,8 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
 
         # remaining fields in the middle should all be zero
         if any(f for f in fields[4:15] if f != 0):
-            print(
-                "Warning: some reserved header fields have non-zero values. "
+            log.warning(
+                "Some reserved header fields have non-zero values. "
                 "This image may be from a newer esptool.py?"
             )
 
@@ -1317,9 +1311,7 @@ class ELFFile(object):
             shstrndx * self.LEN_SEC_HEADER
         )
         if sec_type != ELFFile.SEC_TYPE_STRTAB:
-            print(
-                "WARNING: ELF file has incorrect STRTAB section type 0x%02x" % sec_type
-            )
+            log.warning(f"ELF file has incorrect STRTAB section type 0x{sec_type:02x}")
         f.seek(sec_offs)
         string_table = f.read(sec_size)
 

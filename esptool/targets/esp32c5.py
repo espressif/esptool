@@ -10,6 +10,7 @@ from typing import Dict
 from .esp32c3 import ESP32C3ROM
 from .esp32c6 import ESP32C6ROM
 from ..loader import ESPLoader, StubMixin
+from ..logger import log
 from ..util import FatalError
 
 
@@ -132,8 +133,9 @@ class ESP32C5ROM(ESP32C6ROM):
         if not self.IS_STUB:
             crystal_freq_rom_expect = self.get_crystal_freq_rom_expect()
             crystal_freq_detect = self.get_crystal_freq()
-            print(
-                f"ROM expects crystal freq: {crystal_freq_rom_expect} MHz, detected {crystal_freq_detect} MHz"
+            log.print(
+                f"ROM expects crystal freq: {crystal_freq_rom_expect} MHz, "
+                f"detected {crystal_freq_detect} MHz"
             )
             baud_rate = baud
             # If detect the XTAL is 48MHz, but the ROM code expects it to be 40MHz
@@ -146,9 +148,9 @@ class ESP32C5ROM(ESP32C6ROM):
                 ESPLoader.change_baud(self, baud_rate)
                 return
 
-            print(f"Changing baud rate to {baud_rate}")
+            log.print(f"Changing baud rate to {baud_rate}")
             self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", baud_rate, 0))
-            print("Changed.")
+            log.print("Changed.")
             self._set_port_baudrate(baud)
             time.sleep(0.05)  # get rid of garbage sent during baud rate change
             self.flush_input()
@@ -159,8 +161,8 @@ class ESP32C5ROM(ESP32C6ROM):
         if not set(spi_connection).issubset(set(range(0, 29))):
             raise FatalError("SPI Pin numbers must be in the range 0-28.")
         if any([v for v in spi_connection if v in [13, 14]]):
-            print(
-                "WARNING: GPIO pins 13 and 14 are used by USB-Serial/JTAG, "
+            log.warning(
+                "GPIO pins 13 and 14 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
 

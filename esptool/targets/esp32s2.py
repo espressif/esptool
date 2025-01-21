@@ -9,6 +9,7 @@ from typing import Dict
 
 from .esp32 import ESP32ROM
 from ..loader import ESPLoader, StubMixin
+from ..logger import log
 from ..util import FatalError, NotImplementedInROMError
 
 
@@ -289,7 +290,7 @@ class ESP32S2ROM(ESP32ROM):
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
 
     def watchdog_reset(self):
-        print("Hard resetting with a watchdog...")
+        log.print("Hard resetting with a watchdog...")
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
         self.write_reg(self.RTC_CNTL_WDTCONFIG1_REG, 2000)  # set WDT timeout
         self.write_reg(
@@ -320,8 +321,8 @@ class ESP32S2ROM(ESP32ROM):
         if not set(spi_connection).issubset(set(range(0, 22)) | set(range(26, 47))):
             raise FatalError("SPI Pin numbers must be in the range 0-21, or 26-46.")
         if any([v for v in spi_connection if v in [19, 20]]):
-            print(
-                "WARNING: GPIO pins 19 and 20 are used by USB-OTG, "
+            log.warning(
+                "GPIO pins 19 and 20 are used by USB-OTG, "
                 "consider using other pins for SPI flash connection."
             )
 

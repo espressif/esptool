@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2025 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -6,7 +6,6 @@
 import os
 import re
 import struct
-import sys
 
 
 def byte(bitstr, index):
@@ -57,23 +56,6 @@ def pad_to(data, alignment, pad_character=b"\xFF"):
     return data
 
 
-def print_overwrite(message, last_line=False):
-    """Print a message, overwriting the currently printed line.
-
-    If last_line is False, don't append a newline at the end
-    (expecting another subsequent call will overwrite this one.)
-
-    After a sequence of calls with last_line=False, call once with last_line=True.
-
-    If output is not a TTY (for example redirected a pipe),
-    no overwriting happens and this function is the same as print().
-    """
-    if hasattr(sys.stdout, "isatty") and sys.stdout.isatty():
-        print("\r%s" % message, end="\n" if last_line else "")
-    else:
-        print(message)
-
-
 def expand_chip_name(chip_name):
     """Change chip name to official form, e.g. `esp32s3beta2` -> `ESP32-S3(beta2)`"""
     # Put "-" after "esp32"
@@ -104,12 +86,13 @@ class PrintOnce:
     Class for printing messages just once. Can be useful when running in a loop
     """
 
-    def __init__(self) -> None:
+    def __init__(self, print_callback) -> None:
         self.already_printed = False
+        self.print_callback = print_callback
 
     def __call__(self, text) -> None:
         if not self.already_printed:
-            print(text)
+            self.print_callback(text)
             self.already_printed = True
 
 

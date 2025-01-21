@@ -9,6 +9,7 @@ from typing import Dict
 
 from .esp32c3 import ESP32C3ROM
 from ..loader import ESPLoader, StubMixin
+from ..logger import log
 from ..util import FatalError
 
 
@@ -116,11 +117,11 @@ class ESP32C2ROM(ESP32C3ROM):
             # a 26 MHz XTAL.
             false_rom_baud = baud * 40 // 26
 
-            print(f"Changing baud rate to {baud}")
+            log.print(f"Changing baud rate to {baud}")
             self.command(
                 self.ESP_CHANGE_BAUDRATE, struct.pack("<II", false_rom_baud, 0)
             )
-            print("Changed.")
+            log.print("Changed.")
             self._set_port_baudrate(baud)
             time.sleep(0.05)  # get rid of garbage sent during baud rate change
             self.flush_input()

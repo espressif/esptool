@@ -21,3 +21,22 @@ The output format of the :ref:`image_info <image-info>` command has been **updat
 
 1. Update any scripts or tools that parse the ``image_info`` output to use the new format
 2. Remove any ``--version`` arguments from ``image_info`` commands
+
+Output Logging
+**************
+
+The esptool ``v5`` release introduces a centralized logging mechanism to improve output management and allow redirection.
+
+**Key Changes:**
+
+- All esptool output is now routed through an ``EsptoolLogger`` class.
+- The output can include ANSI color codes for better readability.
+- Custom loggers can be implemented to redirect output to files or other destinations.
+
+**Migration Steps:**
+
+1. If your scripts rely on direct ``print()`` statements, update them to use the centralized logger for consistent output. Calls to the logger should be made using ``log.print()`` (or the respective method, such as ``log.info()``, ``log.warning()``, or ``log.error()``).
+2. Refer to the provided documentation to implement custom loggers as needed.
+3. Update GUIs or tools to leverage the progress tracking API for better user feedback during lengthy operations.
+
+See the :ref:`logging <logging>` section for more details on available logger methods and custom logger implementation.
