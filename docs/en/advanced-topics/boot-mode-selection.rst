@@ -53,7 +53,7 @@ This guide explains how to select the boot mode correctly and describes the boot
 
       The {IDF_TARGET_NAME} has a 45k ohm internal pull-up/pull-down resistor at {IDF_TARGET_STRAP_BOOT_GPIO} (and other pins). If you want to connect a switch button to enter the boot mode, this has to be a strong pull-down. For example a 10k resistor to GND.
 
-   Information about {IDF_TARGET_NAME} strapping pins can also be found in the `{IDF_TARGET_NAME} Datasheet <https://www.espressif.com/en/support/documents/technical-documents?keys={IDF_TARGET_NAME}+datasheet>`__, section "Strapping Pins".
+   Information about {IDF_TARGET_NAME} strapping pins can also be found in the `{IDF_TARGET_NAME} Datasheet <{IDF_TARGET_DATASHEET_EN_URL}>`__, section "Strapping Pins".
 
    On many development boards with built-in USB/Serial, ``esptool.py`` can automatically reset the board into bootloader mode. For other configurations or custom hardware, you will need to check the orientation of some "strapping pins" to get the correct boot mode:
 
@@ -99,7 +99,7 @@ This guide explains how to select the boot mode correctly and describes the boot
 
    .. only:: not esp32
 
-      As well as the above mentioned pins, other ones influence the serial bootloader, please consult the `{IDF_TARGET_NAME} Datasheet <https://www.espressif.com/en/support/documents/technical-documents?keys={IDF_TARGET_NAME}+datasheet>`__, section "Strapping Pins".
+         As well as the above mentioned pins, other ones influence the serial bootloader, please consult the `{IDF_TARGET_NAME} Datasheet <{IDF_TARGET_DATASHEET_EN_URL}>`__, section "Strapping Pins".
 
    .. only:: esp32
 
@@ -113,7 +113,7 @@ This guide explains how to select the boot mode correctly and describes the boot
       | 15 (MTDO)   | If driven Low, silences boot messages printed by the ROM bootloader. Has an internal pull-up, so unconnected = High = normal output.                                                                                                                                                       |
       +-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-      For more information, consult the `{IDF_TARGET_NAME} Datasheet <https://www.espressif.com/en/support/documents/technical-documents?keys={IDF_TARGET_NAME}+datasheet>`__, section "Strapping Pins".
+      For more information, consult the `{IDF_TARGET_NAME} Datasheet <{IDF_TARGET_DATASHEET_EN_URL}>`__, section "Strapping Pins".
 
 .. _automatic-bootloader:
 

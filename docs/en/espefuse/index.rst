@@ -9,7 +9,7 @@ espefuse.py
 
     Because eFuse is one-time-programmable, it is possible to permanently damage or "brick" your {IDF_TARGET_NAME} using this tool. Use it with great care.
 
-For more details about Espressif chips eFuse features, see the `Technical Reference Manual <https://www.espressif.com/en/support/documents/technical-documents>`__.
+For more details about Espressif chips eFuse features, see the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`__.
 
 ``espefuse.py`` is installed alongside ``esptool.py``, so if ``esptool.py`` (v2.0 or newer) is available on the PATH then ``espefuse.py`` should be as well.
 
@@ -169,7 +169,7 @@ For more details on the structure and usage of the CSV file, refer to the `eFuse
 Recommendations
 ---------------
 
-1. The `Technical Reference Manual <https://www.espressif.com/en/support/documents/technical-documents>`__ has a recommendation for reducing the number of burn operations as much as possible. The tool supports several ways to do this:
+1. The `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`__ has a recommendation for reducing the number of burn operations as much as possible. The tool supports several ways to do this:
 
     - Combine multiple commands into one with this :ref:`perform-multiple-operations` feature.
     - Most commands support getting a list of arguments (eFuse names, keys).
