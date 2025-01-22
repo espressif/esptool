@@ -814,7 +814,7 @@ def main(argv=None, esp=None):
         if esp is None:
             raise FatalError(
                 "Could not connect to an Espressif device "
-                "on any of the %d available serial ports." % len(ser_list)
+                f"on any of the {len(ser_list)} available serial ports."
             )
 
         if esp.secure_download_mode:
@@ -1226,7 +1226,7 @@ def get_default_connected_device(
         except (FatalError, OSError) as err:
             if port is not None:
                 raise
-            log.print(f"{each_port} failed to connect: {err}")
+            log.error(f"{each_port} failed to connect: {err}")
             if _esp and _esp._port:
                 _esp._port.close()
             _esp = None
@@ -1338,23 +1338,26 @@ def _main():
     try:
         main()
     except FatalError as e:
-        log.print(f"\nA fatal error occurred: {e}")
+        log.error(f"\nA fatal error occurred: {e}")
         sys.exit(2)
     except serial.serialutil.SerialException as e:
-        log.print(f"\nA serial exception error occurred: {e}")
-        log.print(
+        log.error(f"\nA serial exception error occurred: {e}")
+        log.error(
             "Note: This error originates from pySerial. "
             "It is likely not a problem with esptool, "
             "but with the hardware connection or drivers."
         )
-        log.print(
+        log.error(
             "For troubleshooting steps visit: "
             "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html"
         )
         sys.exit(1)
     except StopIteration:
-        log.print(traceback.format_exc())
-        log.print("A fatal error occurred: The chip stopped responding.")
+        log.error(traceback.format_exc())
+        log.error("A fatal error occurred: The chip stopped responding.")
+        sys.exit(2)
+    except KeyboardInterrupt:
+        log.error("KeyboardInterrupt: Run cancelled by user.")
         sys.exit(2)
 
 

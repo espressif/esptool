@@ -56,3 +56,20 @@ The ``--verify`` option for the :ref:`write_flash <write-flash>` command has bee
 
 1. Remove all ``--verify`` arguments from existing ``write_flash`` commands.
 2. Update scripts/CI pipelines to remove ``--verify`` flags.
+
+Error Output Handling
+*********************
+
+In ``v5``, error handling and output behavior have been improved to provide better user experience and script compatibility.
+
+**Key Changes:**
+
+- All error messages, including fatal errors, are now printed to **STDERR** instead of STDOUT.
+- User keyboard interrupts (e.g., Ctrl+C) are caught and raise an exit code of 2 to indicate an operation interruption.
+- Error messages are displayed in **red text** for better visibility.
+- This change ensures that errors are not lost when STDOUT is filtered or redirected.
+
+**Migration Steps:**
+
+1. Update scripts that rely on parsing STDOUT for error messages to check STDERR instead.
+2. Ensure scripts handle non-zero exit codes correctly in the case of operations interrupted by the user.

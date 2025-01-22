@@ -32,9 +32,9 @@ from .util import byte, hexify, mask_to_shift, pad_to, strip_chip_name
 try:
     import serial
 except ImportError:
-    log.print(
-        f"Pyserial is not installed for {sys.executable}. "
-        "Check the README for installation instructions."
+    log.error(
+        f"PySerial is not installed for {sys.executable}. "
+        "Check the documentation for installation instructions."
     )
     raise
 
@@ -59,7 +59,7 @@ except TypeError:
 try:
     import serial.tools.list_ports as list_ports
 except ImportError:
-    log.print(
+    log.error(
         f"The installed version ({serial.VERSION}) of pySerial appears to be too old "
         f"for esptool.py (Python interpreter {sys.executable}). "
         "Check the documentation for installation instructions."

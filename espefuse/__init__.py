@@ -25,6 +25,7 @@ import espefuse.efuse.esp32s3 as esp32s3_efuse
 import espefuse.efuse.esp32s3beta2 as esp32s3beta2_efuse
 
 import esptool
+from esptool.logger import log
 
 DefChip = namedtuple("DefChip", ["chip_name", "efuse_lib", "chip_class"])
 
@@ -361,7 +362,10 @@ def _main():
     try:
         main()
     except esptool.FatalError as e:
-        print("\nA fatal error occurred: %s" % e)
+        log.error(f"\nA fatal error occurred: {e}")
+        sys.exit(2)
+    except KeyboardInterrupt:
+        log.error("KeyboardInterrupt: Run cancelled by user.")
         sys.exit(2)
 
 

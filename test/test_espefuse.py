@@ -161,6 +161,7 @@ class EfuseTestCase:
                 shell=False,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 universal_newlines=True,
             )
             output, _ = p.communicate()

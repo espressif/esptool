@@ -45,7 +45,7 @@ class TestImageInfo:
         print("\nExecuting {}".format(" ".join(cmd)))
 
         try:
-            output = subprocess.check_output(cmd)
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             output = output.decode("utf-8")
             print(output)  # for more complete stdout logs on failure
             assert (

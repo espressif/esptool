@@ -146,7 +146,7 @@ class BaseTestCase:
         cmd += [elf_path] + extra_args
         print("\nExecuting {}".format(" ".join(cmd)))
         try:
-            output = subprocess.check_output(cmd)
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             output = output.decode("utf-8")
             print(output)
             assert (
