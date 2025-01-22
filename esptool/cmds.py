@@ -741,6 +741,10 @@ def write_flash(esp, args):
                     log.print("Hash of data verified.")
             except NotImplementedInROMError:
                 pass
+        else:
+            log.print(
+                "Cannot verify written data if encrypted or in secure download mode."
+            )
 
     if esp.IS_STUB:
         # skip sending flash_finish to ROM loader here,
@@ -757,21 +761,6 @@ def write_flash(esp, args):
             esp.flash_defl_finish(False)
         else:
             esp.flash_finish(False)
-
-    if args.verify:
-        log.print("Verifying just-written flash...")
-        log.print(
-            "(This option is deprecated, "
-            "flash contents are now always read back after flashing.)"
-        )
-        # If some encrypted files have been flashed,
-        # print a warning saying that we won't check them
-        if args.encrypt or args.encrypt_files is not None:
-            log.warning("Cannot verify encrypted files, they will be ignored.")
-        # Call verify_flash function only if there is at least
-        # one non-encrypted file flashed
-        if not args.encrypt:
-            verify_flash(esp, args)
 
 
 def image_info(args):

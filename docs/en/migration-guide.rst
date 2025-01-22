@@ -40,3 +40,19 @@ The esptool ``v5`` release introduces a centralized logging mechanism to improve
 3. Update GUIs or tools to leverage the progress tracking API for better user feedback during lengthy operations.
 
 See the :ref:`logging <logging>` section for more details on available logger methods and custom logger implementation.
+
+``write_flash`` ``--verify`` Argument
+*************************************
+
+The ``--verify`` option for the :ref:`write_flash <write-flash>` command has been **deprecated in v5**. Flash verification is performed automatically after every successful write operation when technically feasible.
+
+**Behavior:**
+
+- Verification occurs by default after flashing completes.
+- No action is needed to enable verification - it is mandatory when possible.
+- Verification is **skipped** if Secure Download Mode (SDM) is active or during encrypted writes (using ``--encrypt``).
+
+**Migration Steps:**
+
+1. Remove all ``--verify`` arguments from existing ``write_flash`` commands.
+2. Update scripts/CI pipelines to remove ``--verify`` flags.

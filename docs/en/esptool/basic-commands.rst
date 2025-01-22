@@ -3,6 +3,8 @@
 Basic Commands
 ==============
 
+.. _write-flash:
+
 Write Binary Data to Flash: write_flash
 ----------------------------------------
 

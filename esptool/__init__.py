@@ -348,12 +348,6 @@ def main(argv=None, esp=None):
         "--no-progress", "-p", help="Suppress progress output", action="store_true"
     )
     parser_write_flash.add_argument(
-        "--verify",
-        help="Verify just-written data on flash "
-        "(mostly superfluous, data is read back during flashing)",
-        action="store_true",
-    )
-    parser_write_flash.add_argument(
         "--encrypt",
         help="Apply flash encryption when writing data "
         "(required correct efuse settings)",
