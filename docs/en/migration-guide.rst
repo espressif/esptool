@@ -13,14 +13,14 @@ The output format of the :ref:`image_info <image-info>` command has been **updat
 
 **Changes in the New Format:**
 
-- Improved readability and structure
-- Additional metadata fields for better debugging and analysis
-- Consistent formatting for all ESP chip variants
+- Improved readability and structure.
+- Additional metadata fields for better debugging and analysis.
+- Consistent formatting for all ESP chip variants.
 
 **Migration Steps:**
 
-1. Update any scripts or tools that parse the ``image_info`` output to use the new format
-2. Remove any ``--version`` arguments from ``image_info`` commands
+1. Update any scripts or tools that parse the ``image_info`` output to use the new format.
+2. Remove any ``--version`` arguments from ``image_info`` commands.
 
 Output Logging
 **************
@@ -73,3 +73,21 @@ In ``v5``, error handling and output behavior have been improved to provide bett
 
 1. Update scripts that rely on parsing STDOUT for error messages to check STDERR instead.
 2. Ensure scripts handle non-zero exit codes correctly in the case of operations interrupted by the user.
+
+Beta Target Support Removal
+***************************
+
+Support for the following beta targets has been **removed in v5**:
+
+- ESP32-C5(beta3)
+- ESP32-C6(beta)
+- ESP32-H2(beta1)
+- ESP32-H2(beta2)
+- ESP32-S3(beta2)
+
+**Migration Steps:**
+
+1. Update any scripts or workflows not to target these beta chips.
+2. Remove any references to these beta targets from CI/CD pipelines or build scripts.
+
+Use esptool ``v4`` for legacy workflows targeting these beta chips.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import glob
@@ -18,17 +18,12 @@ STUBS = (
             "esp32c2",
             "esp32c3",
             "esp32c5",
-            "esp32c5beta3",
             "esp32c6",
             "esp32c61",
-            "esp32c6beta",
             "esp32h2",
-            "esp32h2beta1",
-            "esp32h2beta2",
             "esp32p4",
             "esp32s2",
             "esp32s3",
-            "esp32s3beta2",
             "esp8266",
         ),
         "LICENSE": "released as Free Software under GNU General Public License Version 2 or later",

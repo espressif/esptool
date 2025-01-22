@@ -21,7 +21,6 @@ BUILD_DIR = build
 APP_ELF_8266 = $(BUILD_DIR)/$(APP)-esp8266.elf
 APP_ELF_32 = $(BUILD_DIR)/$(APP)-esp32.elf
 APP_ELF_32S2 = $(BUILD_DIR)/$(APP)-esp32s2.elf
-APP_ELF_32S3_BETA_2 = $(BUILD_DIR)/$(APP)-esp32s3beta2.elf
 APP_ELF_32S3 = $(BUILD_DIR)/$(APP)-esp32s3.elf
 APP_ELF_32C3 = $(BUILD_DIR)/$(APP)-esp32c3.elf
 APP_ELF_32C2 = $(BUILD_DIR)/$(APP)-esp32c2.elf
@@ -60,10 +59,6 @@ $(APP_ELF_32): $(SRCS) $(BUILD_DIR) ld/app_32.ld | Makefile
 $(APP_ELF_32S2): $(SRCS) $(BUILD_DIR) ld/app_32s2.ld
 	@echo "  CC(32S2)   $^ -> $@"
 	$(Q) $(CROSS_32S2)gcc $(CFLAGS) -DESP32S2=1 -Tapp_32s2.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
-
-$(APP_ELF_32S3_BETA_2): $(SRCS) $(BUILD_DIR) ld/app_32s3_beta_2.ld
-	@echo "  CC(32S3)   $^ -> $@"
-	$(Q) $(CROSS_32S3)gcc $(CFLAGS) -DESP32S3=1 -Tapp_32s3.ld -Wl,-Map=$(@:.elf=.map) -o $@ $(filter %.c, $^) $(LDLIBS)
 
 $(APP_ELF_32S3): $(SRCS) $(BUILD_DIR) ld/app_32s3.ld
 	@echo "  CC(32S3)   $^ -> $@"

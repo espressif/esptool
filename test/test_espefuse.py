@@ -1,8 +1,8 @@
 # HOST_TEST for espefuse.py using the pytest framework
 #
-# Supports esp32, esp32s2, esp32s3beta2, esp32s3,
-#          esp32c3, esp32h2beta1, esp32c2, esp32c6, esp32p4,
-#          esp32c61, esp32c5, esp32c5beta3.
+# Supports esp32, esp32s2, esp32s3, esp32c3,
+#          esp32c2, esp32c6, esp32p4, esp32c61,
+#          esp32c5,
 #
 # How to use:
 #
@@ -238,11 +238,11 @@ class TestReadCommands(EfuseTestCase):
     def test_adc_info_2(self):
         if arg_chip == "esp32":
             self.espefuse_py("burn_efuse BLK3_PART_RESERVE 1")
-        elif arg_chip in ["esp32c3", "esp32s3", "esp32s3beta2"]:
+        elif arg_chip in ["esp32c3", "esp32s3"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MAJOR 1")
         elif arg_chip in ["esp32c2", "esp32s2", "esp32c6"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MINOR 1")
-        elif arg_chip in ["esp32h2", "esp32h2beta1", "esp32p4"]:
+        elif arg_chip in ["esp32h2", "esp32p4"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MINOR 2")
         self.espefuse_py("adc_info")
 
@@ -337,9 +337,7 @@ class TestReadProtectionCommands(EfuseTestCase):
             )
         else:
             key1_purpose = (
-                "USER"
-                if arg_chip in ["esp32p4", "esp32c61", "esp32c5", "esp32c5beta3"]
-                else "RESERVED"
+                "USER" if arg_chip in ["esp32p4", "esp32c61", "esp32c5"] else "RESERVED"
             )
             self.espefuse_py(
                 f"burn_key BLOCK_KEY0 {IMAGES_DIR}/256bit USER \
@@ -428,11 +426,9 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5"""
             if arg_chip not in [
                 "esp32h2",
-                "esp32h2beta1",
                 "esp32c6",
                 "esp32c61",
                 "esp32c5",
-                "esp32c5beta3",
             ]:
                 efuse_lists += """ DIS_DOWNLOAD_ICACHE
                             SPI_PAD_CONFIG_CLK SPI_PAD_CONFIG_Q
@@ -757,7 +753,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
                 SECURE_BOOT_EN 1 \
                 UART_PRINT_CONTROL 1"
             )
-            if arg_chip not in ["esp32c5", "esp32c5beta3", "esp32c61"]:
+            if arg_chip not in ["esp32c5", "esp32c61"]:
                 # chips having the OPTIONAL_UNIQUE_ID field
                 self.espefuse_py(
                     "burn_efuse \
@@ -965,14 +961,11 @@ class TestBurnKeyCommands(EfuseTestCase):
         not in [
             "esp32s2",
             "esp32s3",
-            "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta1",
             "esp32c6",
             "esp32h2",
             "esp32p4",
             "esp32c5",
-            "esp32c5beta3",
             "esp32c61",
         ],
         reason="Only chips with 6 keys",
@@ -986,9 +979,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             "esp32c3",
             "esp32c6",
             "esp32h2",
-            "esp32h2beta1",
             "esp32c5",
-            "esp32c5beta3",
         ]:
             cmd = cmd.replace("XTS_AES_256_KEY_1", "XTS_AES_128_KEY")
             cmd = cmd.replace("XTS_AES_256_KEY_2", "XTS_AES_128_KEY")
@@ -1156,7 +1147,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32h2", "esp32c5", "esp32c5beta3", "esp32c61", "esp32p4"],
+        arg_chip not in ["esp32h2", "esp32c5", "esp32c61", "esp32p4"],
         reason="These chips support ECDSA_KEY",
     )
     def test_burn_key_ecdsa_key(self):
@@ -1182,7 +1173,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32h2", "esp32c5", "esp32c5beta3", "esp32c61", "esp32p4"],
+        arg_chip not in ["esp32h2", "esp32c5", "esp32c61", "esp32p4"],
         reason="These chips support ECDSA_KEY",
     )
     def test_burn_key_ecdsa_key_check_byte_order(self):
@@ -1281,14 +1272,11 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         not in [
             "esp32s2",
             "esp32s3",
-            "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta1",
             "esp32c6",
             "esp32h2",
             "esp32p4",
             "esp32c5",
-            "esp32c5beta3",
             "esp32c61",
         ],
         reason="Only chip with 6 keys",
@@ -1424,14 +1412,11 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         not in [
             "esp32s2",
             "esp32s3",
-            "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta1",
             "esp32c6",
             "esp32h2",
             "esp32p4",
             "esp32c5",
-            "esp32c5beta3",
             "esp32c61",
         ],
         reason="Only chips with 6 keys",
@@ -1623,14 +1608,11 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
     not in [
         "esp32s2",
         "esp32s3",
-        "esp32s3beta1",
         "esp32c3",
-        "esp32h2beta1",
         "esp32c6",
         "esp32h2",
         "esp32p4",
         "esp32c5",
-        "esp32c5beta3",
         "esp32c61",
     ],
     reason="Supports 6 key blocks",
@@ -1738,14 +1720,11 @@ class TestBurnBitCommands(EfuseTestCase):
         not in [
             "esp32s2",
             "esp32s3",
-            "esp32s3beta1",
             "esp32c3",
-            "esp32h2beta1",
             "esp32c6",
             "esp32h2",
             "esp32p4",
             "esp32c5",
-            "esp32c5beta3",
             "esp32c61",
         ],
         reason="Only chip with 6 keys",

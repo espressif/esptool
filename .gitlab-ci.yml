@@ -110,15 +110,12 @@ host_tests_espefuse:
         - esp32c2
         - esp32c3
         - esp32c5
-        - esp32c5beta3
         - esp32c6
         - esp32c61
         - esp32h2
-        - esp32h2beta1
         - esp32p4
         - esp32s2
         - esp32s3
-        - esp32s3beta2
         - esp32h21
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip ${TARGET}

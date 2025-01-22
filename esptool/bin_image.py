@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2025 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -21,18 +21,13 @@ from .targets import (
     ESP32C2ROM,
     ESP32C3ROM,
     ESP32C5ROM,
-    ESP32C5BETA3ROM,
-    ESP32C6BETAROM,
     ESP32C6ROM,
     ESP32C61ROM,
-    ESP32H2BETA1ROM,
-    ESP32H2BETA2ROM,
     ESP32H2ROM,
     ESP32H21ROM,
     ESP32P4ROM,
     ESP32ROM,
     ESP32S2ROM,
-    ESP32S3BETA2ROM,
     ESP32S3ROM,
     ESP8266ROM,
 )
@@ -83,17 +78,12 @@ def LoadFirmwareImage(chip, image_file):
             return {
                 "esp32": ESP32FirmwareImage,
                 "esp32s2": ESP32S2FirmwareImage,
-                "esp32s3beta2": ESP32S3BETA2FirmwareImage,
                 "esp32s3": ESP32S3FirmwareImage,
                 "esp32c3": ESP32C3FirmwareImage,
-                "esp32c6beta": ESP32C6BETAFirmwareImage,
-                "esp32h2beta1": ESP32H2BETA1FirmwareImage,
-                "esp32h2beta2": ESP32H2BETA2FirmwareImage,
                 "esp32c2": ESP32C2FirmwareImage,
                 "esp32c6": ESP32C6FirmwareImage,
                 "esp32c61": ESP32C61FirmwareImage,
                 "esp32c5": ESP32C5FirmwareImage,
-                "esp32c5beta3": ESP32C5BETA3FirmwareImage,
                 "esp32h2": ESP32H2FirmwareImage,
                 "esp32h21": ESP32H21FirmwareImage,
                 "esp32p4": ESP32P4FirmwareImage,
@@ -1066,15 +1056,6 @@ class ESP32S2FirmwareImage(ESP32FirmwareImage):
 ESP32S2ROM.BOOTLOADER_IMAGE = ESP32S2FirmwareImage
 
 
-class ESP32S3BETA2FirmwareImage(ESP32FirmwareImage):
-    """ESP32S3 Firmware Image almost exactly the same as ESP32FirmwareImage"""
-
-    ROM_LOADER = ESP32S3BETA2ROM
-
-
-ESP32S3BETA2ROM.BOOTLOADER_IMAGE = ESP32S3BETA2FirmwareImage
-
-
 class ESP32S3FirmwareImage(ESP32FirmwareImage):
     """ESP32S3 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 
@@ -1091,33 +1072,6 @@ class ESP32C3FirmwareImage(ESP32FirmwareImage):
 
 
 ESP32C3ROM.BOOTLOADER_IMAGE = ESP32C3FirmwareImage
-
-
-class ESP32C6BETAFirmwareImage(ESP32FirmwareImage):
-    """ESP32C6 Firmware Image almost exactly the same as ESP32FirmwareImage"""
-
-    ROM_LOADER = ESP32C6BETAROM
-
-
-ESP32C6BETAROM.BOOTLOADER_IMAGE = ESP32C6BETAFirmwareImage
-
-
-class ESP32H2BETA1FirmwareImage(ESP32FirmwareImage):
-    """ESP32H2 Firmware Image almost exactly the same as ESP32FirmwareImage"""
-
-    ROM_LOADER = ESP32H2BETA1ROM
-
-
-ESP32H2BETA1ROM.BOOTLOADER_IMAGE = ESP32H2BETA1FirmwareImage
-
-
-class ESP32H2BETA2FirmwareImage(ESP32FirmwareImage):
-    """ESP32H2 Firmware Image almost exactly the same as ESP32FirmwareImage"""
-
-    ROM_LOADER = ESP32H2BETA2ROM
-
-
-ESP32H2BETA2ROM.BOOTLOADER_IMAGE = ESP32H2BETA2FirmwareImage
 
 
 class ESP32C2FirmwareImage(ESP32FirmwareImage):
@@ -1170,15 +1124,6 @@ class ESP32C5FirmwareImage(ESP32C6FirmwareImage):
 
 
 ESP32C5ROM.BOOTLOADER_IMAGE = ESP32C5FirmwareImage
-
-
-class ESP32C5BETA3FirmwareImage(ESP32C6FirmwareImage):
-    """ESP32C5BETA3 Firmware Image almost exactly the same as ESP32C6FirmwareImage"""
-
-    ROM_LOADER = ESP32C5BETA3ROM
-
-
-ESP32C5BETA3ROM.BOOTLOADER_IMAGE = ESP32C5BETA3FirmwareImage
 
 
 class ESP32P4FirmwareImage(ESP32FirmwareImage):

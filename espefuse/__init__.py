@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2016-2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2016-2025 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 # PYTHON_ARGCOMPLETE_OK
@@ -13,16 +13,13 @@ import espefuse.efuse.esp32 as esp32_efuse
 import espefuse.efuse.esp32c2 as esp32c2_efuse
 import espefuse.efuse.esp32c3 as esp32c3_efuse
 import espefuse.efuse.esp32c5 as esp32c5_efuse
-import espefuse.efuse.esp32c5beta3 as esp32c5beta3_efuse
 import espefuse.efuse.esp32c6 as esp32c6_efuse
 import espefuse.efuse.esp32c61 as esp32c61_efuse
 import espefuse.efuse.esp32h2 as esp32h2_efuse
 import espefuse.efuse.esp32h21 as esp32h21_efuse
-import espefuse.efuse.esp32h2beta1 as esp32h2beta1_efuse
 import espefuse.efuse.esp32p4 as esp32p4_efuse
 import espefuse.efuse.esp32s2 as esp32s2_efuse
 import espefuse.efuse.esp32s3 as esp32s3_efuse
-import espefuse.efuse.esp32s3beta2 as esp32s3beta2_efuse
 
 import esptool
 from esptool.logger import log
@@ -59,20 +56,11 @@ SUPPORTED_CHIPS = {
     "esp32c6": DefChip("ESP32-C6", esp32c6_efuse, esptool.targets.ESP32C6ROM),
     "esp32c61": DefChip("ESP32-C61", esp32c61_efuse, esptool.targets.ESP32C61ROM),
     "esp32c5": DefChip("ESP32-C5", esp32c5_efuse, esptool.targets.ESP32C5ROM),
-    "esp32c5beta3": DefChip(
-        "ESP32-C5(beta3)", esp32c5beta3_efuse, esptool.targets.ESP32C5BETA3ROM
-    ),
     "esp32h2": DefChip("ESP32-H2", esp32h2_efuse, esptool.targets.ESP32H2ROM),
     "esp32h21": DefChip("ESP32-H21", esp32h21_efuse, esptool.targets.ESP32H21ROM),
     "esp32p4": DefChip("ESP32-P4", esp32p4_efuse, esptool.targets.ESP32P4ROM),
-    "esp32h2beta1": DefChip(
-        "ESP32-H2(beta1)", esp32h2beta1_efuse, esptool.targets.ESP32H2BETA1ROM
-    ),
     "esp32s2": DefChip("ESP32-S2", esp32s2_efuse, esptool.targets.ESP32S2ROM),
     "esp32s3": DefChip("ESP32-S3", esp32s3_efuse, esptool.targets.ESP32S3ROM),
-    "esp32s3beta2": DefChip(
-        "ESP32-S3(beta2)", esp32s3beta2_efuse, esptool.targets.ESP32S3BETA2ROM
-    ),
 }
 
 
