@@ -74,6 +74,9 @@ jobs:
           path: ${{ env.DISTPATH }}
 
   build-esptool-binaries:
+    permissions:
+    contents: read
+    pull-requests: write
     name: Build esptool binaries for ${{ matrix.platform }}
     runs-on: ${{ matrix.RUN_ON }}
     strategy:
