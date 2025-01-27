@@ -23,7 +23,7 @@ jobs:
         contents: read
         pull-requests: write
         uses: actions/checkout@master
-      - uses: uraimo/run-on-arch-action@v2
+      - uses: uraimo/run-on-arch-action@5397f9e30a9b62422f302092631c99ae1effcd9e
         name: Build and test in ${{ matrix.platform }}
         with:
           arch: ${{ matrix.platform }}
