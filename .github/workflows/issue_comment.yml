@@ -16,7 +16,7 @@ jobs:
         permissions:
         contents: read
         pull-requests: write
-        uses: espressif/sync-jira-actions@v1
+        uses: espressif/sync-jira-actions@fb17367fd3e8ff7412603b8e946d9b19ffdb2d7f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JIRA_PASS: ${{ secrets.JIRA_PASS }}
