@@ -63,6 +63,12 @@ if arg_chip not in SUPPORTED_CHIPS:
 print(f"\nHost tests of espefuse.py for {arg_chip}:")
 print("Running espefuse.py tests...")
 
+# The default value of the program name for argparse has changed in Python 3.14
+# https://docs.python.org/dev/whatsnew/3.14.html#argparse
+ESPEFUSE_MODNAME = (
+    "__main__.py" if sys.version_info < (3, 14) else "python3 -m espefuse"
+)
+
 
 @pytest.mark.host_test
 class EfuseTestCase:
@@ -173,11 +179,13 @@ class EfuseTestCase:
 
 class TestReadCommands(EfuseTestCase):
     def test_help(self):
-        self.espefuse_not_virt_py("--help", check_msg="usage: __main__.py [-h]")
+        self.espefuse_not_virt_py("--help", check_msg=f"usage: {ESPEFUSE_MODNAME} [-h]")
         self.espefuse_not_virt_py(f"--chip {arg_chip} --help")
 
     def test_help2(self):
-        self.espefuse_not_virt_py("", check_msg="usage: __main__.py [-h]", ret_code=1)
+        self.espefuse_not_virt_py(
+            "", check_msg=f"usage: {ESPEFUSE_MODNAME} [-h]", ret_code=1
+        )
 
     def test_dump(self):
         self.espefuse_py("dump -h")
@@ -1973,17 +1981,17 @@ class TestMultipleCommands(EfuseTestCase):
 
         self.espefuse_py(
             f"-h {command1} {command2}",
-            check_msg="usage: __main__.py [-h]",
+            check_msg=f"usage: {ESPEFUSE_MODNAME} [-h]",
         )
 
         self.espefuse_py(
             f"{command1} -h {command2}",
-            check_msg="usage: __main__.py burn_key_digest [-h]",
+            check_msg=f"usage: {ESPEFUSE_MODNAME} burn_key_digest [-h]",
         )
 
         self.espefuse_py(
             f"{command1} {command2} -h",
-            check_msg="usage: __main__.py burn_key [-h]",
+            check_msg=f"usage: {ESPEFUSE_MODNAME} burn_key [-h]",
         )
 
     @pytest.mark.skipif(
