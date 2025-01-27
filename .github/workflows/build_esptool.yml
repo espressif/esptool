@@ -19,6 +19,9 @@ jobs:
       PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
     steps:
       - name: Checkout repository
+        permissions:
+        contents: read
+        pull-requests: write
         uses: actions/checkout@master
       - uses: uraimo/run-on-arch-action@v2
         name: Build and test in ${{ matrix.platform }}
@@ -62,6 +65,9 @@ jobs:
             mv LICENSE README.md ./${{ env.DISTPATH }}
 
       - name: Archive artifact
+        permissions:
+        contents: read
+        pull-requests: write
         uses: actions/upload-artifact@master
         with:
           name: ${{ env.DISTPATH }}
