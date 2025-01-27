@@ -4,6 +4,10 @@ on: [push, pull_request]
 
 jobs:
   test_esptool:
+  permissions:
+  contents: read
+  pull-requests: write
+  
     runs-on: ubuntu-22.04  # 22.04 is the last version with Python 3.7
 
     strategy:
