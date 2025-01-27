@@ -8,7 +8,9 @@ on:
 
 jobs:
   build_and_upload:
-
+    permissions:
+    contents: read
+    pull-requests: write
     runs-on: ubuntu-latest
 
     steps:
