@@ -5,6 +5,9 @@ on: [push, pull_request]
 jobs:
   build-esptool-binaries-arm:
     name: Build esptool binaries for ${{ matrix.platform }}
+    permissions:
+    contents: read
+    pull-requests: write
     runs-on: ubuntu-latest
     strategy:
       matrix:
