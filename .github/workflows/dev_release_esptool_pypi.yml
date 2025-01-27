@@ -9,9 +9,11 @@ on:
 
 jobs:
   build_and_upload:
-
+    permissions:
+    contents: read
+    pull-requests: write
     runs-on: ubuntu-latest
-
+    
     if: startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, 'dev')
 
     steps:
