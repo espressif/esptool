@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Sync PRs to Jira project
-        uses: espressif/sync-jira-actions@v1
+        uses: espressif/sync-jira-actions@fb17367fd3e8ff7412603b8e946d9b19ffdb2d7f
         with:
           cron_job: true
         env:
