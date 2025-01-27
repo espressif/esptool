@@ -177,6 +177,8 @@ jobs:
       - name: Download built binaries
         uses: actions/download-artifact@master
       - name: Compress and rename binaries
+      permissions:
+      
         run: |
           for dir in esptool-*; do
             if [[ "$dir" == esptool-win* ]]; then
