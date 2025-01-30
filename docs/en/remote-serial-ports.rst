@@ -1,6 +1,8 @@
 Remote Serial Ports
 ===================
 
+If you would like to connect to an Espressif SoC that is not directly connected to your system, you can use a remote serial port. This is useful when the chip is on a different machine, or for example when using WSL on Windows.
+
 It is possible to connect to any networked remote serial port that supports `RFC2217 <http://www.ietf.org/rfc/rfc2217.txt>`__ (Telnet) protocol. To do this, specify the serial port to esptool as ``rfc2217://<host>:<port>``. For example, to read information about your chip's SPI flash, run:
 
 ::
@@ -8,6 +10,8 @@ It is possible to connect to any networked remote serial port that supports `RFC
     esptool.py --port rfc2217://192.168.1.77:4000 flash_id
 
 Custom baud rates and DTR/RTS automatic resetting are supported over the RFC2217 protocol, the same as for a local serial port.
+
+.. _rfc2217_server:
 
 Pyserial Example Servers
 ------------------------
@@ -37,7 +41,7 @@ For servers or hardware network/serial adapters which don't support the full RFC
 
 These raw sockets don't support setting the baud rate or automatic resetting into the bootloader. If using this mode, don't pass the ``--baud`` option to esptool. You need to set the baud rate manually on the server, and manually reset the chip into the bootloader mode (or use some other signalling/control method to tell the server to do so).
 
-Here's a very basic example using the common Linux/OSX command line "netcat" and "stty" commands:
+Here's a very basic example using the common Linux/macOS command line "netcat" and "stty" commands:
 
 On server:
 

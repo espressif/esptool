@@ -18,7 +18,7 @@ Optional arguments:
 
     > espefuse.py execute_scripts efuse_script1.py efuse_script2.py ...
 
-This command allows burning all needed efuses at one time based on your own python script and control issues during the burn process if so it will abort the burn process. This command has a few arguments:
+This command allows burning all needed eFuses at one time based on your own python script and control issues during the burn process if so it will abort the burn process. This command has a few arguments:
 
 *  ``scripts`` is a list of scripts. The special format of python scripts can be executed inside ``espefuse.py``.
 *  ``--index`` integer index (it means the number of chip in the batch in the range 1 - the max number of chips in the batch). It allows to retrieve unique data per chip from configfiles and then burn them (ex. CUSTOM_MAC, UNIQUE_ID).
@@ -27,7 +27,7 @@ This command allows burning all needed efuses at one time based on your own pyth
 Below you can see some examples of the script. This script file is run from ``espefuse.py`` as ``exec(open(file.name).read())`` it means that some functions and imported libs are available for using like ``os``. Please use only provided functions.
 If you want to use other libs in the script you can add them manually.
 
-Inside this script, you can call all commands which are available in CLI, see ``espefuse.py --help``. To run a efuse command you need to call ``espefuse(esp, efuses, args, 'burn_efuse DISABLE_DL_DECRYPT 1')``. This command will not burn eFuses immediately, the burn occurs at the end of all scripts.
+Inside this script, you can call all commands which are available in CLI, see ``espefuse.py --help``. To run a eFuse command you need to call ``espefuse(esp, efuses, args, 'burn_efuse DISABLE_DL_DECRYPT 1')``. This command will not burn eFuses immediately, the burn occurs at the end of all scripts.
 If necessary, you can call ``efuses.burn_all()`` which prompts ``Type 'BURN' (all capitals) to continue.``. To skip this check and go without confirmation just add the ``--do-not-confirm`` flag to the ``execute_scripts`` command.
 
 This command supports nesting. This means that one script can be called from another script (see the test case ``test_execute_scripts_nesting`` in ``esptool/test/test_espefuse.py``).
@@ -36,7 +36,7 @@ This command supports nesting. This means that one script can be called from ano
 
     > espefuse.py execute_scripts efuse_script1.py --do-not-confirm
 
-Additionally, you can implement some checks based on the value of efuses. To get value of an efuse use ``efuses['FLASH_CRYPT_CNT'].get()``. Some eFuses have a dictionary to convert from a value to a human-readable as it looks in the table is printed by the ``summary`` command.
+Additionally, you can implement some checks based on the value of eFuses. To get value of an eFuse use ``efuses['FLASH_CRYPT_CNT'].get()``. Some eFuses have a dictionary to convert from a value to a human-readable as it looks in the table is printed by the ``summary`` command.
 See how it is done (for ESP32) for ``CODING_SCHEME`` when ``get_meaning()`` is called:
 
 * 0: ``NONE (BLK1-3 len=256 bits)``
@@ -67,10 +67,10 @@ See how it is done (for ESP32) for ``CODING_SCHEME`` when ``get_meaning()`` is c
     espefuse(esp, efuses, args, 'burn_efuse JTAG_DISABLE 1')
     ...
 
-After ``efuses.burn_all()``, all needed efuses will be burnt to chip in order ``BLK_MAX`` to ``BLK_0``. This order prevents cases when protection is set before the value goes to a block. Please note this while developing your scripts.
-Upon completion, the new eFuses will be read back, and will be done some checks of written eFuses by ``espefuse.py``. In production, you might need to check that all written efuses are set properly, see the example below.
+After ``efuses.burn_all()``, all needed eFuses will be burnt to chip in order ``BLK_MAX`` to ``BLK_0``. This order prevents cases when protection is set before the value goes to a block. Please note this while developing your scripts.
+Upon completion, the new eFuses will be read back, and will be done some checks of written eFuses by ``espefuse.py``. In production, you might need to check that all written eFuses are set properly, see the example below.
 
-The script `execute_efuse_script.py <https://github.com/espressif/esptool/blob/master/test/efuse_scripts/esp32xx/execute_efuse_script.py>`__ burns some efuses and checks them after reading back. To check read and write protection, ``is_readable()`` and ``is_writeable()`` are called.
+The script `execute_efuse_script.py <https://github.com/espressif/esptool/blob/master/test/efuse_scripts/esp32xx/execute_efuse_script.py>`__ burns some eFuses and checks them after reading back. To check read and write protection, ``is_readable()`` and ``is_writeable()`` are called.
 
 Burn Unique Data Per Chip
 ^^^^^^^^^^^^^^^^^^^^^^^^^

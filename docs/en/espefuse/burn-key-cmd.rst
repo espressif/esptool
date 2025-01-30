@@ -155,7 +155,7 @@ By default, when an encryption key block is burned it is also read and write pro
 Force Writing a Key
 ^^^^^^^^^^^^^^^^^^^
 
-Normally, a key will only be burned if the efuse block has not been previously written to. The ``--force-write-always`` option can be used to ignore this and try to burn the key anyhow.
+Normally, a key will only be burned if the eFuse block has not been previously written to. The ``--force-write-always`` option can be used to ignore this and try to burn the key anyhow.
 
 Note that this option is still limited by the eFuse hardware - hardware does not allow any eFuse bits to be cleared 1->0, and can not write anything to write protected eFuse blocks.
 

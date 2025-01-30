@@ -11,8 +11,8 @@ The following less common commands are for more advanced users.
 
 .. _verify-flash:
 
-Verify Flash Data: verify_flash
--------------------------------
+Verify Flash Data: ``verify_flash``
+-----------------------------------
 
 The ``verify_flash`` command allows you to verify that data in flash matches a local file.
 
@@ -34,8 +34,8 @@ The ``--diff yes`` option specifies that if the files are different, the details
 
 .. _dump-mem:
 
-Dump a Memory Region to File: dump_mem
---------------------------------------
+Dump a Memory Region to File: ``dump_mem``
+------------------------------------------
 
 The ``dump_mem`` command will dump a region from the chip's memory space to a file. For example, to dump the ROM (64 kB) from an ESP8266:
 
@@ -45,8 +45,8 @@ The ``dump_mem`` command will dump a region from the chip's memory space to a fi
 
 .. _load-ram:
 
-Load a Binary to RAM: load_ram
-------------------------------
+Load a Binary to RAM: ``load_ram``
+----------------------------------
 
 The ``load_ram`` command allows the loading of an executable binary image (created with the ``elf2image`` or ``make_image`` commands) directly into RAM, and then immediately executes the program contained within it. Command also supports ``.hex`` file created by ``merge_bin`` command from supported ``.bin`` files.
 
@@ -62,8 +62,8 @@ The ``load_ram`` command allows the loading of an executable binary image (creat
 
 .. _read-mem-write-mem:
 
-Read or Write RAM: read_mem / write_mem
----------------------------------------
+Read or Write RAM: ``read_mem`` & ``write_mem``
+-----------------------------------------------
 
 The ``read_mem`` & ``write_mem`` commands allow reading and writing single words (4 bytes) of RAM. This can be used to "peek" and "poke" at registers.
 
@@ -77,8 +77,8 @@ The ``read_mem`` & ``write_mem`` commands allow reading and writing single words
 
 .. _read-flash-status:
 
-Read Flash Chip Registers: read_flash_status
---------------------------------------------
+Read Flash Chip Registers: ``read_flash_status``
+------------------------------------------------
 
 This command is intended for use when debugging hardware flash chip-related problems. It allows sending a ``RDSR``, ``RDSR2`` and/or ``RDSR3`` commands to the flash chip to read the status register contents. This can be used to check write protection status, for example:
 
@@ -98,8 +98,8 @@ The ``--bytes`` argument determines how many status register bytes are read.
 
 .. _write-flash-status:
 
-Write Flash Chip Registers: write_flash_status
------------------------------------------------
+Write Flash Chip Registers: ``write_flash_status``
+--------------------------------------------------
 
 This command is intended for use when debugging hardware flash chip-related problems. It allows sending ``WRSR``, ``WRSR2`` and/or ``WRSR3`` commands to the flash chip to write the status register contents. This can be used to clear write protection bits, for example:
 
@@ -122,8 +122,8 @@ A second option ``--non-volatile`` can be used in order to send a ``WREN`` (06h)
 
 .. _read-flash-sfdp:
 
-Read Serial Flash Discoverable Parameters (SFDP): read_flash_sfdp
------------------------------------------------------------------
+Read Serial Flash Discoverable Parameters (SFDP): ``read_flash_sfdp``
+---------------------------------------------------------------------
 
 The Serial Flash Discoverable Parameters (SFDP) store essential vendor-specific configuration data of the flash memory chip. These parameters help identify and interact with different flash devices. Usage:
 
@@ -137,8 +137,8 @@ This will read 4 bytes from SFDP address 16.
 
     .. _chip-id:
 
-    Read the Chip ID: chip_id
-    -------------------------
+    Read the Chip ID: ``chip_id``
+    -----------------------------
 
     The ``chip_id`` command allows you to read a 4 byte ID which forms part of the MAC address. It is usually better to use ``read_mac`` to identify a chip.
 
@@ -150,8 +150,8 @@ This will read 4 bytes from SFDP address 16.
 
     .. _make-image:
 
-    Assemble a Firmware Image: make_image
-    -------------------------------------
+    Assemble a Firmware Image: ``make_image``
+    -----------------------------------------
 
     ``make_image`` allows you to manually assemble a firmware image from binary segments (such as those extracted from objcopy). For example:
 
@@ -167,7 +167,7 @@ This will read 4 bytes from SFDP address 16.
 
     .. _run:
 
-    Boot Application Code: run
-    --------------------------
+    Boot Application Code: ``run``
+    ------------------------------
 
     The ``run`` command immediately exits the bootloader and attempts to boot the normal application code.

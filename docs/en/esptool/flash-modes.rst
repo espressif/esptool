@@ -23,8 +23,8 @@ To override these values, the options ``--flash_mode``, ``--flash_size`` and/or 
 
 These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset {IDF_TARGET_BOOTLOADER_OFFSET}. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
 
-Flash Mode (--flash_mode, -fm)
--------------------------------
+Flash Mode: ``--flash_mode``, ``-fm``
+-------------------------------------
 
 These set Quad Flash I/O or Dual Flash I/O modes. Valid values are ``keep``, ``qio``, ``qout``, ``dio``, ``dout``. The default is ``keep``, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable ``ESPTOOL_FM``.
 
@@ -40,15 +40,15 @@ In ``qio`` mode, two additional GPIOs are used for SPI flash communications. If 
 
 For a full explanation of these modes, see the :ref:`SPI Flash Modes page <spi-flash-modes>`.
 
-Flash Frequency (--flash_freq, -ff)
-------------------------------------
+Flash Frequency: ``--flash_freq``, ``-ff``
+------------------------------------------
 
 Clock frequency for SPI flash interactions. Valid values are ``keep``, {IDF_TARGET_FLASH_FREQ} (MHz). The default is ``keep``, which keeps whatever value is already in the image file. This parameter can also be specified using the environment variable ``ESPTOOL_FF``.
 
 The flash chip connected to most chips works with {IDF_TARGET_FLASH_FREQ_0}MHz clock speeds, but you can try lower values if the device won't boot. The highest {IDF_TARGET_FLASH_FREQ_F}MHz flash clock speed will give the best performance, but may cause crashing if the flash or board design is not capable of this speed.
 
-Flash Size (--flash_size, -fs)
--------------------------------
+Flash Size: ``--flash_size``, ``-fs``
+-------------------------------------
 
 Size of the SPI flash, given in megabytes.
 

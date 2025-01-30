@@ -24,9 +24,9 @@ Positional arguments:
 Setting Flash Voltage ({IDF_TARGET_VDD_SPI})
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-After reset, the default {IDF_TARGET_NAME} behaviour is to enable and configure the flash voltage regulator ({IDF_TARGET_VDD_SPI}) based on the level of the MTDI pin ({IDF_TARGET_VDD_GPIO}).
+After reset, the default {IDF_TARGET_NAME} behavior is to enable and configure the flash voltage regulator ({IDF_TARGET_VDD_SPI}) based on the level of the MTDI pin ({IDF_TARGET_VDD_GPIO}).
 
-The default behaviour on reset is:
+The default behavior on reset is:
 
 +--------------------+--------------------+
 | MTDI               | Internal Regulator |
@@ -44,7 +44,7 @@ The default behaviour on reset is:
 
     Consult {IDF_TARGET_NAME} Technical Reference Manual for details.
 
-A combination of 3 efuses (``{IDF_TARGET_VDD_FORCE}``, ``{IDF_TARGET_VDD_REG}``, ``{IDF_TARGET_VDD_TIEH}``) can be burned in order to override this behaviour and disable {IDF_TARGET_VDD_SPI} regulator, or set it to a fixed voltage. These efuses can be burned with individual ``burn_efuse`` commands, but the ``set_flash_voltage`` command makes it easier:
+A combination of 3 eFuses (``{IDF_TARGET_VDD_FORCE}``, ``{IDF_TARGET_VDD_REG}``, ``{IDF_TARGET_VDD_TIEH}``) can be burned in order to override this behavior and disable {IDF_TARGET_VDD_SPI} regulator, or set it to a fixed voltage. These eFuses can be burned with individual ``burn_efuse`` commands, but the ``set_flash_voltage`` command makes it easier:
 
 Disable {IDF_TARGET_VDD_SPI} Regulator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ Once set:
 * {IDF_TARGET_VDD_SPI} regulator always disabled.
 * MTDI pin ({IDF_TARGET_VDD_GPIO}) is ignored.
 * Flash must be powered externally and voltage supplied to {IDF_TARGET_VDD_SPI} pin of {IDF_TARGET_NAME}.
-* Efuse ``{IDF_TARGET_VDD_FORCE}`` is burned.
+* eFuse ``{IDF_TARGET_VDD_FORCE}`` is burned.
 
 Fixed 1.8V {IDF_TARGET_VDD_SPI}
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -91,7 +91,7 @@ Once set:
 Subsequent Changes
 ^^^^^^^^^^^^^^^^^^
 
-Once an efuse is burned it cannot be un-burned. However, changes can be made by burning additional efuses:
+Once an eFuse is burned it cannot be un-burned. However, changes can be made by burning additional eFuses:
 
 *  ``set_flash_voltage OFF`` can be changed to ``1.8V`` or ``3.3V``
 *  ``set_flash_voltage 1.8V`` can be changed to ``3.3V``

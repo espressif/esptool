@@ -1066,7 +1066,7 @@ class ESPLoader(object):
 
     def uses_usb_jtag_serial(self):
         """
-        Check if the chip uses USB JTAG/SERIAL mode.
+        Check if the chip uses USB-Serial/JTAG mode.
         """
         return False
 

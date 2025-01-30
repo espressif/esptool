@@ -18,14 +18,26 @@ This is technical documentation for the firmware image format used by the ROM bo
 
 .. only:: esp8266
 
+    .. packetdiag:: diag/firmware_image_format_esp8266.diag
+        :caption: Firmware image format
+        :align: center
+
     The firmware file consists of a header, a variable number of data segments and a footer. Multi-byte fields are little-endian.
 
 .. only:: not esp8266
+
+    .. packetdiag:: diag/firmware_image_format.diag
+        :caption: Firmware image format
+        :align: center
 
     The firmware file consists of a header, an extended header, a variable number of data segments and a footer. Multi-byte fields are little-endian.
 
 File Header
 -----------
+
+.. packetdiag:: diag/firmware_image_header_format.diag
+    :caption: Firmware image header
+    :align: center
 
 The image header is 8 bytes long:
 
@@ -128,7 +140,10 @@ The image header is 8 bytes long:
     +--------+------------------------------------------------------------------------------------------------+
 
 
-``esptool.py`` overrides the 2nd and 3rd (counted from 0) bytes according to the SPI flash info provided through the command line option. These bytes are only overridden if this is a bootloader image (an image written to a correct bootloader offset of {IDF_TARGET_BOOTLOADER_OFFSET}), in this case, the appended SHA256 digest is also updated to reflect the header changes. Generating images without SHA256 digest can be achieved by running ``esptool.py elf2image`` with the ``--dont-append-digest`` argument.
+``esptool.py`` overrides the 2nd and 3rd (counted from 0) bytes according to the SPI flash info provided through the command line options (see :ref:`flash-modes`).
+These bytes are only overridden if this is a bootloader image (an image written to a correct bootloader offset of {IDF_TARGET_BOOTLOADER_OFFSET}).
+In this case, the appended SHA256 digest, which is a cryptographic hash used to verify the integrity of the image, is also updated to reflect the header changes.
+Generating images without SHA256 digest can be achieved by running ``esptool.py elf2image`` with the ``--dont-append-digest`` argument.
 
 .. only:: esp8266
 
@@ -139,12 +154,14 @@ The image header is 8 bytes long:
     Extended File Header
     --------------------
 
-    The 16-byte long extended header comes right after the image header, individual segments come right after it:
+    .. packetdiag:: diag/firmware_image_ext_header_format.diag
+        :caption: Extended File Header
+        :align: center
 
     +--------+---------------------------------------------------------------------------------------------------------+
     | Byte   | Description                                                                                             |
     +========+=========================================================================================================+
-    | 0      | WP pin when SPI pins set via efuse (read by ROM bootloader)                                             |
+    | 0      | WP pin when SPI pins set via eFuse (read by ROM bootloader)                                             |
     +--------+---------------------------------------------------------------------------------------------------------+
     | 1-3    | Drive settings for the SPI flash pins (read by ROM bootloader)                                          |
     +--------+---------------------------------------------------------------------------------------------------------+

@@ -5,10 +5,13 @@ Basic Options
 
 These are the basic/fundamental esptool options needed to define the communication with an ESP target. For advanced configuration options, see the :ref:`advanced-options` page.
 
+Esptool has global and command-specific options. Global options have to be specified after ``esptool.py``. They are used to configure the serial port, baud rate, and chip type.
+Command-specific options are specified after the command and are used to configure the command itself. For more information about commands and their options, see :ref:`commands` or see help in the command line.
+
 .. _chip-type:
 
-Chip Type
----------
+Chip Type: ``--chip``, ``-c``
+-----------------------------
 
 * The target chip type can be selected using the ``--chip``/ ``-c`` option, e.g. ``esptool.py --chip {IDF_TARGET_PATH_NAME} <command>``.
 * A default chip type can be specified by setting the ``ESPTOOL_CHIP`` environment variable.
@@ -17,8 +20,8 @@ Chip Type
 
 .. _serial-port:
 
-Serial Port
------------
+Serial Port: ``--port``, ``-p``
+-------------------------------
 
 *  The serial port is selected using the ``-p`` option, like ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
 *  A default serial port can be specified by setting the ``ESPTOOL_PORT`` environment variable.
@@ -38,8 +41,8 @@ On most Linux distributions, the solution is to add the user to the ``dialout`` 
 You can call ``su - $USER`` to enable read and write permissions for the serial port without having to log out and back in again.
 Check your Linux distribution's documentation for more information.
 
-Baud Rate
----------
+Baud Rate: ``--baud``, ``-b``
+-----------------------------
 
 The default esptool baud rate is 115200bps. Different rates may be set using ``-b 921600`` (or another baud rate of your choice). A default baud rate can also be specified using the ``ESPTOOL_BAUD`` environment variable. This can speed up ``write_flash`` and ``read_flash`` operations.
 

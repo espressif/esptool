@@ -46,9 +46,14 @@ ESP-IDF
 
 ESP-IDF outputs the full esptool command used for flashing after the build is finished, for example::
 
-    Project build complete. To flash, run this command:
-    python esptool.py -p (PORT) -b 460800 --before default_reset --after hard_reset --chip {IDF_TARGET_PATH_NAME}  write_flash --flash_mode dio --flash_size detect --flash_freq 40m {IDF_TARGET_BOOTLOADER_OFFSET} build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
-    or run 'idf.py -p (PORT) flash'
+    Project build complete. To flash, run:
+    idf.py flash
+    or
+    idf.py -p PORT flash
+    or
+    python -m esptool --chip {IDF_TARGET_PATH_NAME} -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 2MB --flash_freq 40m {IDF_TARGET_BOOTLOADER_OFFSET} build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
+    or from the "esp-idf/examples/get-started/hello_world/build" directory
+    python -m esptool --chip {IDF_TARGET_PATH_NAME} -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
 
 Arduino
 ^^^^^^^
@@ -62,18 +67,18 @@ To do a verbose upload and see the exact esptool invocation, run ``pio run -v -t
 
 ::
 
-    “.../.platformio/penv/bin/python2.7” “.../.platformio/packages/tool-esptoolpy/esptool.py” --chip {IDF_TARGET_PATH_NAME} --port “/dev/cu.usbserial001” --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect {IDF_TARGET_BOOTLOADER_OFFSET} .../.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x8000 .../project_folder/.pio/build/esp32doit-devkit-v1/partitions.bin 0xe000 .../.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 .pio/build/esp32doit-devkit-v1/firmware.bin
+    ".../.platformio/penv/bin/python" ".../.platformio/packages/tool-esptoolpy/esptool.py" --chip {IDF_TARGET_PATH_NAME} --port "/dev/cu.usbserial001" --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect {IDF_TARGET_BOOTLOADER_OFFSET} .../.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin 0x8000 .../project_folder/.pio/build/esp32doit-devkit-v1/partitions.bin 0xe000 .../.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 .pio/build/esp32doit-devkit-v1/firmware.bin
 
 
 Flashing
 --------
 
-If you split the output, you’ll find the ``write_flash`` command with a list of paths to binary files and their respective flashing offsets. If necessary, change the paths to the actual file locations.
+If you split the output, you'll find the ``write_flash`` command with a list of paths to binary files and their respective flashing offsets. If necessary, change the paths to the actual file locations.
 
 Change ``PORT`` to the name of :ref:`actually used serial port <serial-port>` and run the command. A successful flash looks like this::
 
-    $ python esptool.py -p /dev/tty.usbserial-0001 -b 460800 --before default_reset --after hard_reset --chip {IDF_TARGET_PATH_NAME} write_flash --flash_mode dio --flash_size detect --flash_freq 40m {IDF_TARGET_BOOTLOADER_OFFSET} build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
-    esptool.py v3.2-dev
+    $ python -m esptool -p /dev/tty.usbserial-0001 -b 460800 --before default_reset --after hard_reset --chip {IDF_TARGET_PATH_NAME} write_flash --flash_mode dio --flash_size detect --flash_freq 40m {IDF_TARGET_BOOTLOADER_OFFSET} build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
+    esptool.py v4.8.1
     Serial port /dev/tty.usbserial-0001
     Connecting.........
     Chip is ESP32-D0WD (revision 1)
@@ -91,6 +96,7 @@ Change ``PORT`` to the name of :ref:`actually used serial port <serial-port>` an
     Flash will be erased from 0x00008000 to 0x00008fff...
     Flash will be erased from 0x00010000 to 0x00039fff...
     Flash params set to 0x0240
+    SHA digest in image updated
     Compressed 25536 bytes to 15935...
     Wrote 25536 bytes (15935 compressed) at 0x00001000 in 0.7 seconds (effective 275.5 kbit/s)...
     Hash of data verified.

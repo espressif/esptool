@@ -50,7 +50,7 @@ Optional General Arguments Of Commands
 - ``-h``, ``--help`` - Show help message and exit. Use ``-h`` to see a summary of all available commands and command line options. To see all options for a particular chip and command, add ``-c {IDF_TARGET_NAME}`` and ``-h`` to the command name, i.e. ``espefuse.py -c {IDF_TARGET_NAME} burn_key -h``.
 - ``--chip``, ``-c`` - Target chip type. If this argument is omitted, the tool automatically detects the chip type when connected. But if the command has a help option, the chip is not connected, and the default chip is ``esp32``, please specify the specific type of chip to get the correct help. Example of usage: ``-c esp32``, ``-c esp32c3``, ``-c esp32s2`` and others.
 - ``--baud``, ``-b`` - Serial port baud rate, the same as for esptool.
-- ``--port``, ``-p`` - Serial port device, ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
+- ``--port``, ``-p`` - Serial port device, for example: ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
 - ``--before`` -  What to do before connecting to the chip: ``default_reset``, ``no_reset``, ``esp32r1``, ``no_reset_no_sync``.
 - ``--debug``, ``-d`` - Show debugging information.
 - ``--virt`` - For host tests. The tool will work in the virtual mode (without connecting to a chip).
@@ -58,7 +58,7 @@ Optional General Arguments Of Commands
 - ``--do-not-confirm`` - Do not pause for confirmation before permanently writing eFuses. Use with caution. If this option is not used, a manual confirmation step is required, you need to enter the word ``BURN`` to continue burning.
 - ``--extend-efuse-table`` - CSV file from `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_ (esp_efuse_custom_table.csv).
 
-Virtual mode
+Virtual Mode
 ^^^^^^^^^^^^
 
 This mode is enabled with the ``--virt`` flag (need to specify chip with ``--chip``). This helps to test commands without physical access to the chip. Burned data is not saved between commands. Using ``--path-efuse-file``, you can save the written data to a file. Delete the file to clear eFuses.
@@ -94,7 +94,7 @@ This tool automatically adds encoding data to the burning data if it requires. E
 
 All coding schemes (except ``None``) require additional encoding data to be provided at write time. Due to the encoding data, such blocks cannot be overwritten again without breaking the block's coding scheme. Use the :ref:`perform-multiple-operations` feature or list multiple eFuses/keys.
 
-Burning Efuse
+Burning eFuse
 -------------
 
 Burning occurs in order from BLOCK(max) to BLOCK0. This prevents read/write protection from being set before the data is set. After burning, the tool reads the written data back and compares the original data, and additionally checks the status of the coding scheme, if there are any errors, it re-burns the data again to correct it.
@@ -114,7 +114,7 @@ The example below shows how to use the two commands ``burn_key_digest`` and ``bu
                             burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
                             burn_key BLOCK_KEY0 images/efuse/128bit_key.bin XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
 
-Extend Efuse Table
+Extend eFuse Table
 ------------------
 
 This tool supports the use of `CSV files <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/efuse.html#description-csv-file>`_ from the `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_ (e.g., ``esp_efuse_custom_table.csv``) to add custom eFuse fields. You can use this argument with any supported commands to access these custom eFuses.

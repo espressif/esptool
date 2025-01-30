@@ -1,6 +1,6 @@
 .. _burn-efuse-cmd:
 
-Burn Efuse
+Burn eFuse
 ==========
 
 The ``espefuse.py burn_efuse`` command burns eFuses. The arguments to ``burn_efuse`` are eFuse names (as shown in summary output) and new values.
@@ -90,7 +90,7 @@ On {IDF_TARGET_NAME} chips without integrated SPI flash, these eFuses are left z
 
 On {IDF_TARGET_NAME} chips with integrated internal SPI flash, these eFuses are burned in the factory to the GPIO numbers where the flash is connected. These values override the defaults on boot.
 
-In order to change the SPI flash pin configuration, these eFuses can be burned to the GPIO numbers where the flash is connected. If at least one of these eFuses is burned, all of of them must be set to the correct values.
+In order to change the SPI flash pin configuration, these eFuses can be burned to the GPIO numbers where the flash is connected. If at least one of these eFuses is burned, all of them must be set to the correct values.
 
 If these eFuses are burned, GPIO1 (U0TXD pin) is no longer consulted to set the boot mode from SPI to HSPI flash on reset.
 

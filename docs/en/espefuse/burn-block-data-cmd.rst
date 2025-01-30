@@ -10,7 +10,7 @@ This command is available in ``espefuse.py`` v2.6 and newer.
 Positional arguments:
 
 * ``Name of key block``
-* ``Datafile``. File containing data to burn into the efuse block. The file size can be smaller than the eFuse block size.
+* ``Datafile``. File containing data to burn into the eFuse block. The file size can be smaller than the eFuse block size.
 
 It can be list of blocks and datafiles (like BLOCK1 datafile1.bin BLOCK2 datafile2.bin etc.).
 

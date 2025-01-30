@@ -11,7 +11,7 @@ Optional arguments:
     - ``summary`` - text format (default option).
     - ``json`` - json format. Usage ``--format json``.
     - ``value_only`` - only the value of the eFuse specified as an argument will be displayed. For more information, refer to the :ref:`Filtering eFuses <filtering-eFuses>` section.
-- ``--file`` - File to save the efuse summary. Usage ``--file efuses.json``.
+- ``--file`` - File to save the eFuse summary. Usage ``--file efuses.json``.
 - List of eFuses to filter. For more information, refer to the :ref:`Filtering eFuses <filtering-eFuses>` section.
 
 Text Format Summary

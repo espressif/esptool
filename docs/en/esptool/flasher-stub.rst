@@ -16,7 +16,7 @@ Benefits
 
 The flasher stub behaves the same as the original bootloader, but uses more heavily optimized UART routines.
 
-The main benefit is improved performance of flashing and some other operations (like reading flash). Additionally, there are a few commands which are only available when using the stub loader (such as :ref:`erase_flash and erase_region <erase_flash>`). It also allows to work around any bugs in ROM bootloaders.
+The main benefit is improved performance of flashing and some other operations (like reading flash). Additionally, it also allows to work around any bugs in ROM bootloaders.
 
 Disabling the Stub Loader
 -------------------------

@@ -7,11 +7,7 @@ This is technical documentation for the serial protocol used by the UART bootloa
 
 The UART bootloader runs on chip reset if certain strapping pins are set. See :ref:`entering-the-bootloader` for details of this process.
 
-.. only:: not esp8266
-
-    The {IDF_TARGET_NAME} ROM loader serial protocol is similar to ESP8266, although {IDF_TARGET_NAME} adds some additional commands and some slightly different behaviour.
-
-By default, esptool uploads a stub "software loader" to the IRAM of the chip. The stub loader then replaces the ROM loader for all future interactions. This standardizes much of the behaviour. Pass ``--no-stub`` to esptool in order to disable the stub loader. See :ref:`stub` for more information.
+By default, esptool uploads a stub "software loader" to the IRAM of the chip. The stub loader then replaces the ROM loader for all future interactions. This standardizes much of the behavior. Pass ``--no-stub`` to esptool in order to disable the stub loader. See :ref:`stub` for more information.
 
 .. note::
 
@@ -78,7 +74,7 @@ Each received command will result in a response SLIP packet sent from the ESP ch
 | 8..n   | Data        | Variable length data payload. Length indicated by "Size" field.                                              |
 +--------+-------------+--------------------------------------------------------------------------------------------------------------+
 
-Status bytes
+Status Bytes
 """"""""""""
 
 The final bytes of the Data payload indicate command status:
@@ -153,7 +149,7 @@ After sending a command, the host should continue to read response packets until
 Commands
 ^^^^^^^^
 
-Supported by stub loader and ROM loader
+Supported by Stub Loader and ROM Loader
 """""""""""""""""""""""""""""""""""""""
 
 .. only:: esp8266
@@ -259,10 +255,10 @@ Supported by stub loader and ROM loader
     | ``0x14``   | GET_SECURITY_INFO    | Read chip security info                                        |                                                                                                                                                                                                                                                | {IDF_TARGET_SECURITY_INFO}    |
     +------------+----------------------+----------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+
 
-Supported by stub loader only
+Supported by Stub Loader Only
 """""""""""""""""""""""""""""
 
-ROM loaders will not recognise these commands.
+ROM loaders will not recognize these commands.
 
 +------------+-------------------+-----------------------------------+-------------------------------------------------------------------------------------------------------------------------+----------+
 | Byte       | Name              | Description                       | Input                                                                                                                   | Output   |
@@ -349,7 +345,7 @@ All three of these sequences follow a similar pattern:
 *  An _END command (FLASH_END, etc) is sent to exit the bootloader and optionally reset the chip (or jump to an address in RAM, in the case of MEM_END). Not necessary to send after flashing if you wish to continue sending other or different commands.
 
 It's not necessary to send flash erase commands before sending commands to write to flash, etc. The ROM loaders erase the to-be-written region in response to the FLASH_BEGIN command.
-The stub loader does just-in-time erasing as it writes data, to maximise overall flashing performance (each block of data is read into RAM via serial while the previous block is simultaneously being written to flash, and 4KB and 64KB erases are done as needed before writing to flash).
+The stub loader does just-in-time erasing as it writes data, to maximize overall flashing performance (each block of data is read into RAM via serial while the previous block is simultaneously being written to flash, and 4KB and 64KB erases are done as needed before writing to flash).
 
 The block size chosen should be small enough to fit into RAM of the device. Esptool uses 16KB which gives good performance when used with the stub loader.
 
@@ -382,7 +378,7 @@ The SPI_FLASH_MD5 command passes the start address in flash and the size of data
 SPI Configuration Commands
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-SPI Attach command
+SPI Attach Command
 """"""""""""""""""
 
 The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data payload which is used to determine which SPI peripheral and pins should be used to connect to SPI flash.
@@ -413,7 +409,7 @@ The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data 
     | (other values)   |  Pin numbers as 6-bit values, packed into a 30-bit value. Order (from MSB): HD pin, Q pin, D pin, CS pin, CLK pin.               |
     +------------------+----------------------------------------------------------------------------------------------------------------------------------+
 
-    The "Default SPI flash interface" uses pins configured via the ``SPI_PAD_CONFIG_xxx`` efuses (if unset, these efuses are all zero and the default SPI flash pins given in the datasheet are used.)
+    The "Default SPI flash interface" uses pins configured via the ``SPI_PAD_CONFIG_xxx`` eFuses (if unset, these eFuses are all zero and the default SPI flash pins given in the datasheet are used.)
 
     When writing the values of each pin as 6-bit numbers packed into the data word, each 6-bit value uses the following representation:
 
@@ -421,7 +417,7 @@ The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data 
 
         * Pin numbers 0 through 30 are represented as themselves.
         * Pin numbers 32 & 33 are represented as values 30 & 31.
-        * It is not possible to represent pins 30 & 31 or pins higher than 33. This is the same 6-bit representation used by the ``SPI_PAD_CONFIG_xxx`` efuses.
+        * It is not possible to represent pins 30 & 31 or pins higher than 33. This is the same 6-bit representation used by the ``SPI_PAD_CONFIG_xxx`` eFuses.
 
     On {IDF_TARGET_NAME} ROM loader only, there is an additional 4 bytes in the data payload of this command. These bytes should all be set to zero.
 
@@ -436,7 +432,7 @@ The SPI_SET_PARAMS command sets some parameters of the attached SPI flash chip (
 
 All the values which are passed except total size are hardcoded, and most are not used when writing to flash. See `flash_set_parameters function <https://github.com/espressif/esptool/blob/da31d9d7a1bb496995f8e30a6be259689948e43e/esptool.py#L655>`__ in esptool for the values which it sends.
 
-32-bit Read/Write
+32-Bit Read/Write
 ^^^^^^^^^^^^^^^^^
 
 The 32-bit read/write commands (READ_REG, WRITE_REG) allow word-oriented reading and writing of memory and register data.

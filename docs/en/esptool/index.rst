@@ -14,13 +14,12 @@ To see all options for a particular command, append ``-h`` to the command name. 
    Basic Commands <basic-commands>
    Advanced Options <advanced-options>
    Advanced Commands <advanced-commands>
-   Flasher Stub <flasher-stub>
-   Flash Modes <flash-modes>
    Entering the Bootloader <entering-bootloader>
    Serial Connection <serial-connection>
-   Configuration File <configuration-file>
-   Remote Serial Ports <remote-serial-ports>
    Flashing Firmware <flashing-firmware>
+   Flasher Stub <flasher-stub>
+   Flash Modes <flash-modes>
+   Configuration File <configuration-file>
    Scripting <scripting>
 
 .. only:: not esp8266
@@ -29,3 +28,4 @@ To see all options for a particular command, append ``-h`` to the command name. 
 
    * :ref:`espefuse`
    * :ref:`espsecure`
+   * :ref:`esp_rfc2217_server.py <rfc2217_server>`

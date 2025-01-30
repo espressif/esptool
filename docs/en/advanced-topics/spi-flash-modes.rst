@@ -74,6 +74,20 @@ In ``qout`` mode, the host uses the "Quad Output Fast Read" (6BH) command to rea
 In ``qio`` mode, the host uses the "Quad I/O Fast Read" (EBH) command to read data. This command is the same as "Dual I/O Fast Read", only both address & data are transferred on 4 pins instead of 2 with 4 bits per clock cycle.
 This makes both the address & data transfer exactly twice as fast as "Dual I/O Fast Read".
 
+.. only:: esp32s3
+
+  Octal SPI
+  ^^^^^^^^^
+
+  Some ESP chips additionally support Octal SPI mode. This mode uses 8 pins for communication with the SPI flash chip, and allows for even faster data transfers than Quad SPI. This mode added four additional pins (SPIIO4~7) compared to Quad SPI for data transfers.
+
+  The 1st and 2nd bootloaders don't support ``opi`` mode. Because of that esptool doesn't use ``opi`` and ``dout`` is used instead. The bootloader retrieves the information from eFuse and effectively replaces the mode.
+
+  .. note::
+
+    Use the ``esptool.py flash_id`` command to check if your ESP is using Quad or Octal SPI mode. It prints information based on the eFuse settings.
+
+
 Frequently Asked Questions
 --------------------------
 

@@ -39,7 +39,7 @@ Creating a virtual environment (venv) is a good practice. This is particularly h
 - Activate the virtual environment:
 
    - On Windows: ``esptoolenv\Scripts\activate``
-   - On Linux or MacOS: ``source esptoolenv/bin/activate``
+   - On Linux or macOS: ``source esptoolenv/bin/activate``
 
 - Install the latest ``esptool.py`` version within the active virtual environment: ``pip install esptool``
 - You can now use it within this virtual environment without affecting your system-wide installations: ``esptool.py <command>``
@@ -58,30 +58,33 @@ If you are using ``esptool.py`` as a standalone tool (as a global installation o
 
    $ pip install --upgrade esptool
 
-As a Component
-^^^^^^^^^^^^^^
+As a Part of SDK/Framework
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If ``esptool.py`` is installed as a component of a development framework (e.g. `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_, `Arduino <https://docs.espressif.com/projects/arduino-esp32/>`_, or `PlatformIO <https://docs.platformio.org/en/latest/platforms/espressif32.html>`_), it is advised to follow the update guide of used framework for instructions and not to update the tool directly.
+If ``esptool.py`` is installed as a part of a development SDK/framework (e.g. `ESP-IDF <https://docs.espressif.com/projects/esp-idf/>`_, `Arduino <https://docs.espressif.com/projects/arduino-esp32/>`_, or `PlatformIO <https://docs.platformio.org/en/latest/platforms/espressif32.html>`_), it is advised to follow the update guide of used framework for instructions and not to update the tool directly.
 
 If updating directly is unavoidable, make sure you update to a compatible version by staying on the same MAJOR version number (explained in the :ref:`versions` article). For instance, if your currently installed ``esptool.py`` is ``v3.3.1``, only update to ``v3.*.*``. You risk introducing incompatible changes by updating to ``v4.*.*`` or higher.
 
 ::
 
-   $ pip install esptool==3.3.2
+   $ pip install "esptool<4"
 
-Shell completions
+Shell Completions
 -----------------
 
 To activate autocompletion, you can manually add commands provided below to your shell's config file
 or run them in your current terminal session for one-time activation.
 You will likely have to restart or re-login for the autocompletion to start working.
 
-bash:
+Bash
+^^^^
+
 ::
 
    eval "$(register-python-argcomplete esptool.py espsecure.py espefuse.py)"
 
-zsh:
+Zsh
+^^^
 
 To activate completions in zsh, first make sure `compinit` is marked for
 autoload and run autoload:
@@ -97,7 +100,8 @@ Afterwards you can enable completions for esptool.py, espsecure.py and espefuse.
 
    eval "$(register-python-argcomplete esptool.py espsecure.py espefuse.py)"
 
-fish:
+Fish
+^^^^
 
 Not required to be in the config file, only run once
 

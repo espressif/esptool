@@ -3,12 +3,12 @@
 Burn Bit
 ========
 
-The ``espefuse.py burn_bit`` command burns bits in efuse blocks by bit number. This is useful when the fields are not represented in the eFuse table.
+The ``espefuse.py burn_bit`` command burns bits in eFuse blocks by bit number. This is useful when the fields are not represented in the eFuse table.
 
 Positional arguments:
 
-- ``block`` - Efuse block.
-- ``bit number`` - Bit number in the efuse block [0..BLK_LEN-1] (list of numbers, like 10 15 18 17 5 etc.).
+- ``block`` - eFuse block.
+- ``bit number`` - Bit number in the eFuse block [0..BLK_LEN-1] (list of numbers, like 10 15 18 17 5 etc.).
 
 Optional arguments:
 
@@ -39,7 +39,7 @@ Burning bits to BLOCK2:
     Reading updated efuses...
     Successful
 
-Burning In Multiple Blocks
+Burning in Multiple Blocks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: none

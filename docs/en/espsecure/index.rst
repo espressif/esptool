@@ -12,7 +12,7 @@ For more details, see the ESP-IDF documentation which explains this tool and how
 
 .. _hsm_signing:
 
-Remote Signing using an external HSM
+Remote Signing Using an External HSM
 ------------------------------------
 
 An external Hardware Security Module (HSM) can be used for remote signing of images in secure boot v2 scheme.
@@ -44,7 +44,7 @@ If the public key is not stored in the external HSM, you can specify the ``--key
     python espsecure.py verify_signature --version 2 --keyfile <public_key> <signed_image>
 
 
-HSM config file
+HSM Config File
 ~~~~~~~~~~~~~~~
 
 An HSM config file is required with the fields (``pkcs11_lib``, ``credentials``, ``slot``, ``label``, ``label_pubkey``)

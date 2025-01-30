@@ -1,0 +1,12 @@
+packetdiag command_packet_format{
+    colwidth = 8
+    node_width = 100
+    node_height = 50
+    default_fontsize = 16
+
+    0: "0xE9";
+    1: "Number of\nsegments";
+    2: "Flash Mode";
+    3: "Flash\nsize/freq";
+    4-7: "Entry point";
+}

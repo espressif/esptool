@@ -1,0 +1,15 @@
+packetdiag command_packet_format{
+    colwidth = 16
+    node_width = 50
+    node_height = 50
+    default_fontsize = 16
+
+    0: "WP";
+    1-3: "Drive settings";
+    4-5: "Chip ID";
+    6: "Rev." [color = grey];
+    7-8: "Min rev.";
+    9-10: "Max rev.";
+    11-14: "Reserved" [color = grey];
+    15: "Hash";
+}
