@@ -29,11 +29,11 @@ Getting started is easy:
 
 2) Connect an Espressif chip to your computer.
 
-3) Run ``esptool.py`` commands. For example, to read information about your chip's SPI flash, run:
+3) Invoke ``esptool`` module with commands. For example, to read information about your chip's SPI flash, run:
 
     ::
 
-        $ esptool.py -p PORT flash_id
+        $ python -m esptool -p PORT flash_id
 
     Replace ``PORT`` with the name of used serial port. If connection fails, see :ref:`troubleshooting`.
 
