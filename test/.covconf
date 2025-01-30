@@ -1,0 +1,8 @@
+[run]
+parallel = true
+
+[paths]
+source =
+    ./
+    ./
+    C:\GitLab-Runner\builds\*\*\espressif\esptool\

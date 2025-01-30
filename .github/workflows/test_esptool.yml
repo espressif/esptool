@@ -1,0 +1,79 @@
+name: Test esptool
+
+on: [push, pull_request]
+
+jobs:
+  test_esptool:
+    runs-on: ubuntu-22.04  # 22.04 is the last version with Python 3.7
+
+    strategy:
+      matrix:
+        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+
+    steps:
+    - name: Checkout ref commit
+      uses: actions/checkout@master
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@master
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install 'setuptools>=64'
+
+    - name: SoftHSM2 setup
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y softhsm2
+        sudo chmod -R a+rx /etc/softhsm
+        sudo chmod a+r /etc/softhsm/softhsm2.conf
+        sudo chown -R $(whoami) /var/lib/softhsm
+        ./ci/setup_softhsm2.sh || exit 1
+
+    - name: Install esptool and check if the installed versions can run
+      run: |
+        python setup.py build
+        pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev,hsm]
+        esptool.py --help
+        espefuse.py --help
+        espsecure.py --help
+
+    - name: Test esptool and components
+      run: |
+        pytest -m host_test
+        pytest test/test_espsecure_hsm.py
+
+  check_stubs:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@master
+
+        - name: Set up Python 3.13
+          uses: actions/setup-python@master
+          with:
+            python-version: 3.13
+
+        - name: Check if flasher stubs are up-to-date
+          run: |
+            ./ci/download_flasher_stubs.py
+            git diff --exit-code
+
+  lint_esptool:
+      runs-on: ubuntu-22.04  # 22.04 is the last version with Python 3.7
+      steps:
+        - name: Checkout
+          uses: actions/checkout@master
+
+        - name: Set up Python 3.7
+          uses: actions/setup-python@master
+          with:
+            python-version: 3.7
+
+        - name: Run pre-commit hooks
+          run: |
+            pip install --extra-index-url https://dl.espressif.com/pypi -e .[dev]
+            pre-commit run --all-files

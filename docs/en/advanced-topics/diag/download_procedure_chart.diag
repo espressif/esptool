@@ -1,0 +1,39 @@
+blockdiag download_procedure_diagram {
+    node_height = 40;
+    node_width = 150;
+    span_width = 40;
+    span_height = 45;
+    default_fontsize = 12
+    orientation = portrait;
+    edge_layout = flowchart;
+    default_group_color = none;
+
+    // nodes
+    start [label = "Start", shape = flowchart.terminator];
+    sync [label = "Synchronization", shape = box];
+    success_cond [label = "Success?", shape = flowchart.condition];
+    erase_data [label = "Erase data", shape = box];
+    transmit_data [label = "Transmit data", shape = box];
+    finish_cond [label = "Finish?", shape = flowchart.condition];
+    transmit_finish [label = "Transmit finish frame", shape = box];
+    finish [label = "Finish", shape = flowchart.terminator];
+    // fake nodes to adjust shape and edge label position
+    succ_fin [shape = none];
+    fincon_fin [shape = none];
+
+    // edges
+    start -> sync -> success_cond;
+    success_cond -> erase_data [label = "Yes"];
+    erase_data -> transmit_data;
+    transmit_data -> finish_cond;
+    success_cond -- succ_fin [label = "Timeout"];
+    finish_cond -> transmit_finish [label = "Yes"];
+    finish_cond -- fincon_fin [label = "Failure"];
+    succ_fin -- fincon_fin;
+    fincon_fin -> finish;
+    transmit_finish -> finish;
+
+    // group
+    group{transmit_finish, fincon_fin};
+    group{erase_data, succ_fin};
+}

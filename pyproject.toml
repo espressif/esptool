@@ -1,0 +1,167 @@
+[build-system]
+    requires = ["setuptools>=64"]
+    build-backend = "setuptools.build_meta"
+
+[project]
+    name = "esptool"
+    authors = [
+        {name = "Fredrik Ahlberg (themadinventor)"},
+        {name = "Angus Gratton (projectgus)"},
+        {name = "Espressif Systems"}
+    ]
+    readme = {file = "README.md", content-type = "text/markdown"}
+    license = {text = "GPLv2+"}
+    description = "A serial utility to communicate & flash code to Espressif chips."
+    classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Natural Language :: English",
+        "Operating System :: POSIX",
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: MacOS :: MacOS X",
+        "Topic :: Software Development :: Embedded Systems",
+        "Environment :: Console",
+        "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+    ]
+    requires-python = ">=3.7"
+    dynamic = ["version", "scripts"]
+
+    dependencies = [
+        "bitstring>=3.1.6,!=4.2.0",
+        "cryptography>=2.1.4",
+        "ecdsa>=0.16.0",
+        "pyserial>=3.3",
+        "reedsolo>=1.5.3,<1.8",
+        "PyYAML>=5.1",
+        "intelhex",
+        'argcomplete>=3; sys_platform != "win32"',
+    ]
+
+[project.urls]
+    Homepage = "https://github.com/espressif/esptool/"
+    Documentation = "https://docs.espressif.com/projects/esptool/"
+    Source = "https://github.com/espressif/esptool/"
+    Tracker = "https://github.com/espressif/esptool/issues/"
+    Changelog = "https://github.com/espressif/esptool/blob/master/CHANGELOG.md"
+
+[project.optional-dependencies]
+    dev = [
+        "pyelftools",
+        "coverage~=6.0",
+        "pre-commit",
+        "pytest",
+        "pytest-rerunfailures",
+        "requests",
+        "commitizen",
+    ]
+    hsm = ["python-pkcs11"]
+
+[tool.setuptools]
+    include-package-data = true
+
+[tool.setuptools.package-data]
+    "*" = ["esptool/targets/stub_flasher/1/*", "esptool/targets/stub_flasher/2/*"]
+
+[tool.setuptools.packages]
+    find = {exclude = ["ci*", "test*", "docs*"]}
+
+[tool.setuptools.dynamic]
+    version = {attr = "esptool.__init__.__version__"}
+
+[tool.commitizen]
+    version = "4.8.1"
+    update_changelog_on_bump = true
+    tag_format = "v$version"
+    changelog_start_rev = "v4.2.1"
+    changelog_merge_prerelease = true
+    annotated_tag = true
+    bump_message = "change: Update version to $new_version"
+    version_files = [
+        "esptool/__init__.py:__version__"
+    ]
+    change_type_order = [
+        "BREAKING CHANGE",
+        "New Features",
+        "Bug Fixes",
+        "Code Refactoring",
+        "Performance Improvements"
+    ]
+
+[tool.commitizen.change_type_map]
+    feat = "New Features"
+    fix = "Bug Fixes"
+    refactor = "Code Refactoring"
+    perf = "Performance Improvements"
+
+[tool.codespell]
+    skip = '*.bin,*test/images/efuse/*,*docs/en/espefuse/inc/*'
+    ignore-words-list = 'bloc,ser,dout,exten'
+    write-changes = false
+
+[tool.mypy]
+    disallow_incomplete_defs = false # Disallows defining functions with incomplete type annotations
+    disallow_untyped_defs    = false # Disallows defining functions without type annotations or with incomplete type annotations
+    ignore_missing_imports   = true  # Suppress error messages about imports that cannot be resolved
+    python_version           = "3.7" # Specifies the Python version used to parse and check the target program
+    warn_no_return           = true  # Shows errors for missing return statements on some execution paths
+    warn_return_any          = true  # Shows a warning when returning a value with type Any from a function declared with a non- Any return type
+
+[tool.ruff]
+    # https://docs.astral.sh/ruff/settings/
+    # Exclude a variety of commonly ignored directories.
+    exclude = [
+        ".eggs",
+        ".git",
+        "__pycache__"
+    ]
+
+    line-length = 88
+
+    select = ['E', 'F', 'W']
+    ignore = ["E203"]
+
+    target-version = "py37"
+
+[tool.ruff.lint]
+    # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.
+    # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+    # McCabe complexity (`C901`) by default.
+    select = ["E4", "E7", "E9", "F"]
+    ignore = []
+
+    # Allow fix for all enabled rules (when `--fix`) is provided.
+    fixable = ["ALL"]
+    unfixable = []
+
+    # Allow unused variables when underscore-prefixed.
+    dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+    # tests often manipulate sys.path before importing the main tools, so ignore import order violations
+    "test/*.py" = ["E402"]
+
+    # multiple spaces after ',' and long lines - used for visual layout of eFuse data
+    "espefuse/efuse/*/mem_definition.py" =  ["E241", "E501"]
+    "espefuse/efuse/*/operations.py" =   ["E241", "E501", "F401"]
+    "espefuse/efuse/*/fields.py" =   ["E241", "E501"]
+
+    # ignore long lines - used for RS encoding pairs
+    "test/test_modules.py" = ["E501"]
+
+    # don't check for unused imports in __init__.py files
+    "__init__.py" = ["F401"]
+
+    # allow definition from star imports in docs config
+    "docs/conf_common.py" =  ["F405"]
+
+[tool.ruff.format]
+    quote-style = "double"
+    indent-style = "space"
+    docstring-code-format = true

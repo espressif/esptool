@@ -1,0 +1,13 @@
+packetdiag command_packet_format{
+    colwidth = 16
+    node_width = 50
+    node_height = 50
+    default_fontsize = 16
+
+    0: "0x01";
+    1: "Cmd";
+    2-3: "Size";
+    4-7: "Value";
+    8-15: "Data" [color = lightgrey];
+    16-31: "..." [color = lightgrey];
+}
