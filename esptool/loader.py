@@ -1017,9 +1017,9 @@ class ESPLoader(object):
         self.flash_begin(0, 0)
         self.flash_finish(reboot)
 
-    def flash_id(self):
-        """Read SPI flash manufacturer and device id"""
-        if self.cache["flash_id"] is None:
+    def flash_id(self, cache=True):
+        """Read SPI flash manufacturer and device ID"""
+        if not cache or self.cache["flash_id"] is None:
             SPIFLASH_RDID = 0x9F
             self.cache["flash_id"] = self.run_spiflash_command(SPIFLASH_RDID, b"", 24)
         return self.cache["flash_id"]

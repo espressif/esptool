@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 # PYTHON_ARGCOMPLETE_OK
+
 __all__ = [
     "chip_id",
     "detect_chip",
@@ -11,6 +12,8 @@ __all__ = [
     "erase_flash",
     "erase_region",
     "flash_id",
+    "flash_attach",
+    "flash_set_parameters",
     "get_security_info",
     "image_info",
     "load_ram",
@@ -41,7 +44,6 @@ import traceback
 
 from esptool.bin_image import intel_hex_to_bin
 from esptool.cmds import (
-    DETECTED_FLASH_SIZES,
     chip_id,
     detect_chip,
     detect_flash_size,
@@ -49,6 +51,8 @@ from esptool.cmds import (
     elf2image,
     erase_flash,
     erase_region,
+    flash_attach,
+    flash_set_parameters,
     flash_id,
     read_flash_sfdp,
     get_security_info,
@@ -876,163 +880,18 @@ def main(argv=None, esp=None):
                     f"Keeping initial baud rate {initial_baud}"
                 )
 
-        def _define_spi_conn(spi_connection):
-            """Prepare SPI configuration string and value for flash_spi_attach()"""
-            clk, q, d, hd, cs = spi_connection
-            spi_config_txt = f"CLK:{clk}, Q:{q}, D:{d}, HD:{hd}, CS:{cs}"
-            value = (hd << 24) | (cs << 18) | (d << 12) | (q << 6) | clk
-            return spi_config_txt, value
-
-        # Override the common SPI flash parameter stuff if configured to do so
-        if hasattr(args, "spi_connection") and args.spi_connection is not None:
-            spi_config = args.spi_connection
-            if args.spi_connection == "SPI":
-                value = 0
-            elif args.spi_connection == "HSPI":
-                value = 1
-            else:
-                esp.check_spi_connection(args.spi_connection)
-                # Encode the pin numbers as a 32-bit integer with packed 6-bit values,
-                # the same way the ESP ROM takes them
-                spi_config, value = _define_spi_conn(args.spi_connection)
-            log.print(f"Configuring SPI flash mode ({spi_config})...")
-            esp.flash_spi_attach(value)
-        elif args.no_stub:
-            if esp.CHIP_NAME != "ESP32" or esp.secure_download_mode:
-                log.print("Enabling default SPI flash mode...")
-                # ROM loader doesn't enable flash unless we explicitly do it
-                esp.flash_spi_attach(0)
-            else:
-                # ROM doesn't attach in-package flash chips
-                spi_chip_pads = esp.get_chip_spi_pads()
-                spi_config_txt, value = _define_spi_conn(spi_chip_pads)
-                if spi_chip_pads != (0, 0, 0, 0, 0):
-                    log.print(
-                        "Attaching flash from eFuses' SPI pads configuration "
-                        f"({spi_config_txt})..."
-                    )
-                else:
-                    log.print("Enabling default SPI flash mode...")
-                esp.flash_spi_attach(value)
-
-        # XMC chip startup sequence
-        XMC_VENDOR_ID = 0x20
-
-        def is_xmc_chip_strict():
-            id = esp.flash_id()
-            rdid = ((id & 0xFF) << 16) | ((id >> 16) & 0xFF) | (id & 0xFF00)
-
-            vendor_id = (rdid >> 16) & 0xFF
-            mfid = (rdid >> 8) & 0xFF
-            cpid = rdid & 0xFF
-
-            if vendor_id != XMC_VENDOR_ID:
-                return False
-
-            matched = False
-            if mfid == 0x40:
-                if cpid >= 0x13 and cpid <= 0x20:
-                    matched = True
-            elif mfid == 0x41:
-                if cpid >= 0x17 and cpid <= 0x20:
-                    matched = True
-            elif mfid == 0x50:
-                if cpid >= 0x15 and cpid <= 0x16:
-                    matched = True
-            return matched
-
-        def flash_xmc_startup():
-            # If the RDID value is a valid XMC one, may skip the flow
-            fast_check = True
-            if fast_check and is_xmc_chip_strict():
-                return  # Successful XMC flash chip boot-up detected by RDID, skipping.
-
-            sfdp_mfid_addr = 0x10
-            mf_id = esp.read_spiflash_sfdp(sfdp_mfid_addr, 8)
-            if mf_id != XMC_VENDOR_ID:  # Non-XMC chip detected by SFDP Read, skipping.
-                return
-
-            log.warning(
-                "XMC flash chip boot-up failure detected! "
-                "Running XMC25QHxxC startup flow."
-            )
-            esp.run_spiflash_command(0xB9)  # Enter DPD
-            esp.run_spiflash_command(0x79)  # Enter UDPD
-            esp.run_spiflash_command(0xFF)  # Exit UDPD
-            time.sleep(0.002)  # Delay tXUDPD
-            esp.run_spiflash_command(0xAB)  # Release Power-Down
-            time.sleep(0.00002)
-            # Check for success
-            if not is_xmc_chip_strict():
-                log.warning("XMC flash boot-up fix failed.")
-            log.print("XMC flash chip boot-up fix successful!")
-
-        # Check flash chip connection
-        if not esp.secure_download_mode:
-            try:
-                flash_id = esp.flash_id()
-                if flash_id in (0xFFFFFF, 0x000000):
-                    log.warning(
-                        "Failed to communicate with the flash chip, "
-                        "read/write operations will fail. "
-                        "Try checking the chip connections or removing "
-                        "any other hardware connected to IOs."
-                    )
-                    if (
-                        hasattr(args, "spi_connection")
-                        and args.spi_connection is not None
-                    ):
-                        log.print(
-                            "Some GPIO pins might be used by other peripherals, "
-                            "try using another --spi-connection combination."
-                        )
-
-            except FatalError as e:
-                raise FatalError(f"Unable to verify flash chip connection ({e}).")
-
-        # Check if XMC SPI flash chip booted-up successfully, fix if not
-        if not esp.secure_download_mode:
-            try:
-                flash_xmc_startup()
-            except FatalError as e:
-                esp.trace(f"Unable to perform XMC flash chip startup sequence ({e}).")
-
+        flash_attach(esp, args.spi_connection if hasattr(args, "spi_connection") else None)
         if hasattr(args, "flash_size"):
-            log.print("Configuring flash size...")
-            if args.flash_size == "detect":
-                flash_size = detect_flash_size(esp, args)
-            elif args.flash_size == "keep":
-                flash_size = detect_flash_size(esp, args=None)
-                if not esp.IS_STUB:
-                    log.warning(
-                        "In case of failure, please set a specific --flash_size."
-                    )
-            else:
-                flash_size = args.flash_size
+            args.flash_size = flash_set_parameters(esp, args.flash_size)
 
-            if flash_size is not None:  # Secure download mode
-                esp.flash_set_parameters(flash_size_bytes(flash_size))
-                # Check if stub supports chosen flash size
-                if (
-                    esp.IS_STUB
-                    and esp.CHIP_NAME != "ESP32-S3"
-                    and flash_size_bytes(flash_size) > 16 * 1024 * 1024
-                ):
-                    log.note(
-                        "Flasher stub doesn't fully support flash size larger "
-                        "than 16MB, in case of failure use --no-stub."
-                    )
-
+        # Detect flash size if "ALL" is specified
         if getattr(args, "size", "") == "all":
             if esp.secure_download_mode:
                 raise FatalError(
                     "Detecting flash size is not supported in secure download mode. "
                     "Set an exact size value."
                 )
-            # detect flash size
-            flash_id = esp.flash_id()
-            size_id = flash_id >> 16
-            size_str = DETECTED_FLASH_SIZES.get(size_id)
+            size_str = detect_flash_size(esp)
             if size_str is None:
                 raise FatalError(
                     "Detecting flash size failed. Set an exact size value."
@@ -1040,7 +899,8 @@ def main(argv=None, esp=None):
             log.print(f"Detected flash size: {size_str}")
             args.size = flash_size_bytes(size_str)
 
-        if esp.IS_STUB and hasattr(args, "address") and hasattr(args, "size"):
+        # Check if we are writing past 16MB boundary
+        if esp.IS_STUB and args.operation != "dump_mem" and hasattr(args, "address") and hasattr(args, "size"):
             if esp.CHIP_NAME != "ESP32-S3" and args.address + args.size > 0x1000000:
                 log.note(
                     "Flasher stub doesn't fully support flash size larger "

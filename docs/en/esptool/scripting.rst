@@ -44,7 +44,7 @@ The following is an example on how to use esptool as a Python module and leverag
         description = esp.get_chip_description()
         features = esp.get_chip_features()
         print(f"Detected ESP on port {PORT}: {description}")
-        print(f"Features: {", ".join(features)}")
+        print("Features:", ", ".join(features))
 
         esp = esp.run_stub()
         with open(BIN_FILE, 'rb') as binary:
@@ -60,7 +60,7 @@ The following is an example on how to use esptool as a Python module and leverag
                 # Pad the last block
                 block = block + bytes([0xFF]) * (esp.FLASH_WRITE_SIZE - len(block))
                 esp.flash_block(block, i + FLASH_ADDRESS)
-                progress_callback(float(i + len(block)) / total_size * 100)
+                progress_callback(i / total_size * 100)
             esp.flash_finish()
 
             # Reset the chip out of bootloader mode
