@@ -49,6 +49,12 @@ class TemplateLogger(ABC):
         """
         pass
 
+    @abstractmethod
+    def flush():
+        """
+        Flushes the current loging to stdout
+        """
+        pass
 
 class EsptoolLogger(TemplateLogger):
     ansi_red = "\033[1;31m"
@@ -130,6 +136,14 @@ class EsptoolLogger(TemplateLogger):
         Percentage is a float between 0 and 100.
         """
         pass
+
+    @abstractmethod
+    def flush():
+        try:
+            sys.stdout.flush()
+        except AttributeError:
+            # to handle certain contexts where sys.stdout is not available (None)
+            pass
 
     def set_logger(self, new_logger):
         self.__class__ = new_logger.__class__

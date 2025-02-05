@@ -629,7 +629,7 @@ class ESPLoader(object):
                 return None
             except FatalError as e:
                 log.print(".", end="")
-                sys.stdout.flush()
+                log.flush()
                 time.sleep(0.05)
                 last_error = e
 
@@ -723,7 +723,7 @@ class ESPLoader(object):
             )
 
         log.print("Connecting...", end="")
-        sys.stdout.flush()
+        log.flush()
         last_error = None
 
         reset_sequence = self._construct_reset_strategy_sequence(mode)
