@@ -30,7 +30,7 @@ def div_roundup(a, b):
 
 
 def flash_size_bytes(size):
-    """Given a flash size of the type passed in args.flash_size
+    """Given a flash size of the type passed in size
     (ie 512KB or 1MB) then return the size in bytes.
     """
     if size is None:
@@ -40,7 +40,7 @@ def flash_size_bytes(size):
     elif "KB" in size:
         return int(size[: size.index("KB")]) * 1024
     else:
-        raise FatalError("Unknown size %s" % size)
+        raise FatalError(f"Unknown size {size}")
 
 
 def hexify(s, uppercase=True):

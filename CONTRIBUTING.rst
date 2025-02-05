@@ -44,6 +44,8 @@ Please report bugs in ``esptool.py`` if you find them. However, before reporting
 
 If you don’t find anything, please `open a new issue <https://github.com/espressif/esptool/issues/new/choose>`_.
 
+.. _feature-requests:
+
 Sending Feature Requests
 ------------------------
 

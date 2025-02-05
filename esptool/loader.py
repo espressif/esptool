@@ -741,7 +741,7 @@ class ESPLoader(object):
             additional_msg = ""
             if self.CHIP_NAME == "ESP32-C2" and self._port.baudrate < 115200:
                 additional_msg = (
-                    "\nNote: Please set a higher baud rate (--baud)"
+                    "\nNote: Please set a higher baud rate"
                     " if ESP32-C2 doesn't connect"
                     " (at least 115200 Bd is recommended)."
                 )
@@ -823,7 +823,7 @@ class ESPLoader(object):
                     )
                     raise FatalError(
                         f"This chip is {chip_type}, not {self.CHIP_NAME}. "
-                        "Wrong --chip argument?"
+                        "Wrong chip argument?"
                     )
             self._post_connect()
 
@@ -890,11 +890,10 @@ class ESPLoader(object):
             ]:
                 if load_start < stub_end and load_end > stub_start:
                     raise FatalError(
-                        "Software loader is resident at 0x%08x-0x%08x. "
-                        "Can't load binary at overlapping address range 0x%08x-0x%08x. "
-                        "Either change binary loading address, or use the --no-stub "
-                        "option to disable the software loader."
-                        % (stub_start, stub_end, load_start, load_end)
+                        f"Stub flasher is resident at {stub_start:#010x}-{stub_end:#010x}. "
+                        "Can't load binary at overlapping address range "
+                        f"{load_start:#010x}-{load_end:#010x}. Either change binary "
+                        "loading address, or disable the stub flasher."
                     )
 
         return self.check_command(

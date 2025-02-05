@@ -12,6 +12,8 @@ The flasher stub is a small program included with esptool that replaces the orig
 * Prepare binary executable images ready for flashing.
 * Analyze, assemble, and merge binary images.
 
+``esptool.py`` can be used both as a command-line tool and as a Python library. The command-line is the most common way to use the tool, and is the primary focus of this documentation. To use it as a library, see the :ref:`scripting <scripting>` section.
+
 This document describes using ``esptool.py`` with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left.
 
 Quick Start

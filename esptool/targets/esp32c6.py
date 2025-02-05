@@ -8,7 +8,7 @@ import struct
 from .esp32c3 import ESP32C3ROM
 from ..loader import ESPLoader, StubMixin
 from ..logger import log
-from ..util import FatalError, NotImplementedInROMError
+from ..util import FatalError, NotSupportedError
 
 
 class ESP32C6ROM(ESP32C3ROM):
@@ -130,9 +130,7 @@ class ESP32C6ROM(ESP32C3ROM):
         return 40
 
     def override_vddsdio(self, new_voltage):
-        raise NotImplementedInROMError(
-            "VDD_SDIO overrides are not supported for ESP32-C6"
-        )
+        raise NotSupportedError(self, "Overriding VDDSDIO")
 
     def read_mac(self, mac_type="BASE_MAC"):
         """Read MAC from EFUSE region"""

@@ -1,5 +1,7 @@
 {IDF_TARGET_SECURITY_INFO:default="32 bits ``flags``, 1 byte ``flash_crypt_cnt``, 7x1 byte ``key_purposes``, 32-bit word ``chip_id``, 32-bit word ``eco_version``", esp32s2="32 bits ``flags``, 1 byte ``flash_crypt_cnt``, 7x1 byte ``key_purposes``                                                      "}
 
+.. _serial-protocol:
+
 Serial Protocol
 ===============
 

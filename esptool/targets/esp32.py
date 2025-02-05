@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2025 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -17,7 +17,6 @@ class ESP32ROM(ESPLoader):
 
     CHIP_NAME = "ESP32"
     IMAGE_CHIP_ID = 0
-    IS_STUB = False
 
     MAGIC_VALUE = 0x00F01D83
 

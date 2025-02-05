@@ -518,6 +518,7 @@ build_docs:
     - changes:
       - "docs/**/*"
       - "CONTRIBUTING.rst"
+      - "esptool/cmds.py"
   needs: []
   artifacts:
     when: always
@@ -526,6 +527,7 @@ build_docs:
       - docs/_build/*/*/html/*
     expire_in: 4 days
   script:
+    - pip install .  # esptool is needed for the automatic API documentation generation
     - cd docs
     - pip install -r requirements.txt --prefer-binary
     - build-docs -l en -t {esp8266,esp32,esp32s2,esp32c3,esp32s3,esp32c2,esp32c6,esp32h2,esp32p4,esp32c5,esp32c61}
@@ -553,6 +555,7 @@ deploy_docs_preview:
     - changes:
       - "docs/**/*"
       - "CONTRIBUTING.rst"
+      - "esptool/cmds.py"
   variables:
     TYPE: "preview"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
@@ -570,6 +573,7 @@ deploy_docs_production:
       changes:
       - "docs/**/*"
       - "CONTRIBUTING.rst"
+      - "esptool/cmds.py"
   variables:
     TYPE: "production"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"

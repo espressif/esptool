@@ -3,9 +3,17 @@
 Embedding into Custom Scripts
 =============================
 
-``esptool.py``, ``espefuse.py``, and ``espsecure.py`` can easily be integrated into Python applications or called from other Python scripts.
+``esptool.py`` can be easily integrated into Python applications or called from other Python scripts.
 
-While it currently does have a poor Python API, something which `#208 <https://github.com/espressif/esptool/issues/208>`_ will address, it allows for passing CLI arguments to ``esptool.main()``. This workaround makes integration very straightforward as you can pass exactly the same arguments as you would on the CLI:
+Using Esptool as a Python Module
+--------------------------------
+
+The esptool module provides a comprehensive Python API for interacting with ESP chips programmatically. By leveraging the API, developers can automate tasks such as flashing firmware, reading device information, managing flash memory, or preparing and analyzing binary images. The API supports both high-level abstractions and low-level control.
+
+Using the Command-Line Interface
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The most straightforward and basic integration option is to pass arguments to ``esptool.main()``. This workaround allows you to pass exactly the same arguments as you would on the CLI:
 
 .. code-block:: python
 
@@ -15,16 +23,182 @@ While it currently does have a poor Python API, something which `#208 <https://g
     print("Using command ", " ".join(command))
     esptool.main(command)
 
+Public API Reference
+^^^^^^^^^^^^^^^^^^^^
 
-Using Esptool as a Python Module
---------------------------------
+For more control and custom integration, esptool exposes a public API - a set of high-level functions that encapsulate common operations and simplify the interaction with the ESP chip. These functions are designed to be user-friendly and provide an intuitive way to work with the chip. The public API is the recommended way to interact with the chip programmatically.
 
-The following is an example on how to use esptool as a Python module and leverage its Python API to flash the {IDF_TARGET_NAME}:
+Basic Workflow:
+
+1. **Detect and Connect**: Use ``detect_chip()`` to automatically identify the connected ESP chip and establish a connection, or manually create and instantiate a specific ``ESPLoader`` object (e.g. ``ESP32ROM``) and establish a connection in two steps.
+2. **Run Stub Flasher (Optional)**: Upload and execute the :ref:`stub flasher <stub>` which provides enhanced functionality and speed.
+3. **Perform Operations**: Utilize the chip object's methods or public API command functions to interact with the device.
+4. **Reset and Cleanup**: Ensure proper reset and resource cleanup using context managers.
+
+------------
+
+This example demonstrates writing two binary files using high-level commands:
+
+.. code-block:: python
+
+    from esptool.cmds import detect_chip, attach_flash, reset_chip, write_flash
+
+    PORT = "/dev/ttyACM0"
+    BOOTLOADER = "bootloader.bin"
+    FIRMWARE = "firmware.bin"
+
+    with detect_chip(PORT) as esp:
+        esp = esp.run_stub()  # Skip this line to avoid running the stub flasher
+        attach_flash(esp)  # Attach the flash memory chip, required for flash operations
+        with open(BOOTLOADER, "rb") as bl_file, open(FIRMWARE, "rb") as fw_file:
+            write_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Write the binary files
+        reset_chip(esp, "hard_reset")  # Reset the chip
+
+- The ``esp`` object has to be replaced with the stub flasher object returned by ``esp.run_stub()`` when the stub flasher is activated. This step can be skipped if the stub flasher is not needed.
+- Running ``attach_flash(esp)`` is required for any flash-memory-related operations to work.
+- Using the ``esp`` object in a context manager ensures the port gets closed properly after the block is executed.
+
+------------
+
+The following example demonstrates running a series of flash memory operations in one go:
+
+.. code-block:: python
+
+    from esptool.cmds import (
+    erase_flash,
+    attach_flash,
+    flash_id,
+    read_flash,
+    reset_chip,
+    verify_flash,
+    write_flash,
+    )
+    from esptool.targets import ESP32ROM  # Import the target class, e.g. ESP8266ROM, ESP32S3ROM, etc.
+
+    PORT = "/dev/ttyACM0"
+    BOOTLOADER = "bootloader.bin"
+    FIRMWARE = "firmware.bin"
+
+    with ESP32ROM(PORT) as esp:
+        esp.connect()  # Connect to the ESP chip, needed when ESP32ROM is instantiated directly
+        esp = esp.run_stub()  # Run the stub loader (optional)
+        attach_flash(esp)  # Attach the flash memory chip, required for flash operations
+        flash_id(esp)  # Print information about the flash chip
+        erase_flash(esp)  # Erase the flash memory first
+        with open(BOOTLOADER, "rb") as bl_file, open(FIRMWARE, "rb") as fw_file:
+            write_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Write the binary files
+            verify_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Verify the written data
+        read_flash(esp, 0x0, 0x2400, "output.bin")  # Read the flash memory into a file
+        reset_chip(esp, "hard_reset")  # Reset the chip
+
+- This example doesn't use ``detect_chip()``, but instantiates a ``ESP32ROM`` class directly. This is useful when you know the target chip in advance. In this scenario ``esp.connect()`` is required to establish a connection with the device.
+- Multiple operations can be chained together in a single context manager block.
+
+------------
+
+**The following section provides a detailed reference for the public API functions.**
+
+Chip Control Operations
+"""""""""""""""""""""""
+
+.. autofunction:: esptool.cmds.detect_chip
+
+.. autofunction:: esptool.cmds.load_ram
+
+.. autofunction:: esptool.cmds.run
+
+.. autofunction:: esptool.cmds.reset_chip
+
+------------
+
+Chip Information Operations
+"""""""""""""""""""""""""""
+
+.. autofunction:: esptool.cmds.chip_id
+
+.. autofunction:: esptool.cmds.get_security_info
+
+.. autofunction:: esptool.cmds.read_mac
+
+------------
+
+Flash Memory Manipulation Operations
+""""""""""""""""""""""""""""""""""""
+
+.. autofunction:: esptool.cmds.attach_flash
+
+.. autofunction:: esptool.cmds.flash_id
+
+.. autofunction:: esptool.cmds.read_flash
+
+.. autofunction:: esptool.cmds.write_flash
+
+.. autofunction:: esptool.cmds.erase_flash
+
+.. autofunction:: esptool.cmds.erase_region
+
+.. autofunction:: esptool.cmds.verify_flash
+
+.. autofunction:: esptool.cmds.read_flash_status
+
+.. autofunction:: esptool.cmds.write_flash_status
+
+.. autofunction:: esptool.cmds.read_flash_sfdp
+
+------------
+
+Memory Operations
+"""""""""""""""""
+
+.. autofunction:: esptool.cmds.read_mem
+
+.. autofunction:: esptool.cmds.write_mem
+
+.. autofunction:: esptool.cmds.dump_mem
+
+------------
+
+Binary Image Manipulation Operations
+""""""""""""""""""""""""""""""""""""
+
+The following commands can run without the need for a connected chip:
+
+.. autofunction:: esptool.cmds.elf2image
+
+.. autofunction:: esptool.cmds.merge_bin
+
+.. autofunction:: esptool.cmds.image_info
+
+.. autofunction:: esptool.cmds.make_image
+
+------------
+
+Utility Functions
+"""""""""""""""""
+
+.. autofunction:: esptool.cmds.version
+
+------------
+
+For more information, refer to the command implementations in `esptool/cmds.py <https://github.com/espressif/esptool/blob/master/esptool/cmds.py>`_.
+
+
+Low-Level API Reference
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. warning::
+
+    The low-level API provides more control but requires a deeper understanding of the ESP chip, the esptool internals, and the :ref:`serial protocol <serial-protocol>`. It is recommended to use the public API functions for most use cases.
+
+    Also, the low-level internals are not a part of the public API, so they may change in between releases.
+
+    Please submit a :ref:`feature request <feature-requests>` if you are missing something from the officially supported API.
+
+For granular control and more configuration freedom, you can directly access the low-level methods and attributes of the ``ESPLoader`` object and create your own routines. The following is an example of a custom routine to flash the {IDF_TARGET_NAME}:
 
 .. note::
 
-    This example code functionally equivalent to ``esptool.py -p /dev/ttyACM0 write_flash 0x10000 firmware.bin``
-
+    This example code is a very basic implementation of ``esptool.py -p /dev/ttyACM0 write_flash 0x10000 firmware.bin``
 
 .. code-block:: python
 
@@ -66,6 +240,9 @@ The following is an example on how to use esptool as a Python module and leverag
             # Reset the chip out of bootloader mode
             esp.hard_reset()
 
+------------
+
+For more information, refer to the methods of the ``ESPLoader`` class  in `esptool/loader.py <https://github.com/espressif/esptool/blob/master/esptool/loader.py>`_.
 
 .. _logging:
 
@@ -123,5 +300,9 @@ To ensure compatibility with esptool, the custom logger should re-implement (or 
 - ``error``: Logs error messages.
 - ``print_overwrite``: Handles message overwriting (can be a simple ``print()`` if overwriting is not needed).
 - ``set_progress``: Handles percentage updates of long-running operations - ``write_flash``, ``read_flash``, and ``dump_mem`` (useful for GUI visualisation, e.g. as a progress bar).
+
+.. autoclass:: esptool.logger.EsptoolLogger
+   :members: print, note, warning, error, print_overwrite, set_progress
+   :member-order: bysource
 
 These methods are essential for maintaining proper integration and behavior with esptool. Additionally, all calls to the logger should be made using ``log.print()`` (or the respective method, such as ``log.info()`` or ``log.warning()``) instead of the standard ``print()`` function to ensure the output is routed through the custom logger. This ensures consistency and allows the custom logger to handle all output appropriately. You can further customize this logger to fit your application's needs, such as integrating with GUI components or advanced logging frameworks.

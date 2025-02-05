@@ -28,10 +28,12 @@ import struct
 import subprocess
 import sys
 import tempfile
+from io import StringIO
 from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
 from typing import List
 from unittest.mock import MagicMock
+from unittest.mock import patch
 
 # Link command line options --port, --chip, --baud, --with-trace, and --preload-port
 from conftest import (
@@ -49,6 +51,21 @@ import pytest
 try:
     import esptool
     import espefuse
+    from esptool.cmds import (
+        detect_chip,
+        erase_flash,
+        attach_flash,
+        flash_id,
+        image_info,
+        merge_bin,
+        read_flash_sfdp,
+        read_flash,
+        read_mac,
+        reset_chip,
+        verify_flash,
+        version,
+        write_flash,
+    )
 except ImportError:
     need_to_install_package_err()
 
@@ -659,7 +676,7 @@ class TestFlashing(EsptoolTestCase):
         assert "Unexpected chip ID in image." in output
         assert "value was 9. Is this image for a different chip model?" in output
         assert "images/esp32s3_header.bin is not an " in output
-        assert "image. Use --force to flash anyway." in output
+        assert "image. Use the force argument to flash anyway." in output
 
     @pytest.mark.skipif(
         arg_chip == "esp8266", reason="chip_id field exist in ESP32 and later images"
@@ -673,7 +690,7 @@ class TestFlashing(EsptoolTestCase):
         )
         assert "images/esp32s3_header.bin requires chip revision 10" in output
         assert "or higher (this chip is revision" in output
-        assert "Use --force to flash anyway." in output
+        assert "Use the force argument to flash anyway." in output
 
     @pytest.mark.skipif(
         arg_chip != "esp32c3", reason="This check happens only on a valid image"
@@ -687,7 +704,7 @@ class TestFlashing(EsptoolTestCase):
             "images/esp32c3_header_min_rev.bin "
             "requires chip revision in range [v2.55 - max rev not set]" in output
         )
-        assert "Use --force to flash anyway." in output
+        assert "Use the force argument to flash anyway." in output
 
     @pytest.mark.quick_test
     def test_erase_before_write(self):
@@ -1108,9 +1125,7 @@ class TestVerifyCommand(EsptoolTestCase):
 
     def test_verify_failure(self):
         self.run_esptool("write_flash 0x6000 images/sector.bin")
-        output = self.run_esptool_error(
-            "verify_flash --diff=yes 0x6000 images/one_kb.bin"
-        )
+        output = self.run_esptool_error("verify_flash --diff 0x6000 images/one_kb.bin")
         assert "verify FAILED" in output
         assert "first at 0x00006000" in output
 
@@ -1542,7 +1557,7 @@ class TestMakeImage(EsptoolTestCase):
             " -a 0x0 -f images/sector.bin -a 0x1000 -f images/fifty_kb.bin"
         )
         try:
-            assert "Successfully created esp8266 image." in output
+            assert "Successfully created ESP8266 image." in output
             assert os.path.exists("test0x00000.bin")
             self.verify_image(16, 4096, "test0x00000.bin", "images/sector.bin")
             self.verify_image(
@@ -1699,3 +1714,104 @@ class TestConfigFile(EsptoolTestCase):
             assert "Retrying failed connection" in output
             for _ in range(connect_attempts):
                 assert "Connecting........" in output
+
+
+@pytest.mark.skipif(
+    "ESPTOOL_TEST_USB_OTG" in os.environ,
+    reason="May cause port disappearing in USB-OTG mode on CI.",
+)
+class TestESPObjectOperations(EsptoolTestCase):
+    def capture_stdout(test_function):
+        """Decorator to capture stdout."""
+
+        def wrapper(*args, **kwargs):
+            with patch("sys.stdout", new=StringIO()) as fake_out:
+                test_function(*args, **kwargs, fake_out=fake_out)
+
+        return wrapper
+
+    @pytest.mark.skipif(
+        arg_chip in ["esp32s2", "esp32p4"],
+        reason="ESP32-S2 attaches the flash even without explicit attach",
+    )
+    @pytest.mark.quick_test
+    @capture_stdout
+    def test_attach_flash(self, fake_out):
+        with esptool.CHIP_DEFS[arg_chip](port=arg_port) as esp:
+            # Try communicating with the flash chip without attaching it
+            esp.connect()
+            flash_id(esp)
+            read_flash_sfdp(esp, 0, 4)
+            output_pre = fake_out.getvalue()
+            # Clear the output buffer
+            fake_out.truncate(0)
+            fake_out.seek(0)
+            # Attach the flash chip and try again
+            attach_flash(esp)
+            flash_id(esp)
+            read_flash_sfdp(esp, 0, 4)
+            reset_chip(esp, "hard_reset")
+            output_post = fake_out.getvalue()
+        assert "Detected flash size: Unknown" in output_pre
+        assert "Device: ffff" in output_pre or "Device: 0000" in output_pre
+        assert (
+            "SFDP[0..3]: FF FF FF FF" in output_pre
+            or "SFDP[0..3]: 00 00 00 00" in output_pre
+        )
+        assert "Detected flash size: Unknown" not in output_post
+        assert "Device: ffff" not in output_post
+        assert "SFDP[0..3]: 53 46 44 50" in output_post
+
+    @pytest.mark.quick_test
+    @capture_stdout
+    def test_stub_run(self, fake_out):
+        with esptool.CHIP_DEFS[arg_chip](port=arg_port) as esp:
+            esp.connect()
+            esp = esp.run_stub()
+            read_mac(esp)
+            reset_chip(esp, "hard_reset")
+            output = fake_out.getvalue()
+        assert "Stub running..." in output
+        assert "MAC:" in output
+
+    @capture_stdout
+    def test_flash_operations(self, fake_out):
+        with detect_chip(port=arg_port) as esp:  # Test with chip autodetection
+            esp = esp.run_stub()
+            try:
+                attach_flash(esp)
+                with open("images/one_kb.bin", "rb") as input:
+                    write_flash(esp, [(0x0, input), (0x2000, input)])
+                    read_flash(esp, 0x0, 0x2400, "output.bin")
+                    verify_flash(esp, [(0x0, input), (0x2000, input)])
+                with open("output.bin", "rb") as output:
+                    verify_flash(esp, [(0x0, output)])
+                erase_flash(esp)
+                read_flash(esp, 0x0, 0x10, "output.bin")
+            finally:
+                reset_chip(esp, "hard_reset")
+                os.remove("output.bin")
+        output = fake_out.getvalue()
+        assert "Stub running..." in output
+        assert "Hash of data verified." in output
+        assert "Read 9216 bytes" in output
+        assert "verify OK (digest matched)" in output
+        assert "Chip erase completed" in output
+        assert "Hard resetting" in output
+
+    @pytest.mark.quick_test
+    @pytest.mark.host_test
+    @capture_stdout
+    def test_non_esp_operations(self, fake_out):
+        image_info("images/bootloader_esp32.bin")
+        with open("images/one_kb.bin", "rb") as input:
+            try:
+                merge_bin([(0x0, input), (0x2000, input)], "output.bin", arg_chip)
+            finally:
+                os.remove("output.bin")
+        version()
+        output = fake_out.getvalue()
+        assert "Detected image type: ESP32" in output
+        assert "Checksum: 0x83 (valid)" in output
+        assert "Wrote 0x2000 bytes to file output.bin" in output
+        assert esptool.__version__ in output

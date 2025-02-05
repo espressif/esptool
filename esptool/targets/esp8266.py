@@ -11,7 +11,6 @@ class ESP8266ROM(ESPLoader):
     """Access class for ESP8266 ROM bootloader"""
 
     CHIP_NAME = "ESP8266"
-    IS_STUB = False
 
     MAGIC_VALUE = 0xFFF0C101
 
@@ -170,7 +169,7 @@ class ESP8266ROM(ESPLoader):
             return (num_sectors - head_sectors) * sector_size
 
     def get_flash_voltage(self):
-        pass  # not supported on ESP8266
+        raise NotSupportedError(self, "Reading flash voltage")
 
     def override_vddsdio(self, new_voltage):
         raise NotSupportedError(self, "Overriding VDDSDIO")

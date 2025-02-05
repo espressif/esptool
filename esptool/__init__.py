@@ -12,8 +12,7 @@ __all__ = [
     "erase_flash",
     "erase_region",
     "flash_id",
-    "flash_attach",
-    "flash_set_parameters",
+    "attach_flash",
     "get_security_info",
     "image_info",
     "load_ram",
@@ -24,6 +23,7 @@ __all__ = [
     "read_flash_sfdp",
     "read_mac",
     "read_mem",
+    "reset_chip",
     "run",
     "verify_flash",
     "version",
@@ -51,8 +51,7 @@ from esptool.cmds import (
     elf2image,
     erase_flash,
     erase_region,
-    flash_attach,
-    flash_set_parameters,
+    attach_flash,
     flash_id,
     read_flash_sfdp,
     get_security_info,
@@ -64,6 +63,7 @@ from esptool.cmds import (
     read_flash_status,
     read_mac,
     read_mem,
+    reset_chip,
     run,
     verify_flash,
     version,
@@ -108,8 +108,7 @@ def main(argv=None, esp=None):
     external_esp = esp is not None
 
     parser = argparse.ArgumentParser(
-        description="esptool.py v%s - Espressif chips ROM Bootloader Utility"
-        % __version__,
+        description=f"esptool.py v{__version__} - Espressif chips ROM Bootloader Utility",
         prog="esptool",
     )
 
@@ -202,7 +201,7 @@ def main(argv=None, esp=None):
         "--connect-attempts",
         help=(
             "Number of attempts to connect, negative or 0 for infinite. "
-            "Default: %d." % DEFAULT_CONNECT_ATTEMPTS
+            f"Default: {DEFAULT_CONNECT_ATTEMPTS}."
         ),
         type=int,
         default=os.environ.get("ESPTOOL_CONNECT_ATTEMPTS", DEFAULT_CONNECT_ATTEMPTS),
@@ -385,7 +384,7 @@ def main(argv=None, esp=None):
         "-z",
         help="Compress data in transfer (default unless --no-stub is specified)",
         action="store_true",
-        default=None,
+        default=False,
     )
     compress_args.add_argument(
         "--no-compress",
@@ -445,7 +444,7 @@ def main(argv=None, esp=None):
         default="1",
     )
     parser_elf2image.add_argument(
-        # it kept for compatibility
+        # Kept for compatibility
         # Minimum chip revision (deprecated, consider using --min-rev-full)
         "--min-rev",
         "-r",
@@ -524,7 +523,7 @@ def main(argv=None, esp=None):
         "only the RAM segments although the other segments being present in "
         "the output. Implies --dont-append-digest",
         action="store_true",
-        default=None,
+        default=False,
     )
 
     add_spi_flash_subparsers(parser_elf2image, allow_keep=False, auto_detect=False)
@@ -596,7 +595,7 @@ def main(argv=None, esp=None):
         action=AddrFilenamePairAction,
     )
     parser_verify_flash.add_argument(
-        "--diff", "-d", help="Show differences", choices=["no", "yes"], default="no"
+        "--diff", "-d", help="Show differences", action="store_true"
     )
     add_spi_flash_subparsers(parser_verify_flash, allow_keep=True, auto_detect=True)
 
@@ -633,9 +632,15 @@ def main(argv=None, esp=None):
         "read_flash_sfdp",
         help="Read SPI flash SFDP (Serial Flash Discoverable Parameters)",
     )
-    add_spi_flash_subparsers(parser_read_flash_sfdp, allow_keep=True, auto_detect=True)
-    parser_read_flash_sfdp.add_argument("addr", type=arg_auto_int)
-    parser_read_flash_sfdp.add_argument("bytes", type=int)
+    add_spi_connection_arg(parser_read_flash_sfdp)
+    parser_read_flash_sfdp.add_argument(
+        "address", help="Address to read in the SFDP data structure", type=arg_auto_int
+    )
+    parser_read_flash_sfdp.add_argument(
+        "bytes",
+        help="Number of bytes of data to read (in the range of 1-4)",
+        type=arg_auto_int,
+    )
 
     parser_merge_bin = subparsers.add_parser(
         "merge_bin",
@@ -705,7 +710,7 @@ def main(argv=None, esp=None):
 
     # internal sanity check - every operation matches a module function of the same name
     for operation in subparsers.choices.keys():
-        assert operation in globals(), "%s should be a module function" % operation
+        assert operation in globals(), f"{operation} should be a module function"
 
     # Enable argcomplete only on Unix-like systems
     if sys.platform != "win32":
@@ -768,10 +773,11 @@ def main(argv=None, esp=None):
     operation_func = globals()[args.operation]
     operation_args = inspect.getfullargspec(operation_func).args
 
-    # Commands that don't require an ESP object (image generation, etc.)
-    if operation_args[0] != "esp":
-        operation_func(args)
-        return
+    # Handle commands that don't require an ESP object (image generation, etc.)
+    if not operation_args or operation_args[0] != "esp":
+        accepted_args = {k: v for k, v in vars(args).items() if k in operation_args}
+        operation_func(**accepted_args)
+        return  # Exit main function after running the non-ESP operation
 
     # Commands that require an ESP object (flash read/write, etc.)
     # 1) Get the ESP object
@@ -841,7 +847,7 @@ def main(argv=None, esp=None):
         usb_mode = esp.get_usb_mode()
         if usb_mode is not None:
             log.print(f"USB mode: {usb_mode}")
-        read_mac(esp, args)
+        read_mac(esp)
 
     # 3) Upload the stub flasher
     ############################
@@ -850,23 +856,21 @@ def main(argv=None, esp=None):
         if esp.secure_download_mode:
             log.warning(
                 "Stub loader is not supported in Secure Download Mode, "
-                "setting --no-stub"
+                "it has been disabled. Set --no-stub to suppress this warning."
             )
-            args.no_stub = True
         elif not esp.IS_STUB and esp.stub_is_disabled:
             log.warning(
-                "Stub loader has been disabled for compatibility, setting --no-stub"
+                "Stub loader has been disabled for compatibility, "
+                "set --no-stub to suppress this warning."
             )
-            args.no_stub = True
         elif esp.CHIP_NAME in [
                 "ESP32-H21",
                 "ESP32-H4",
             ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
             log.warning(
                 f"Stub loader is not yet supported on {esp.CHIP_NAME}, "
-                "setting --no-stub"
+                "it has been disabled. Set --no-stub to suppress this warning."
             )
-            args.no_stub = True
         else:
             try:
                 esp = esp.run_stub()
@@ -895,12 +899,10 @@ def main(argv=None, esp=None):
                 f"Keeping initial baud rate {initial_baud}"
             )
 
-    # 5) Attach the flash chip and set its parameters
-    #################################################
+    # 5) Attach the onboard/external flash chip
+    ###########################################
 
-    flash_attach(esp, args.spi_connection if hasattr(args, "spi_connection") else None)
-    if hasattr(args, "flash_size"):
-        args.flash_size = flash_set_parameters(esp, args.flash_size)
+    attach_flash(esp, args.spi_connection if hasattr(args, "spi_connection") else None)
 
     # 6) Perform argument processing and validation
     ###############################################
@@ -933,7 +935,10 @@ def main(argv=None, esp=None):
     ###############################
 
     try:
-        operation_func(esp, args)
+        # Handle commands that require an ESP object (flash read/write, etc.)
+        params_needed = operation_args[1:]  # Skip the initial 'esp' parameter
+        accepted_args = {k: v for k, v in vars(args).items() if k in params_needed}
+        operation_func(esp, **accepted_args)
     finally:
         try:  # Clean up AddrFilenamePairAction files
             for address, argfile in args.addr_filename:
@@ -948,27 +953,8 @@ def main(argv=None, esp=None):
     if operation_func == load_ram:
         # the ESP is now running the loaded image, so let it run
         log.print("Exiting immediately.")
-    elif args.after == "hard_reset":
-        esp.hard_reset()
-    elif args.after == "soft_reset":
-        log.print("Soft resetting...")
-        # flash_finish will trigger a soft reset
-        esp.soft_reset(False)
-    elif args.after == "no_reset_stub":
-        log.print("Staying in flasher stub.")
-    elif args.after == "watchdog_reset":
-        if esp.secure_download_mode:
-            log.warning(
-                "Watchdog hard reset is not supported in Secure Download Mode, "
-                "attempting classic hard reset instead."
-            )
-            esp.hard_reset()
-        else:
-            esp.watchdog_reset()
-    else:  # args.after == 'no_reset'
-        log.print("Staying in bootloader.")
-        if esp.IS_STUB:
-            esp.soft_reset(True)  # exit stub back to ROM loader
+    else:
+        reset_chip(esp, args.after)
 
     # 9) Finish and close the port
     ##############################
@@ -1189,7 +1175,7 @@ class AddrFilenamePairAction(argparse.Action):
                 address = int(values[i], 0)
             except ValueError:
                 raise argparse.ArgumentError(
-                    self, 'Address "%s" must be a number' % values[i]
+                    self, f'Address "{values[i]}" must be a number'
                 )
             try:
                 argfile = open(values[i + 1], "rb")
@@ -1217,11 +1203,11 @@ class AddrFilenamePairAction(argparse.Action):
                 & ~(ESPLoader.FLASH_SECTOR_SIZE - 1)
             ) - 1
             if sector_start < end:
-                message = "Detected overlap at address: 0x%x for file: %s" % (
-                    address,
-                    argfile.name,
+                raise argparse.ArgumentError(
+                    self,
+                    f"Detected overlap at address: "
+                    f"{address:#x} for file: {argfile.name}",
                 )
-                raise argparse.ArgumentError(self, message)
             end = sector_end
         setattr(namespace, self.dest, pairs)
 

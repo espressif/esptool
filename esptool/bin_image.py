@@ -223,7 +223,7 @@ class BaseFirmwareImage(object):
     def warn_if_unusual_segment(self, offset, size, is_irom_segment):
         if not is_irom_segment:
             if offset > 0x40200000 or offset < 0x3FFE0000 or size > 65536:
-                log.warning(f"Suspicious segment 0x{offset:x}, length {size}")
+                log.warning(f"Suspicious segment {offset:#x}, length {size}")
 
     def maybe_patch_segment_data(self, f, segment_data):
         """
@@ -525,20 +525,20 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
 
             if first_flash_mode != self.flash_mode:
                 log.warning(
-                    f"Flash mode value in first header (0x{first_flash_mode:02x}) "
-                    f"disagrees with second (0x{self.flash_mode:02x}). "
+                    f"Flash mode value in first header ({first_flash_mode:#04x}) "
+                    f"disagrees with second ({self.flash_mode:#04x}). "
                     "Using second value."
                 )
             if first_flash_size_freq != self.flash_size_freq:
                 log.warning(
                     "Flash size/freq value in first header "
-                    f"(0x{first_flash_size_freq:02x}) disagrees with second "
-                    f"(0x{self.flash_size_freq:02x}). Using second value."
+                    f"({first_flash_size_freq:#04x}) disagrees with second "
+                    f"({self.flash_size_freq:#04x}). Using second value."
                 )
             if first_entrypoint != self.entrypoint:
                 log.warning(
-                    f"Entrypoint address in first header (0x{first_entrypoint:08x}) "
-                    f"disagrees with second header (0x{self.entrypoint:08x}). "
+                    f"Entrypoint address in first header ({first_entrypoint:#010x}) "
+                    f"disagrees with second header ({self.entrypoint:#010x}). "
                     "Using second value."
                 )
 
@@ -1277,12 +1277,12 @@ class ELFFile(object):
 
         # search for the string table section
         if (shstrndx * self.LEN_SEC_HEADER) not in section_header_offsets:
-            raise FatalError("ELF file has no STRTAB section at shstrndx %d" % shstrndx)
+            raise FatalError(f"ELF file has no STRTAB section at shstrndx {shstrndx}")
         _, sec_type, _, sec_size, sec_offs = read_section_header(
             shstrndx * self.LEN_SEC_HEADER
         )
         if sec_type != ELFFile.SEC_TYPE_STRTAB:
-            log.warning(f"ELF file has incorrect STRTAB section type 0x{sec_type:02x}")
+            log.warning(f"ELF file has incorrect STRTAB section type {sec_type:#04x}")
         f.seek(sec_offs)
         string_table = f.read(sec_size)
 

@@ -126,7 +126,7 @@ class TestLogger:
     def test_set_logger(self, logger):
         # Original logger
         with patch("sys.stdout", new=StringIO()) as fake_out:
-            version(None)  # This will log.print the estool version
+            version()  # This will log.print the estool version
             output = fake_out.getvalue()
             assert output == f"{__version__}\n"
 
@@ -134,6 +134,6 @@ class TestLogger:
         with patch("sys.stdout", new=StringIO()) as fake_out:
             logger.set_logger(CustomLogger())
             assert isinstance(logger, CustomLogger)
-            version(None)  # This will use print from CustomLogger
+            version()  # This will use print from CustomLogger
             output = fake_out.getvalue()
             assert output == f"Custom logger: {__version__}\n"

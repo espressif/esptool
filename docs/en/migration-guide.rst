@@ -79,11 +79,11 @@ Beta Target Support Removal
 
 Support for the following beta targets has been **removed in v5**:
 
-- ESP32-C5(beta3)
-- ESP32-C6(beta)
-- ESP32-H2(beta1)
-- ESP32-H2(beta2)
-- ESP32-S3(beta2)
+- ``ESP32-C5(beta3)``
+- ``ESP32-C6(beta)``
+- ``ESP32-H2(beta1)``
+- ``ESP32-H2(beta2)``
+- ``ESP32-S3(beta2)``
 
 **Migration Steps:**
 
@@ -91,3 +91,30 @@ Support for the following beta targets has been **removed in v5**:
 2. Remove any references to these beta targets from CI/CD pipelines or build scripts.
 
 Use esptool ``v4`` for legacy workflows targeting these beta chips.
+
+``verify_flash`` ``--diff`` Argument
+*************************************
+
+The format of the ``--diff`` option of the :ref:`verify_flash <verify-flash>` command has **changed in v5**. Previously, ``--diff=yes/no`` had to be specified to enable or disable the diff output. In the new version, the ``--diff`` option is a simple boolean switch without the need of a ``yes`` or ``no`` value.
+
+**Migration Steps:**
+
+1. Rewrite the ``--diff=yes`` argument to a simple ``--diff`` in any existing ``verify_flash`` commands in scripts/CI pipelines. Delete ``--diff=no`` completely if detailed diff output is not required.
+
+Using esptool as a Python Module
+********************************
+
+All command functions (e.g., ``verify_flash``, ``write_flash``) have been refactored to remove their dependency on the ``args`` object from the argparse module. Instead, all arguments are now passed explicitly as individual parameters. This change, combined with enhancements to the public API, provides a cleaner, more modular interface for programmatic use of esptool in custom scripts and applications (see :ref:`scripting <scripting>`).
+
+**Key Changes:**
+
+- Refactored Function Signatures: Previously, command functions relied on an ``args`` object (e.g., ``args.addr_filename``, ``args.diff``). Now, they take individual parameters with explicit types and default values, improving clarity and enabling a robust API.
+- Public API Expansion: The public API (exposed via ``esptool.cmds``) has been formalized with high-level functions like ``detect_chip()``, ``attach_flash()``, ``write_flash()``, and ``reset_chip()``, designed for ease of use in Python scripts.
+
+**Migration Steps:**
+
+1. Update Function Calls: If you are calling esptool functions programmatically, replace ``args`` object usage with individual parameter passing. Refer to the function signatures in ``esptool.cmds`` for the new parameter names, types, and defaults.
+2. Leverage the Public API: Use the new high-level functions in ``esptool.cmds`` for common operations like chip detection, flash attachment, flashing, resetting, or image generation.
+3. Test your updated scripts to ensure compatibility with the new API.
+
+For detailed examples and API reference, see the :ref:`scripting <scripting>` section.

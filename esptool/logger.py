@@ -10,42 +10,42 @@ class TemplateLogger(ABC):
     @abstractmethod
     def print(self, *args, **kwargs):
         """
-        Logs a plain message.
+        Log a plain message.
         """
         pass
 
     @abstractmethod
     def note(self, message: str):
         """
-        Logs a Note: message.
+        Log a Note: message.
         """
         pass
 
     @abstractmethod
     def warning(self, message: str):
         """
-        Logs a Warning: message.
+        Log a Warning: message.
         """
         pass
 
     @abstractmethod
     def error(self, message: str):
         """
-        Logs an error message.
+        Log an error message.
         """
         pass
 
     @abstractmethod
     def print_overwrite(self, message: str, last_line: bool = False):
         """
-        Prints a message, overwriting the currently printed line.
+        Print a message, overwriting the currently printed line.
         """
         pass
 
     @abstractmethod
     def set_progress(self, percentage: float):
         """
-        Sets the progress of long-running operations to a specific percentage.
+        Set the progress of long-running operations to a specific percentage.
         """
         pass
 
@@ -72,13 +72,13 @@ class EsptoolLogger(TemplateLogger):
 
     def print(self, *args, **kwargs):
         """
-        Logs a plain message.
+        Log a plain message.
         """
         print(*args, **kwargs)
 
     def note(self, message: str):
         """
-        Logs a Note: message in blue and white.
+        Log a Note: message in blue and white.
         """
 
         formatted_message = f"{self.ansi_blue}Note:{self.ansi_normal} {message}"
@@ -86,7 +86,7 @@ class EsptoolLogger(TemplateLogger):
 
     def warning(self, message: str):
         """
-        Logs a Warning: message in yellow and white.
+        Log a Warning: message in yellow and white.
         """
 
         formatted_message = f"{self.ansi_yellow}Warning:{self.ansi_normal} {message}"
@@ -94,7 +94,7 @@ class EsptoolLogger(TemplateLogger):
 
     def error(self, message: str):
         """
-        Logs an error message in red to stderr.
+        Log an error message in red to stderr.
         """
 
         formatted_message = f"{self.ansi_red}{message}{self.ansi_normal}"
@@ -102,7 +102,7 @@ class EsptoolLogger(TemplateLogger):
 
     def print_overwrite(self, message: str, last_line: bool = False):
         """
-        Prints a message, overwriting the currently printed line.
+        Print a message, overwriting the currently printed line.
 
         If last_line is False, don't append a newline at the end
         (expecting another subsequent call will overwrite this one).
@@ -124,7 +124,7 @@ class EsptoolLogger(TemplateLogger):
 
     def set_progress(self, percentage: float):
         """
-        Sets the progress of long-running operations to a specific percentage.
+        Set the progress of long-running operations to a specific percentage.
         Overwrite this method in a custom logger to implement e.g. a progress bar.
 
         Percentage is a float between 0 and 100.
