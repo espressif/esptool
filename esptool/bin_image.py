@@ -606,7 +606,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     """ESP32 firmware image is very similar to V1 ESP8266 image,
     except with an additional 16 byte reserved header at top of image,
     and because of new flash mapping capabilities the flash-mapped regions
-    can be placed in the normal image (just @ 64kB padded offsets).
+    can be placed in the normal image (just @ MMU page size padded offsets).
     """
 
     ROM_LOADER = ESP32ROM
@@ -730,10 +730,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 for segment in flash_segments[1:]:
                     if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
                         raise FatalError(
-                            "Segment loaded at 0x%08x lands in same 64KB flash mapping "
-                            "as segment loaded at 0x%08x. Can't generate binary. "
+                            f"Segment loaded at {segment.addr:#010x} lands in same {self.IROM_ALIGN // 1024} KB flash mapping "
+                            f"as segment loaded at {last_addr:#010x}. Can't generate binary. "
                             "Suggest changing linker script or ELF to merge sections."
-                            % (segment.addr, last_addr)
                         )
                     last_addr = segment.addr
 
@@ -795,7 +794,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     self.save_flash_segment(f, segment)
                     total_segments += 1
             else:  # not self.ram_only_header
-                # try to fit each flash segment on a 64kB aligned boundary
+                # try to fit each flash segment on a MMU page size aligned boundary
                 # by padding with parts of the non-flash segments...
                 while len(flash_segments) > 0:
                     segment = flash_segments[0]
@@ -826,7 +825,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     total_segments += 1
 
             if self.secure_pad:
-                # pad the image so that after signing it will end on a a 64KB boundary.
+                # pad the image so that after signing it will end on a a MMU page size boundary.
                 # This ensures all mapped flash content will be verified.
                 if not self.append_digest:
                     raise FatalError(
@@ -845,7 +844,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 elif self.secure_pad == "2":  # Secure Boot V2
                     # after checksum: SHA-256 digest +
                     # signature sector,
-                    # but we place signature sector after the 64KB boundary
+                    # but we place signature sector after the MMU page size boundary
                     space_after_checksum = 32
                 pad_len = (
                     self.IROM_ALIGN - align_past - checksum_space - space_after_checksum
@@ -986,14 +985,13 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
                 for segment in flash_segments[1:]:
                     if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
                         raise FatalError(
-                            "Segment loaded at 0x%08x lands in same 64KB flash mapping "
-                            "as segment loaded at 0x%08x. Can't generate binary. "
+                            f"Segment loaded at {segment.addr:#010x} lands in same {self.IROM_ALIGN // 1024} KB flash mapping "
+                            f"as segment loaded at {last_addr:#010x}. Can't generate binary. "
                             "Suggest changing linker script or ELF to merge sections."
-                            % (segment.addr, last_addr)
                         )
                     last_addr = segment.addr
 
-            # try to fit each flash segment on a 64kB aligned boundary
+            # try to fit each flash segment on a MMU page size aligned boundary
             # by padding with parts of the non-flash segments...
             while len(flash_segments) > 0:
                 segment = flash_segments[0]
