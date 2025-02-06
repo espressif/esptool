@@ -11,7 +11,7 @@ import os
 import re
 import struct
 import tempfile
-from typing import IO, Optional
+from typing import IO, Optional, Tuple
 
 from intelhex import HexRecordError, IntelHex
 
@@ -180,6 +180,7 @@ class ELFSection(ImageSegment):
 class BaseFirmwareImage(object):
     SEG_HEADER_LEN = 8
     SHA256_DIGEST_LEN = 32
+    MMU_PAGE_SIZE_CONF: Tuple[int, ...] = ()
 
     """ Base class with common firmware image functions """
 
@@ -620,6 +621,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     EXTENDED_HEADER_STRUCT_FMT = "<BBBBHBHH" + ("B" * 4) + "B"
 
     IROM_ALIGN = 65536
+
+    MMU_PAGE_SIZE_CONF: Tuple[int, ...] = (IROM_ALIGN,)
 
     def __init__(self, load_file=None, append_digest=True, ram_only_header=False):
         super(ESP32FirmwareImage, self).__init__()
@@ -1128,12 +1131,13 @@ class ESP32C2FirmwareImage(ESP32FirmwareImage):
     """ESP32C2 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 
     ROM_LOADER = ESP32C2ROM
+    MMU_PAGE_SIZE_CONF = (16384, 32768, 65536)
 
     def set_mmu_page_size(self, size):
-        if size not in [16384, 32768, 65536]:
+        if size not in self.MMU_PAGE_SIZE_CONF:
+            valid_sizes = ", ".join(f"{x // 1024}KB" for x in self.MMU_PAGE_SIZE_CONF)
             raise FatalError(
-                "{} bytes is not a valid ESP32-C2 page size, "
-                "select from 64KB, 32KB, 16KB.".format(size)
+                f"{size} bytes is not a valid {self.ROM_LOADER.CHIP_NAME} page size, select from {valid_sizes}."
             )
         self.IROM_ALIGN = size
 
@@ -1145,12 +1149,13 @@ class ESP32C6FirmwareImage(ESP32FirmwareImage):
     """ESP32C6 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 
     ROM_LOADER = ESP32C6ROM
+    MMU_PAGE_SIZE_CONF = (8192, 16384, 32768, 65536)
 
     def set_mmu_page_size(self, size):
-        if size not in [8192, 16384, 32768, 65536]:
+        if size not in self.MMU_PAGE_SIZE_CONF:
+            valid_sizes = ", ".join(f"{x // 1024}KB" for x in self.MMU_PAGE_SIZE_CONF)
             raise FatalError(
-                "{} bytes is not a valid ESP32-C6 page size, "
-                "select from 64KB, 32KB, 16KB, 8KB.".format(size)
+                f"{size} bytes is not a valid {self.ROM_LOADER.CHIP_NAME} page size, select from {valid_sizes}."
             )
         self.IROM_ALIGN = size
 
@@ -1167,8 +1172,8 @@ class ESP32C61FirmwareImage(ESP32C6FirmwareImage):
 ESP32C61ROM.BOOTLOADER_IMAGE = ESP32C61FirmwareImage
 
 
-class ESP32C5FirmwareImage(ESP32C6FirmwareImage):
-    """ESP32C5 Firmware Image almost exactly the same as ESP32C6FirmwareImage"""
+class ESP32C5FirmwareImage(ESP32FirmwareImage):
+    """ESP32C5 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 
     ROM_LOADER = ESP32C5ROM
 

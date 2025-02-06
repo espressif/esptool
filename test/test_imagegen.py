@@ -5,6 +5,7 @@ import re
 import struct
 import subprocess
 import sys
+import math
 
 from conftest import need_to_install_package_err
 
@@ -138,7 +139,9 @@ class BaseTestCase:
             "warning" not in output.lower()
         ), "Should be no warnings in image_info output"
 
-    def run_elf2image(self, chip, elf_path, version=None, extra_args=[]):
+    def run_elf2image(
+        self, chip, elf_path, version=None, extra_args=[], allow_warnings=False
+    ):
         """Run elf2image on elf_path"""
         cmd = [sys.executable, "-m", "esptool", "--chip", chip, "elf2image"]
         if version is not None:
@@ -149,9 +152,10 @@ class BaseTestCase:
             output = subprocess.check_output(cmd)
             output = output.decode("utf-8")
             print(output)
-            assert (
-                "warning" not in output.lower()
-            ), "elf2image should not output warnings"
+            if not allow_warnings:
+                assert (
+                    "warning" not in output.lower()
+                ), "elf2image should not output warnings"
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise
@@ -390,15 +394,16 @@ class TestESP32FlashHeader(BaseTestCase):
 
 
 class TestELFSHA256(BaseTestCase):
-    ELF = "esp32-app-cust-ver-info.elf"
+    ELF = "esp32c6-appdesc.elf"
     SHA_OFFS = 0xB0  # absolute offset of the SHA in the .bin file
-    BIN = "esp32-app-cust-ver-info.bin"
+    BIN = "esp32c6-appdesc.bin"
 
     """
-    esp32-app-cust-ver-info.elf was built with the following application version info:
+    esp32c6-appdesc.elf was built with the following application version info:
 
-    const __attribute__((section(".rodata_desc"))) esp_app_desc_t esp_app_desc = {
-        .magic_word = 0xffffffff,
+    __attribute__((section(".flash.appdesc")))
+    esp_app_desc_t my_app_desc = {
+        .magic_word = 0xABCD5432,
         .secure_version = 0xffffffff,
         .reserv1 = {0xffffffff, 0xffffffff},
         .version = "_______________________________",
@@ -406,21 +411,28 @@ class TestELFSHA256(BaseTestCase):
         .time = "xxxxxxxxxxxxxxx",
         .date = "yyyyyyyyyyyyyyy",
         .idf_ver = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        .app_elf_sha256 =
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        .reserv2 = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-                    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-                    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-                    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
+        .app_elf_sha256 = {
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        },
+        .min_efuse_blk_rev_full = 0xffff,
+        .max_efuse_blk_rev_full = 0xffff,
+        .mmu_page_size = 0,
+        .reserv3 = {0xff, 0xff, 0xff},
+        .reserv2 = {
+            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+            0xffffffff, 0xffffffff, 0xffffffff
+        },
     };
 
     This leaves zeroes only for the fields of SHA-256 and the test will fail
     if the placement of zeroes are tested at the wrong place.
 
-    00000000: e907 0020 780f 0840 ee00 0000 0000 0000  ... x..@........
-    00000010: 0000 0000 0000 0001 2000 403f 605a 0000  ........ .@?`Z..
-    00000020: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    00000000: e901 0000 2000 0042 ee00 0000 0d00 0000  .... ..B........
+    00000010: 00ff ff00 0000 0001 2000 0042 0001 0000  ........ ..B....
+    00000020: 3254 cdab ffff ffff ffff ffff ffff ffff  2T..............
     00000030: 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f  ________________
     00000040: 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f5f 5f00  _______________.
     00000050: 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d 2d2d  ----------------
@@ -431,37 +443,46 @@ class TestELFSHA256(BaseTestCase):
     000000a0: 7a7a 7a7a 7a7a 7a7a 7a7a 7a7a 7a7a 7a00  zzzzzzzzzzzzzzz.
     000000b0: 0000 0000 0000 0000 0000 0000 0000 0000  ................    SHA-256 here
     000000c0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
-    000000d0: ffff ffff ffff ffff ffff ffff ffff ffff  ................
+    000000d0: ffff ffff 00ff ffff ffff ffff ffff ffff  ................
     000000e0: ffff ffff ffff ffff ffff ffff ffff ffff  ................
     000000f0: ffff ffff ffff ffff ffff ffff ffff ffff  ................
     00000100: ffff ffff ffff ffff ffff ffff ffff ffff  ................
     00000110: ffff ffff ffff ffff ffff ffff ffff ffff  ................
-    00000120: 6370 755f 7374 6172 7400 0000 1b5b 303b  cpu_start....[0;
 
     """
 
-    def test_binary_patched(self):
+    def verify_sha256(self, elf_path, bin_path):
+        image = esptool.bin_image.LoadFirmwareImage("esp32c6", bin_path)
+        rodata_segment = image.segments[0]
+        bin_sha256 = rodata_segment.data[
+            self.SHA_OFFS - 0x20 : self.SHA_OFFS - 0x20 + 32
+        ]  # subtract 0x20 byte header here
+
+        with open(elf_path, "rb") as f:
+            elf_computed_sha256 = hashlib.sha256(f.read()).digest()
+
+        with open(bin_path, "rb") as f:
+            f.seek(self.SHA_OFFS)
+            bin_sha256_raw = f.read(len(elf_computed_sha256))
+
+        assert elf_computed_sha256 == bin_sha256
+        assert elf_computed_sha256 == bin_sha256_raw
+
+    def test_binary_patched_parameter(self):
         try:
             self.run_elf2image(
-                "esp32",
+                "esp32c6",
                 self.ELF,
                 extra_args=["--elf-sha256-offset", f"{self.SHA_OFFS:#x}"],
             )
-            image = esptool.bin_image.LoadFirmwareImage("esp32", self.BIN)
-            rodata_segment = image.segments[0]
-            bin_sha256 = rodata_segment.data[
-                self.SHA_OFFS - 0x20 : self.SHA_OFFS - 0x20 + 32
-            ]  # subtract 0x20 byte header here
+            self.verify_sha256(self.ELF, self.BIN)
+        finally:
+            try_delete(self.BIN)
 
-            with open(self.ELF, "rb") as f:
-                elf_computed_sha256 = hashlib.sha256(f.read()).digest()
-
-            with open(self.BIN, "rb") as f:
-                f.seek(self.SHA_OFFS)
-                bin_sha256_raw = f.read(len(elf_computed_sha256))
-
-            assert elf_computed_sha256 == bin_sha256
-            assert elf_computed_sha256 == bin_sha256_raw
+    def test_binary_patched(self):
+        try:
+            self.run_elf2image("esp32c6", self.ELF)
+            self.verify_sha256(self.ELF, self.BIN)
         finally:
             try_delete(self.BIN)
 
@@ -516,3 +537,96 @@ class TestHashAppend(BaseTestCase):
 
         assert bin_without_hash[self.HASH_APPEND_OFFSET] == 0
         assert bytes(expected_bin_without_hash) == bin_without_hash
+
+
+class TestMMUPageSize(BaseTestCase):
+    def test_appdesc_aligned(self, capsys):
+        ELF = "esp32c6-appdesc.elf"
+        BIN = "esp32c6-appdesc.bin"
+        try:
+            self.run_elf2image("esp32c6", ELF)
+            output = capsys.readouterr().out
+            print(output)
+            assert "MMU page size not specified, set to 64 KB" in output
+        finally:
+            try_delete(BIN)
+
+    @staticmethod
+    def _modify_section_address(elf_path, section_name, address_offset):
+        with open(elf_path, "rb+") as f:
+            elf = ELFFile(f)
+            section = elf.get_section_by_name(section_name)
+
+            if not section:
+                raise ValueError(f"Section {section_name} not found")
+
+            # This finds the index of the specified section in the ELF file,
+            # compute the section header’s position in the file (using the section index,
+            # the section header table’s offset and section header entry size) and then
+            # modify the section’s address in memory by the specified offset.
+            index = elf.get_section_index(section_name)
+            sh_entry_offset = elf.header["e_shoff"] + index * elf.header["e_shentsize"]
+            section.header.sh_addr += address_offset
+
+            # Write modified header to file
+            f.seek(sh_entry_offset)
+            f.write(elf.structs.Elf_Shdr.build(section.header))
+
+    def test_appdesc_not_aligned(self, capsys):
+        ELF = "esp32c6-appdesc.elf"
+        BIN = "esp32c6-appdesc.bin"
+        ADDRESS_OFFSET = 4  # 4 bytes is minimum allowed
+
+        self._modify_section_address(ELF, ".flash.appdesc", ADDRESS_OFFSET)
+        try:
+            self.run_elf2image("esp32c6", ELF, allow_warnings=True)
+            output = capsys.readouterr().out
+            print(output)
+            assert (
+                "App description segment is not aligned to MMU page size, probably linker script issue or wrong MMU page size. Use --flash-mmu-page-size to set it manually."
+                in output
+            )
+        finally:
+            # Restore original address to be able to run other tests
+            self._modify_section_address(ELF, ".flash.appdesc", -ADDRESS_OFFSET)
+            try_delete(BIN)
+
+    @staticmethod
+    def _change_appdesc_mmu_page_size(elf_path, mmu_page_size):
+        """
+        Change the MMU page size in the appdesc section of the ELF file.
+        The following values can be chosen: 0 (empty), 8192, 16384, 32768, 65536.
+        The numbers are not valid for all chips, so refer to the documentation of the chip being used.
+        """
+        with open(elf_path, "rb+") as f:
+            elf = ELFFile(f)
+            section = elf.get_section_by_name(".flash.appdesc")
+
+            if not section:
+                raise ValueError("Section .flash.appdesc not found")
+
+            # The mmu_page_size is a power of 2, so we need to convert it to the corresponding
+            # value that should be written in the appdesc section. It can also be empty (0).
+            if mmu_page_size == 0:
+                mmu_page_size_appdesc = 0
+            else:
+                mmu_page_size_appdesc = int(math.log2(mmu_page_size))
+
+            # Go to the mmu_page_size in the appdesc section (which is at offset 0xB4) and change it
+            f.seek(section.header.sh_offset + 0xB4)
+            f.write(mmu_page_size_appdesc.to_bytes(4, byteorder="little"))
+
+    def test_appdesc_data(self, capsys):
+        ELF = "esp32c6-appdesc.elf"
+        BIN = "esp32c6-appdesc.bin"
+        MMU_PAGE_SIZE = 65536
+
+        self._change_appdesc_mmu_page_size(ELF, MMU_PAGE_SIZE)
+        try:
+            self.run_elf2image("esp32c6", ELF)
+            output = capsys.readouterr().out
+            assert "MMU page size" not in output
+            print(output)
+        finally:
+            self._change_appdesc_mmu_page_size(ELF, 0)
+            try_delete(BIN)
