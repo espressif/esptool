@@ -180,6 +180,7 @@ class ELFSection(ImageSegment):
 class BaseFirmwareImage(object):
     SEG_HEADER_LEN = 8
     SHA256_DIGEST_LEN = 32
+    IROM_ALIGN = 0
     MMU_PAGE_SIZE_CONF: Tuple[int, ...] = ()
 
     """ Base class with common firmware image functions """
@@ -414,14 +415,23 @@ class BaseFirmwareImage(object):
         self.segments = segments
 
     def set_mmu_page_size(self, size):
-        """
-        If supported, this should be overridden by the chip-specific class.
-        Gets called in elf2image.
-        """
-        print(
-            "WARNING: Changing MMU page size is not supported on {}! "
-            "Defaulting to 64KB.".format(self.ROM_LOADER.CHIP_NAME)
-        )
+        """Set the MMU page size for the image if supported by the chip."""
+        if not self.MMU_PAGE_SIZE_CONF and size != self.IROM_ALIGN:
+            # For chips where MMU page size cannot be set or is fixed, just log a warning and use default if there is one.
+            print(
+                f"Warning: Changing MMU page size is not supported on {self.ROM_LOADER.CHIP_NAME}! "
+                f"Defaulting to {self.IROM_ALIGN // 1024}KB."
+                if self.IROM_ALIGN != 0
+                else ""
+            )
+        elif self.MMU_PAGE_SIZE_CONF and size not in self.MMU_PAGE_SIZE_CONF:
+            # For chips with configurable MMU page sizes, error is raised when the size is not valid.
+            valid_sizes = ", ".join(f"{x // 1024}KB" for x in self.MMU_PAGE_SIZE_CONF)
+            raise FatalError(
+                f"{size} bytes is not a valid {self.ROM_LOADER.CHIP_NAME} page size, select from {valid_sizes}."
+            )
+        else:
+            self.IROM_ALIGN = size
 
 
 class ESP8266ROMFirmwareImage(BaseFirmwareImage):
@@ -621,8 +631,6 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     EXTENDED_HEADER_STRUCT_FMT = "<BBBBHBHH" + ("B" * 4) + "B"
 
     IROM_ALIGN = 65536
-
-    MMU_PAGE_SIZE_CONF: Tuple[int, ...] = (IROM_ALIGN,)
 
     def __init__(self, load_file=None, append_digest=True, ram_only_header=False):
         super(ESP32FirmwareImage, self).__init__()
@@ -1133,14 +1141,6 @@ class ESP32C2FirmwareImage(ESP32FirmwareImage):
     ROM_LOADER = ESP32C2ROM
     MMU_PAGE_SIZE_CONF = (16384, 32768, 65536)
 
-    def set_mmu_page_size(self, size):
-        if size not in self.MMU_PAGE_SIZE_CONF:
-            valid_sizes = ", ".join(f"{x // 1024}KB" for x in self.MMU_PAGE_SIZE_CONF)
-            raise FatalError(
-                f"{size} bytes is not a valid {self.ROM_LOADER.CHIP_NAME} page size, select from {valid_sizes}."
-            )
-        self.IROM_ALIGN = size
-
 
 ESP32C2ROM.BOOTLOADER_IMAGE = ESP32C2FirmwareImage
 
@@ -1150,14 +1150,6 @@ class ESP32C6FirmwareImage(ESP32FirmwareImage):
 
     ROM_LOADER = ESP32C6ROM
     MMU_PAGE_SIZE_CONF = (8192, 16384, 32768, 65536)
-
-    def set_mmu_page_size(self, size):
-        if size not in self.MMU_PAGE_SIZE_CONF:
-            valid_sizes = ", ".join(f"{x // 1024}KB" for x in self.MMU_PAGE_SIZE_CONF)
-            raise FatalError(
-                f"{size} bytes is not a valid {self.ROM_LOADER.CHIP_NAME} page size, select from {valid_sizes}."
-            )
-        self.IROM_ALIGN = size
 
 
 ESP32C6ROM.BOOTLOADER_IMAGE = ESP32C6FirmwareImage
