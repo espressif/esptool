@@ -583,7 +583,7 @@ class TestMMUPageSize(BaseTestCase):
             output = capsys.readouterr().out
             print(output)
             assert (
-                "App description segment is not aligned to MMU page size, probably linker script issue or wrong MMU page size. Use --flash-mmu-page-size to set it manually."
+                "App description segment is not aligned to MMU page size, probably linker script issue or wrong MMU page size. Try to set MMU page size parameter manually."
                 in output
             )
         finally:
