@@ -7,7 +7,6 @@ import hashlib
 import io
 import os
 import struct
-import sys
 import time
 import zlib
 import itertools
@@ -139,8 +138,7 @@ def detect_chip(
                 detect_port.connect(
                     connect_mode, connect_attempts, detecting=True, warnings=False
                 )
-            log.print("Detecting chip type...", end="")
-            sys.stdout.flush()
+            log.print("Detecting chip type...", end="", flush=True)
             chip_magic_value = detect_port.read_reg(
                 ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
             )
@@ -182,8 +180,7 @@ def load_ram(esp, args):
     log.print("RAM boot...")
     for seg in image.segments:
         size = len(seg.data)
-        log.print(f"Downloading {size} bytes at {seg.addr:08x}...", end=" ")
-        sys.stdout.flush()
+        log.print(f"Downloading {size} bytes at {seg.addr:08x}...", end=" ", flush=True)
         esp.mem_begin(
             size, div_roundup(size, esp.ESP_RAM_BLOCK), esp.ESP_RAM_BLOCK, seg.addr
         )
@@ -218,7 +215,6 @@ def dump_mem(esp, args):
                 percent = f.tell() * 100 // args.size
                 log.set_progress(percent)
                 log.print_overwrite(f"{f.tell()} bytes read... ({percent} %)")
-            sys.stdout.flush()
         log.print_overwrite(f"Read {f.tell()} bytes", last_line=True)
     log.print("Done!")
 
@@ -640,10 +636,8 @@ def write_flash(esp, args):
                     percent = 100 * (seq + 1) // blocks
                     log.set_progress(percent)
                     log.print_overwrite(
-                        "Writing at 0x%08x... (%d %%)"
-                        % (address + bytes_written, percent)
+                        f"Writing at {address + bytes_written:#010x}... ({percent} %)"
                     )
-                    sys.stdout.flush()
                     block = image[0 : esp.FLASH_WRITE_SIZE]
                     if compress:
                         # feeding each compressed block into the decompressor lets us
@@ -696,8 +690,7 @@ def write_flash(esp, args):
                         image = original_image
                         break
                     except SerialException:
-                        log.print(".", end="")
-                        sys.stdout.flush()
+                        log.print(".", end="", flush=True)
                 else:
                     raise  # Reconnect limit reached
 

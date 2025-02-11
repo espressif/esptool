@@ -628,9 +628,8 @@ class EspEfusesBase(object):
             % (action, "" if action.endswith("\n") else ". ")
         )
         if not do_not_confirm:
-            print("Type 'BURN' (all capitals) to continue.")
-            # required for Pythons which disable line buffering, ie mingw in mintty
-            sys.stdout.flush()
+            print("Type 'BURN' (all capitals) to continue.", flush=True)
+            # Flush required for Pythons which disable line buffering, ie mingw in mintty
             yes = input()
             if yes != "BURN":
                 print("Aborting.")

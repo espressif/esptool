@@ -127,7 +127,7 @@ def main():
                 # capable client)
                 ser.apply_settings(settings)
         except KeyboardInterrupt:
-            sys.stdout.write("\n")
+            print(flush=True)
             break
         except socket.error as msg:
             logging.error(str(msg))
