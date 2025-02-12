@@ -117,6 +117,7 @@ host_tests_espefuse:
         - esp32s2
         - esp32s3
         - esp32h21
+        - esp32h4
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip ${TARGET}
     # some .coverage files in sub-directories are not collected on some runners, move them first

@@ -25,6 +25,7 @@ from .targets import (
     ESP32C61ROM,
     ESP32H2ROM,
     ESP32H21ROM,
+    ESP32H4ROM,
     ESP32P4ROM,
     ESP32ROM,
     ESP32S2ROM,
@@ -87,6 +88,7 @@ def LoadFirmwareImage(chip, image_file):
                 "esp32h2": ESP32H2FirmwareImage,
                 "esp32h21": ESP32H21FirmwareImage,
                 "esp32p4": ESP32P4FirmwareImage,
+                "esp32h4": ESP32H4FirmwareImage,
             }[chip](f)
         else:  # Otherwise, ESP8266 so look at magic to determine the image type
             magic = ord(f.read(1))
@@ -1119,6 +1121,23 @@ class ESP32C5FirmwareImage(ESP32FirmwareImage):
 
 
 ESP32C5ROM.BOOTLOADER_IMAGE = ESP32C5FirmwareImage
+
+
+class ESP32H4FirmwareImage(ESP32FirmwareImage):
+    """ESP32H4 Firmware Image almost exactly the same as ESP32FirmwareImage"""
+
+    ROM_LOADER = ESP32H4ROM
+
+    def set_mmu_page_size(self, size):
+        if size not in [8192, 16384, 32768, 65536]:
+            raise FatalError(
+                "{} bytes is not a valid ESP32-H4 page size, "
+                "select from 64KB, 32KB, 16KB, 8KB.".format(size)
+            )
+        self.IROM_ALIGN = size
+
+
+ESP32H4ROM.BOOTLOADER_IMAGE = ESP32H4FirmwareImage
 
 
 class ESP32P4FirmwareImage(ESP32FirmwareImage):
