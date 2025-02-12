@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2022 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2014-2025 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -852,7 +852,10 @@ def main(argv=None, esp=None):
                     "setting --no-stub"
                 )
                 args.no_stub = True
-            elif esp.CHIP_NAME == "ESP32-H21":  # TODO: [ESP32H21] IDF-11509
+            elif esp.CHIP_NAME in [
+                "ESP32-H21",
+                "ESP32-H4",
+            ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
                 print(
                     f"WARNING: Stub loader is not yet supported on {esp.CHIP_NAME}, "
                     "setting --no-stub"
