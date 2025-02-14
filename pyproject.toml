@@ -22,15 +22,12 @@
         "Topic :: Software Development :: Embedded Systems",
         "Environment :: Console",
         "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
     ]
-    requires-python = ">=3.7"
+    requires-python = ">=3.10"
     dynamic = ["version", "scripts"]
 
     dependencies = [
@@ -109,7 +106,7 @@
     disallow_incomplete_defs = false # Disallows defining functions with incomplete type annotations
     disallow_untyped_defs    = false # Disallows defining functions without type annotations or with incomplete type annotations
     ignore_missing_imports   = true  # Suppress error messages about imports that cannot be resolved
-    python_version           = "3.7" # Specifies the Python version used to parse and check the target program
+    python_version           = "3.10" # Specifies the Python version used to parse and check the target program
     warn_no_return           = true  # Shows errors for missing return statements on some execution paths
     warn_return_any          = true  # Shows a warning when returning a value with type Any from a function declared with a non- Any return type
 
@@ -127,7 +124,7 @@
     select = ['E', 'F', 'W']
     ignore = ["E203"]
 
-    target-version = "py37"
+    target-version = "py310"
 
 [tool.ruff.lint]
     # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.

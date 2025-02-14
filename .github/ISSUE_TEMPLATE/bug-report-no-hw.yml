@@ -23,7 +23,7 @@ body:
     attributes:
       label: Python Version
       description: Which Python version are you using? Run `python -V` to check this.
-      placeholder: ex. Python 3.9.6
+      placeholder: ex. Python 3.10.6
     validations:
       required: true
   - type: input

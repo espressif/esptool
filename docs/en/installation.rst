@@ -9,8 +9,8 @@ How to Install
 Global Installation
 ^^^^^^^^^^^^^^^^^^^
 
-You will need `Python 3.7 or newer <https://www.python.org/downloads/>`_ installed on your system to use the latest version of ``esptool.py``.
-If your use case requires Python 2.7, 3.4, 3.5, or 3.6, please use ``esptool.py`` v3.3.* instead.
+You will need `Python 3.10 or newer <https://www.python.org/downloads/>`_ installed on your system to use the latest version of ``esptool.py``.
+If your use case requires Python 3.7, 3.8, or 3.9, please use ``esptool.py`` v4.x. For Python 2.7, 3.4, 3.5, or 3.6, please use ``esptool.py`` v3.3.* instead.
 
 The latest stable esptool release can be installed from `PyPI <https://pypi.org/project/esptool/>`_ via pip:
 

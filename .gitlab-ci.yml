@@ -38,7 +38,7 @@ cache:
 
 .test_template: &test_template
   stage: test
-  image: python:3.7-bullseye
+  image: python:3.10-bullseye
   tags:
     - host_test
   dependencies: []
@@ -137,7 +137,7 @@ host_tests_latest_python:
     -  pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip esp32
 
 # A new job "host_test_hsm" is created for the test "test_espsecure_hsm.py" which runs an ubuntu image,
-# because python-pkcs11 (v0.7.0) package is compiled using GLIBC_2.34 but docker image python:3.7-bullseye
+# because python-pkcs11 (v0.7.0) package is compiled using GLIBC_2.34 but docker image python:3.10-bullseye
 # support versions only upto GLIBC_2.31.
 host_tests_hsm:
   <<: *host_tests_template
@@ -157,7 +157,7 @@ host_tests_hsm:
 
 run_pre_commit_hooks:
   stage: test
-  image: python:3.7-bullseye
+  image: python:3.10-bullseye
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
   tags:
@@ -189,7 +189,6 @@ check_install_coverage:
       - ".coverage*"
     expire_in: 1 week
   script:
-    - coverage run --parallel-mode setup.py install
     - coverage run --parallel-mode esptool.py --help
     - coverage run --parallel-mode espefuse.py --help
     - coverage run --parallel-mode espsecure.py --help
@@ -250,7 +249,7 @@ check_stub_build:
 
 .target_esptool_test:
   stage: test
-  image: python:3.7-bullseye
+  image: python:3.10-bullseye
   variables:
     PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
     COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
@@ -479,7 +478,7 @@ target_tests_windows:
 
 combine_reports:
   stage: report
-  image: python:3.7-bullseye
+  image: python:3.10-bullseye
   tags:
     - host_test
   artifacts:
@@ -509,7 +508,7 @@ combine_reports:
 
 build_docs:
   stage: build_docs
-  image: python:3.7-bullseye
+  image: python:3.12-bookworm  # 3.12 is the last version with imghdr
   tags:
     - build_docs
   rules:
@@ -532,7 +531,7 @@ build_docs:
 
 .deploy_docs_template:
   stage: deploy_docs
-  image: python:3.7-bullseye
+  image: python:3.12-bookworm  # 3.12 is the last version with imghdr
   tags:
     - deploy
   needs:

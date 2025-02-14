@@ -12,7 +12,7 @@ repos:
         name: Lint RST files in docs folder using Sphinx Lint
         files: ^((docs/en)/.*\.(rst|inc))|CONTRIBUTING.rst$
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.4.1  # the last version running on py3.7
+    rev: v1.4.1
     hooks:
       - id: mypy
         additional_dependencies: ['types-PyYAML<=6.0.12.12']
