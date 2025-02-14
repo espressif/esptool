@@ -23,6 +23,7 @@ import espefuse.efuse.esp32s2 as esp32s2_efuse
 import espefuse.efuse.esp32s3 as esp32s3_efuse
 
 import esptool
+import esptool.cli_util
 from esptool.logger import log
 
 DefChip = namedtuple("DefChip", ["chip_name", "efuse_lib", "chip_class"])
@@ -182,7 +183,7 @@ def main(custom_commandline=None, esp=None):
         "--baud",
         "-b",
         help="Serial port baud rate used when flashing/reading",
-        type=esptool.arg_auto_int,
+        type=esptool.cli_util.arg_auto_int,
         default=os.environ.get("ESPTOOL_BAUD", esptool.loader.ESPLoader.ESP_ROM_BAUD),
     )
 

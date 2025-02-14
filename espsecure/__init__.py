@@ -1841,7 +1841,7 @@ def main(custom_commandline=None):
         "-a",
         help="Address offset in flash that file was read from.",
         required=True,
-        type=esptool.arg_auto_int,
+        type=esptool.cli_util.arg_auto_int,
     )
     p.add_argument(
         "--flash_crypt_conf",
@@ -1849,7 +1849,7 @@ def main(custom_commandline=None):
         "(applicable only for ESP32).",
         required=False,
         default=0xF,
-        type=esptool.arg_auto_int,
+        type=esptool.cli_util.arg_auto_int,
     )
 
     p = subparsers.add_parser(
@@ -1881,7 +1881,7 @@ def main(custom_commandline=None):
         "-a",
         help="Address offset in flash where file will be flashed.",
         required=True,
-        type=esptool.arg_auto_int,
+        type=esptool.cli_util.arg_auto_int,
     )
     p.add_argument(
         "--flash_crypt_conf",
@@ -1889,7 +1889,7 @@ def main(custom_commandline=None):
         "(applicable only for ESP32)",
         required=False,
         default=0xF,
-        type=esptool.arg_auto_int,
+        type=esptool.cli_util.arg_auto_int,
     )
     p.add_argument(
         "plaintext_file",
