@@ -1182,6 +1182,8 @@ class ESP32C5BETA3FirmwareImage(ESP32C6FirmwareImage):
 
 
 ESP32C5BETA3ROM.BOOTLOADER_IMAGE = ESP32C5BETA3FirmwareImage
+
+
 class ESP32H4FirmwareImage(ESP32FirmwareImage):
     """ESP32H4 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 

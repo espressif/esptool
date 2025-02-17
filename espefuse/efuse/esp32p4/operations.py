@@ -177,11 +177,15 @@ def add_commands(subparsers, efuses):
 
 
 def burn_custom_mac(esp, efuses, args):
-    print("Not supported yet")
+    efuses["CUSTOM_MAC"].save(args.mac)
+    if not efuses.burn_all(check_batch_mode=True):
+        return
+    get_custom_mac(esp, efuses, args)
+    print("Successful")
 
 
 def get_custom_mac(esp, efuses, args):
-    print("Not supported yet")
+    print("Custom MAC Address: {}".format(efuses["CUSTOM_MAC"].get()))
 
 
 def set_flash_voltage(esp, efuses, args):
