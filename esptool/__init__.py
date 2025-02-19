@@ -235,7 +235,7 @@ def main(argv=None, esp=None):
     parser_dump_mem.add_argument(
         "size", help="Size of region to dump", type=arg_auto_int
     )
-    parser_dump_mem.add_argument("filename", help="Name of binary dump")
+    parser_dump_mem.add_argument("output", help="Name of binary dump")
 
     parser_read_mem = subparsers.add_parser(
         "read_mem", help="Read arbitrary memory location"
@@ -581,7 +581,7 @@ def main(argv=None, esp=None):
         help="Size of region to dump. Use `ALL` to read to the end of flash.",
         type=arg_auto_size,
     )
-    parser_read_flash.add_argument("filename", help="Name of binary dump")
+    parser_read_flash.add_argument("output", help="Name of binary dump")
     parser_read_flash.add_argument(
         "--no-progress", "-p", help="Suppress progress output", action="store_true"
     )

@@ -101,7 +101,7 @@ Use the ``-e/--erase-all`` option to erase all flash sectors (not just the write
 Read Flash Contents: ``read_flash``
 -----------------------------------
 
-The read_flash command allows reading back the contents of flash. The arguments to the command are an address, a size, and a filename to dump the output to. For example, to read a full 2MB of attached flash:
+The read_flash command allows reading back the contents of flash. The arguments to the command are an address, a size, and a file path to output to. For example, to read a full 2MB of attached flash:
 
 ::
 

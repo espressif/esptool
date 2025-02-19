@@ -1158,14 +1158,14 @@ class TestMemoryOperations(EsptoolTestCase):
     @pytest.mark.quick_test
     def test_memory_dump(self):
         output = self.run_esptool("dump_mem 0x50000000 128 memout.bin")
-        assert "Read 128 bytes" in output
+        assert "Successfully read 128 bytes" in output
         os.remove("memout.bin")
 
     def test_memory_write(self):
         output = self.run_esptool("write_mem 0x400C0000 0xabad1dea 0x0000ffff")
-        assert "Wrote abad1dea" in output
-        assert "mask 0000ffff" in output
-        assert "to 400c0000" in output
+        assert "Wrote 0xabad1dea" in output
+        assert "mask 0x0000ffff" in output
+        assert "to 0x400c0000" in output
 
     def test_memory_read(self):
         output = self.run_esptool("read_mem 0x400C0000")

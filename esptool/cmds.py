@@ -240,30 +240,52 @@ def write_mem(esp: ESPLoader, address: int, value: int, mask: int = 0xFFFFFFFF) 
         mask: Bitmask specifying which bits to modify (default: all bits).
     """
     esp.write_reg(address, value, mask, 0)
-    log.print(f"Wrote {value:08x}, mask {mask:08x} to {address:08x}")
+    log.print(f"Wrote {value:#010x}, mask {mask:#010x} to {address:#010x}")
 
 
-def dump_mem(esp: ESPLoader, address: int, size: int, filename: str) -> None:
+def dump_mem(
+    esp: ESPLoader, address: int, size: int, output: Optional[str] = None
+) -> Optional[bytes]:
     """
-    Dump a block of memory from the ESP device to a binary file.
+    Dump a block of memory from the ESP device.
 
     Args:
         esp: Initiated esp object connected to a real device.
         address: Starting memory address to dump from.
         size: Number of bytes to dump.
-        filename: Path to output file for binary data.
+        output: Path to output file for binary data. If None, returns the data.
+
+    Returns:
+        Optional[bytes]: Memory dump as bytes if filename is None;
+        otherwise, returns None after writing to file.
     """
-    with open(filename, "wb") as f:
-        log.set_progress(0)
-        for i in range(size // 4):
-            d = esp.read_reg(address + (i * 4))
-            f.write(struct.pack(b"<I", d))
-            if f.tell() % 1024 == 0:
-                percent = f.tell() * 100 // size
-                log.set_progress(percent)
-                log.print_overwrite(f"{f.tell()} bytes read... ({percent} %)")
-        log.print_overwrite(f"Read {f.tell()} bytes", last_line=True)
-    log.print("Done!")
+    log.print(
+        f"Dumping {size} bytes from {address:#010x}"
+        + (f" to file '{output}'..." if output else "...")
+    )
+    data = bytearray()
+    log.set_progress(0)
+
+    # Read the memory in 4-byte chunks.
+    for i in range(size // 4):
+        d = esp.read_reg(address + (i * 4))
+        data.extend(struct.pack("<I", d))
+        # Update progress every 1024 bytes.
+        if len(data) % 1024 == 0:
+            percent = len(data) * 100 // size
+            log.set_progress(percent)
+            log.print_overwrite(f"{len(data)} bytes read... ({percent}%)")
+
+    log.print_overwrite(f"Successfully read {len(data)} bytes.", last_line=True)
+
+    if output:
+        with open(output, "wb") as f:
+            f.write(data)
+        log.print(f"Memory dump to '{output}' completed.")
+        return None
+    else:
+        log.print("Memory dump completed.")
+        return bytes(data)
 
 
 def detect_flash_size(esp: ESPLoader) -> Optional[str]:
@@ -1224,23 +1246,30 @@ def read_flash(
     esp: ESPLoader,
     address: int,
     size: int,
-    filename: str,
+    output: Optional[str] = None,
     flash_size: str = "keep",
     no_progress: bool = False,
-) -> None:
+) -> Optional[bytes]:
     """
-    Read a specified region of SPI flash memory of an ESP device and save it to a file.
+    Read a specified region of SPI flash memory of an ESP device
+    and optionally save it to a file.
 
     Args:
         esp: Initiated esp object connected to a real device.
         address: The starting address in flash memory to read from.
         size: The number of bytes to read.
-        filename: The name of the file to save the read data.
-        flash_size: Flash size setting, needs to be set only when the stub is disabled.
+        output: The name of the file to save the read data.
+            If None, the function returns the data.
+        flash_size: Flash size setting, needs to be set only when
+            the stub flasher is disabled.
             Options: ``"detect"``: auto-detect flash size with fallback to 4MB,
             ``"keep"``: auto-detect but skip setting parameters in SDM,
             Explicit size: use the specified flash size.
         no_progress: Disable printing progress.
+
+    Returns:
+        Optional[bytes]: The read flash data as bytes if output is None; otherwise,
+            returns None after writing to file.
     """
     _set_flash_parameters(esp, flash_size)
     if no_progress:
@@ -1268,8 +1297,14 @@ def read_flash(
         f"Read {len(data)} bytes at {address:#010x} in {t:.1f} seconds{speed_msg}...",
         last_line=True,
     )
-    with open(filename, "wb") as f:
-        f.write(data)
+    if output:
+        with open(output, "wb") as f:
+            f.write(data)
+        log.print(f"Flash read to '{output}' completed.")
+        return None
+    else:
+        log.print("Flash read completed.")
+        return data
 
 
 def verify_flash(
@@ -1801,8 +1836,11 @@ def image_info(filename: str, chip: str = "auto") -> None:
 
 
 def make_image(
-    segfile: List[str], segaddr: List[int], output: str, entrypoint: int = 0
-) -> None:
+    segfile: List[str],
+    segaddr: List[int],
+    output: Optional[str] = None,
+    entrypoint: int = 0,
+) -> Optional[bytes]:
     """
     Assemble an ESP8266 firmware image using binary segments. ESP8266-only.
 
@@ -1810,7 +1848,12 @@ def make_image(
         segfile: List of file paths containing binary segment data.
         segaddr: List of memory addresses corresponding to each segment.
         output: Path to save the output firmware image file.
+            If None, the function returns the image as bytes.
         entrypoint: Entry point address for the firmware.
+
+    Returns:
+        None if output is provided; otherwise, returns the assembled
+        firmware image as bytes.
     """
     log.print("Creating ESP8266 image...")
     image = ESP8266ROMFirmwareImage()
@@ -1825,8 +1868,18 @@ def make_image(
             data = f.read()
             image.segments.append(ImageSegment(addr, data))
     image.entrypoint = entrypoint
-    image.save(output)
-    log.print("Successfully created ESP8266 image.")
+    if output is not None:
+        # Save image to the provided file path.
+        image.save(output)
+        log.print("Successfully created ESP8266 image.")
+        return None
+    else:
+        # Save image to a BytesIO buffer and return the bytes.
+        buf = io.BytesIO()
+        image.save(buf)
+        result = buf.getvalue()
+        log.print("Successfully created ESP8266 image.")
+        return result
 
 
 def merge_bin(
