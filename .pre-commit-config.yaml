@@ -1,25 +1,25 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.14
+    rev: v0.9.6
     hooks:
       - id: ruff # Runs ruff linter (replaces flake8)
         args: [--fix, --exit-non-zero-on-fix] # --fix for fixing errors
       - id: ruff-format
   - repo: https://github.com/sphinx-contrib/sphinx-lint
-    rev: v0.6.8
+    rev: v1.0.0
     hooks:
       - id: sphinx-lint
         name: Lint RST files in docs folder using Sphinx Lint
         files: ^((docs/en)/.*\.(rst|inc))|CONTRIBUTING.rst$
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.4.1
+    rev: v1.15.0
     hooks:
       - id: mypy
         additional_dependencies: ['types-PyYAML<=6.0.12.12']
         # ignore wrapper scripts because of name colision with efuse/__init__.py etc.
         exclude: test/|docs/|espefuse.py|espsecure.py|esptool.py|esp_rfc2217_server.py
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.5
+    rev: v2.4.1
     hooks:
     - id: codespell
       additional_dependencies:
@@ -31,5 +31,5 @@ repos:
         stages: [commit-msg]
         args:
           - --allow-breaking
-default_stages: [commit]
+default_stages: [pre-commit]
 default_install_hook_types: [pre-commit, commit-msg]
