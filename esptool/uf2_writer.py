@@ -1,11 +1,9 @@
-# SPDX-FileCopyrightText: 2020-2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2020-2025 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Code was originally licensed under Apache 2.0 before the release of ESP-IDF v5.2
 
 import hashlib
-import os
 import struct
-from typing import List
 
 from esptool.util import div_roundup
 
@@ -25,8 +23,8 @@ class UF2Writer(object):
     def __init__(
         self,
         chip_id: int,
-        output_file: os.PathLike,
-        chunk_size: int,
+        output_file: str,
+        chunk_size: int | None,
         md5_enabled: bool = True,
     ) -> None:
         if not md5_enabled:
@@ -44,7 +42,7 @@ class UF2Writer(object):
     def __enter__(self) -> "UF2Writer":
         return self
 
-    def __exit__(self, exc_type: str, exc_val: int, exc_tb: List) -> None:
+    def __exit__(self, exc_type: str, exc_val: int, exc_tb: list) -> None:
         if self.f:
             self.f.close()
 

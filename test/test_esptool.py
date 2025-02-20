@@ -31,7 +31,6 @@ import tempfile
 from io import StringIO
 from socket import AF_INET, SOCK_STREAM, socket
 from time import sleep
-from typing import List
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -314,7 +313,7 @@ class EsptoolTestCase:
             ct = ct[8:]
         self.diff(rb, ct)
 
-    def verify_output(self, expected_out: List[bytes]):
+    def verify_output(self, expected_out: list[bytes]):
         """Verify that at least one element of expected_out is in serial output"""
         # Setting rtscts to true enables hardware flow control.
         # This removes unwanted RTS logic level changes for some machines
@@ -1253,7 +1252,7 @@ class TestLoadRAM(EsptoolTestCase):
     # flashing an application not supporting USB-CDC will make
     # /dev/ttyACM0 disappear and USB-CDC tests will not work anymore
 
-    def verify_output(self, expected_out: List[bytes]):
+    def verify_output(self, expected_out: list[bytes]):
         """Verify that at least one element of expected_out is in serial output"""
         # Setting rtscts to true enables hardware flow control.
         # This removes unwanted RTS logic level changes for some machines

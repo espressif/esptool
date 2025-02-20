@@ -152,12 +152,6 @@ class ESP32C6ROM(ESP32C3ROM):
     def get_flash_crypt_config(self):
         return None  # doesn't exist on ESP32-C6
 
-    def get_secure_boot_enabled(self):
-        return (
-            self.read_reg(self.EFUSE_SECURE_BOOT_EN_REG)
-            & self.EFUSE_SECURE_BOOT_EN_MASK
-        )
-
     def get_key_block_purpose(self, key_block):
         if key_block < 0 or key_block > self.EFUSE_MAX_KEY:
             raise FatalError(

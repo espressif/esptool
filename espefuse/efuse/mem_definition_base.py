@@ -6,7 +6,6 @@
 
 from collections import Counter, namedtuple
 import esptool
-from typing import Optional, List
 
 from .csv_table_parser import CSVFuseTable
 
@@ -23,7 +22,7 @@ class EfuseRegistersBase(object):
 
 
 class EfuseBlocksBase(object):
-    BLOCKS: Optional[List] = None
+    BLOCKS: list | None = None
     NamedtupleBlock = namedtuple(
         "NamedtupleBlock",
         "name alias id rd_addr wr_addr write_disable_bit "
@@ -53,10 +52,10 @@ class Field:
     word = None
     pos = None
     bit_len = 0
-    alt_names: List[str] = []
+    alt_names: list[str] = []
     type = ""
     write_disable_bit = None
-    read_disable_bit: Optional[List[int]] = None
+    read_disable_bit: list[int] | None = None
     category = "config"
     class_type = ""
     description = ""
@@ -65,7 +64,7 @@ class Field:
 
 class EfuseFieldsBase(object):
     def __init__(self, e_desc, extend_efuse_table_file) -> None:
-        self.ALL_EFUSES: List = []
+        self.ALL_EFUSES: list = []
 
         def set_category_and_class_type(efuse, name):
             def includes(name, names):

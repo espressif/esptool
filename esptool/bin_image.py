@@ -11,7 +11,7 @@ import os
 import re
 import struct
 import tempfile
-from typing import IO, Optional, Tuple
+from typing import IO
 
 from intelhex import HexRecordError, IntelHex
 
@@ -41,7 +41,7 @@ def align_file_position(f, size):
     f.seek(align, 1)
 
 
-def intel_hex_to_bin(file: IO[bytes], start_addr: Optional[int] = None) -> IO[bytes]:
+def intel_hex_to_bin(file: IO[bytes], start_addr: int | None = None) -> IO[bytes]:
     """Convert IntelHex file to temp binary file with padding from start_addr
     If hex file was detected return temp bin file object; input file otherwise"""
     INTEL_HEX_MAGIC = b":"
@@ -174,7 +174,7 @@ class BaseFirmwareImage(object):
     SEG_HEADER_LEN = 8
     SHA256_DIGEST_LEN = 32
     IROM_ALIGN = 0
-    MMU_PAGE_SIZE_CONF: Tuple[int, ...] = ()
+    MMU_PAGE_SIZE_CONF: tuple[int, ...] = ()
 
     """ Base class with common firmware image functions """
 

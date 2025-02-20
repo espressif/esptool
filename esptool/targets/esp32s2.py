@@ -5,7 +5,6 @@
 
 import struct
 from time import sleep
-from typing import Dict
 
 from .esp32 import ESP32ROM
 from ..loader import ESPLoader, StubMixin
@@ -116,8 +115,7 @@ class ESP32S2ROM(ESP32ROM):
 
     UF2_FAMILY_ID = 0xBFDD4EEE
 
-    EFUSE_MAX_KEY = 5
-    KEY_PURPOSES: Dict[int, str] = {
+    KEY_PURPOSES: dict[int, str] = {
         0: "USER/EMPTY",
         1: "RESERVED",
         2: "XTS_AES_256_KEY_1",

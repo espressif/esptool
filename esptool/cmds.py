@@ -13,7 +13,7 @@ import itertools
 
 from intelhex import IntelHex
 from serial import SerialException
-from typing import BinaryIO, List, Optional, Tuple, Union
+from typing import BinaryIO
 
 from .bin_image import ELFFile, ImageSegment, LoadFirmwareImage
 from .bin_image import (
@@ -109,9 +109,9 @@ def detect_chip(
         detect_port.USES_RFC2217 = True
     detect_port.connect(connect_mode, connect_attempts, detecting=True)
 
-    def check_if_stub(instance):
+    def check_if_stub(instance: ESPLoader) -> ESPLoader:
         log.print(f" {instance.CHIP_NAME}")
-        if detect_port.sync_stub_detected:
+        if detect_port.sync_stub_detected and instance.STUB_CLASS is not None:
             instance = instance.STUB_CLASS(instance)
             instance.sync_stub_detected = True
         return instance
@@ -244,8 +244,8 @@ def write_mem(esp: ESPLoader, address: int, value: int, mask: int = 0xFFFFFFFF) 
 
 
 def dump_mem(
-    esp: ESPLoader, address: int, size: int, output: Optional[str] = None
-) -> Optional[bytes]:
+    esp: ESPLoader, address: int, size: int, output: str | None = None
+) -> bytes | None:
     """
     Dump a block of memory from the ESP device.
 
@@ -256,7 +256,7 @@ def dump_mem(
         output: Path to output file for binary data. If None, returns the data.
 
     Returns:
-        Optional[bytes]: Memory dump as bytes if filename is None;
+        bytes | None: Memory dump as bytes if filename is None;
         otherwise, returns None after writing to file.
     """
     log.print(
@@ -288,7 +288,7 @@ def dump_mem(
         return bytes(data)
 
 
-def detect_flash_size(esp: ESPLoader) -> Optional[str]:
+def detect_flash_size(esp: ESPLoader) -> str | None:
     """
     Detect the flash size of the connected ESP device.
 
@@ -424,13 +424,13 @@ def _update_image_flash_params(esp, address, flash_freq, flash_mode, flash_size,
 
 def write_flash(
     esp: ESPLoader,
-    addr_filename: List[Tuple[int, BinaryIO]],
+    addr_filename: list[tuple[int, BinaryIO]],
     flash_freq: str = "keep",
     flash_mode: str = "keep",
     flash_size: str = "keep",
     erase_all: bool = False,
     encrypt: bool = False,
-    encrypt_files: Optional[List[Tuple[int, BinaryIO]]] = None,
+    encrypt_files: list[tuple[int, BinaryIO]] | None = None,
     compress: bool = False,
     no_compress: bool = False,
     force: bool = False,
@@ -563,15 +563,16 @@ def write_flash(
         # Determine which files list contain the ones to encrypt
         files_to_encrypt = addr_filename if encrypt else encrypt_files
 
-        for address, argfile in files_to_encrypt:
-            if address % esp.FLASH_ENCRYPTED_WRITE_ALIGN:
-                log.print(
-                    f"File {argfile.name} address {address:#x} is not "
-                    f"{esp.FLASH_ENCRYPTED_WRITE_ALIGN} byte aligned, "
-                    "can't flash encrypted"
-                )
+        if files_to_encrypt is not None:
+            for address, argfile in files_to_encrypt:
+                if address % esp.FLASH_ENCRYPTED_WRITE_ALIGN:
+                    log.print(
+                        f"File {argfile.name} address {address:#x} is not "
+                        f"{esp.FLASH_ENCRYPTED_WRITE_ALIGN} byte aligned, "
+                        "can't flash encrypted"
+                    )
 
-                do_write = False
+                    do_write = False
 
         if not do_write and not ignore_flash_encryption_efuse_setting:
             raise FatalError(
@@ -918,7 +919,7 @@ def chip_id(esp: ESPLoader) -> None:
 
 def attach_flash(
     esp: ESPLoader,
-    spi_connection: Optional[Union[Tuple[int, int, int, int, int], str]] = None,
+    spi_connection: (tuple[int, int, int, int, int] | str) | None = None,
 ) -> None:
     """
     Configure and attach a SPI flash memory chip to the ESP device,
@@ -1246,10 +1247,10 @@ def read_flash(
     esp: ESPLoader,
     address: int,
     size: int,
-    output: Optional[str] = None,
+    output: str | None = None,
     flash_size: str = "keep",
     no_progress: bool = False,
-) -> Optional[bytes]:
+) -> bytes | None:
     """
     Read a specified region of SPI flash memory of an ESP device
     and optionally save it to a file.
@@ -1268,8 +1269,8 @@ def read_flash(
         no_progress: Disable printing progress.
 
     Returns:
-        Optional[bytes]: The read flash data as bytes if output is None; otherwise,
-            returns None after writing to file.
+        bytes | None: The read flash data as bytes if output is None; otherwise,
+        returns None after writing to file.
     """
     _set_flash_parameters(esp, flash_size)
     if no_progress:
@@ -1309,7 +1310,7 @@ def read_flash(
 
 def verify_flash(
     esp: ESPLoader,
-    addr_filename: List[Tuple[int, BinaryIO]],
+    addr_filename: list[tuple[int, BinaryIO]],
     flash_freq: str = "keep",
     flash_mode: str = "keep",
     flash_size: str = "keep",
@@ -1836,11 +1837,11 @@ def image_info(filename: str, chip: str = "auto") -> None:
 
 
 def make_image(
-    segfile: List[str],
-    segaddr: List[int],
-    output: Optional[str] = None,
+    segfile: list[str],
+    segaddr: list[int],
+    output: str | None = None,
     entrypoint: int = 0,
-) -> Optional[bytes]:
+) -> bytes | None:
     """
     Assemble an ESP8266 firmware image using binary segments. ESP8266-only.
 
@@ -1883,7 +1884,7 @@ def make_image(
 
 
 def merge_bin(
-    addr_filename: List[Tuple[int, BinaryIO]],
+    addr_filename: list[tuple[int, BinaryIO]],
     output: str,
     chip: str,
     flash_freq: str = "keep",
@@ -1891,8 +1892,8 @@ def merge_bin(
     flash_size: str = "keep",
     format: str = "raw",
     target_offset: int = 0,
-    fill_flash_size: Optional[str] = None,
-    chunk_size: Optional[int] = None,
+    fill_flash_size: str | None = None,
+    chunk_size: int | None = None,
     md5_disable: bool = False,
 ) -> None:
     """
@@ -2009,8 +2010,8 @@ def merge_bin(
 def elf2image(
     input: str,
     chip: str,
-    output: Optional[str] = None,
-    flash_freq: Optional[str] = None,
+    output: str | None = None,
+    flash_freq: str | None = None,
     flash_mode: str = "qio",
     flash_size: str = "1MB",
     version: int = 1,
@@ -2019,11 +2020,11 @@ def elf2image(
     max_rev_full: int = 65535,
     secure_pad: bool = False,
     secure_pad_v2: bool = False,
-    elf_sha256_offset: Optional[int] = None,
+    elf_sha256_offset: int | None = None,
     append_digest: bool = True,
     use_segments: bool = False,
-    flash_mmu_page_size: Optional[str] = None,
-    pad_to_size: Optional[str] = None,
+    flash_mmu_page_size: str | None = None,
+    pad_to_size: str | None = None,
     ram_only_header: bool = False,
 ) -> None:
     """
@@ -2056,7 +2057,11 @@ def elf2image(
     log.print(f"Creating {chip} image...")
 
     if chip != "esp8266":
-        image = CHIP_DEFS[chip].BOOTLOADER_IMAGE()
+        bootloader_image = CHIP_DEFS[chip].BOOTLOADER_IMAGE
+        if bootloader_image is None:
+            raise FatalError(f"Missing bootloader image definition for {chip}")
+        else:
+            image = bootloader_image()
         if chip == "esp32" and secure_pad:
             image.secure_pad = "1"
         if secure_pad_v2:

@@ -13,8 +13,6 @@ import string
 import struct
 import sys
 import time
-from typing import Optional
-
 
 from .config import load_config_file
 from .logger import log
@@ -26,7 +24,12 @@ from .reset import (
     USBJTAGSerialReset,
     UnixTightReset,
 )
-from .util import FatalError, NotImplementedInROMError, UnsupportedCommandError
+from .util import (
+    FatalError,
+    NotImplementedInROMError,
+    NotSupportedError,
+    UnsupportedCommandError,
+)
 from .util import byte, hexify, mask_to_shift, pad_to, strip_chip_name
 
 try:
@@ -201,8 +204,15 @@ class ESPLoader(object):
 
     CHIP_NAME = "Espressif device"
     IS_STUB = False
-    STUB_CLASS: Optional[object] = None
-    BOOTLOADER_IMAGE: Optional[object] = None
+    STUB_CLASS: type["ESPLoader"] | None = None
+    BOOTLOADER_IMAGE: type | None = None
+    IMAGE_CHIP_ID: int | None = None
+
+    # Chip uses magic number for chip type autodetection
+    USES_MAGIC_VALUE = True
+    MAGIC_VALUE: int | None = None
+
+    UF2_FAMILY_ID: int = 0x0
 
     DEFAULT_PORT = "/dev/ttyUSB0"
 
@@ -305,8 +315,9 @@ class ESPLoader(object):
     # Number of attempts to write flash data
     WRITE_FLASH_ATTEMPTS = 2
 
-    # Chip uses magic number for chip type autodetection
-    USES_MAGIC_VALUE = True
+    FLASH_ENCRYPTED_WRITE_ALIGN = 16
+    KEY_PURPOSES: dict[int, str] = {}
+    EFUSE_MAX_KEY = 5
 
     def __init__(self, port=DEFAULT_PORT, baud=ESP_ROM_BAUD, trace_enabled=False):
         """Base constructor for ESPLoader bootloader interaction
@@ -890,7 +901,8 @@ class ESPLoader(object):
             ]:
                 if load_start < stub_end and load_end > stub_start:
                     raise FatalError(
-                        f"Stub flasher is resident at {stub_start:#010x}-{stub_end:#010x}. "
+                        "Stub flasher is resident at "
+                        f"{stub_start:#010x}-{stub_end:#010x}. "
                         "Can't load binary at overlapping address range "
                         f"{load_start:#010x}-{load_end:#010x}. Either change binary "
                         "loading address, or disable the stub flasher."
@@ -1084,6 +1096,48 @@ class ESPLoader(object):
 
         return "USB-Serial/JTAG" if usb_jtag_serial else "USB-OTG" if usb_otg else None
 
+    def get_chip_revision(self):
+        return self.get_major_chip_version() * 100 + self.get_minor_chip_version()
+
+    def get_minor_chip_version(self):
+        raise NotImplementedInROMError
+
+    def get_major_chip_version(self):
+        raise NotImplementedInROMError
+
+    def read_mac(self, mac_type):
+        raise NotImplementedInROMError
+
+    def chip_id(self):
+        raise NotSupportedError(self, "Function chip_id")
+
+    def get_secure_boot_enabled(self):
+        return False
+
+    def get_flash_encryption_enabled(self):
+        return False
+
+    def get_encrypted_download_disabled(self):
+        return False
+
+    def get_flash_crypt_config(self):
+        raise NotImplementedInROMError
+
+    def get_flash_voltage(self):
+        raise NotSupportedError(self, "Reading flash voltage")
+
+    def override_vddsdio(self, new_voltage):
+        raise NotSupportedError(self, "Overriding VDDSDIO")
+
+    def check_spi_connection(self, spi_connection):
+        raise NotSupportedError(self, "Setting --spi-connection")
+
+    def get_chip_spi_pads(self):
+        raise NotSupportedError(self, "Reading chip SPI pad config")
+
+    def is_flash_encryption_key_valid(self):
+        raise NotSupportedError(self, "Flash encryption")
+
     @classmethod
     def parse_flash_size_arg(cls, arg):
         try:
@@ -1266,10 +1320,10 @@ class ESPLoader(object):
             timeout=timeout,
         )
 
-    def read_flash_slow(self, offset, length, progress_fn):
+    def read_flash_slow(self, offset, length, progress_fn) -> bytes:
         raise NotImplementedInROMError(self, self.read_flash_slow)
 
-    def read_flash(self, offset, length, progress_fn=None):
+    def read_flash(self, offset, length, progress_fn=None) -> bytes:
         if not self.IS_STUB:
             return self.read_flash_slow(offset, length, progress_fn)  # ROM-only routine
 

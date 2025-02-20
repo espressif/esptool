@@ -108,7 +108,8 @@ def main(argv=None, esp=None):
     external_esp = esp is not None
 
     parser = argparse.ArgumentParser(
-        description=f"esptool.py v{__version__} - Espressif chips ROM Bootloader Utility",
+        description=f"esptool.py v{__version__} - "
+        "Espressif chips ROM Bootloader Utility",
         prog="esptool",
     )
 
@@ -864,9 +865,9 @@ def main(argv=None, esp=None):
                 "set --no-stub to suppress this warning."
             )
         elif esp.CHIP_NAME in [
-                "ESP32-H21",
-                "ESP32-H4",
-            ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
+            "ESP32-H21",
+            "ESP32-H4",
+        ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
             log.warning(
                 f"Stub loader is not yet supported on {esp.CHIP_NAME}, "
                 "it has been disabled. Set --no-stub to suppress this warning."
