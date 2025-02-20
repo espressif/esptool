@@ -56,7 +56,7 @@ class Field:
     alt_names: List[str] = []
     type = ""
     write_disable_bit = None
-    read_disable_bit = None
+    read_disable_bit: Optional[List[int]] = None
     category = "config"
     class_type = ""
     description = ""

@@ -78,9 +78,9 @@ class BaseTestCase:
                 print(
                     f"comparing seg {seg.addr:#x} sec {sh_addr:#x} len {len(data):#x}"
                 )
-                assert (
-                    seg.addr != sh_addr
-                ), f"{section_name} should not be in the binary image"
+                assert seg.addr != sh_addr, (
+                    f"{section_name} should not be in the binary image"
+                )
 
     def assertImageContainsSection(self, image, elf, section_name):
         """
@@ -103,9 +103,9 @@ class BaseTestCase:
                 )
                 if seg.addr == sh_addr:
                     overlap_len = min(len(seg.data), len(data))
-                    assert (
-                        data[:overlap_len] == seg.data[:overlap_len]
-                    ), f"ELF '{section_name}' section has mis-matching bin image data"
+                    assert data[:overlap_len] == seg.data[:overlap_len], (
+                        f"ELF '{section_name}' section has mis-matching bin image data"
+                    )
                     sh_addr += overlap_len
                     data = data[overlap_len:]
 
@@ -128,16 +128,16 @@ class BaseTestCase:
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise
-        assert re.search(
-            r"Checksum: 0x[a-fA-F0-9]{2} \(valid\)", output
-        ), "Checksum calculation should be valid"
+        assert re.search(r"Checksum: 0x[a-fA-F0-9]{2} \(valid\)", output), (
+            "Checksum calculation should be valid"
+        )
         if assert_sha:
-            assert re.search(
-                r"Validation hash: [a-fA-F0-9]{64} \(valid\)", output
-            ), "SHA256 should be valid"
-        assert (
-            "warning" not in output.lower()
-        ), "Should be no warnings in image_info output"
+            assert re.search(r"Validation hash: [a-fA-F0-9]{64} \(valid\)", output), (
+                "SHA256 should be valid"
+            )
+        assert "warning" not in output.lower(), (
+            "Should be no warnings in image_info output"
+        )
 
     def run_elf2image(
         self, chip, elf_path, version=None, extra_args=[], allow_warnings=False
@@ -153,9 +153,9 @@ class BaseTestCase:
             output = output.decode("utf-8")
             print(output)
             if not allow_warnings:
-                assert (
-                    "warning" not in output.lower()
-                ), "elf2image should not output warnings"
+                assert "warning" not in output.lower(), (
+                    "elf2image should not output warnings"
+                )
         except subprocess.CalledProcessError as e:
             print(e.output)
             raise
@@ -181,9 +181,9 @@ class TestESP8266V1Image(BaseTestCase):
         with open(self.ELF, "rb") as f:
             e = ELFFile(f)
             irom_section = e.get_section_by_name(".irom0.text")
-            assert (
-                irom_section.header.sh_size == os.stat(self.BIN_IROM).st_size
-            ), "IROM raw binary file should be same length as .irom0.text section"
+            assert irom_section.header.sh_size == os.stat(self.BIN_IROM).st_size, (
+                "IROM raw binary file should be same length as .irom0.text section"
+            )
 
     def test_loaded_sections(self):
         image = esptool.bin_image.LoadFirmwareImage("esp8266", self.BIN_LOAD)
@@ -561,7 +561,7 @@ class TestMMUPageSize(BaseTestCase):
                 raise ValueError(f"Section {section_name} not found")
 
             # This finds the index of the specified section in the ELF file,
-            # compute the section header’s position in the file (using the section index,
+            # compute the section header’s position in the file (using section index,
             # the section header table’s offset and section header entry size) and then
             # modify the section’s address in memory by the specified offset.
             index = elf.get_section_index(section_name)
@@ -583,8 +583,9 @@ class TestMMUPageSize(BaseTestCase):
             output = capsys.readouterr().out
             print(output)
             assert (
-                "App description segment is not aligned to MMU page size, probably linker script issue or wrong MMU page size. Try to set MMU page size parameter manually."
-                in output
+                "App description segment is not aligned to MMU page size, probably "
+                "linker script issue or wrong MMU page size. "
+                "Try to set MMU page size parameter manually." in output
             )
         finally:
             # Restore original address to be able to run other tests
@@ -596,7 +597,8 @@ class TestMMUPageSize(BaseTestCase):
         """
         Change the MMU page size in the appdesc section of the ELF file.
         The following values can be chosen: 0 (empty), 8192, 16384, 32768, 65536.
-        The numbers are not valid for all chips, so refer to the documentation of the chip being used.
+        The numbers are not valid for all chips, so refer to the documentation
+        of the chip being used.
         """
         with open(elf_path, "rb+") as f:
             elf = ELFFile(f)
@@ -605,14 +607,15 @@ class TestMMUPageSize(BaseTestCase):
             if not section:
                 raise ValueError("Section .flash.appdesc not found")
 
-            # The mmu_page_size is a power of 2, so we need to convert it to the corresponding
-            # value that should be written in the appdesc section. It can also be empty (0).
+            # The mmu_page_size is a power of 2, so we convert it to the corresponding
+            # value for the appdesc section. It can also be empty (0).
             if mmu_page_size == 0:
                 mmu_page_size_appdesc = 0
             else:
                 mmu_page_size_appdesc = int(math.log2(mmu_page_size))
 
-            # Go to the mmu_page_size in the appdesc section (which is at offset 0xB4) and change it
+            # Go to the mmu_page_size field in the appdesc section (at offset 0xB4) and
+            # modify it
             f.seek(section.header.sh_offset + 0xB4)
             f.write(mmu_page_size_appdesc.to_bytes(4, byteorder="little"))
 

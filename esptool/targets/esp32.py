@@ -372,7 +372,9 @@ class ESP32ROM(ESPLoader):
         new_voltage = new_voltage.upper()
         if new_voltage not in self.OVERRIDE_VDDSDIO_CHOICES:
             raise FatalError(
-                f"The only accepted VDDSDIO overrides are {', '.join(self.OVERRIDE_VDDSDIO_CHOICES)}"
+                "The only accepted VDDSDIO overrides are , ".join(
+                    self.OVERRIDE_VDDSDIO_CHOICES
+                )
             )
         # RTC_CNTL_SDIO_TIEH is not used here, setting TIEH=1 would set 3.3V output,
         # not safe for esptool.py to do

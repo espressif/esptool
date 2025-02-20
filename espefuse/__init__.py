@@ -306,9 +306,9 @@ def main(custom_commandline=None, esp=None):
             if args.operation is None:
                 parser.print_help()
                 parser.exit(1)
-            assert (
-                len(unused_args) == 0
-            ), 'Not all commands were recognized "{}"'.format(unused_args)
+            assert len(unused_args) == 0, (
+                'Not all commands were recognized "{}"'.format(unused_args)
+            )
 
             operation_func = vars(efuse_operations)[args.operation]
             # each 'operation' is a module-level function of the same name

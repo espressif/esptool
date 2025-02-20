@@ -48,9 +48,9 @@ class TestImageInfo:
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             output = output.decode("utf-8")
             print(output)  # for more complete stdout logs on failure
-            assert (
-                "warning" not in output.lower()
-            ), "image_info should not output warnings"
+            assert "warning" not in output.lower(), (
+                "image_info should not output warnings"
+            )
             return output
         except subprocess.CalledProcessError as e:
             print(e.output)
@@ -78,9 +78,9 @@ class TestImageInfo:
         assert "Maximal chip revision: v0.0" in out, "Wrong min revision"
 
         # Segments
-        assert (
-            "1  0x01864  0x3fcd6114  0x00000034  DRAM, BYTE_ACCESSIBLE" in out
-        ), "Wrong segment info"
+        assert "1  0x01864  0x3fcd6114  0x00000034  DRAM, BYTE_ACCESSIBLE" in out, (
+            "Wrong segment info"
+        )
 
         # Footer
         assert "Checksum: 0x77 (valid)" in out, "Invalid checksum"

@@ -180,15 +180,17 @@ def add_common_commands(subparsers, efuses):
         help="Select the dump format: "
         "default - usual console eFuse dump; "
         "joint - all eFuse blocks are stored in one file; "
-        "split - each eFuse block is placed into its own file. The tool will create multiple files based on "
-        "the given --file_name (/path/blk.bin): blk0.bin, blk1.bin ... blkN.bin. Use the burn_block_data cmd "
+        "split - each eFuse block is placed into its own file. The tool will create "
+        "multiple files based on the given --file_name (/path/blk.bin): "
+        "blk0.bin, blk1.bin ... blkN.bin. Use the burn_block_data cmd "
         "to write it back to another chip.",
         choices=["default", "split", "joint"],
         default="default",
     )
     dump_cmd.add_argument(
         "--file_name",
-        help="The path to the file in which to save the dump, if not specified, output to the console.",
+        help="The path to the file in which to save the dump, if not specified, "
+        "output to the console.",
         default=sys.stdout,
     )
 
@@ -526,7 +528,8 @@ def burn_efuse(esp, efuses, args):
             print("Ignore incompatible eFuse settings.")
         else:
             raise esptool.FatalError(
-                "Incompatible eFuse settings detected, abort. (use --force flag to skip it)."
+                "Incompatible eFuse settings detected, abort. "
+                "(use --force flag to skip it)."
             )
 
     if not efuses.burn_all(check_batch_mode=True):

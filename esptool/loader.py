@@ -263,7 +263,8 @@ class ESPLoader(object):
 
     UART_DATE_REG_ADDR = 0x60000078
 
-    # Whether the SPI peripheral sends from MSB of 32-bit register, or the MSB of valid LSB bits.
+    # Whether the SPI peripheral sends from MSB of 32-bit register, or the MSB of valid
+    # LSB bits.
     SPI_ADDR_REG_MSB = True
 
     # This ROM address has a different value on each chip model
@@ -1076,7 +1077,8 @@ class ESPLoader(object):
 
     def get_usb_mode(self):
         """
-        Get the USB mode of the chip: USB-Serial/JTAG or USB-OTG. If the usb_mode is None, external USB-UART is used.
+        Get the USB mode of the chip: USB-Serial/JTAG or USB-OTG.
+        If the usb_mode is None, external USB-UART is used.
         """
         usb_jtag_serial = self.uses_usb_jtag_serial()
         usb_otg = self.uses_usb_otg()
@@ -1438,8 +1440,7 @@ class ESPLoader(object):
             )
         if len(data) > 64:
             raise FatalError(
-                "Writing more than 64 bytes of data with one SPI "
-                "command is unsupported"
+                "Writing more than 64 bytes of data with one SPI command is unsupported"
             )
 
         data_bits = len(data) * 8

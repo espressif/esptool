@@ -82,8 +82,7 @@ class EfuseTestCase:
             self._set_target_wafer_version()
         else:
             self.base_cmd = (
-                f"{sys.executable} -m espefuse --chip {arg_chip} "
-                f"--port {arg_port} -d"
+                f"{sys.executable} -m espefuse --chip {arg_chip} --port {arg_port} -d"
             )
             self.reset_efuses()
 

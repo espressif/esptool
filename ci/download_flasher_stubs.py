@@ -26,7 +26,8 @@ STUBS = (
             "esp32s3",
             "esp8266",
         ),
-        "LICENSE": "released as Free Software under GNU General Public License Version 2 or later",
+        "LICENSE": "released as Free Software under GNU General Public License "
+        "Version 2 or later",
     },
     {
         "STUB_SET_VERSION": "2",
@@ -42,7 +43,8 @@ STUBS = (
             "esp32s2",
             "esp32s3",
         ),
-        "LICENSE": "dual licensed under the Apache License Version 2.0 or the MIT license",
+        "LICENSE": "dual licensed under the Apache License Version 2.0 or the MIT "
+        "license",
     },
 )
 
@@ -51,16 +53,17 @@ DESTINATION_DIR = os.path.join("esptool", "targets", "stub_flasher")
 README_TEMPLATE = """# Licensing
 
 The binaries in JSON format distributed in this directory are {LICENSE}. They were released at {URL} from where the sources can be obtained.
-"""
+"""  # noqa: E501
 
 
 def main():
     for stub_set in STUBS:
         dest_sub_dir = os.path.join(DESTINATION_DIR, stub_set["STUB_SET_VERSION"])
 
-        """ The directory is cleaned up so we would detect if a stub was just committed into the repository but the
-        name was not added into the FILE_LIST of STUBS. This would be an unwanted state because the checker would not
-        detect any changes in that stub."""
+        """ The directory is cleaned up so we would detect if a stub was just committed
+        into the repository but the name was not added into the FILE_LIST of STUBS.
+        This would be an unwanted state because the checker would not detect any
+        changes in that stub."""
         for old_file in glob.glob(os.path.join(dest_sub_dir, "*.json")):
             print(f"Removing old file {old_file}")
             os.remove(old_file)

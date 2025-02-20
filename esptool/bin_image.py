@@ -277,12 +277,14 @@ class BaseFirmwareImage(object):
         segment_name = segment_name if segment_name is not None else ""
         if segment_len & 3:
             raise FatalError(
-                f"Invalid {segment_name} segment length {segment_len:#x}. It has to be multiple of 4."
+                f"Invalid {segment_name} segment length {segment_len:#x}. "
+                "It has to be multiple of 4."
             )
         SIXTEEN_MB = 0x1000000
         if segment_len >= SIXTEEN_MB:
             raise FatalError(
-                f"Invalid {segment_name} segment length {segment_len:#x}. The 16 MB limit has been exceeded."
+                f"Invalid {segment_name} segment length {segment_len:#x}. "
+                "The 16 MB limit has been exceeded."
             )
         f.write(struct.pack("<II", segment.addr, segment_len))
         f.write(segment_data)
@@ -410,18 +412,22 @@ class BaseFirmwareImage(object):
     def set_mmu_page_size(self, size):
         """Set the MMU page size for the image if supported by the chip."""
         if not self.MMU_PAGE_SIZE_CONF and size != self.IROM_ALIGN:
-            # For chips where MMU page size cannot be set or is fixed, just log a warning and use default if there is one.
+            # For chips where MMU page size cannot be set or is fixed, just log a
+            # warning and use default if there is one.
             log.warning(
-                f"Changing MMU page size is not supported on {self.ROM_LOADER.CHIP_NAME}! "
-                f"Defaulting to {self.IROM_ALIGN // 1024}KB."
+                "Changing MMU page size is not supported on "
+                f"{self.ROM_LOADER.CHIP_NAME}! Defaulting to "
+                f"{self.IROM_ALIGN // 1024}KB."
                 if self.IROM_ALIGN != 0
                 else ""
             )
         elif self.MMU_PAGE_SIZE_CONF and size not in self.MMU_PAGE_SIZE_CONF:
-            # For chips with configurable MMU page sizes, error is raised when the size is not valid.
+            # For chips with configurable MMU page sizes, error is raised when the
+            # size is not valid.
             valid_sizes = ", ".join(f"{x // 1024}KB" for x in self.MMU_PAGE_SIZE_CONF)
             raise FatalError(
-                f"{size} bytes is not a valid {self.ROM_LOADER.CHIP_NAME} page size, select from {valid_sizes}."
+                f"{size} bytes is not a valid {self.ROM_LOADER.CHIP_NAME} page size, "
+                f"select from {valid_sizes}."
             )
         else:
             self.IROM_ALIGN = size
@@ -520,17 +526,20 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             if first_flash_mode != self.flash_mode:
                 log.warning(
                     f"Flash mode value in first header (0x{first_flash_mode:02x}) "
-                    f"disagrees with second (0x{self.flash_mode:02x}). Using second value."
+                    f"disagrees with second (0x{self.flash_mode:02x}). "
+                    "Using second value."
                 )
             if first_flash_size_freq != self.flash_size_freq:
                 log.warning(
-                    f"Flash size/freq value in first header (0x{first_flash_size_freq:02x}) "
-                    f"disagrees with second (0x{self.flash_size_freq:02x}). Using second value."
+                    "Flash size/freq value in first header "
+                    f"(0x{first_flash_size_freq:02x}) disagrees with second "
+                    f"(0x{self.flash_size_freq:02x}). Using second value."
                 )
             if first_entrypoint != self.entrypoint:
                 log.warning(
                     f"Entrypoint address in first header (0x{first_entrypoint:08x}) "
-                    f"disagrees with second header (0x{self.entrypoint:08x}). Using second value."
+                    f"disagrees with second header (0x{self.entrypoint:08x}). "
+                    "Using second value."
                 )
 
             # load all the usual segments
@@ -730,8 +739,9 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 for segment in flash_segments[1:]:
                     if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
                         raise FatalError(
-                            f"Segment loaded at {segment.addr:#010x} lands in same {self.IROM_ALIGN // 1024} KB flash mapping "
-                            f"as segment loaded at {last_addr:#010x}. Can't generate binary. "
+                            f"Segment loaded at {segment.addr:#010x} lands in same "
+                            f"{self.IROM_ALIGN // 1024} KB flash mapping as segment "
+                            f"loaded at {last_addr:#010x}. Can't generate binary. "
                             "Suggest changing linker script or ELF to merge sections."
                         )
                     last_addr = segment.addr
@@ -825,8 +835,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     total_segments += 1
 
             if self.secure_pad:
-                # pad the image so that after signing it will end on a a MMU page size boundary.
-                # This ensures all mapped flash content will be verified.
+                # pad the image so that after signing it will end on a a MMU page size
+                # boundary. This ensures all mapped flash content will be verified.
                 if not self.append_digest:
                     raise FatalError(
                         "secure_pad only applies if a SHA-256 digest "
@@ -907,7 +917,8 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         if self.chip_id != self.ROM_LOADER.IMAGE_CHIP_ID:
             log.warning(
                 f"Unexpected chip ID in image. Expected {self.ROM_LOADER.IMAGE_CHIP_ID}"
-                f" but value was {self.chip_id}. Is this image for a different chip model?"
+                f" but value was {self.chip_id}. Is this image for a different "
+                "chip model?"
             )
 
         self.min_rev = fields[5]
@@ -982,8 +993,9 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
                 for segment in flash_segments[1:]:
                     if segment.addr // self.IROM_ALIGN == last_addr // self.IROM_ALIGN:
                         raise FatalError(
-                            f"Segment loaded at {segment.addr:#010x} lands in same {self.IROM_ALIGN // 1024} KB flash mapping "
-                            f"as segment loaded at {last_addr:#010x}. Can't generate binary. "
+                            f"Segment loaded at {segment.addr:#010x} lands in same "
+                            f"{self.IROM_ALIGN // 1024} KB flash mapping as segment "
+                            f"loaded at {last_addr:#010x}. Can't generate binary. "
                             "Suggest changing linker script or ELF to merge sections."
                         )
                     last_addr = segment.addr

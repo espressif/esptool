@@ -84,12 +84,14 @@ def _load_hardware_key(keyfile, is_flash_encryption_key, aes_xts=None):
         if aes_xts:
             if len(key) not in [16, 32, 64]:
                 raise esptool.FatalError(
-                    f"AES_XTS supports only 128, 256, and 512-bit keys. Provided key is {len(key) * 8} bits."
+                    "AES_XTS supports only 128, 256, and 512-bit keys. "
+                    f"Provided key is {len(key) * 8} bits."
                 )
         else:
             if len(key) not in [24, 32]:
                 raise esptool.FatalError(
-                    f"ESP32 supports only 192 and 256-bit keys. Provided key is {len(key) * 8} bits. Use --aes_xts for other chips."
+                    "ESP32 supports only 192 and 256-bit keys. Provided key is "
+                    f"{len(key) * 8} bits. Use --aes_xts for other chips."
                 )
     if len(key) == 16:
         key = _sha256_digest(key)
@@ -133,7 +135,7 @@ def digest_secure_bootloader(args):
     # if image isn't 128 byte multiple then pad with 0xFF (ie unwritten flash)
     # as this is what the secure boot engine will see
     if len(plaintext_image) % 128 != 0:
-        plaintext_image += b"\xFF" * (128 - (len(plaintext_image) % 128))
+        plaintext_image += b"\xff" * (128 - (len(plaintext_image) % 128))
 
     plaintext = iv + plaintext_image
 
@@ -165,7 +167,7 @@ def digest_secure_bootloader(args):
         digest = digest.digest()
         for word in get_chunks(digest, 4):
             f.write(word[::-1])  # swap word order in the result
-        f.write(b"\xFF" * (0x1000 - f.tell()))  # pad to 0x1000
+        f.write(b"\xff" * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
     print("digest+image written to %s" % args.output)
 
@@ -279,7 +281,8 @@ def _load_sbv2_signing_key(keydata):
         if not isinstance(sk.curve, (ec.SECP192R1, ec.SECP256R1, ec.SECP384R1)):
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
-                "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, prime256v1 / secp256r1, secp384r1)"
+                "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, "
+                "prime256v1 / secp256r1, secp384r1)"
             )
         return sk
 
@@ -302,7 +305,8 @@ def _load_sbv2_pub_key(keydata):
         if not isinstance(vk.curve, (ec.SECP192R1, ec.SECP256R1, ec.SECP384R1)):
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
-                "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, prime256v1 / secp256r1, secp384r1)"
+                "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, "
+                "prime256v1 / secp256r1, secp384r1)"
             )
         return vk
 
@@ -1249,14 +1253,14 @@ def _flash_encryption_operation_esp32(
     """
     Perform flash encryption or decryption operation for ESP32.
 
-    This function handles the encryption or decryption of flash data for the ESP32 chip.
+    This function handles the encryption or decryption of flash data for ESP32 chip.
     It reads data from the input file, processes it in 16-byte blocks, and writes the
-    processed data to the output file. The function ensures that the key length is either
-    192 or 256 bits, as required by the ESP32 chip. It also checks that the flash address
-    is a multiple of 16.
+    processed data to the output file. The function ensures that the key length is
+    either 192 or 256 bits, as required by the ESP32 chip. It also checks that the flash
+    address is a multiple of 16.
 
-    Note: This function is specific to the ESP32 chip. For other chips, use the --aes_xts
-    flag to call the correct function.
+    Note: This function is specific to the ESP32 chip. For other chips, use the
+    --aes_xts flag to call the correct function.
     """
     key = _load_hardware_key(keyfile, True, aes_xts=False)
 
@@ -1567,7 +1571,8 @@ def main(custom_commandline=None):
         "as per the secure boot version. "
         "Key file is generated in PEM format, "
         "Secure Boot V1 - ECDSA NIST256p private key. "
-        "Secure Boot V2 - RSA 3072, ECDSA NIST384p, ECDSA NIST256p, ECDSA NIST192p private key.",
+        "Secure Boot V2 - RSA 3072, ECDSA NIST384p, ECDSA NIST256p, "
+        "ECDSA NIST192p private key.",
     )
     p.add_argument(
         "--version",
@@ -1840,7 +1845,8 @@ def main(custom_commandline=None):
     )
     p.add_argument(
         "--flash_crypt_conf",
-        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for ESP32).",
+        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) "
+        "(applicable only for ESP32).",
         required=False,
         default=0xF,
         type=esptool.arg_auto_int,
@@ -1879,7 +1885,8 @@ def main(custom_commandline=None):
     )
     p.add_argument(
         "--flash_crypt_conf",
-        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for ESP32)",
+        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) "
+        "(applicable only for ESP32)",
         required=False,
         default=0xF,
         type=esptool.arg_auto_int,

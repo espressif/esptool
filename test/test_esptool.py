@@ -263,9 +263,10 @@ class EsptoolTestCase:
             with open(dump_file.name, "rb") as f:
                 rb = f.read()
 
-            assert length == len(
-                rb
-            ), f"read_flash length {length} offset {offset:#x} yielded {len(rb)} bytes!"
+            rb_len = len(rb)
+            assert length == rb_len, (
+                f"read_flash length {length} offset {offset:#x} yielded {rb_len} bytes!"
+            )
             return rb
         finally:
             dump_file.close()
@@ -273,9 +274,9 @@ class EsptoolTestCase:
 
     def diff(self, readback, compare_to):
         for rb_b, ct_b, offs in zip(readback, compare_to, range(len(readback))):
-            assert (
-                rb_b == ct_b
-            ), f"First difference at offset {offs:#x} Expected {ct_b} got {rb_b}"
+            assert rb_b == ct_b, (
+                f"First difference at offset {offs:#x} Expected {ct_b} got {rb_b}"
+            )
 
     def verify_readback(
         self, offset, length, compare_to, is_bootloader=False, spi_connection=None
@@ -370,9 +371,9 @@ class TestFlashEncryption(EsptoolTestCase):
                 read_file2 = file2.read()
 
             for rf1, rf2, i in zip(read_file1, read_file2, range(len(read_file2))):
-                assert (
-                    rf1 == rf2
-                ), f"Encrypted write failed: file mismatch at byte position {i}"
+                assert rf1 == rf2, (
+                    f"Encrypted write failed: file mismatch at byte position {i}"
+                )
 
             print("Encrypted write success")
         finally:
@@ -491,8 +492,8 @@ class TestFlashing(EsptoolTestCase):
         image_size = 1024
         offset = flash_size - image_size
         self.run_esptool("write_flash {} images/one_kb.bin".format(hex(offset)))
-        # Some of the functions cannot handle 32-bit addresses - i.e. addresses accessing
-        # the higher 16MB will manipulate with the lower 16MB flash area.
+        # Some of the functions cannot handle 32-bit addresses - i.e. addresses
+        # accessing the higher 16MB will manipulate with the lower 16MB flash area.
         offset2 = offset & 0xFFFFFF
         self.run_esptool("write_flash {} images/one_kb_all_ef.bin".format(hex(offset2)))
         self.verify_readback(offset, image_size, "images/one_kb.bin")
@@ -503,8 +504,8 @@ class TestFlashing(EsptoolTestCase):
     def test_write_larger_area_to_32M_flash(self):
         offset = 18 * 1024 * 1024
         self.run_esptool("write_flash {} images/one_mb.bin".format(hex(offset)))
-        # Some of the functions cannot handle 32-bit addresses - i.e. addresses accessing
-        # the higher 16MB will manipulate with the lower 16MB flash area.
+        # Some of the functions cannot handle 32-bit addresses - i.e. addresses
+        # accessing the higher 16MB will manipulate with the lower 16MB flash area.
         offset2 = offset & 0xFFFFFF
         self.run_esptool("write_flash {} images/one_kb_all_ef.bin".format(hex(offset2)))
         self.verify_readback(offset, 1 * 1024 * 1024, "images/one_mb.bin")
@@ -742,9 +743,9 @@ class TestFlashing(EsptoolTestCase):
         )
         slower = re.search(r"(\d+(\.\d+)?)\s+seconds", output)
         assert slower, "Duration summary not found in the output"
-        assert (
-            float(slower.group(1)) - float(faster.group(1)) > 1
-        ), "Overclocking failed"
+        assert float(slower.group(1)) - float(faster.group(1)) > 1, (
+            "Overclocking failed"
+        )
 
     @pytest.mark.skipif(arg_preload_port is False, reason="USB-JTAG/Serial only")
     @pytest.mark.skipif(arg_chip != "esp32c3", reason="ESP32-C3 only")
@@ -882,9 +883,10 @@ class TestFlashSizes(EsptoolTestCase):
             )
             with open(dump_file.name, "rb") as f:
                 rb = f.read()
-            assert length == len(
-                rb
-            ), f"read_flash length {length} offset {offset:#x} yielded {len(rb)} bytes!"
+            rb_len = len(rb)
+            assert length == rb_len, (
+                f"read_flash length {length} offset {offset:#x} yielded {rb_len} bytes!"
+            )
         finally:
             dump_file.close()
             os.unlink(dump_file.name)
@@ -1046,7 +1048,7 @@ class TestErase(EsptoolTestCase):
         self.verify_readback(0x10000, 0x400, "images/one_kb.bin")
         self.run_esptool("erase_flash")
         empty = self.readback(0x10000, 0x400)
-        assert empty == b"\xFF" * 0x400
+        assert empty == b"\xff" * 0x400
 
     def test_region_erase(self):
         self.run_esptool("write_flash 0x10000 images/one_kb.bin")
@@ -1057,7 +1059,7 @@ class TestErase(EsptoolTestCase):
         self.run_esptool("erase_region 0x10000 0x1000")
         self.verify_readback(0x11000, 0x1000, "images/sector.bin")
         empty = self.readback(0x10000, 0x1000)
-        assert empty == b"\xFF" * 0x1000
+        assert empty == b"\xff" * 0x1000
 
     def test_region_erase_all(self):
         res = self.run_esptool("erase_region 0x0 ALL")
@@ -1077,7 +1079,7 @@ class TestErase(EsptoolTestCase):
         self.run_esptool("--no-stub erase_region 0x10000 0x1000")
         self.verify_readback(0x11000, 0x1000, "images/sector.bin")
         empty = self.readback(0x10000, 0x1000)
-        assert empty == b"\xFF" * 0x1000
+        assert empty == b"\xff" * 0x1000
 
 
 class TestSectorBoundaries(EsptoolTestCase):
@@ -1320,7 +1322,7 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
             f"write_flash -fm dout -ff 20m {bl_offset:#x} {bl_image}"
         )
         if arg_chip in ["esp8266", "esp32"]:
-            # ESP8266 doesn't support this; The test image for ESP32 just doesn't have it.
+            # ESP8266 lacks this feature; ESP32 test image doesn't include it
             assert "Flash params set to" in output
         else:
             assert "Flash params set to" in output
@@ -1552,7 +1554,8 @@ class TestMakeImage(EsptoolTestCase):
 
 @pytest.mark.skipif(
     "ESPTOOL_TEST_USB_OTG" in os.environ or arg_preload_port is not False,
-    reason="Boot mode strapping pin pulled constantly low, can't reset out of bootloader",
+    reason="Boot mode strapping pin pulled constantly low, "
+    "can't reset out of bootloader",
 )
 class TestReset(EsptoolTestCase):
     def test_watchdog_reset(self):
@@ -1593,10 +1596,7 @@ class TestConfigFile(EsptoolTestCase):
             assert not os.path.exists(self.file_path)
 
     dummy_config = (
-        "[esptool]\n"
-        "connect_attempts = 5\n"
-        "reset_delay = 1\n"
-        "serial_write_timeout = 12"
+        "[esptool]\nconnect_attempts = 5\nreset_delay = 1\nserial_write_timeout = 12"
     )
 
     @pytest.mark.host_test
@@ -1616,7 +1616,7 @@ class TestConfigFile(EsptoolTestCase):
             assert f"Loaded custom configuration from {config_file_path}" not in output
 
         # Correct header, but options are unparsable
-        faulty_config = "[esptool]\n" "connect_attempts = 5\n" "connect_attempts = 9\n"
+        faulty_config = "[esptool]\nconnect_attempts = 5\nconnect_attempts = 9\n"
         with self.ConfigFile(config_file_path, faulty_config):
             output = self.run_esptool("version")
             assert f"Ignoring invalid config file {config_file_path}" in output
@@ -1626,9 +1626,7 @@ class TestConfigFile(EsptoolTestCase):
             )
 
         # Correct header, unknown option (or a typo)
-        faulty_config = (
-            "[esptool]\n" "connect_attempts = 9\n" "timoout = 2\n" "bits = 2"
-        )
+        faulty_config = "[esptool]\nconnect_attempts = 9\ntimoout = 2\nbits = 2"
         with self.ConfigFile(config_file_path, faulty_config):
             output = self.run_esptool("version")
             assert "Ignoring unknown config file options: bits, timoout" in output
@@ -1679,7 +1677,7 @@ class TestConfigFile(EsptoolTestCase):
             assert "Connecting............." not in output
 
         # Test invalid custom_reset_sequence format is not accepted
-        invalid_reset_seq_config = "[esptool]\n" "custom_reset_sequence = F0|R1|C0|A5\n"
+        invalid_reset_seq_config = "[esptool]\ncustom_reset_sequence = F0|R1|C0|A5\n"
         with self.ConfigFile(config_file_path, invalid_reset_seq_config):
             output = self.run_esptool_error("flash_id")
             assert f"Loaded custom configuration from {config_file_path}" in output
@@ -1692,8 +1690,8 @@ class TestConfigFile(EsptoolTestCase):
             "[esptool]\n"
             f"open_port_attempts = {connect_attempts}\n"
             "connect_attempts = 1\n"
-            "custom_reset_sequence = D0\n"  # Invalid reset sequence to make sure connection fails
-        )
+            "custom_reset_sequence = D0\n"
+        )  # Invalid reset sequence to make sure connection fails
         config_file_path = os.path.join(os.getcwd(), "esptool.cfg")
         with self.ConfigFile(config_file_path, config):
             output = self.run_esptool_error("flash_id")

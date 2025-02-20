@@ -392,12 +392,14 @@ class EfuseBlockBase(EfuseProtectBase):
                     # if the required bits are not set then we need to re-burn it again.
                     if burns < 2:
                         print(
-                            f"\nRepeat burning BLOCK{self.id} (#{burns + 2}) because not all bits were set"
+                            f"\nRepeat burning BLOCK{self.id} (#{burns + 2}) "
+                            "because not all bits were set"
                         )
                         continue
                     else:
                         print(
-                            f"\nAfter {burns + 1} attempts, the required data was not set to BLOCK{self.id}"
+                            f"\nAfter {burns + 1} attempts, the required data was not "
+                            f"set to BLOCK{self.id}"
                         )
                 break
 
@@ -629,7 +631,8 @@ class EspEfusesBase(object):
         )
         if not do_not_confirm:
             print("Type 'BURN' (all capitals) to continue.", flush=True)
-            # Flush required for Pythons which disable line buffering, ie mingw in mintty
+            # Flush required for Pythons which disable line buffering,
+            # ie mingw in mintty
             yes = input()
             if yes != "BURN":
                 print("Aborting.")
@@ -649,7 +652,8 @@ class EspEfusesBase(object):
         return self.blocks[block_num].num_errors, self.blocks[block_num].fail
 
     def is_efuses_incompatible_for_burn(self):
-        # Overwrite this function for a specific target if you want to check if a certain eFuse(s) can be burned.
+        # Overwrite this function for a specific target if you want to check if a
+        # certain eFuse(s) can be burned.
         return False
 
     def get_major_chip_version(self):

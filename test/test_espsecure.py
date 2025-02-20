@@ -285,7 +285,8 @@ class TestSigning(EspSecureTestCase):
 
     def test_sign_v2_append_signatures(self):
         # Append signatures + Verify with an appended key
-        # (bootloader_signed_v2_rsa.bin already signed with rsa_secure_boot_signing_key.pem)
+        # (bootloader_signed_v2_rsa.bin already signed with
+        # rsa_secure_boot_signing_key.pem)
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
@@ -615,7 +616,10 @@ class TestSigning(EspSecureTestCase):
         assert "Signature could not be verified with the provided key." in str(cm.value)
 
     def test_extract_binary_public_key(self):
-        with tempfile.NamedTemporaryFile() as pub_keyfile, tempfile.NamedTemporaryFile() as pub_keyfile2:  # noqa E501
+        with (
+            tempfile.NamedTemporaryFile() as pub_keyfile,
+            tempfile.NamedTemporaryFile() as pub_keyfile2,
+        ):
             args = self.ExtractKeyArgs(
                 "1", self._open("ecdsa256_secure_boot_signing_key.pem"), pub_keyfile
             )
@@ -653,9 +657,10 @@ class TestSigning(EspSecureTestCase):
             args = self.GenerateKeyArgs("2", scheme, keyfile_name)
             espsecure.generate_signing_key(args)
 
-            with tempfile.NamedTemporaryFile() as pub_keyfile, open(
-                keyfile_name, "rb"
-            ) as keyfile:
+            with (
+                tempfile.NamedTemporaryFile() as pub_keyfile,
+                open(keyfile_name, "rb") as keyfile,
+            ):
                 args = self.ExtractKeyArgs("2", keyfile, pub_keyfile)
                 espsecure.extract_public_key(args)
 

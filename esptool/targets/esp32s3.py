@@ -365,13 +365,15 @@ class ESP32S3ROM(ESP32ROM):
 
     def hard_reset(self):
         try:
-            # Clear force download boot mode to avoid the chip being stuck in download mode after reset
-            # workaround for issue: https://github.com/espressif/arduino-esp32/issues/6762
+            # Clear force download boot mode to avoid chip being stuck in download mode
+            # after reset. Workaround for issue:
+            # https://github.com/espressif/arduino-esp32/issues/6762
             self.write_reg(
                 self.RTC_CNTL_OPTION1_REG, 0, self.RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK
             )
         except Exception:
-            # Skip if response was not valid and proceed to reset; e.g. when monitoring while resetting
+            # Skip invalid response and continue reset (can happen when monitoring
+            # during reset)
             pass
         uses_usb_otg = self.uses_usb_otg()
         if uses_usb_otg:

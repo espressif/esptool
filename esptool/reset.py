@@ -52,9 +52,9 @@ class ResetStrategy(object):
                 if e.errno in [errno.ENOTTY, errno.EINVAL]:
                     self.print_once(
                         "Chip was NOT reset. Setting RTS/DTR lines is not "
-                        f"supported for port '{self.port.name}'. Set --before and --after "
-                        "arguments to 'no_reset' and switch to bootloader manually to "
-                        "avoid this warning."
+                        f"supported for port '{self.port.name}'. Set --before and "
+                        "--after arguments to 'no_reset' and switch to bootloader "
+                        "manually to avoid this warning."
                     )
                     break
                 elif not retry:

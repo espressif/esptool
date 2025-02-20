@@ -78,7 +78,8 @@ class TestLogger:
             logger.warning("This is a warning")
             assert (
                 fake_out.getvalue()
-                == f"{logger.ansi_yellow}Warning:{logger.ansi_normal} This is a warning\n"
+                == f"{logger.ansi_yellow}Warning:{logger.ansi_normal} "
+                "This is a warning\n"
             )
 
     def test_error_message(self, logger):
@@ -90,8 +91,9 @@ class TestLogger:
             )
 
     def test_print_overwrite_tty(self, logger):
-        with patch("sys.stdout", new=StringIO()) as fake_out, patch(
-            "sys.stdout.isatty", return_value=True
+        with (
+            patch("sys.stdout", new=StringIO()) as fake_out,
+            patch("sys.stdout.isatty", return_value=True),
         ):
             logger.print_overwrite("msg1", last_line=False)
             logger.print_overwrite("msg2", last_line=True)
@@ -101,8 +103,9 @@ class TestLogger:
             assert f"\r{logger.ansi_clear}msg2\n" in output
 
     def test_print_overwrite_non_tty(self, logger):
-        with patch("sys.stdout", new=StringIO()) as fake_out, patch(
-            "sys.stdout.isatty", return_value=False
+        with (
+            patch("sys.stdout", new=StringIO()) as fake_out,
+            patch("sys.stdout.isatty", return_value=False),
         ):
             logger.print_overwrite("msg1", last_line=False)
             logger.print_overwrite("msg2", last_line=True)
@@ -110,7 +113,7 @@ class TestLogger:
 
     def test_set_progress(self, logger):
         logger.set_progress(50.0)
-        # Since set_progress is not implemented, we just ensure it doesn't raise an error
+        # Since set_progress is not implemented - just ensure it doesn't raise an error
         assert True
 
     def test_set_incomplete_logger(self, logger):

@@ -92,7 +92,10 @@ def main():
     logging.info(f"TCP/IP port: {args.localport}")
 
     host_ip = socket.gethostbyname(socket.gethostname())
-    wait_msg = f"Waiting for connection ... use the 'rfc2217://{host_ip}:{args.localport}?ign_set_control' as a PORT"
+    wait_msg = (
+        "Waiting for connection ... use the 'rfc2217://"
+        f"{host_ip}:{args.localport}?ign_set_control' as a PORT"
+    )
     logging.info(wait_msg)
 
     while True:

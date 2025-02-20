@@ -282,8 +282,8 @@ def _update_image_flash_params(esp, address, args, image):
         return image
 
     # After the 8-byte header comes the extended header for chips others than ESP8266.
-    # The 15th byte of the extended header indicates if the image is protected by
-    # a SHA256 checksum. In that case we recalculate the SHA digest after modifying the header.
+    # The 15th byte of the extended header indicates if the image is protected by SHA256
+    # checksum. In that case we recalculate the SHA digest after modifying the header.
     sha_appended = args.chip != "esp8266" and image[8 + 15] == 1
 
     if args.flash_mode != "keep":
@@ -322,7 +322,7 @@ def _update_image_flash_params(esp, address, args, image):
             )
         )
 
-        # get the SHA digest newly stored in the image and compare it to the calculated one
+        # get SHA digest newly stored in the image and compare it to the calculated one
         image_stored_sha = image[
             image_object.data_length : image_object.data_length
             + image_object.SHA256_DIGEST_LEN
@@ -595,7 +595,7 @@ def write_flash(esp, args):
             # to align it.
             bytes_over = address % esp.FLASH_SECTOR_SIZE
             address -= bytes_over
-            image = b"\xFF" * bytes_over + image
+            image = b"\xff" * bytes_over + image
 
         if not esp.secure_download_mode and not esp.get_secure_boot_enabled():
             image = _update_image_flash_params(esp, address, args, image)
@@ -650,7 +650,8 @@ def write_flash(esp, args):
                             ),
                         )
                         if not esp.IS_STUB:
-                            timeout = block_timeout  # ROM code writes block to flash before ACKing
+                            # ROM code writes block to flash before ACKing
+                            timeout = block_timeout
                         esp.flash_defl_block(block, seq, timeout=timeout)
                         if esp.IS_STUB:
                             # Stub ACKs when block is received,
@@ -670,7 +671,8 @@ def write_flash(esp, args):
                 break
             except SerialException:
                 if attempt == esp.WRITE_FLASH_ATTEMPTS or encrypted:
-                    # Already retried once or encrypted mode is disabled because of security reasons
+                    # Already retried once or encrypted mode is disabled because of
+                    # security reasons
                     raise
                 log.print("\nLost connection, retrying...")
                 esp._port.close()
@@ -724,7 +726,7 @@ def write_flash(esp, args):
                 if res != calcmd5:
                     log.print(f"File  MD5: {calcmd5}")
                     log.print(f"Flash MD5: {res}")
-                    if res == hashlib.md5(b"\xFF" * uncsize).hexdigest():
+                    if res == hashlib.md5(b"\xff" * uncsize).hexdigest():
                         raise FatalError(
                             "Write failed, the written flash region is empty."
                         )
@@ -793,9 +795,13 @@ def _parse_app_info(app_info_segment):
         "date": date.decode("utf-8"),
         "idf_ver": idf_ver.decode("utf-8"),
         "app_elf_sha256": hexify(app_elf_sha256, uppercase=False),
-        "min_efuse_blk_rev_full": f"{min_efuse_blk_rev_full // 100}.{min_efuse_blk_rev_full % 100}",
-        "max_efuse_blk_rev_full": f"{max_efuse_blk_rev_full // 100}.{max_efuse_blk_rev_full % 100}",
-        "mmu_page_size": f"{2 ** mmu_page_size // 1024} KB"
+        "min_efuse_blk_rev_full": (
+            f"{min_efuse_blk_rev_full // 100}.{min_efuse_blk_rev_full % 100}"
+        ),
+        "max_efuse_blk_rev_full": (
+            f"{max_efuse_blk_rev_full // 100}.{max_efuse_blk_rev_full % 100}"
+        ),
+        "mmu_page_size": f"{2**mmu_page_size // 1024} KB"
         if mmu_page_size != 0
         else None,
         "reserv3": reserv3,
@@ -992,11 +998,11 @@ def image_info(args):
             title = "Application information"
             log.print(title)
             log.print("=" * len(title))
-            log.print(f'Project name: {app_desc["project_name"]}')
-            log.print(f'App version: {app_desc["version"]}')
-            log.print(f'Compile time: {app_desc["date"]} {app_desc["time"]}')
+            log.print(f"Project name: {app_desc['project_name']}")
+            log.print(f"App version: {app_desc['version']}")
+            log.print(f"Compile time: {app_desc['date']} {app_desc['time']}")
             log.print(f"ELF file SHA256: {app_desc['app_elf_sha256']}")
-            log.print(f'ESP-IDF: {app_desc["idf_ver"]}')
+            log.print(f"ESP-IDF: {app_desc['idf_ver']}")
             log.print(
                 f"Minimal eFuse block revision: {app_desc['min_efuse_blk_rev_full']}"
             )
@@ -1024,8 +1030,8 @@ def image_info(args):
             log.print(title)
             log.print("=" * len(title))
             log.print(f"Bootloader version: {version}")
-            log.print(f'ESP-IDF: {idf_ver.decode("utf-8")}')
-            log.print(f'Compile time: {date_time.decode("utf-8")}')
+            log.print(f"ESP-IDF: {idf_ver.decode('utf-8')}")
+            log.print(f"Compile time: {date_time.decode('utf-8')}")
 
 
 def make_image(args):
@@ -1084,7 +1090,9 @@ def elf2image(args):
             if ".flash.appdesc" in seg.name:
                 appdesc_seg = seg
                 break
-        # If ELF file contains app description segment, which is in flash memory (RAM build has it too, but does not have MMU page size) and chip has configurable MMU page size.
+        # If ELF file contains app description segment, which is in flash memory
+        # (RAM build has it too, but does not have MMU page size) and chip has
+        # configurable MMU page size.
         if (
             appdesc_seg
             and image.is_flash_addr(appdesc_seg.addr)
@@ -1092,17 +1100,19 @@ def elf2image(args):
         ):
             app_desc = _parse_app_info(appdesc_seg.data)
             if app_desc:
-                # MMU page size is specified in app description segment since ESP-IDF v5.4
+                # MMU page size is set in app description segment since ESP-IDF v5.4
                 if app_desc["mmu_page_size"]:
                     image.set_mmu_page_size(flash_size_bytes(app_desc["mmu_page_size"]))
-                # Try to set the correct MMU page size based on the app description starting address which,
-                # without image + extended header (24 bytes) and segment header (8 bytes), should be aligned to MMU page size.
+                # Try to set the correct MMU page size based on the app description
+                # starting address which, without image + extended header (24 bytes)
+                # and segment header (8 bytes), should be aligned to MMU page size.
                 else:
                     for mmu_page_size in reversed(image.MMU_PAGE_SIZE_CONF):
                         if (appdesc_seg.addr - 24 - 8) % mmu_page_size == 0:
                             image.set_mmu_page_size(mmu_page_size)
                             log.print(
-                                f"MMU page size not specified, set to {image.IROM_ALIGN // 1024} KB"
+                                "MMU page size not specified, set to "
+                                f"{image.IROM_ALIGN // 1024} KB"
                             )
                             break
                     else:
@@ -1122,7 +1132,7 @@ def elf2image(args):
     if args.elf_sha256_offset:
         image.elf_sha256 = e.sha256()
         image.elf_sha256_offset = args.elf_sha256_offset
-    # If the ELF file contains an app_desc section, put the SHA256 digest at the correct offset
+    # If ELF file contains an app_desc section, put the SHA256 digest at correct offset
     elif any(".flash.appdesc" in seg.name for seg in image.segments):
         image.elf_sha256 = e.sha256()
         image.elf_sha256_offset = 0xB0
@@ -1194,13 +1204,11 @@ def erase_flash(esp, args):
 def erase_region(esp, args):
     if args.address % ESPLoader.FLASH_SECTOR_SIZE != 0:
         raise FatalError(
-            "Offset to erase from must be a multiple "
-            f"of {ESPLoader.FLASH_SECTOR_SIZE}"
+            f"Offset to erase from must be a multiple of {ESPLoader.FLASH_SECTOR_SIZE}"
         )
     if args.size % ESPLoader.FLASH_SECTOR_SIZE != 0:
         raise FatalError(
-            "Size of data to erase must be a multiple "
-            f"of {ESPLoader.FLASH_SECTOR_SIZE}"
+            f"Size of data to erase must be a multiple of {ESPLoader.FLASH_SECTOR_SIZE}"
         )
     if not args.force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
         if esp.get_flash_encryption_enabled() or esp.get_secure_boot_enabled():
@@ -1248,9 +1256,9 @@ def read_flash_sfdp(esp, args):
     detect_flash_id(esp)
 
     sfdp = esp.read_spiflash_sfdp(args.addr, args.bytes * 8)
-    log.print(f"SFDP[{args.addr}..{args.addr+args.bytes-1}]: ", end="")
+    log.print(f"SFDP[{args.addr}..{args.addr + args.bytes - 1}]: ", end="")
     for _ in range(args.bytes):
-        log.print(f"{sfdp&0xff:02X} ", end="")
+        log.print(f"{sfdp & 0xFF:02X} ", end="")
         sfdp = sfdp >> 8
     log.print()
 
@@ -1317,7 +1325,8 @@ def verify_flash(esp, args):
         assert flash != image
         diff = [i for i in range(image_size) if flash[i] != image[i]]
         log.print(
-            f"-- verify FAILED: {len(diff)} differences, first at 0x{address + diff[0]:08x}"
+            f"-- verify FAILED: {len(diff)} differences, "
+            f"first at 0x{address + diff[0]:08x}"
         )
         for d in diff:
             flash_byte = flash[d]
@@ -1486,7 +1495,7 @@ def merge_bin(args):
 
             def pad_to(flash_offs):
                 # account for output file offset if there is any
-                of.write(b"\xFF" * (flash_offs - args.target_offset - of.tell()))
+                of.write(b"\xff" * (flash_offs - args.target_offset - of.tell()))
 
             for addr, argfile in input_files:
                 pad_to(addr)

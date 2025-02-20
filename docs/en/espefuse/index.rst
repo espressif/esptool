@@ -160,7 +160,7 @@ When you include this CSV file, the tool will generate a new section in the summ
 
 You can reference these fields using the names and aliases provided in the CSV file. For non-sequential bits, the names are modified slightly with the addition of _0 and _1 postfixes for every sub-field, to ensure safer handling.
 
-For the current example, you can reference the custom fields with the following names: MODULE_VERSION, DEVICE_ROLE, SETTING_1, SETTING_2, ID_NUM_0, ID_NUM_1, ID_NUM_2, CUSTOM_SECURE_VERSION, ID_NUMK_0, ID_NUMK_1, MY_DATA, MY_DATA_FIELD1; and alises: SETTING_1_ALT_NAME, MY_ID_NUM_0, MY_ID_NUM_1, MY_ID_NUM_2, MY_ID_NUMK_0, MY_ID_NUMK_1.
+For the current example, you can reference the custom fields with the following names: MODULE_VERSION, DEVICE_ROLE, SETTING_1, SETTING_2, ID_NUM_0, ID_NUM_1, ID_NUM_2, CUSTOM_SECURE_VERSION, ID_NUMK_0, ID_NUMK_1, MY_DATA, MY_DATA_FIELD1; and aliases: SETTING_1_ALT_NAME, MY_ID_NUM_0, MY_ID_NUM_1, MY_ID_NUM_2, MY_ID_NUMK_0, MY_ID_NUMK_1.
 
 For convenience, the espefuse summary command includes the used bit range of the field in a comment, such as ``(150-157)`` len = 8 bits.
 

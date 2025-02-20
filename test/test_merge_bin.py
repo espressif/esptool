@@ -63,9 +63,9 @@ class TestMergeBin:
             output = output.decode("utf-8")
             print(output)
             if not allow_warnings:
-                assert (
-                    "warning" not in output.lower()
-                ), "merge_bin should not output warnings"
+                assert "warning" not in output.lower(), (
+                    "merge_bin should not output warnings"
+                )
 
             with open(output_file.name, "rb") as f:
                 return f.read()
@@ -78,7 +78,7 @@ class TestMergeBin:
     def assertAllFF(self, some_bytes):
         # this may need some improving as the failed assert messages may be
         # very long and/or useless!
-        assert b"\xFF" * len(some_bytes) == some_bytes
+        assert b"\xff" * len(some_bytes) == some_bytes
 
     def test_simple_merge(self):
         merged = self.run_merge_bin(
@@ -262,7 +262,7 @@ class TestMergeBin:
         )
         source = read_image("bootloader_esp32.bin")
         # verify that padding was done correctly
-        assert b"\xFF" * 0x1000 == merged_bin[:0x1000]
+        assert b"\xff" * 0x1000 == merged_bin[:0x1000]
         # verify the file itself
         assert source == merged_bin[0x1000:]
 

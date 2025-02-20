@@ -136,7 +136,8 @@ def main(argv=None, esp=None):
     parser.add_argument(
         "--port-filter",
         action="append",
-        help="Serial port device filter, can be vid=NUMBER, pid=NUMBER, name=SUBSTRING, serial=SUBSTRING",
+        help="Serial port device filter, can be vid=NUMBER, pid=NUMBER, "
+        "name=SUBSTRING, serial=SUBSTRING",
         type=str,
         default=[],
     )
@@ -169,7 +170,8 @@ def main(argv=None, esp=None):
         action="store_true",
     )
 
-    # --stub-version can be set with --no-stub so the tests wouldn't fail if this option is implied globally
+    # --stub-version can be set with --no-stub so the tests wouldn't fail if this
+    # option is implied globally
     parser.add_argument(
         "--stub-version",
         default=os.environ.get("ESPTOOL_STUB_VERSION", StubFlasher.STUB_SUBDIRS[0]),
@@ -837,8 +839,7 @@ def main(argv=None, esp=None):
                 args.no_stub = True
             elif not esp.IS_STUB and esp.stub_is_disabled:
                 log.warning(
-                    "Stub loader has been disabled for compatibility, "
-                    "setting --no-stub"
+                    "Stub loader has been disabled for compatibility, setting --no-stub"
                 )
                 args.no_stub = True
             elif esp.CHIP_NAME in [

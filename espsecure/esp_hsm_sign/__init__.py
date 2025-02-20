@@ -52,7 +52,7 @@ def establish_session(config):
         if os.path.exists(config["pkcs11_lib"]):
             lib = pkcs11.lib(config["pkcs11_lib"])
         else:
-            print(f'LIB file does not exist at {config["pkcs11_lib"]}')
+            print(f"LIB file does not exist at {config['pkcs11_lib']}")
             sys.exit(1)
         for slot in lib.get_slots(token_present=True):
             if slot.slot_id == int(config["slot"]):
@@ -60,7 +60,7 @@ def establish_session(config):
 
         token = slot.get_token()
         session = token.open(rw=True, user_pin=config["credentials"])
-        print(f'Session creation successful with HSM slot {int(config["slot"])}.')
+        print(f"Session creation successful with HSM slot {int(config['slot'])}.")
         return session
 
     except pkcs11.exceptions.PKCS11Error as e:
@@ -74,7 +74,7 @@ def get_privkey_info(session, config):
         private_key = session.get_key(
             object_class=pkcs11.constants.ObjectClass.PRIVATE_KEY, label=config["label"]
         )
-        print(f'Got private key metadata with label {config["label"]}.')
+        print(f"Got private key metadata with label {config['label']}.")
         return private_key
 
     except pkcs11.exceptions.PKCS11Error as e:

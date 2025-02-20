@@ -137,7 +137,9 @@ class CSVFuseTable(list):
 
         def print_error(p, n, state):
             raise InputError(
-                f"Field at {p.field_name}, {p.efuse_block}, {p.bit_start}, {p.bit_count}  {state}  {n.field_name}, {n.efuse_block}, {n.bit_start}, {n.bit_count}"
+                f"Field at {p.field_name}, {p.efuse_block}, {p.bit_start}, "
+                f"{p.bit_count} {state} {n.field_name}, {n.efuse_block}, "
+                f"{n.bit_start}, {n.bit_count}"
             )
 
         for p in self:
@@ -238,7 +240,8 @@ class FuseDefinition(object):
         if self.bit_start + self.bit_count > max_bits:
             raise ValidationError(
                 self,
-                f"The field is outside the boundaries(max_bits = {max_bits}) of the {self.efuse_block} block",
+                f"The field is outside the boundaries (max_bits = {max_bits}) "
+                f"of the {self.efuse_block} block",
             )
 
     def get_bit_count(self, check_define=True):
