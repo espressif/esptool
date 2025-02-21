@@ -21,7 +21,7 @@ jobs:
         name: Build and test in ${{ matrix.platform }}
         with:
           arch: ${{ matrix.platform }}
-          distro: ubuntu20.04
+          distro: ubuntu22.04
           shell: /bin/bash
           # Not required, but speeds up builds by storing container images in
           # a GitHub package registry.
@@ -31,17 +31,20 @@ jobs:
           dockerRunArgs: --volume "${PWD}/${{ env.DISTPATH }}:/${{ env.DISTPATH }}"
           install: |
             apt-get update -y
-            apt-get install --ignore-missing -y python3 python3-pip python3-setuptools python-is-python3 pkg-config openssl libffi-dev libssl-dev cargo rustc
+            apt-get install -y software-properties-common
+            add-apt-repository -y ppa:deadsnakes/ppa
+            apt-get update -y
+            apt-get install --ignore-missing -y python3.11 python3.11-dev python3-pip pkg-config openssl libffi-dev libssl-dev cargo rustc
+            python3.11 -m pip install --upgrade pip setuptools wheel
           run: |
+            python3.11 -m pip install --upgrade cffi
             adduser --disabled-password --gecos "" builder
             chmod -R a+rwx /home/runner/work/esptool
             su builder <<EOF
             export PATH=\$PATH:/home/builder/.local/bin
             # Install dependencies
-            python -m pip install --upgrade pip
-            # PyInstaller >=6.0 results in significantly more antivirus false positives
-            pip install pyinstaller==5.13.2
-            pip install --user -e .
+            python3.11 -m pip install pyinstaller==6.11.1
+            python3.11 -m pip install --user -e .
 
             # Build with PyInstaller
             pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.STUBS_DIR }}1/*.json:${{ env.STUBS_DIR }}1/" --add-data="${{ env.STUBS_DIR }}2/*.json:${{ env.STUBS_DIR }}2/" esptool.py
@@ -87,7 +90,7 @@ jobs:
         - platform: linux-amd64
           TARGET: linux-amd64
           SEPARATOR: ':'
-          RUN_ON: ubuntu-20.04
+          RUN_ON: ubuntu-22.04
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
       STUBS_DIR: ./esptool/targets/stub_flasher/
@@ -96,15 +99,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@master
-      - name: Set up Python 3.8
+      - name: Set up Python 3.11
         uses: actions/setup-python@master
         with:
-          python-version: 3.8
+          python-version: "3.11"
       - name: Install dependencies
-        # PyInstaller >=6.0 results in significantly more antivirus false positives
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller==5.13.2
+          pip install pyinstaller==6.11.1
           pip install --user -e .
       - name: Build with PyInstaller
         run: |

@@ -180,3 +180,12 @@ The ``make_image`` command for the ESP8266 has been **removed in v5**. This comm
 **Migration Steps:**
 
 1. Replace any ``make_image`` workflows with the recommended way of assembling firmware images using **objcopy** and ``elf2image``.
+
+Using Binary from GitHub Releases on Linux
+******************************************
+
+The ``esptool.py`` binary from GitHub Releases on Linux is now using Ubuntu 22.04 as the base image. That means the image is using ``glibc`` 2.35, which is not fully compatible with the ``glibc`` 2.28 from Ubuntu 20.04 (the base image for ``v4.*``).
+
+**Migration Steps:**
+
+1. Update your operating system to a newer version which bundles ``glibc`` 2.35 or later

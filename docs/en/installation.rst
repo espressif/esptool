@@ -46,6 +46,25 @@ Creating a virtual environment (venv) is a good practice. This is particularly h
 - When you're done using ``esptool.py``, deactivate the virtual environment: ``deactivate``. The environment can be reused by activating it again.
 - If you no longer need the virtual environment, you can remove it by deleting the ``esptoolenv`` directory.
 
+Binary Releases
+^^^^^^^^^^^^^^^^
+
+If you do not want to install Python and all the dependencies, you can use the pre-built binaries from the `GitHub Releases <https://github.com/espressif/esptool/releases>`_.
+
+Please note that the binaries might have some limitations:
+
+- The binaries might rely on some system libraries that are not available on all systems.
+- The binaries are available only for selected operating systems - currently macOS (x86_64, arm64), Linux (x86_64, armv7,aarch64) and Windows (x86_64).
+- The binaries might get reported as malware by your antivirus software.
+- The application is larger in size compared to the Python package installation, as it includes all dependencies.
+- The application has slower startup time compared to running the Python script directly.
+- The application cannot be imported as a Python module in other Python applications.
+
+.. note::
+
+   For Linux, the binaries are built using Ubuntu 22.04 as the base image. That means any version older than Ubuntu 22.04 (or any other distribution that uses ``glibc<2.35``) might not work.
+   For using on Ubuntu 20.04, please use the Python package installation or ``v4.*`` release.
+
 How to Update
 -------------
 
