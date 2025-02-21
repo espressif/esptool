@@ -366,12 +366,12 @@ def cli(
     ctx.obj.update(kwargs)
     ctx.obj["invoked_subcommand"] = ctx.invoked_subcommand
     ctx.obj["esp"] = getattr(ctx, "esp", None)
+    log.print(f"esptool.py v{__version__}")
+    load_config_file(verbose=True)
 
 
 def prepare_esp_object(ctx):
     """Prepare ESP object for operation"""
-    log.print(f"esptool.py v{__version__}")
-    load_config_file(verbose=True)
     StubFlasher.set_preferred_stub_subdir(ctx.obj["stub_version"])
     # Commands that require an ESP object (flash read/write, etc.)
     # 1) Get the ESP object

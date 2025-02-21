@@ -118,3 +118,38 @@ All command functions (e.g., ``verify_flash``, ``write_flash``) have been refact
 3. Test your updated scripts to ensure compatibility with the new API.
 
 For detailed examples and API reference, see the :ref:`scripting <scripting>` section.
+
+
+Flash Operations from Non-flash Related Commands
+************************************************
+
+When esptool is used as a CLI tool, the following commands no longer automatically attach the flash by default, since flash access is not required for their core functionality:
+
+- ``load_ram``
+- ``read_mem``
+- ``write_mem``
+- ``dump_mem``
+- ``chip_id``
+- ``read_mac``
+
+The ``--spi-connection`` CLI argument has been **removed** from non-flash related commands in v5. This argument had no effect on the command execution. Affected commands:
+
+- ``elf2image``
+- ``merge_bin``
+
+**Migration Steps:**
+
+1. Update any scripts that attempt to attach flash from non-flash related commands.
+2. If you need to attach flash for above mentioned commands, use the ``attach_flash`` function from the public API instead. For more details see :ref:`scripting <scripting>`.
+3. Remove the ``--spi-connection`` argument from ``elf2image`` and ``merge_bin`` commands.
+
+
+Shell Completion
+****************
+
+The esptool ``v5`` has switched to using `Click <https://click.palletsprojects.com/>`_ for command line argument parsing, which changes how shell completion works.
+
+**Migration Steps:**
+
+1. Remove the old shell completion code from your scripts and shell configuration files like ``.bashrc``, ``.zshrc``, ``.config/fish/config.fish``, etc.
+2. Follow the new shell completion setup instructions in the :ref:`shell-completion` section of the :ref:`installation <installation>` guide.

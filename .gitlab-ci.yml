@@ -527,9 +527,8 @@ build_docs:
       - docs/_build/*/*/html/*
     expire_in: 4 days
   script:
-    - pip install .  # esptool is needed for the automatic API documentation generation
+    - pip install ".[docs]" --prefer-binary  # esptool is needed for the automatic API documentation generation
     - cd docs
-    - pip install -r requirements.txt --prefer-binary
     - build-docs -l en -t {esp8266,esp32,esp32s2,esp32c3,esp32s3,esp32c2,esp32c6,esp32h2,esp32p4,esp32c5,esp32c61}
 
 .deploy_docs_template:
@@ -543,7 +542,7 @@ build_docs:
     - source ${CI_PROJECT_DIR}/docs/utils.sh
     - add_doc_server_ssh_keys $DOCS_DEPLOY_PRIVATEKEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
     - export GIT_VER=$(git describe --always)
-    - pip install -r ${CI_PROJECT_DIR}/docs/requirements.txt --prefer-binary
+    - pip install ".[docs]" --prefer-binary
     - deploy-docs
 
 deploy_docs_preview:

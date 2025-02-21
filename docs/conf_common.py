@@ -29,7 +29,10 @@ extensions += [
     "esp_docs.esp_extensions.dummy_build_system",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx_tabs.tabs",
 ]
+
+sphinx_tabs_disable_tab_closing = True
 
 ESP8266_DOCS = []
 

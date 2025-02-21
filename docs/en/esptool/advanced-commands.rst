@@ -133,6 +133,18 @@ The Serial Flash Discoverable Parameters (SFDP) store essential vendor-specific 
 
 This will read 4 bytes from SFDP address 16.
 
+.. only:: not esp8266 and not esp32
+
+    Read Security Info: ``get_security_info``
+    ------------------------------------------
+
+    The ``get_security_info`` command allows you to read security-related information (secure boot, secure download, etc.) about the Espressif devices.
+
+    ::
+
+        esptool.py get_security_info
+
+
 .. only:: esp8266
 
     .. _chip-id:
