@@ -99,7 +99,7 @@ Esptool allows redirecting output by implementing a custom logger class. This ca
         def error(self, message):
             self.print(message, file=sys.stderr)
 
-        def print_overwrite(self, message):
+        def print_overwrite(self, message, last_line):
             # Overwriting not needed, print normally
             self.print(message)
 
