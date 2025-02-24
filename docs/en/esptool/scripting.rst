@@ -254,6 +254,7 @@ Esptool allows redirecting output by implementing a custom logger class. This ca
 .. code-block:: python
 
     from esptool.logger import log, TemplateLogger
+    import sys
 
     class CustomLogger(TemplateLogger):
         log_to_file = True
@@ -276,7 +277,7 @@ Esptool allows redirecting output by implementing a custom logger class. This ca
         def error(self, message):
             self.print(message, file=sys.stderr)
 
-        def print_overwrite(self, message, last_line):
+        def print_overwrite(self, message, last_line=False):
             # Overwriting not needed, print normally
             self.print(message)
 
