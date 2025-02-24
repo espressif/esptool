@@ -6,7 +6,7 @@
 import struct
 
 from .esp32c3 import ESP32C3ROM
-from ..loader import ESPLoader
+from ..loader import ESPLoader, StubMixin
 from ..logger import log
 from ..util import FatalError
 
@@ -192,23 +192,10 @@ class ESP32H4ROM(ESP32C3ROM):
             )
 
 
-class ESP32H4StubLoader(ESP32H4ROM):
-    """Access class for ESP32H4 stub loader, runs on top of ROM.
+class ESP32H4StubLoader(StubMixin, ESP32H4ROM):
+    """Stub loader for ESP32-H4, runs on top of ROM."""
 
-    (Basically the same as ESP32StubLoader, but different base class.
-    Can possibly be made into a mixin.)
-    """
-
-    FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
-    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
-    IS_STUB = True
-
-    def __init__(self, rom_loader):
-        self.secure_download_mode = rom_loader.secure_download_mode
-        self._port = rom_loader._port
-        self._trace_enabled = rom_loader._trace_enabled
-        self.cache = rom_loader.cache
-        self.flush_input()  # resets _slip_reader
+    pass
 
 
 ESP32H4ROM.STUB_CLASS = ESP32H4StubLoader
