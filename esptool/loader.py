@@ -1162,13 +1162,13 @@ class ESPLoader(object):
                 % (arg, ", ".join(cls.FLASH_FREQUENCY.keys()))
             )
 
-    def run_stub(self, stub=None):
+    def run_stub(self, stub: StubFlasher | None = None) -> "ESPLoader":
         if stub is None:
             stub = StubFlasher(self.CHIP_NAME)
 
         if self.sync_stub_detected:
             log.print("Stub is already running. No upload is necessary.")
-            return self.STUB_CLASS(self)
+            return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
 
         # Upload
         log.print("Uploading stub...")
@@ -1196,7 +1196,7 @@ class ESPLoader(object):
         if p != b"OHAI":
             raise FatalError(f"Failed to start stub. Unexpected response: {p}")
         log.print("Stub running...")
-        return self.STUB_CLASS(self)
+        return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
 
     @stub_and_esp32_function_only
     def flash_defl_begin(self, size, compsize, offset):

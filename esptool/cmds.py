@@ -7,6 +7,7 @@ import hashlib
 import io
 import os
 import struct
+import sys
 import time
 import zlib
 import itertools
@@ -1545,6 +1546,52 @@ def reset_chip(esp: ESPLoader, reset_mode: str = "hard_reset") -> None:
             esp.soft_reset(True)  # Exit the stub flasher back to ROM loader
     else:
         raise FatalError(f"Invalid reset mode: {reset_mode}")
+
+
+def run_stub(esp: ESPLoader) -> ESPLoader:
+    """
+    Load and execute the stub loader on the ESP device. If stub loading
+    is not supported or is explicitly disabled, warnings are logged.
+
+    Args:
+        esp: Initiated esp object connected to a real device.
+
+    Returns:
+        ESPLoader: The esp instance, either as a stub child class in a state
+        where the stub has been executed, or in its original state
+        if the stub loader is disabled or unsupported.
+    """
+    if esp.secure_download_mode:
+        log.warning(
+            "Stub loader is not supported in Secure Download Mode, "
+            "it has been disabled. Set --no-stub to suppress this warning."
+        )
+    elif not esp.IS_STUB and esp.stub_is_disabled:
+        log.warning(
+            "Stub loader has been disabled for compatibility, "
+            "set --no-stub to suppress this warning."
+        )
+    elif esp.CHIP_NAME in [
+        "ESP32-H21",
+        "ESP32-H4",
+    ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
+        log.warning(
+            f"Stub loader is not yet supported on {esp.CHIP_NAME}, "
+            "it has been disabled. Set --no-stub to suppress this warning."
+        )
+    else:
+        try:
+            return esp.run_stub()
+        except Exception:
+            # The CH9102 bridge (PID: 0x55D4) can have issues on MacOS
+            if sys.platform == "darwin" and esp._get_pid() == 0x55D4:
+                log.print()
+                log.note(
+                    "If issues persist, "
+                    "try installing the WCH USB-to-Serial MacOS driver."
+                )
+            raise
+    return esp
 
 
 # Commands that don't require an ESP object (image manipulation, etc.)

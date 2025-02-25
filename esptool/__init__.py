@@ -24,6 +24,7 @@ __all__ = [
     "read_mem",
     "reset_chip",
     "run",
+    "run_stub",
     "verify_flash",
     "version",
     "write_flash",
@@ -62,6 +63,7 @@ from esptool.cmds import (
     read_mem,
     reset_chip,
     run,
+    run_stub,
     verify_flash,
     version,
     write_flash,
@@ -449,36 +451,7 @@ def prepare_esp_object(ctx):
     ############################
 
     if not ctx.obj["no_stub"]:
-        if esp.secure_download_mode:
-            log.warning(
-                "Stub loader is not supported in Secure Download Mode, "
-                "it has been disabled. Set --no-stub to suppress this warning."
-            )
-        elif not esp.IS_STUB and esp.stub_is_disabled:
-            log.warning(
-                "Stub loader has been disabled for compatibility, "
-                "set --no-stub to suppress this warning."
-            )
-        elif esp.CHIP_NAME in [
-            "ESP32-H21",
-            "ESP32-H4",
-        ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
-            log.warning(
-                f"Stub loader is not yet supported on {esp.CHIP_NAME}, "
-                "it has been disabled. Set --no-stub to suppress this warning."
-            )
-        else:
-            try:
-                esp = esp.run_stub()
-            except Exception:
-                # The CH9102 bridge (PID: 0x55D4) can have issues on MacOS
-                if sys.platform == "darwin" and esp._get_pid() == 0x55D4:
-                    log.print()
-                    log.note(
-                        "If issues persist, "
-                        "try installing the WCH USB-to-Serial MacOS driver."
-                    )
-                raise
+        esp = run_stub(esp)
 
     # 4) Configure the baud rate and voltage regulator
     ##################################################
