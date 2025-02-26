@@ -123,7 +123,7 @@ click.rich_click.OPTION_GROUPS = {
             "name": "RAW options",
             "options": [
                 "--target-offset",
-                "--fill-flash-size",
+                "--pad-to-size",
             ],
         },
     ],
@@ -570,9 +570,9 @@ def write_mem_cli(ctx, address, value, mask):
     "filename, separated by space.",
 )
 @click.option(
-    "--ignore-flash-encryption-efuse-setting",
+    "--ignore-flash-enc-efuse",
     is_flag=True,
-    help="Ignore flash encryption efuse settings",
+    help="Ignore flash encryption eFuse settings",
 )
 @click.option(
     "--force",
@@ -926,12 +926,12 @@ def read_flash_sfdp_cli(ctx, address, bytes, **kwargs):
     help="Target offset where the output file will be flashed",
 )
 @click.option(  # RAW only
-    "--fill-flash-size",
+    "--pad-to-size",
     type=click.Choice(
         ["256KB", "512KB", "1MB", "2MB", "4MB", "8MB", "16MB", "32MB", "64MB", "128MB"]
     ),
-    help="If set, the final binary file will be padded with FF bytes up to this flash "
-    "size.",
+    help="If set, the final binary file will be padded with 0xFF bytes up to this flash"
+    " size.",
 )
 @add_spi_flash_options(allow_keep=True, auto_detect=False)
 @click.pass_context

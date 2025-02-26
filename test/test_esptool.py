@@ -369,7 +369,7 @@ class TestFlashEncryption(EsptoolTestCase):
             pytest.skip("Valid encryption key already programmed, aborting the test")
 
         self.run_esptool(
-            "write_flash --encrypt --ignore-flash-encryption-efuse-setting "
+            "write_flash --encrypt --ignore-flash-enc-efuse "
             "0x10000 images/ram_helloworld/helloworld-esp32.bin"
         )
         self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")
@@ -408,7 +408,7 @@ class TestFlashEncryption(EsptoolTestCase):
             pytest.skip("Valid encryption key already programmed, aborting the test")
 
         self.run_esptool(
-            "write_flash --encrypt --ignore-flash-encryption-efuse-setting "
+            "write_flash --encrypt --ignore-flash-enc-efuse "
             "0x10000 images/ram_helloworld/helloworld-esp32_edit.bin"
         )
         self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")

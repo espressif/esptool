@@ -303,7 +303,7 @@ The output of the command will be in ``raw`` format and gaps between individual 
 
 **RAW options:**
 
-*  The ``--fill-flash-size SIZE`` option will pad the merged binary with `0xFF` bytes to the full flash specified size, for example ``--fill-flash-size 4MB`` will create a 4MB binary file.
+*  The ``--pad-to-size SIZE`` option will pad the merged binary with `0xFF` bytes to the full flash specified size, for example ``--pad-to-size 4MB`` will create a 4MB binary file.
 *  The ``--target-offset 0xNNN`` option will create a merged binary that should be flashed at the specified offset, instead of at offset 0x0.
 
 

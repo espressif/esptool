@@ -169,9 +169,9 @@ class TestMergeBin:
         assert helloworld == merged[0xF000 : 0xF000 + len(helloworld)]
         self.assertAllFF(merged[0x1000 + len(bootloader) : 0xF000])
 
-    def test_fill_flash_size(self):
+    def test_pad_to_size(self):
         merged = self.run_merge_bin(
-            "esp32c3", [(0x0, "bootloader_esp32c3.bin")], ["--fill-flash-size", "4MB"]
+            "esp32c3", [(0x0, "bootloader_esp32c3.bin")], ["--pad-to-size", "4MB"]
         )
         bootloader = read_image("bootloader_esp32c3.bin")
 
@@ -179,14 +179,14 @@ class TestMergeBin:
         assert bootloader == merged[: len(bootloader)]
         self.assertAllFF(merged[len(bootloader) :])
 
-    def test_fill_flash_size_w_target_offset(self):
+    def test_pad_to_size_w_target_offset(self):
         merged = self.run_merge_bin(
             "esp32",
             [
                 (0x1000, "bootloader_esp32.bin"),
                 (0x10000, "ram_helloworld/helloworld-esp32.bin"),
             ],
-            ["--target-offset", "0x1000", "--fill-flash-size", "2MB"],
+            ["--target-offset", "0x1000", "--pad-to-size", "2MB"],
         )
 
         # full length is without target-offset arg
@@ -215,7 +215,7 @@ class TestMergeBin:
             merged = self.run_merge_bin(
                 "esp32",
                 [(0x1000, f.name), (0x10000, "ram_helloworld/helloworld-esp32.bin")],
-                ["--target-offset", "0x1000", "--fill-flash-size", "2MB"],
+                ["--target-offset", "0x1000", "--pad-to-size", "2MB"],
             )
         finally:
             os.unlink(f.name)
