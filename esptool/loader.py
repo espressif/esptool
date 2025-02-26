@@ -775,7 +775,7 @@ class ESPLoader(object):
             except UnsupportedCommandError:
                 self.secure_download_mode = True
 
-            # Check if chip supports reading chip ID from the get_security_info command
+            # Check if chip supports reading chip ID from the get-security-info command
             try:
                 chip_id = self.get_chip_id()
             except (UnsupportedCommandError, struct.error, FatalError):

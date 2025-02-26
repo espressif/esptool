@@ -19,7 +19,7 @@ The most straightforward and basic integration option is to pass arguments to ``
 
     import esptool
 
-    command = ['--baud', '460800', 'read_flash', '0', '0x200000', 'flash_contents.bin']
+    command = ['--baud', '460800', 'read-flash', '0', '0x200000', 'flash_contents.bin']
     print("Using command ", " ".join(command))
     esptool.main(command)
 
@@ -233,7 +233,7 @@ For granular control and more configuration freedom, you can directly access the
 
 .. note::
 
-    This example code is a very basic implementation of ``esptool.py -p /dev/ttyACM0 write_flash 0x10000 firmware.bin``
+    This example code is a very basic implementation of ``esptool.py -p /dev/ttyACM0 write-flash 0x10000 firmware.bin``
 
 .. code-block:: python
 
@@ -335,7 +335,7 @@ To ensure compatibility with esptool, the custom logger should re-implement (or 
 - ``warning``: Logs warning messages.
 - ``error``: Logs error messages.
 - ``print_overwrite``: Handles message overwriting (can be a simple ``print()`` if overwriting is not needed).
-- ``set_progress``: Handles percentage updates of long-running operations - ``write_flash``, ``read_flash``, and ``dump_mem`` (useful for GUI visualisation, e.g. as a progress bar).
+- ``set_progress``: Handles percentage updates of long-running operations - ``write-flash``, ``read-flash``, and ``dump-mem`` (useful for GUI visualisation, e.g. as a progress bar).
 
 .. autoclass:: esptool.logger.EsptoolLogger
    :members: print, note, warning, error, print_overwrite, set_progress

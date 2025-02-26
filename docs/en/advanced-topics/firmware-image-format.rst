@@ -206,4 +206,4 @@ The file is padded with zeros until its size is one byte less than a multiple of
 Analyzing a Binary Image
 ------------------------
 
-To analyze a binary image and get a complete summary of its headers and segments, use the :ref:`image_info <image-info>` command.
+To analyze a binary image and get a complete summary of its headers and segments, use the :ref:`image-info <image-info>` command.

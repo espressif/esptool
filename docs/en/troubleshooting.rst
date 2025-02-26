@@ -31,12 +31,12 @@ Power stability problems may also cause this (see `Insufficient Power`_.)
 Writing to Flash Succeeds but Program Doesn't Run
 -------------------------------------------------
 
-If esptool can flash your module with ``write_flash`` but your program doesn't run, check the following:
+If esptool can flash your module with ``write-flash`` but your program doesn't run, check the following:
 
 Wrong Flash Mode
 ^^^^^^^^^^^^^^^^
 
-Some devices only support the ``dio`` flash mode. Writing to flash with ``qio`` mode will succeed but the chip can't read the flash back to run - so nothing happens on boot. Try passing the ``-fm dio`` option to ``write_flash``.
+Some devices only support the ``dio`` flash mode. Writing to flash with ``qio`` mode will succeed but the chip can't read the flash back to run - so nothing happens on boot. Try passing the ``-fm dio`` option to ``write-flash``.
 
 See the :ref:`spi-flash-modes` page for a full description of the flash modes and how to determine which ones are supported on your device.
 
@@ -113,7 +113,7 @@ Early Stage Crash
 
    If the application accidentally reconfigures the USB peripheral pins or disables the USB peripheral, the device disappears from the system. You can also encounter unstable flashing or errors like ``OSError: [Errno 71] Protocol error``.
 
-   If that happens, try to :ref:`manually enter the download mode <manual-bootloader>` and then use the :ref:`erase_flash <erase_flash>` command to wipe the flash memory. Then, make sure to fix the issue in the application before flashing again.
+   If that happens, try to :ref:`manually enter the download mode <manual-bootloader>` and then use the :ref:`erase-flash <erase-flash>` command to wipe the flash memory. Then, make sure to fix the issue in the application before flashing again.
 
    On boards with two USB ports (usually marked as USB and UART), you can use the USB port for flashing while listening on the UART port for debugging purposes. This setup is useful for retrieving core dumps or the reset reason in the event of a crash. To implement this, connect the UART port to another instance of any of the `serial terminal programs`_, while repeating the failing action over the USB port. You'll be able to monitor the crash log without interference from the USB port used for communication or it disappearing due to a firmware crash.
    If your devkit doesn't have a dedicated USB port connected to an on-board USB-to-UART bridge, you can use a separate adapter to connect to the UART pins on the board.

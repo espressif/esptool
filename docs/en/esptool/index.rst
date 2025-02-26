@@ -5,7 +5,7 @@ esptool.py
 
 Use ``esptool.py -h`` to see a summary of all available commands and command line options.
 
-To see all options for a particular command, append ``-h`` to the command name. ie ``esptool.py write_flash -h``.
+To see all options for a particular command, append ``-h`` to the command name. ie ``esptool.py write-flash -h``.
 
 .. toctree::
    :maxdepth: 1

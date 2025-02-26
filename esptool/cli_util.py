@@ -179,16 +179,64 @@ class AddrFilenamePairType(click.Path):
 ########################### Custom option/argument ############################
 
 
+DEPRECATED_OPTIONS = {
+    "--flash_size": "--flash-size",
+    "--flash_freq": "--flash-freq",
+    "--flash_mode": "--flash-mode",
+    "--use_segments": "--use-segments",
+    "--ignore_flash_encryption_efuse_setting": "--ignore-flash-enc-efuse",
+    "--fill-flash-size": "--pad-to-size",
+}
+
+
 class Group(click.RichGroup):
     def __call__(self, esp: ESPLoader | None = None, *args, **kwargs):
         self._esp = esp  # store the external esp object in the group
         return super().__call__(*args, **kwargs)
 
+    def _replace_deprecated_args(self, args: list[str]) -> list[str]:
+        new_args = []
+        for arg in args:
+            if arg in DEPRECATED_OPTIONS.keys():
+                # Replace underscores with hyphens in option names
+                new_name = DEPRECATED_OPTIONS[arg]
+                if new_name != arg:
+                    log.warning(
+                        f"Deprecated: Option '{arg}' is deprecated. "
+                        f"Use '{new_name}' instead."
+                    )
+                    arg = new_name
+            new_args.append(arg)
+        return new_args
+
     def parse_args(self, ctx: click.Context, args: list[str]):
         """Set a flag if --help is used to skip the main"""
         ctx.esp = self._esp
         ctx._commands_list = self.list_commands(ctx)  # used for EatAllOptions
+        args = self._replace_deprecated_args(args)
         return super().parse_args(ctx, args)
+
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
+        """Allow dash and underscore for commands for compatibility with v4"""
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+        for cmd in self.list_commands(ctx):
+            cmd_alias = cmd.replace("-", "_")
+            if cmd_alias == cmd_name:
+                log.warning(
+                    f"Deprecated: Command '{cmd_name}' is deprecated. "
+                    f"Use '{cmd}' instead."
+                )
+                return click.Group.get_command(self, ctx, cmd)
+        return None
+
+    def resolve_command(
+        self, ctx: click.Context, args: list[str]
+    ) -> tuple[str, click.Command, list[str]]:
+        # always return the full command name
+        _, cmd, args = super().resolve_command(ctx, args)
+        return cmd.name, cmd, args
 
 
 class AddrFilenameArg(click.Argument):

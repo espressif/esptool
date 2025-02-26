@@ -32,7 +32,7 @@ def read_image(filename):
 @pytest.mark.host_test
 class TestMergeBin:
     def run_merge_bin(self, chip, offsets_names, options=[], allow_warnings=False):
-        """Run merge_bin on a list of (offset, filename) tuples
+        """Run merge-bin on a list of (offset, filename) tuples
         with output to a named temporary file.
 
         Filenames are relative to the 'test/images' directory.
@@ -49,7 +49,7 @@ class TestMergeBin:
                 "esptool",
                 "--chip",
                 chip,
-                "merge_bin",
+                "merge-bin",
                 "-o",
                 output_file.name,
             ] + options
@@ -64,7 +64,7 @@ class TestMergeBin:
             print(output)
             if not allow_warnings:
                 assert "warning" not in output.lower(), (
-                    "merge_bin should not output warnings"
+                    "merge-bin should not output warnings"
                 )
 
             with open(output_file.name, "rb") as f:
@@ -127,7 +127,7 @@ class TestMergeBin:
                 (0x1000, "bootloader_esp32.bin"),
                 (0x10000, "ram_helloworld/helloworld-esp32.bin"),
             ],
-            ["--flash_size", "2MB", "--flash_mode", "dout"],
+            ["--flash-size", "2MB", "--flash-mode", "dout"],
         )
         self.assertAllFF(merged[:0x1000])
 
@@ -356,7 +356,7 @@ class TestUF2:
             "esptool",
             "--chip",
             chip_id,
-            "merge_bin",
+            "merge-bin",
             "--format",
             "uf2",
             "-o",
@@ -372,7 +372,7 @@ class TestUF2:
         output = subprocess.check_output(com_args + file_args, stderr=subprocess.STDOUT)
         output = output.decode("utf-8")
         print(output)
-        assert "warning" not in output.lower(), "merge_bin should not output warnings"
+        assert "warning" not in output.lower(), "merge-bin should not output warnings"
 
         exp_list = [
             f"Adding '{f}' at {hex(addr)}" for addr, f in iter_addr_offset_tuples

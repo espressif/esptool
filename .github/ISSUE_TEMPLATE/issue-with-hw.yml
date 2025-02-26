@@ -66,7 +66,7 @@ body:
     attributes:
       label: Full Esptool Command Line that Was Run
       description: Please input the full esptool command.
-      placeholder: ex. `esptool.py -p COM3 write_flash 0x0 bootloader.bin`
+      placeholder: ex. `esptool.py -p COM3 write-flash 0x0 bootloader.bin`
   - type: textarea
     id: output
     attributes:

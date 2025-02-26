@@ -395,7 +395,7 @@ class ESP32ROM(ESPLoader):
                     struct.pack("<II", offset + len(data), block_len),
                 )
             except FatalError:
-                log.note("Consider specifying flash size using '--flash_size' argument")
+                log.note("Consider specifying flash size using flash size argument")
                 raise
             if len(r) < block_len:
                 raise FatalError(

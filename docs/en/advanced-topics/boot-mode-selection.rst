@@ -339,10 +339,10 @@ Depending on the kind of hardware you have, it may also be possible to manually 
       -  ``SPIWP:0xNN`` indicates a custom ``WP`` pin value, which is stored in the bootloader header. This pin value is only used if SPI flash pins have been remapped via eFuse (as shown in the ``configsip`` value).
          All custom pin values but WP are encoded in the configsip byte loaded from eFuse, and WP is supplied in the bootloader header.
       :esp32: -  ``clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00`` Custom GPIO drive strength values for SPI flash pins. These are read from the bootloader header in flash. Not currently supported.
-      -  ``mode: AAA, clock div: N``. SPI flash access mode. Read from the bootloader header, correspond to the ``--flash_mode`` and ``--flash_freq`` arguments supplied to ``esptool.py write_flash`` or ``esptool.py elf2image``.
+      -  ``mode: AAA, clock div: N``. SPI flash access mode. Read from the bootloader header, correspond to the ``--flash-mode`` and ``--flash-freq`` arguments supplied to ``esptool.py write-flash`` or ``esptool.py elf2image``.
       -  ``mode`` can be DIO, DOUT, QIO, or QOUT. *QIO and QOUT are not supported here*, to boot in a Quad I/O mode the ROM bootloader should load the software bootloader in a Dual I/O mode and then the ESP-IDF software bootloader enables Quad I/O based on the detected flash chip mode.
-      -  ``clock div: N`` is the SPI flash clock frequency divider. This is an integer clock divider value from an 80MHz APB clock, based on the supplied ``--flash_freq`` argument (ie 80MHz=1, 40MHz=2, etc).
-         The ROM bootloader actually loads the software bootloader at a lower frequency than the flash_freq value. The initial APB clock frequency is equal to the crystal frequency, so with a 40MHz crystal the SPI clock used to load the software bootloader will be half the configured value (40MHz/2=20MHz).
+      -  ``clock div: N`` is the SPI flash clock frequency divider. This is an integer clock divider value from an 80MHz APB clock, based on the supplied ``--flash-freq`` argument (ie 80MHz=1, 40MHz=2, etc).
+         The ROM bootloader actually loads the software bootloader at a lower frequency than the ``--flash-freq`` value. The initial APB clock frequency is equal to the crystal frequency, so with a 40MHz crystal the SPI clock used to load the software bootloader will be half the configured value (40MHz/2=20MHz).
          When the software bootloader starts it sets the APB clock to 80MHz causing the SPI clock frequency to match the value set when flashing.
 
    Software Bootloader Load Segments
@@ -358,7 +358,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 
    These entries are printed as the ROM bootloader loads each segment in the software bootloader image. The load address and length of each segment is printed.
 
-   You can compare these values to the software bootloader image by running ``esptool.py --chip {IDF_TARGET_PATH_NAME} image_info /path/to/bootloader.bin`` to dump image info including a summary of each segment. Corresponding details will also be found in the bootloader ELF file headers.
+   You can compare these values to the software bootloader image by running ``esptool.py --chip {IDF_TARGET_PATH_NAME} image-info /path/to/bootloader.bin`` to dump image info including a summary of each segment. Corresponding details will also be found in the bootloader ELF file headers.
 
    If there is a problem with the SPI flash chip addressing mode, the values printed by the bootloader here may be corrupted.
 

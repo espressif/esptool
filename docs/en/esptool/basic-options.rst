@@ -16,7 +16,7 @@ Chip Type: ``--chip``, ``-c``
 * The target chip type can be selected using the ``--chip``/ ``-c`` option, e.g. ``esptool.py --chip {IDF_TARGET_PATH_NAME} <command>``.
 * A default chip type can be specified by setting the ``ESPTOOL_CHIP`` environment variable.
 * If no ``-c`` option or ``ESPTOOL_CHIP`` value is specified, ``esptool.py`` automatically detects the chip type when connecting.
-* Binary image generation commands, such as :ref:`elf2image <elf-2-image>` or :ref:`merge_bin <merge-bin>`, require the chip type to be specified.
+* Binary image generation commands, such as :ref:`elf2image <elf-2-image>` or :ref:`merge-bin <merge-bin>`, require the chip type to be specified.
 
 .. _serial-port:
 
@@ -44,7 +44,7 @@ Check your Linux distribution's documentation for more information.
 Baud Rate: ``--baud``, ``-b``
 -----------------------------
 
-The default esptool baud rate is 115200bps. Different rates may be set using ``-b 921600`` (or another baud rate of your choice). A default baud rate can also be specified using the ``ESPTOOL_BAUD`` environment variable. This can speed up ``write_flash`` and ``read_flash`` operations.
+The default esptool baud rate is 115200bps. Different rates may be set using ``-b 921600`` (or another baud rate of your choice). A default baud rate can also be specified using the ``ESPTOOL_BAUD`` environment variable. This can speed up ``write-flash`` and ``read-flash`` operations.
 
 The baud rate is limited to 115200 when esptool establishes the initial connection, higher speeds are only used for data transfers.
 

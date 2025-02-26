@@ -109,7 +109,7 @@ click.rich_click.STYLE_COMMANDS_TABLE_COLUMN_WIDTH_RATIO = (1, 3)
 # Option group definitions, used for grouping options in the help output
 # Similar to 'add_argument_group' from argparse
 click.rich_click.OPTION_GROUPS = {
-    "esptool.py merge_bin": [
+    "esptool.py merge-bin": [
         {
             "name": "UF2 options",
             "options": [
@@ -129,9 +129,9 @@ click.rich_click.OPTION_GROUPS = {
         {
             "name": "Flash options",
             "options": [
-                "--flash_freq",
-                "--flash_mode",
-                "--flash_size",
+                "--flash-freq",
+                "--flash-mode",
+                "--flash-size",
                 "--spi-connection",
             ],
         }
@@ -142,32 +142,32 @@ click.rich_click.COMMAND_GROUPS = {
         {
             "name": "Basic commands",
             "commands": [
-                "write_flash",
-                "read_flash",
-                "erase_flash",
-                "erase_region",
-                "read_mac",
-                "flash_id",
+                "write-flash",
+                "read-flash",
+                "erase-flash",
+                "erase-region",
+                "read-mac",
+                "flash-id",
                 "elf2image",
-                "image_info",
-                "merge_bin",
+                "image-info",
+                "merge-bin",
                 "version",
             ],
         },
         {
             "name": "Advanced commands",
             "commands": [
-                "verify_flash",
-                "load_ram",
-                "dump_mem",
-                "read_mem",
-                "write_mem",
-                "read_flash_status",
-                "write_flash_status",
-                "read_flash_sfdp",
-                "chip_id",
+                "verify-flash",
+                "load-ram",
+                "dump-mem",
+                "read-mem",
+                "write-mem",
+                "read-flash-status",
+                "write-flash-status",
+                "read-flash-sfdp",
+                "get-security-info",
+                "chip-id",
                 "run",
-                "get_security_info",
             ],
         },
     ],
@@ -204,7 +204,7 @@ def add_spi_flash_options(
     def wrapper(function):
         if not size_only:
             function = click.option(
-                "--flash_freq",
+                "--flash-freq",
                 "-ff",
                 help="SPI Flash frequency",
                 type=click.Choice(
@@ -226,7 +226,7 @@ def add_spi_flash_options(
                 default=os.environ.get("ESPTOOL_FF", "keep" if allow_keep else None),
             )(function)
             function = click.option(
-                "--flash_mode",
+                "--flash-mode",
                 "-fm",
                 help="SPI Flash mode",
                 type=click.Choice(extra_keep_args + ["qio", "qout", "dio", "dout"]),
@@ -234,7 +234,7 @@ def add_spi_flash_options(
             )(function)
 
         function = click.option(
-            "--flash_size",
+            "--flash-size",
             "-fs",
             help="SPI Flash size in MegaBytes. "
             "ESP8266-only sizes: 256KB, 512KB, 2MB-c1, 4MB-c1",
@@ -489,7 +489,7 @@ def prepare_esp_object(ctx):
         # 8) Reset the chip
         ###################
         # Handle post-operation behaviour (reset or other)
-        if ctx.obj["invoked_subcommand"] == "load_ram":
+        if ctx.obj["invoked_subcommand"] == "load-ram":
             # the ESP is now running the loaded image, so let it run
             log.print("Exiting immediately.")
         else:
@@ -505,7 +505,7 @@ def prepare_esp_object(ctx):
 ###################################### COMMANDS #######################################
 
 
-@cli.command("load_ram")
+@cli.command("load-ram")
 @click.argument("filename", type=AutoHex2BinType())
 @click.pass_context
 def load_ram_cli(ctx, filename):
@@ -514,7 +514,7 @@ def load_ram_cli(ctx, filename):
     load_ram(ctx.obj["esp"], filename)
 
 
-@cli.command("dump_mem")
+@cli.command("dump-mem")
 @click.argument("address", type=AnyIntType())
 @click.argument("size", type=AnyIntType())
 @click.argument("output", type=click.Path())
@@ -525,7 +525,7 @@ def dump_mem_cli(ctx, address, size, output):
     dump_mem(ctx.obj["esp"], address, size, output)
 
 
-@cli.command("read_mem")
+@cli.command("read-mem")
 @click.argument("address", type=AnyIntType())
 @click.pass_context
 def read_mem_cli(ctx, address):
@@ -534,7 +534,7 @@ def read_mem_cli(ctx, address):
     read_mem(ctx.obj["esp"], address)
 
 
-@cli.command("write_mem")
+@cli.command("write-mem")
 @click.argument("address", type=AnyIntType())
 @click.argument("value", type=AnyIntType())
 @click.argument("mask", type=AnyIntType(), default=0xFFFFFFFF)
@@ -545,8 +545,8 @@ def write_mem_cli(ctx, address, value, mask):
     write_mem(ctx.obj["esp"], address, value, mask)
 
 
-@cli.command(name="write_flash")
-@click.argument("addr_filename", nargs=-1, required=True, cls=AddrFilenameArg)
+@cli.command(name="write-flash")
+@click.argument("addr-filename", nargs=-1, required=True, cls=AddrFilenameArg)
 @click.option(
     "--erase-all",
     "-e",
@@ -622,7 +622,7 @@ def run_cli(ctx):
     run(ctx.obj["esp"])
 
 
-@cli.command("image_info")
+@cli.command("image-info")
 @click.argument("filename", type=AutoHex2BinType())
 @click.pass_context
 def image_info_cli(ctx, filename):
@@ -693,7 +693,7 @@ def image_info_cli(ctx, filename):
     "This argument is not supported and ignored for ESP8266.",
 )
 @click.option(
-    "--use_segments",
+    "--use-segments",
     is_flag=True,
     help="If set, ELF segments will be used instead of ELF sections to generate the "
     "image.",
@@ -708,7 +708,7 @@ def image_info_cli(ctx, filename):
     type=int,
     default=None,
     help="The block size with which the final binary image after padding must be "
-    "aligned to. Value 0xFF is used for padding, similar to erase_flash",
+    "aligned to. Value 0xFF is used for padding",
 )
 @click.option(
     "--ram-only-header",
@@ -733,7 +733,7 @@ def elf2image_cli(ctx, filename, **kwargs):
     elf2image(filename, ctx.obj["chip"], output, append_digest=append_digest, **kwargs)
 
 
-@cli.command("read_mac")
+@cli.command("read-mac")
 @click.pass_context
 def read_mac_cli(ctx):
     """Read MAC address from OTP ROM"""
@@ -741,7 +741,7 @@ def read_mac_cli(ctx):
     read_mac(ctx.obj["esp"])
 
 
-@cli.command("chip_id")
+@cli.command("chip-id")
 @click.pass_context
 def chip_id_cli(ctx):
     """Read Chip ID from OTP ROM"""
@@ -749,7 +749,7 @@ def chip_id_cli(ctx):
     chip_id(ctx.obj["esp"])
 
 
-@cli.command("flash_id")
+@cli.command("flash-id")
 @add_spi_connection_arg
 @click.pass_context
 def flash_id_cli(ctx, **kwargs):
@@ -759,7 +759,7 @@ def flash_id_cli(ctx, **kwargs):
     flash_id(ctx.obj["esp"])
 
 
-@cli.command("read_flash_status")
+@cli.command("read-flash-status")
 @click.option(
     "--bytes",
     type=click.Choice([1, 2, 3]),
@@ -775,7 +775,7 @@ def read_flash_status_cli(ctx, bytes, **kwargs):
     read_flash_status(ctx.obj["esp"], bytes)
 
 
-@cli.command("write_flash_status")
+@cli.command("write-flash-status")
 @click.option(
     "--non-volatile",
     is_flag=True,
@@ -797,7 +797,7 @@ def write_flash_status_cli(ctx, value, **kwargs):
     write_flash_status(ctx.obj["esp"], value, **kwargs)
 
 
-@cli.command("read_flash")
+@cli.command("read-flash")
 @click.argument("address", type=AnyIntType())
 @click.argument("size", type=AutoSizeType())
 @click.argument("output", type=click.Path())
@@ -814,8 +814,8 @@ def read_flash_cli(ctx, address, size, output, **kwargs):
     read_flash(ctx.obj["esp"], address, size, output, **kwargs)
 
 
-@cli.command("verify_flash")
-@click.argument("addr_filename", nargs=-1, required=True, cls=AddrFilenameArg)
+@cli.command("verify-flash")
+@click.argument("addr-filename", nargs=-1, required=True, cls=AddrFilenameArg)
 @click.option("--diff", "-d", is_flag=True, help="Show differences")
 @add_spi_flash_options(allow_keep=True, auto_detect=True)
 @add_spi_connection_arg
@@ -827,7 +827,7 @@ def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
     verify_flash(ctx.obj["esp"], addr_filename, diff=diff, **kwargs)
 
 
-@cli.command("erase_flash")
+@cli.command("erase-flash")
 @click.option(
     "--force",
     is_flag=True,
@@ -842,7 +842,7 @@ def erase_flash_cli(ctx, force, **kwargs):
     erase_flash(ctx.obj["esp"], force)
 
 
-@cli.command("erase_region")
+@cli.command("erase-region")
 @click.option(
     "--force",
     is_flag=True,
@@ -866,7 +866,7 @@ def erase_region_cli(ctx, address, size, force, **kwargs):
     erase_region(ctx.obj["esp"], address, size, force)
 
 
-@cli.command("read_flash_sfdp")
+@cli.command("read-flash-sfdp")
 @click.argument("address", type=AnyIntType())
 @click.argument("bytes", type=AnyIntType())
 @add_spi_flash_options(allow_keep=True, auto_detect=True)
@@ -879,8 +879,8 @@ def read_flash_sfdp_cli(ctx, address, bytes, **kwargs):
     read_flash_sfdp(ctx.obj["esp"], address, bytes)
 
 
-@cli.command("merge_bin")
-@click.argument("addr_filename", nargs=-1, required=True, cls=AddrFilenameArg)
+@cli.command("merge-bin")
+@click.argument("addr-filename", nargs=-1, required=True, cls=AddrFilenameArg)
 @click.option("--output", "-o", type=str, required=True, help="Output filename")
 @click.option(
     "--format",
@@ -926,7 +926,7 @@ def merge_bin_cli(ctx, addr_filename, **kwargs):
     merge_bin(addr_filename, chip=ctx.obj["chip"], **kwargs)
 
 
-@cli.command("get_security_info")
+@cli.command("get-security-info")
 @click.pass_context
 def get_security_info_cli(ctx):
     """Get some security-related data"""

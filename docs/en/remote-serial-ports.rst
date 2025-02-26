@@ -7,7 +7,7 @@ It is possible to connect to any networked remote serial port that supports `RFC
 
 ::
 
-    esptool.py --port rfc2217://192.168.1.77:4000 flash_id
+    esptool.py --port rfc2217://192.168.1.77:4000 flash-id
 
 Custom baud rates and DTR/RTS automatic resetting are supported over the RFC2217 protocol, the same as for a local serial port.
 
@@ -31,7 +31,7 @@ On client:
 
 ::
 
-    esptool.py --port rfc2217://ADDRESS_OF_SERVER:4000?ign_set_control flash_id
+    esptool.py --port rfc2217://ADDRESS_OF_SERVER:4000?ign_set_control flash-id
 
 
 Raw Sockets
@@ -54,7 +54,7 @@ On client:
 
 ::
 
-    esptool.py -p socket://localhost:4000 flash_id
+    esptool.py -p socket://localhost:4000 flash-id
 
 .. note::
 

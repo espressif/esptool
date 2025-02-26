@@ -3,7 +3,7 @@
 Advanced Options
 ================
 
-The following advanced global configuration options can be used for all esptool commands. They are placed before the command name on the command line. For example, the option ``--before no_reset`` has to be placed before ``flash_id``. The command should look like this: ``esptool.py --before no_reset flash_id``.
+The following advanced global configuration options can be used for all esptool commands. They are placed before the command name on the command line. For example, the option ``--before no_reset`` has to be placed before ``flash-id``. The command should look like this: ``esptool.py --before no_reset flash-id``.
 
 For basic/fundamental global configuration options, see the :ref:`options` page.
 
@@ -74,7 +74,7 @@ Passing ``--no-stub`` will disable certain options, as not all options are imple
 
     The optional ``--spi-connection`` argument overrides the SPI flash connection configuration on {IDF_TARGET_NAME}. This means that the SPI flash can be connected to other pins, or esptool can be used to communicate with a different SPI flash chip to the default.
 
-    Supply the ``--spi-connection`` argument after the ``esptool.py`` command, ie ``esptool.py flash_id --spi-connection HSPI``.
+    Supply the ``--spi-connection`` argument after the ``esptool.py`` command, ie ``esptool.py flash-id --spi-connection HSPI``.
 
     .. note::
 
@@ -138,7 +138,7 @@ Specifying Arguments via File
 
 Anywhere on the esptool command line, you can specify a file name as ``@filename.txt`` to read one or more arguments from text file ``filename.txt``. Arguments can be separated by newlines or spaces, quotes can be used to enclose arguments that span multiple words. Arguments read from the text file are expanded exactly as if they had appeared in that order on the esptool command line.
 
-An example of this is available in the :ref:`merge_bin <merge-bin>` command description.
+An example of this is available in the :ref:`merge-bin <merge-bin>` command description.
 
 .. note::
 

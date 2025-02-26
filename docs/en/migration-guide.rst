@@ -6,10 +6,10 @@ esptool.py ``v5`` Migration Guide
 This document describes the breaking changes made to esptool.py in the major release ``v5``. It provides guidance on adapting existing workflows and scripts to ensure compatibility when updating from ``v4.*``.
 
 
-``image_info`` Output Format Change
+``image-info`` Output Format Change
 ***********************************
 
-The output format of the :ref:`image_info <image-info>` command has been **updated in v5**. The original format (``--version 1``) is **deprecated** and replaced by the updated format (``--version 2``). The ``--version`` argument has been **removed entirely**, and the new format is now the default and only option.
+The output format of the :ref:`image-info <image-info>` command has been **updated in v5**. The original format (``--version 1``) is **deprecated** and replaced by the updated format (``--version 2``). The ``--version`` argument has been **removed entirely**, and the new format is now the default and only option.
 
 **Changes in the New Format:**
 
@@ -19,8 +19,8 @@ The output format of the :ref:`image_info <image-info>` command has been **updat
 
 **Migration Steps:**
 
-1. Update any scripts or tools that parse the ``image_info`` output to use the new format.
-2. Remove any ``--version`` arguments from ``image_info`` commands.
+1. Update any scripts or tools that parse the ``image-info`` output to use the new format.
+2. Remove any ``--version`` arguments from ``image-info`` commands.
 
 Output Logging
 **************
@@ -41,10 +41,10 @@ The esptool ``v5`` release introduces a centralized logging mechanism to improve
 
 See the :ref:`logging <logging>` section for more details on available logger methods and custom logger implementation.
 
-``write_flash`` ``--verify`` Argument
+``write-flash`` ``--verify`` Argument
 *************************************
 
-The ``--verify`` option for the :ref:`write_flash <write-flash>` command has been **deprecated in v5**. Flash verification is performed automatically after every successful write operation when technically feasible.
+The ``--verify`` option for the :ref:`write-flash <write-flash>` command has been **deprecated in v5**. Flash verification is performed automatically after every successful write operation when technically feasible.
 
 **Behavior:**
 
@@ -54,7 +54,7 @@ The ``--verify`` option for the :ref:`write_flash <write-flash>` command has bee
 
 **Migration Steps:**
 
-1. Remove all ``--verify`` arguments from existing ``write_flash`` commands.
+1. Remove all ``--verify`` arguments from existing ``write-flash`` commands.
 2. Update scripts/CI pipelines to remove ``--verify`` flags.
 
 Error Output Handling
@@ -92,24 +92,24 @@ Support for the following beta targets has been **removed in v5**:
 
 Use esptool ``v4`` for legacy workflows targeting these beta chips.
 
-``verify_flash`` ``--diff`` Argument
+``verify-flash`` ``--diff`` Argument
 *************************************
 
-The format of the ``--diff`` option of the :ref:`verify_flash <verify-flash>` command has **changed in v5**. Previously, ``--diff=yes/no`` had to be specified to enable or disable the diff output. In the new version, the ``--diff`` option is a simple boolean switch without the need of a ``yes`` or ``no`` value.
+The format of the ``--diff`` option of the :ref:`verify-flash <verify-flash>` command has **changed in v5**. Previously, ``--diff=yes/no`` had to be specified to enable or disable the diff output. In the new version, the ``--diff`` option is a simple boolean switch without the need of a ``yes`` or ``no`` value.
 
 **Migration Steps:**
 
-1. Rewrite the ``--diff=yes`` argument to a simple ``--diff`` in any existing ``verify_flash`` commands in scripts/CI pipelines. Delete ``--diff=no`` completely if detailed diff output is not required.
+1. Rewrite the ``--diff=yes`` argument to a simple ``--diff`` in any existing ``verify-flash`` commands in scripts/CI pipelines. Delete ``--diff=no`` completely if detailed diff output is not required.
 
 Using esptool as a Python Module
 ********************************
 
-All command functions (e.g., ``verify_flash``, ``write_flash``) have been refactored to remove their dependency on the ``args`` object from the argparse module. Instead, all arguments are now passed explicitly as individual parameters. This change, combined with enhancements to the public API, provides a cleaner, more modular interface for programmatic use of esptool in custom scripts and applications (see :ref:`scripting <scripting>`).
+All command functions (e.g., ``verify-flash``, ``write-flash``) have been refactored to remove their dependency on the ``args`` object from the argparse module. Instead, all arguments are now passed explicitly as individual parameters. This change, combined with enhancements to the public API, provides a cleaner, more modular interface for programmatic use of esptool in custom scripts and applications (see :ref:`scripting <scripting>`).
 
 **Key Changes:**
 
 - Refactored Function Signatures: Previously, command functions relied on an ``args`` object (e.g., ``args.addr_filename``, ``args.diff``). Now, they take individual parameters with explicit types and default values, improving clarity and enabling a robust API.
-- Public API Expansion: The public API (exposed via ``esptool.cmds``) has been formalized with high-level functions like ``detect_chip()``, ``attach_flash()``, ``write_flash()``, and ``reset_chip()``, designed for ease of use in Python scripts.
+- Public API Expansion: The public API (exposed via ``esptool.cmds``) has been formalized with high-level functions like ``detect_chip()``, ``attach_flash()``, ``write-flash()``, and ``reset_chip()``, designed for ease of use in Python scripts.
 
 **Migration Steps:**
 
@@ -125,23 +125,23 @@ Flash Operations from Non-flash Related Commands
 
 When esptool is used as a CLI tool, the following commands no longer automatically attach the flash by default, since flash access is not required for their core functionality:
 
-- ``load_ram``
-- ``read_mem``
-- ``write_mem``
-- ``dump_mem``
-- ``chip_id``
-- ``read_mac``
+- ``load-ram``
+- ``read-mem``
+- ``write-mem``
+- ``dump-mem``
+- ``chip-id``
+- ``read-mac``
 
 The ``--spi-connection`` CLI argument has been **removed** from non-flash related commands in v5. This argument had no effect on the command execution. Affected commands:
 
 - ``elf2image``
-- ``merge_bin``
+- ``merge-bin``
 
 **Migration Steps:**
 
 1. Update any scripts that attempt to attach flash from non-flash related commands.
 2. If you need to attach flash for above mentioned commands, use the ``attach_flash`` function from the public API instead. For more details see :ref:`scripting <scripting>`.
-3. Remove the ``--spi-connection`` argument from ``elf2image`` and ``merge_bin`` commands.
+3. Remove the ``--spi-connection`` argument from ``elf2image`` and ``merge-bin`` commands.
 
 
 Shell Completion
@@ -154,23 +154,23 @@ The esptool ``v5`` has switched to using `Click <https://click.palletsprojects.c
 1. Remove the old shell completion code from your scripts and shell configuration files like ``.bashrc``, ``.zshrc``, ``.config/fish/config.fish``, etc.
 2. Follow the new shell completion setup instructions in the :ref:`shell-completion` section of the :ref:`installation <installation>` guide.
 
-``merge_bin`` ``--fill-flash-size`` Argument
+``merge-bin`` ``--fill-flash-size`` Argument
 ********************************************
 
-The ``--fill-flash-size`` option of the :ref:`merge_bin <merge-bin>` command has been renamed to ``--pad-to-size``. This change provides a more intuitive and descriptive name for the argument and is consistent with the naming scheme in other esptool image manipulation commands.
+The ``--fill-flash-size`` option of the :ref:`merge-bin <merge-bin>` command has been renamed to ``--pad-to-size``. This change provides a more intuitive and descriptive name for the argument and is consistent with the naming scheme in other esptool image manipulation commands.
 
 **Migration Steps:**
 
-1. Rename the ``--fill-flash-size`` to ``--pad-to-size`` in any existing ``merge_bin`` commands in scripts/CI pipelines.
+1. Rename the ``--fill-flash-size`` to ``--pad-to-size`` in any existing ``merge-bin`` commands in scripts/CI pipelines.
 
-``write_flash`` ``--ignore-flash-encryption-efuse-setting`` Argument
+``write-flash`` ``--ignore-flash-encryption-efuse-setting`` Argument
 ********************************************************************
 
-The ``--ignore-flash-encryption-efuse-setting`` option of the :ref:`write_flash <write-flash>` command has been renamed to ``--ignore-flash-enc-efuse``. This change shortens the argument name to improve readability and consistency with other esptool options.
+The ``--ignore-flash-encryption-efuse-setting`` option of the :ref:`write-flash <write-flash>` command has been renamed to ``--ignore-flash-enc-efuse``. This change shortens the argument name to improve readability and consistency with other esptool options.
 
 **Migration Steps:**
 
-1. Rename the ``--ignore-flash-encryption-efuse-setting`` to ``--ignore-flash-enc-efuse`` in any existing ``write_flash`` commands in scripts/CI pipelines.
+1. Rename the ``--ignore-flash-encryption-efuse-setting`` to ``--ignore-flash-enc-efuse`` in any existing ``write-flash`` commands in scripts/CI pipelines.
 
 ``make_image`` Command Removal
 ******************************
@@ -189,3 +189,16 @@ The ``esptool.py`` binary from GitHub Releases on Linux is now using Ubuntu 22.0
 **Migration Steps:**
 
 1. Update your operating system to a newer version which bundles ``glibc`` 2.35 or later
+
+Command and Option Renaming
+***************************
+
+All the commands and options have been renamed to use ``-`` instead of ``_`` as a separator (e.g., ``write_flash`` -> ``write-flash``).
+
+Old command and option names are **deprecated**, meaning they will work for now with a warning, but will be removed in the next major release.
+
+This change affects most of the commands and the following options: ``--flash_size``, ``--flash_mode``, ``--flash_freq``, ``--use_segments``.
+
+**Migration Steps:**
+
+1. Replace all underscores in command and option names with ``-`` in your scripts and CI pipelines.

@@ -41,7 +41,7 @@ Getting started is easy:
 
     ::
 
-        $ esptool.py -p PORT flash_id
+        $ esptool.py -p PORT flash-id
 
     Replace ``PORT`` with the name of used serial port. If connection fails, see :ref:`troubleshooting`.
 

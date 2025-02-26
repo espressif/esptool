@@ -117,10 +117,10 @@ class BaseTestCase:
 
     def assertImageInfo(self, binpath, chip="esp8266", assert_sha=False):
         """
-        Run esptool.py image_info on a binary file,
+        Run esptool.py image-info on a binary file,
         assert no red flags about contents.
         """
-        cmd = [sys.executable, "-m", "esptool", "--chip", chip, "image_info", binpath]
+        cmd = [sys.executable, "-m", "esptool", "--chip", chip, "image-info", binpath]
         try:
             output = subprocess.check_output(cmd)
             output = output.decode("utf-8")
@@ -136,7 +136,7 @@ class BaseTestCase:
                 "SHA256 should be valid"
             )
         assert "warning" not in output.lower(), (
-            "Should be no warnings in image_info output"
+            "Should be no warnings in image-info output"
         )
 
     def run_elf2image(
@@ -333,8 +333,8 @@ class TestESP32Image(BaseTestCase):
         # equal 4 (instead of 8).
         assert len(image.segments) == 4
 
-        # --use_segments uses ELF segments(phdrs), produces just 2 segments in the bin
-        image = self._test_elf2image(ELF, BIN, ["--use_segments"])
+        # --use-segments uses ELF segments(phdrs), produces just 2 segments in the bin
+        image = self._test_elf2image(ELF, BIN, ["--use-segments"])
         assert len(image.segments) == 2
 
     def test_ram_only_header(self):
@@ -354,7 +354,7 @@ class TestESP8266FlashHeader(BaseTestCase):
                 "esp8266",
                 ELF,
                 version=2,
-                extra_args=["--flash_size", "2MB", "--flash_mode", "dio"],
+                extra_args=["--flash-size", "2MB", "--flash-mode", "dio"],
             )
             with open(BIN, "rb") as f:
                 header = f.read(4)
@@ -375,9 +375,9 @@ class TestESP32FlashHeader(BaseTestCase):
                 "esp32",
                 ELF,
                 extra_args=[
-                    "--flash_size",
+                    "--flash-size",
                     "16MB",
-                    "--flash_mode",
+                    "--flash-mode",
                     "dio",
                     "--min-rev",
                     "1",

@@ -129,8 +129,8 @@ It is necessary to have ``esptool.py`` installed (see `Development Setup`_) in y
 The following tests run automatically by GitHub Actions for each Pull Request. You can run them locally to check for regressions in the respective functionality:
 
 *  ``test_imagegen.py`` tests the ``elf2image`` command
-*  ``test_image_info.py`` tests the ``image_info`` command
-*  ``test_mergebin.py`` tests the ``merge_bin`` command
+*  ``test_image_info.py`` tests the ``image-info`` command
+*  ``test_mergebin.py`` tests the ``merge-bin`` command
 *  ``test_modules.py`` tests the modules used by ``esptool.py`` for regressions
 *  ``test_espsecure.py`` tests ``espsecure.py`` functionality
 *  ``test_espsecure_hsm.py`` tests support of external HSM signing in ``espsecure.py``. These tests require additional prerequisites, see ``SoftHSM2 setup`` in the `tests workflow definition <https://github.com/espressif/esptool/blob/master/.github/workflows/test_esptool.yml>`_ for more information.

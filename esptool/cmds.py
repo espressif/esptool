@@ -120,7 +120,7 @@ def detect_chip(
         return instance
 
     """
-    First, get_security_info command is sent to detect the ID of the chip
+    First, get-security-info command is sent to detect the ID of the chip
     (supported only by ESP32-C3 and later, works even in the Secure Download Mode).
     If this fails, we reconnect and fall-back to reading the magic number.
     It's mapped at a specific ROM address and has a different value on each chip model.
@@ -130,7 +130,7 @@ def detect_chip(
         log.print("Detecting chip type...", end="")
         chip_id = detect_port.get_chip_id()
         for cls in ROM_LIST:
-            # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip_id
+            # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip-id
             if cls.USES_MAGIC_VALUE:
                 continue
             if chip_id == cls.IMAGE_CHIP_ID:
@@ -1153,7 +1153,7 @@ def erase_flash(esp: ESPLoader, force: bool = False) -> None:
     log.print("Erasing flash (this may take a while)...")
     if esp.CHIP_NAME != "ESP8266" and not esp.IS_STUB:
         log.note(
-            "You can use the erase_region command in ROM bootloader "
+            "You can use the erase-region command in ROM bootloader "
             "mode to erase a specific region."
         )
     t = time.time()
