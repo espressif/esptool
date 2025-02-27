@@ -15,7 +15,6 @@ __all__ = [
     "get_security_info",
     "image_info",
     "load_ram",
-    "make_image",
     "merge_bin",
     "read_flash",
     "read_flash_status",
@@ -55,7 +54,6 @@ from esptool.cmds import (
     get_security_info,
     image_info,
     load_ram,
-    make_image,
     merge_bin,
     read_flash,
     read_flash_status,
@@ -168,7 +166,6 @@ click.rich_click.COMMAND_GROUPS = {
                 "write_flash_status",
                 "read_flash_sfdp",
                 "chip_id",
-                "make_image",
                 "run",
                 "get_security_info",
             ],
@@ -631,26 +628,6 @@ def run_cli(ctx):
 def image_info_cli(ctx, filename):
     """Dump headers from a binary file (bootloader or application)"""
     image_info(filename, ctx.obj["chip"])
-
-
-@cli.command("make_image")
-@click.argument("output", type=click.Path())
-@click.option(
-    "--segfile",
-    "-f",
-    multiple=True,
-    type=click.Path(exists=True),
-    help="Segment input file",
-)
-@click.option(
-    "--segaddr", "-a", multiple=True, type=AnyIntType(), help="Segment base address"
-)
-@click.option(
-    "--entrypoint", "-e", type=AnyIntType(), default=0, help="Address of entry point"
-)
-def make_image_cli(output, segfile, segaddr, entrypoint):
-    """Create an application image from binary files"""
-    make_image(segfile, segaddr, output, entrypoint)
 
 
 @cli.command("elf2image")

@@ -172,8 +172,6 @@ The following commands can run without the need for a connected chip:
 
 .. autofunction:: esptool.cmds.image_info
 
-.. autofunction:: esptool.cmds.make_image
-
 ------------
 
 Utility Functions

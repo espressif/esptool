@@ -16,7 +16,7 @@ from intelhex import IntelHex
 from serial import SerialException
 from typing import BinaryIO
 
-from .bin_image import ELFFile, ImageSegment, LoadFirmwareImage
+from .bin_image import ELFFile, LoadFirmwareImage
 from .bin_image import (
     ESP8266ROMFirmwareImage,
     ESP8266V2FirmwareImage,
@@ -1909,53 +1909,6 @@ def image_info(filename: str, chip: str = "auto") -> None:
             log.print(f"Bootloader version: {bootloader_desc['version']}")
             log.print(f"ESP-IDF: {bootloader_desc['idf_ver']}")
             log.print(f"Compile time: {bootloader_desc['date_time']}")
-
-
-def make_image(
-    segfile: list[str],
-    segaddr: list[int],
-    output: str | None = None,
-    entrypoint: int = 0,
-) -> bytes | None:
-    """
-    Assemble an ESP8266 firmware image using binary segments. ESP8266-only.
-
-    Args:
-        segfile: List of file paths containing binary segment data.
-        segaddr: List of memory addresses corresponding to each segment.
-        output: Path to save the output firmware image file.
-            If None, the function returns the image as bytes.
-        entrypoint: Entry point address for the firmware.
-
-    Returns:
-        None if output is provided; otherwise, returns the assembled
-        firmware image as bytes.
-    """
-    log.print("Creating ESP8266 image...")
-    image = ESP8266ROMFirmwareImage()
-    if len(segfile) == 0:
-        raise FatalError("No segments specified")
-    if len(segfile) != len(segaddr):
-        raise FatalError(
-            "Number of specified files does not match the number of specified addresses"
-        )
-    for seg, addr in zip(segfile, segaddr):
-        with open(seg, "rb") as f:
-            data = f.read()
-            image.segments.append(ImageSegment(addr, data))
-    image.entrypoint = entrypoint
-    if output is not None:
-        # Save image to the provided file path.
-        image.save(output)
-        log.print("Successfully created ESP8266 image.")
-        return None
-    else:
-        # Save image to a BytesIO buffer and return the bytes.
-        buf = io.BytesIO()
-        image.save(buf)
-        result = buf.getvalue()
-        log.print("Successfully created ESP8266 image.")
-        return result
 
 
 def merge_bin(

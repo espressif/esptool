@@ -160,23 +160,6 @@ This will read 4 bytes from SFDP address 16.
 
         esptool.py chip_id
 
-    .. _make-image:
-
-    Assemble a Firmware Image: ``make_image``
-    -----------------------------------------
-
-    ``make_image`` allows you to manually assemble a firmware image from binary segments (such as those extracted from objcopy). For example:
-
-    ::
-
-        esptool.py --chip esp8266 make_image -f app.text.bin -a 0x40100000 -f app.data.bin -a 0x3ffe8000 -f app.rodata.bin -a 0x3ffe8c00 app.flash.bin
-
-    This command does not require a serial connection.
-
-    .. note::
-
-        In general, it is better to create an ELF image (including any binary data as part of the ELF, by using objcopy or other tools) and then use ``elf2image`` to generate the ``.bin`` file.
-
     .. _run:
 
     Boot Application Code: ``run``

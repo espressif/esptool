@@ -171,3 +171,12 @@ The ``--ignore-flash-encryption-efuse-setting`` option of the :ref:`write_flash 
 **Migration Steps:**
 
 1. Rename the ``--ignore-flash-encryption-efuse-setting`` to ``--ignore-flash-enc-efuse`` in any existing ``write_flash`` commands in scripts/CI pipelines.
+
+``make_image`` Command Removal
+******************************
+
+The ``make_image`` command for the ESP8266 has been **removed in v5**. This command has been deprecated in favor of using **objcopy** (or other tools) to generate ELF images and then using ``elf2image`` to create the final ``.bin`` file.
+
+**Migration Steps:**
+
+1. Replace any ``make_image`` workflows with the recommended way of assembling firmware images using **objcopy** and ``elf2image``.
