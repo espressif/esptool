@@ -81,6 +81,10 @@ def get_file_size(path_to_file):
     return file_size
 
 
+def sanitize_string(byte_string):
+    return byte_string.decode("utf-8").replace("\0", "")
+
+
 class PrintOnce:
     """
     Class for printing messages just once. Can be useful when running in a loop

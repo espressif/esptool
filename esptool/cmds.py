@@ -45,6 +45,7 @@ from .util import (
     get_file_size,
     hexify,
     pad_to,
+    sanitize_string,
 )
 
 DETECTED_FLASH_SIZES = {
@@ -1637,11 +1638,11 @@ def _parse_app_info(app_info_segment):
         "magic_word": magic_word,
         "secure_version": secure_version,
         "reserv1": reserv1,
-        "version": version.decode("utf-8"),
-        "project_name": project_name.decode("utf-8"),
-        "time": time.decode("utf-8"),
-        "date": date.decode("utf-8"),
-        "idf_ver": idf_ver.decode("utf-8"),
+        "version": sanitize_string(version),
+        "project_name": sanitize_string(project_name),
+        "time": sanitize_string(time),
+        "date": sanitize_string(date),
+        "idf_ver": sanitize_string(idf_ver),
         "app_elf_sha256": hexify(app_elf_sha256, uppercase=False),
         "min_efuse_blk_rev_full": (
             f"{min_efuse_blk_rev_full // 100}.{min_efuse_blk_rev_full % 100}"
@@ -1653,6 +1654,37 @@ def _parse_app_info(app_info_segment):
             f"{2**mmu_page_size // 1024} KB" if mmu_page_size != 0 else None
         ),
         "reserv3": reserv3,
+        "reserv2": reserv2,
+    }
+
+
+def _parse_bootloader_info(bootloader_info_segment):
+    """
+    Check if correct magic byte is present in the bootloader_info and parse
+    the bootloader_info struct
+    """
+    bootloader_info = bootloader_info_segment[:80]
+    # More info about the bootloader_info struct can be found at:
+    # https://docs.espressif.com/projects/esp-idf/en/latest/api-reference/system/bootloader_image_format.html#bootloader-description
+    BOOTLOADER_DESC_STRUCT_FMT = "<B" + "3s" + "I32s24s" + "16s"
+    (
+        magic_byte,
+        reserv1,
+        version,
+        idf_ver,
+        date_time,
+        reserv2,
+    ) = struct.unpack(BOOTLOADER_DESC_STRUCT_FMT, bootloader_info)
+
+    if magic_byte != 0x50:
+        return None
+
+    return {
+        "magic_byte": magic_byte,
+        "reserv1": reserv1,
+        "version": version,
+        "idf_ver": sanitize_string(idf_ver),
+        "date_time": sanitize_string(date_time),
         "reserv2": reserv2,
     }
 
@@ -1799,12 +1831,10 @@ def image_info(filename: str, chip: str = "auto") -> None:
             "Segment", "Length", "Load addr", "File offs", "Memory types"
         )
     )
-    log.print(
-        "{}  {}  {}  {}  {}".format("-" * 7, "-" * 7, "-" * 10, "-" * 10, "-" * 12)
-    )
+    log.print(f"{'-' * 7}  {'-' * 7}  {'-' * 10}  {'-' * 10}  {'-' * 12}")
     format_str = "{:7}  {:#07x}  {:#010x}  {:#010x}  {}"
     app_desc_seg = None
-    bootloader_desc = None
+    bootloader_desc_seg = None
     for idx, seg in enumerate(image.segments):
         segs = seg.get_memory_type(image)
         seg_name = ", ".join(segs)
@@ -1814,7 +1844,7 @@ def image_info(filename: str, chip: str = "auto") -> None:
         elif "DRAM" in segs:
             # The DRAM segment starts with the esp_bootloader_desc_t struct
             if len(seg.data) >= 80:
-                bootloader_desc = seg.data[:80]
+                bootloader_desc_seg = seg.data
         log.print(
             format_str.format(idx, len(seg.data), seg.addr, seg.file_offs, seg_name)
         )
@@ -1869,25 +1899,16 @@ def image_info(filename: str, chip: str = "auto") -> None:
                 log.print(f"MMU page size: {app_desc['mmu_page_size']}")
             log.print(f"Secure version: {app_desc['secure_version']}")
 
-    elif bootloader_desc:
-        BOOTLOADER_DESC_STRUCT_FMT = "<B" + "3s" + "I32s24s" + "16s"
-        (
-            magic_byte,
-            reserved,
-            version,
-            idf_ver,
-            date_time,
-            reserved2,
-        ) = struct.unpack(BOOTLOADER_DESC_STRUCT_FMT, bootloader_desc)
-
-        if magic_byte == 80:
+    elif bootloader_desc_seg:
+        bootloader_desc = _parse_bootloader_info(bootloader_desc_seg)
+        if bootloader_desc:
             log.print()
             title = "Bootloader information"
             log.print(title)
             log.print("=" * len(title))
-            log.print(f"Bootloader version: {version}")
-            log.print(f"ESP-IDF: {idf_ver.decode('utf-8')}")
-            log.print(f"Compile time: {date_time.decode('utf-8')}")
+            log.print(f"Bootloader version: {bootloader_desc['version']}")
+            log.print(f"ESP-IDF: {bootloader_desc['idf_ver']}")
+            log.print(f"Compile time: {bootloader_desc['date_time']}")
 
 
 def make_image(
