@@ -14,7 +14,7 @@ import itertools
 
 from intelhex import IntelHex
 from serial import SerialException
-from typing import BinaryIO
+from typing import BinaryIO, cast
 
 from .bin_image import ELFFile, LoadFirmwareImage
 from .bin_image import (
@@ -258,36 +258,36 @@ def dump_mem(
         output: Path to output file for binary data. If None, returns the data.
 
     Returns:
-        Memory dump as bytes if filename is None;
+        Memory dump as bytes if output is None;
         otherwise, returns None after writing to file.
     """
     log.print(
         f"Dumping {size} bytes from {address:#010x}"
         + (f" to file '{output}'..." if output else "...")
     )
-    data = bytearray()
+    data = io.BytesIO()  # Use BytesIO to store the memory dump
     log.set_progress(0)
 
     # Read the memory in 4-byte chunks.
     for i in range(size // 4):
         d = esp.read_reg(address + (i * 4))
-        data.extend(struct.pack("<I", d))
+        data.write(struct.pack("<I", d))  # Write 4 bytes to BytesIO
         # Update progress every 1024 bytes.
-        if len(data) % 1024 == 0:
-            percent = len(data) * 100 // size
+        if data.tell() % 1024 == 0:
+            percent = data.tell() * 100 // size
             log.set_progress(percent)
-            log.print_overwrite(f"{len(data)} bytes read... ({percent}%)")
+            log.print_overwrite(f"{data.tell()} bytes read... ({percent}%)")
 
-    log.print_overwrite(f"Successfully read {len(data)} bytes.", last_line=True)
+    log.print_overwrite(f"Successfully read {data.tell()} bytes.", last_line=True)
 
     if output:
         with open(output, "wb") as f:
-            f.write(data)
+            f.write(data.getvalue())
         log.print(f"Memory dump to '{output}' completed.")
         return None
     else:
         log.print("Memory dump completed.")
-        return bytes(data)
+        return data.getvalue()
 
 
 def detect_flash_size(esp: ESPLoader) -> str | None:
@@ -1689,13 +1689,13 @@ def _parse_bootloader_info(bootloader_info_segment):
     }
 
 
-def image_info(filename: str, chip: str = "auto") -> None:
+def image_info(filename: str, chip: str | None = None) -> None:
     """
     Display detailed information about an ESP firmware image.
 
     Args:
         filename: Path to the firmware image file.
-        chip: Target ESP device type (e.g., ``"esp32"``). If set to "auto", the chip
+        chip: Target ESP device type (e.g., ``"esp32"``). If None, the chip
             type will be automatically detected from the image header.
     """
     log.print(f"File size: {get_file_size(filename)} (bytes)")
@@ -1714,7 +1714,7 @@ def image_info(filename: str, chip: str = "auto") -> None:
                 f"This is not a valid image (invalid magic number: {magic:#x})"
             )
 
-        if chip == "auto":
+        if chip is None:
             try:
                 extended_header = f.read(16)
 
@@ -1913,14 +1913,14 @@ def image_info(filename: str, chip: str = "auto") -> None:
 
 def merge_bin(
     addr_filename: list[tuple[int, BinaryIO]],
-    output: str,
     chip: str,
+    output: str | None = None,
     flash_freq: str = "keep",
     flash_mode: str = "keep",
     flash_size: str = "keep",
     format: str = "raw",
     **kwargs,
-) -> None:
+) -> bytes | None:
     """
     Merge multiple binary files into a single output file for flashing to an ESP device.
 
@@ -1931,8 +1931,9 @@ def merge_bin(
     Args:
         addr_filename: List of (address, file) pairs specifying
             memory offsets and corresponding binary files.
-        output: Path to the output file where the merged binary will be written.
         chip: Target ESP device type (e.g., ``"esp32"``).
+        output: Path to the output file where the merged binary will be written.
+            If None, the merged binary will be returned as bytes.
         flash_freq: Flash frequency to set in the image header
             (``"keep"`` to retain current).
         flash_mode: Flash mode to set in the image header
@@ -1946,6 +1947,10 @@ def merge_bin(
         pad_to_size (str | None): If specified, pad the output to a specific flash size.
         chunk_size (int | None): Chunk size for UF2 format.
         md5_disable (bool): If True, disable MD5 checks in UF2 format.
+
+    Returns:
+        The merged binary data as bytes if output is None; otherwise,
+        returns None after writing to file.
     """
 
     # Set default values of optional arguments
@@ -1954,16 +1959,18 @@ def merge_bin(
     chunk_size: int | None = kwargs.get("chunk_size", None)
     md5_disable: bool = kwargs.get("md5_disable", False)
 
+    if format not in ["raw", "uf2", "hex"]:
+        raise FatalError(f"Invalid format: '{format}', choose from 'raw', 'uf2', 'hex'")
+
+    if format in ["uf2", "hex"] and output is None:
+        raise FatalError(f"Output file must be specified with {format.upper()} format")
+
     try:
         chip_class = CHIP_DEFS[chip]
     except KeyError:
-        msg = (
-            "Please specify the chip argument"
-            if chip == "auto"
-            else f"Invalid chip choice: '{chip}'"
+        raise FatalError(
+            f"Invalid chip choice: '{chip}' (choose from {', '.join(CHIP_LIST)})"
         )
-        msg = f"{msg} (choose from {', '.join(CHIP_LIST)})"
-        raise FatalError(msg)
 
     # sort the files by offset.
     # The AddrFilenamePairAction has already checked for overlap
@@ -1977,7 +1984,7 @@ def merge_bin(
             f"Input file offset {first_addr:#x} is before this."
         )
 
-    if format == "uf2":
+    if format == "uf2" and output is not None:
         with UF2Writer(
             chip_class.UF2_FAMILY_ID,
             output,
@@ -1992,12 +1999,13 @@ def merge_bin(
                 )
                 writer.add_file(addr, image)
         log.print(
-            f"Wrote {os.path.getsize(output):#x} bytes to file {output}, "
+            f"Wrote {os.path.getsize(output):#x} bytes to file '{output}', "
             f"ready to be flashed with any ESP USB Bridge"
         )
 
     elif format == "raw":
-        with open(output, "wb") as of:
+        of = io.BytesIO() if output is None else open(output, "wb")
+        try:
 
             def pad_to(flash_offs):
                 # account for output file offset if there is any
@@ -2006,18 +2014,31 @@ def merge_bin(
             for addr, argfile in input_files:
                 pad_to(addr)
                 image = argfile.read()
+                argfile.seek(0)  # Rewind for possible future operations with the files
                 image = _update_image_flash_params(
                     chip_class, addr, flash_freq, flash_mode, flash_size, image
                 )
                 of.write(image)
             if pad_to_size:
                 pad_to(flash_size_bytes(pad_to_size))
+            size = of.tell()
+        finally:
+            if output is not None:
+                of.close()
+
+        if output is None and isinstance(of, io.BytesIO):
             log.print(
-                f"Wrote {of.tell():#x} bytes to file {output}, "
+                f"Merged {size:#x} bytes, ready to flash to offset {target_offset:#x}"
+            )
+            return of.getvalue()
+        else:
+            log.print(
+                f"Wrote {size:#x} bytes to file '{output}', "
                 f"ready to flash to offset {target_offset:#x}"
             )
+            return None
 
-    elif format == "hex":
+    elif format == "hex" and output is not None:
         out = IntelHex()
         if len(input_files) == 1:
             log.warning(
@@ -2036,9 +2057,10 @@ def merge_bin(
             out.merge(ihex)
         out.write_hex_file(output)
         log.print(
-            f"Wrote {os.path.getsize(output):#x} bytes to file {output}, "
+            f"Wrote {os.path.getsize(output):#x} bytes to file '{output}', "
             f"ready to flash to offset {target_offset:#x}"
         )
+    return None
 
 
 def elf2image(
@@ -2049,14 +2071,16 @@ def elf2image(
     flash_mode: str = "qio",
     flash_size: str = "1MB",
     **kwargs,
-) -> None:
+) -> bytes | tuple[bytes | None, bytes] | None:
     """
     Convert an ELF file into a firmware image suitable for flashing onto an ESP device.
 
     Args:
         input: Path to the ELF file.
-        chip: Target ESP device type. Defaults to ``"esp8266"`` if set to ``"auto"``.
-        output: Path to save the generated firmware image. If None, a default is used.
+        chip: Target ESP device type.
+        output: Path to save the generated firmware image. If "auto", a default
+            pre-defined path is used. If None, the image is not written to a file,
+            but returned as bytes.
         flash_freq: Flash frequency to set in the image header.
         flash_mode: Flash mode to set in the image header.
         flash_size: Flash size to set in the image header.
@@ -2074,6 +2098,13 @@ def elf2image(
         flash_mmu_page_size (str): MMU page size for flash mapping.
         pad_to_size (str): Pad the final image to a specific flash size.
         ram_only_header (bool): Include only RAM segments and no SHA-256 hash.
+
+    Returns:
+        The firmware image as bytes if output is None; otherwise,
+        returns None after writing to file.
+        When ESP8266 V1 image is generated, returns a tuple of bytes
+        of IROM data and the rest if output is None; otherwise,
+        returns None after writing to two files.
     """
 
     # Set default values of optional arguments
@@ -2090,12 +2121,13 @@ def elf2image(
     pad_to_size: str | None = kwargs.get("pad_to_size", None)
     ram_only_header: bool = kwargs.get("ram_only_header", False)
 
+    if chip not in CHIP_LIST:
+        raise FatalError(
+            f"Invalid chip choice: '{chip}' (choose from {', '.join(CHIP_LIST)})"
+        )
+
     e = ELFFile(input)
-    if chip == "auto":  # Default to ESP8266 for backwards compatibility
-        chip = "esp8266"
-
-    log.print(f"Creating {chip} image...")
-
+    log.print(f"Creating {chip.upper()} image...")
     if chip != "esp8266":
         bootloader_image = CHIP_DEFS[chip].BOOTLOADER_IMAGE
         if bootloader_image is None:
@@ -2192,12 +2224,11 @@ def elf2image(
         log.print(f"Merged {delta} ELF section{'s' if delta > 1 else ''}")
 
     image.verify()
+    log.print(f"Successfully created {chip.upper()} image.")
 
-    if output is None:
+    if output == "auto":
         output = image.default_output_name(input)
-    image.save(output)
-
-    log.print(f"Successfully created {chip} image.")
+    return cast(bytes | tuple[bytes | None, bytes] | None, image.save(output))
 
 
 def version() -> None:

@@ -457,26 +457,39 @@ class ESP8266ROMFirmwareImage(BaseFirmwareImage):
         """Derive a default output name from the ELF name."""
         return input_file + "-"
 
-    def save(self, basename):
-        """Save a set of V1 images for flashing. Parameter is a base filename."""
-        # IROM data goes in its own plain binary file
+    def save(self, filename: str | None) -> tuple[bytes | None, bytes] | None:
+        irom_data: bytes | None = None
+        other_data: bytes | None = None
+
+        # Handle IROM data
         irom_segment = self.get_irom_segment()
         if irom_segment is not None:
-            with open(
-                "%s0x%05x.bin"
-                % (basename, irom_segment.addr - ESP8266ROM.IROM_MAP_START),
-                "wb",
-            ) as f:
-                f.write(irom_segment.data)
+            irom_data = irom_segment.data
 
-        # everything but IROM goes at 0x00000 in an image file
-        normal_segments = self.get_non_irom_segments()
-        with open("%s0x00000.bin" % basename, "wb") as f:
+        # Handle other segments (everything but IROM)
+        with io.BytesIO() as f:  # Use BytesIO to write to memory
+            normal_segments = self.get_non_irom_segments()
             self.write_common_header(f, normal_segments)
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
             for segment in normal_segments:
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
+
+            other_data = f.getvalue()  # Get the bytes from BytesIO
+
+        if filename is not None:
+            # Write IROM data to a file
+            if irom_data is not None:
+                offset = irom_segment.addr - ESP8266ROM.IROM_MAP_START
+                with open(f"{filename}{offset:#07x}.bin", "wb") as f:
+                    f.write(irom_data)
+            # Write other data to a file
+            if other_data is not None:
+                with open(f"{filename}{0:#07x}.bin", "wb") as f:
+                    f.write(other_data)
+            return None
+        else:
+            return (irom_data, other_data)
 
 
 ESP8266ROM.BOOTLOADER_IMAGE = ESP8266ROMFirmwareImage
@@ -561,8 +574,8 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             irom_offs & ~(ESPLoader.FLASH_SECTOR_SIZE - 1),
         )
 
-    def save(self, filename):
-        with open(filename, "wb") as f:
+    def save(self, filename: str | None) -> bytes | None:
+        with io.BytesIO() as f:  # Write to memory first
             # Save first header for irom0 segment
             f.write(
                 struct.pack(
@@ -592,12 +605,19 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
                 checksum = self.save_segment(f, segment, checksum)
             self.append_checksum(f, checksum)
 
-        # calculate a crc32 of entire file and append
-        # (algorithm used by recent 8266 SDK bootloaders)
-        with open(filename, "rb") as f:
+            # Calculate CRC32 of the entire file and append
+            f.seek(0)  # Move to the start of the BytesIO buffer
             crc = esp8266_crc32(f.read())
-        with open(filename, "ab") as f:
             f.write(struct.pack(b"<I", crc))
+
+            if filename is not None:
+                # Write the content to a real file
+                with open(filename, "wb") as real_file:
+                    real_file.write(f.getvalue())
+                return None
+            else:
+                # Return the bytes if no filename is provided
+                return f.getvalue()
 
 
 def esp8266_crc32(data):
@@ -686,7 +706,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     def warn_if_unusual_segment(self, offset, size, is_irom_segment):
         pass  # TODO: add warnings for wrong ESP32 segment offset/size combinations
 
-    def save(self, filename):
+    def save(self, filename: str | None) -> bytes | None:
         total_segments = 0
         with io.BytesIO() as f:  # write file to memory first
             self.write_common_header(f, self.segments)
@@ -895,8 +915,14 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     pad_by = self.pad_to_size - (image_length % self.pad_to_size)
                     f.write(b"\xff" * pad_by)
 
-            with open(filename, "wb") as real_file:
-                real_file.write(f.getvalue())
+            if filename is not None:
+                # Write the content to a real file
+                with open(filename, "wb") as real_file:
+                    real_file.write(f.getvalue())
+                return None
+            else:
+                # Return the bytes if no filename is provided
+                return f.getvalue()
 
     def load_extended_header(self, load_file):
         def split_byte(n):
@@ -965,7 +991,7 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
     def is_flash_addr(self, addr):
         return addr > ESP8266ROM.IROM_MAP_START
 
-    def save(self, filename):
+    def save(self, filename: str | None) -> bytes | None:
         total_segments = 0
         with io.BytesIO() as f:  # write file to memory first
             self.write_common_header(f, self.segments)
@@ -1033,8 +1059,14 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
                 digest.update(f.read(image_length))
                 f.write(digest.digest())
 
-            with open(filename, "wb") as real_file:
-                real_file.write(f.getvalue())
+            if filename is not None:
+                # Write the content to a real file
+                with open(filename, "wb") as real_file:
+                    real_file.write(f.getvalue())
+                return None
+            else:
+                # Return the bytes if no filename is provided
+                return f.getvalue()
 
     def load_extended_header(self, load_file):
         def split_byte(n):

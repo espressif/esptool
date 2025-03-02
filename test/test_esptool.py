@@ -1772,7 +1772,7 @@ class TestESPObjectOperations(EsptoolTestCase):
         image_info("images/bootloader_esp32.bin")
         with open("images/one_kb.bin", "rb") as input:
             try:
-                merge_bin([(0x0, input), (0x2000, input)], "output.bin", arg_chip)
+                merge_bin([(0x0, input), (0x2000, input)], arg_chip, "output.bin")
             finally:
                 os.remove("output.bin")
         version()

@@ -636,8 +636,7 @@ def image_info_cli(ctx, filename):
     "--output",
     "-o",
     type=str,
-    help="Output filename prefix (for version 1 image), or filename (for version 2 "
-    "single image)",
+    help="Output filename or filename prefix (for ESP8266 V1 image)",
 )
 @click.option(
     "--version",
@@ -725,7 +724,11 @@ def image_info_cli(ctx, filename):
 def elf2image_cli(ctx, **kwargs):
     """Create an application image from ELF file"""
     append_digest = not kwargs.pop("dont_append_digest", False)
-    elf2image(chip=ctx.obj["chip"], append_digest=append_digest, **kwargs)
+    # Default to ESP8266 for backwards compatibility
+    chip = "esp8266" if ctx.obj["chip"] == "auto" else ctx.obj["chip"]
+    output = kwargs.pop("output", None)
+    output = "auto" if output is None else output
+    elf2image(chip=chip, output=output, append_digest=append_digest, **kwargs)
 
 
 @cli.command("read_mac")
