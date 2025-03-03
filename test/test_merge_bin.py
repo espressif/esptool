@@ -374,7 +374,9 @@ class TestUF2:
         print(output)
         assert "warning" not in output.lower(), "merge_bin should not output warnings"
 
-        exp_list = [f"Adding {f} at {hex(addr)}" for addr, f in iter_addr_offset_tuples]
+        exp_list = [
+            f"Adding '{f}' at {hex(addr)}" for addr, f in iter_addr_offset_tuples
+        ]
         exp_list += [
             f"bytes to file '{of_name}', ready to be flashed with any ESP USB Bridge"
         ]

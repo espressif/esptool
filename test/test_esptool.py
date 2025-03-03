@@ -643,7 +643,7 @@ class TestFlashing(EsptoolTestCase):
             "write_flash 0x10000 images/one_kb.bin 0x11000 images/zerolength.bin"
         )
         self.verify_readback(0x10000, 1024, "images/one_kb.bin")
-        assert "zerolength.bin is empty" in output
+        assert "'images/zerolength.bin' is empty" in output
 
     @pytest.mark.quick_test
     def test_single_byte(self):
@@ -674,7 +674,7 @@ class TestFlashing(EsptoolTestCase):
         )
         assert "Unexpected chip ID in image." in output
         assert "value was 9. Is this image for a different chip model?" in output
-        assert "images/esp32s3_header.bin is not an " in output
+        assert "'images/esp32s3_header.bin' is not an " in output
         assert "image. Use the force argument to flash anyway." in output
 
     @pytest.mark.skipif(
@@ -687,7 +687,7 @@ class TestFlashing(EsptoolTestCase):
         output = self.run_esptool_error(
             "write_flash 0x0 images/one_kb.bin 0x1000 images/esp32s3_header.bin"
         )
-        assert "images/esp32s3_header.bin requires chip revision 10" in output
+        assert "'images/esp32s3_header.bin' requires chip revision 10" in output
         assert "or higher (this chip is revision" in output
         assert "Use the force argument to flash anyway." in output
 
@@ -700,7 +700,7 @@ class TestFlashing(EsptoolTestCase):
             "write_flash 0x0 images/one_kb.bin 0x1000 images/esp32c3_header_min_rev.bin"
         )
         assert (
-            "images/esp32c3_header_min_rev.bin "
+            "'images/esp32c3_header_min_rev.bin' "
             "requires chip revision in range [v2.55 - max rev not set]" in output
         )
         assert "Use the force argument to flash anyway." in output
@@ -856,14 +856,14 @@ class TestFlashSizes(EsptoolTestCase):
         output = self.run_esptool_error(
             "write_flash -fs 1MB 0x280000 images/one_kb.bin"
         )
-        assert "File images/one_kb.bin" in output
+        assert "File 'images/one_kb.bin'" in output
         assert "will not fit" in output
 
     def test_write_no_compression_past_end_fails(self):
         output = self.run_esptool_error(
             "write_flash -u -fs 1MB 0x280000 images/one_kb.bin"
         )
-        assert "File images/one_kb.bin" in output
+        assert "File 'images/one_kb.bin'" in output
         assert "will not fit" in output
 
     @pytest.mark.skipif(
@@ -1779,5 +1779,5 @@ class TestESPObjectOperations(EsptoolTestCase):
         output = fake_out.getvalue()
         assert "Detected image type: ESP32" in output
         assert "Checksum: 0x83 (valid)" in output
-        assert "Wrote 0x2000 bytes to file output.bin" in output
+        assert "Wrote 0x2400 bytes to file 'output.bin'" in output
         assert esptool.__version__ in output

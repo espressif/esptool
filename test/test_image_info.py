@@ -160,7 +160,7 @@ class TestImageInfo:
         # This bootloader binary is built from "hello_world" project
         # with default settings, IDF version is v5.2.
         out = self.run_image_info("esp32", "bootloader_esp32_v5_2.bin")
-        assert "File size: 26768 (bytes)" in out
+        assert "Image size: 26768 bytes" in out
         assert "Bootloader information" in out
         assert "Bootloader version: 1" in out
         assert "ESP-IDF: v5.2-dev-254-g1950b15" in out
@@ -193,7 +193,7 @@ class TestImageInfo:
         try:
             convert_bin2hex(file)
             out = self.run_image_info("esp32", file)
-            assert "File size: 26768 (bytes)" in out
+            assert "Image size: 26768 bytes" in out
             assert "Bootloader information" in out
             assert "Bootloader version: 1" in out
             assert "ESP-IDF: v5.2-dev-254-g1950b15" in out

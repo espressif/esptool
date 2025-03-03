@@ -97,6 +97,40 @@ The following example demonstrates running a series of flash memory operations i
 
 ------------
 
+The Public API implements a custom ``ImageSource`` input type, which expands to ``str | bytes | IO[bytes]`` - a path to the firmware image file, an opened file-like object, or the image data as bytes.
+
+As output, the API returns a ``bytes`` object representing the binary image or writes the image to a file if the ``output`` parameter is provided.
+
+The following example converts an ELF file to a flashable binary, prints the image information, and flashes the image. The example demonstrates three different ways to achieve the same result, showcasing the flexibility of the API:
+
+.. code-block:: python
+
+    ELF = "firmware.elf"
+
+    # var 1 - Loading ELF from a file, not writing binary to a file
+    bin_file = elf2image(ELF, "esp32c3")
+    image_info(bin_file)
+    with detect_chip(PORT) as esp:
+        attach_flash(esp)
+        write_flash(esp, [(0, bin_file)])
+
+    # var 2 - Loading ELF from an opened file object, not writing binary to a file
+    with open(ELF, "rb") as elf_file, detect_chip(PORT) as esp:
+        bin_file = elf2image(elf_file, "esp32c3")
+        image_info(bin_file)
+        attach_flash(esp)
+        write_flash(esp, [(0, bin_file)])
+
+    # var 3 - Loading ELF from a file, writing binary to a file
+    elf2image(ELF, "esp32c3", "image.bin")
+    image_info("image.bin")
+    with detect_chip(PORT) as esp:
+        attach_flash(esp)
+        write_flash(esp, [(0, "image.bin")])
+
+
+------------
+
 **The following section provides a detailed reference for the public API functions.**
 
 Chip Control Operations

@@ -2,10 +2,15 @@
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-
+from __future__ import annotations
 import os
 import re
 import struct
+
+from typing import IO, TypeAlias
+
+# Define a custom type for the input
+ImageSource: TypeAlias = str | bytes | IO[bytes]
 
 
 def byte(bitstr, index):
@@ -83,6 +88,34 @@ def get_file_size(path_to_file):
 
 def sanitize_string(byte_string):
     return byte_string.decode("utf-8").replace("\0", "")
+
+
+def get_bytes(input: ImageSource) -> tuple[bytes, str | None]:
+    """
+    Normalize the input (file path, bytes, or an opened file-like object) into bytes
+    and provide a name of the source.
+
+    Args:
+        input: The input file path, bytes, or an opened file-like object.
+
+    Returns:
+        A tuple containing the normalized bytes and the source of the input.
+    """
+    if isinstance(input, str):
+        with open(input, "rb") as f:
+            data = f.read()
+            source = input
+    elif isinstance(input, bytes):
+        data = input
+        source = None
+    elif hasattr(input, "read") and hasattr(input, "write") and hasattr(input, "close"):
+        pos = input.tell()
+        data = input.read()
+        input.seek(pos)  # Reset the file pointer
+        source = input.name
+    else:
+        raise FatalError(f"Invalid input type {type(input)}")
+    return data, source
 
 
 class PrintOnce:

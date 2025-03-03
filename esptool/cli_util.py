@@ -170,7 +170,7 @@ class AddrFilenamePairType(click.Path):
             if sector_start < end:
                 raise click.BadParameter(
                     f"Detected overlap at address: "
-                    f"0x{address:x} for file: {argfile.name}",
+                    f"{address:#x} for file: {argfile.name}",
                 )
             end = sector_end
         return pairs
