@@ -101,19 +101,10 @@ You will likely have to restart or re-login for the autocompletion to start work
 
    .. group-tab:: Bash
 
-      .. tabs::
-
-         .. group-tab:: v5
-
-            .. code-block:: bash
+         .. code-block:: bash
 
                eval "$(_ESPTOOL_PY_COMPLETE=bash_source esptool.py espsecure.py espefuse.py)"
 
-         .. group-tab:: v4
-
-            .. code-block:: bash
-
-               eval "$(register-python-argcomplete esptool.py espsecure.py espefuse.py)"
 
    .. group-tab:: Zsh
 
@@ -127,37 +118,18 @@ You will likely have to restart or re-login for the autocompletion to start work
 
       Afterwards you can enable completions for esptool.py, espsecure.py and espefuse.py:
 
-      .. tabs::
 
-         .. group-tab:: v5
+      .. code-block:: bash
 
-            .. code-block:: bash
+         eval "$(_ESPTOOL_PY_COMPLETE=zsh_source esptool.py espsecure.py espefuse.py)"
 
-               eval "$(_ESPTOOL_PY_COMPLETE=zsh_source esptool.py espsecure.py espefuse.py)"
-
-         .. group-tab:: v4
-
-            .. code-block:: bash
-
-               eval "$(register-python-argcomplete esptool.py espsecure.py espefuse.py)"
 
    .. group-tab:: Fish
 
-      .. tabs::
+      .. code-block:: bash
 
-         .. group-tab:: v5
+         _ESPTOOL_PY_COMPLETE=fish_source esptool.py espsecure.py espefuse.py | source
 
-            .. code-block:: bash
-
-               _ESPTOOL_PY_COMPLETE=fish_source esptool.py espsecure.py espefuse.py | source
-
-         .. group-tab:: v4
-
-            Not required to be in the config file, only run once
-
-            .. code-block:: bash
-
-               register-python-argcomplete --shell fish esptool.py espsecure.py espefuse.py >~/.config/fish/completions/esptool.py.fish
 
 
 Other shells nor OS Windows are not supported.
