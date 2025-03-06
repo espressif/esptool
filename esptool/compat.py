@@ -55,8 +55,7 @@ def asstr(s):
         return s
     return s.decode('latin1')
 
-# for python >= 3.2 use 'tobytes', otherwise 'tostring'
-array_tobytes = array.array.tobytes if sys.version_info[1] >= 2 else array.array.tostring
+array_tobytes = array.array.tobytes
 
 IntTypes = (int,)
 StrType = str
