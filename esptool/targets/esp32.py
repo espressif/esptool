@@ -227,6 +227,7 @@ class ESP32ROM(ESPLoader):
             0: "ESP32-S0WDQ6" if sc else "ESP32-D0WDQ6-V3" if rev3 else "ESP32-D0WDQ6",
             1: "ESP32-S0WD" if sc else "ESP32-D0WD-V3" if rev3 else "ESP32-D0WD",
             2: "ESP32-D2WD",
+            3: "ESP32-S0WD-OEM" if sc else "ESP32-D0WD-OEM",
             4: "ESP32-U4WDH",
             5: "ESP32-PICO-V3" if rev3 else "ESP32-PICO-D4",
             6: "ESP32-PICO-V3-02",

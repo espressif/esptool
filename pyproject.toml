@@ -37,7 +37,6 @@
         "pyserial>=3.3",
         "reedsolo>=1.5.3,<1.8",
         "PyYAML>=5.1",
-        "intelhex",
         "rich_click",
     ]
 
@@ -50,6 +49,7 @@
 
 [project.optional-dependencies]
     dev = [
+        "ruff>=0.1.14",
         "pyelftools",
         "coverage~=6.0",
         "pre-commit",
@@ -77,7 +77,7 @@
     version = {attr = "esptool.__init__.__version__"}
 
 [tool.commitizen]
-    version = "4.8.1"
+    version = "4.9.0+rc"
     update_changelog_on_bump = true
     tag_format = "v$version"
     changelog_start_rev = "v4.2.1"

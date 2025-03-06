@@ -1,6 +1,12 @@
 name: Build esptool
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+    paths-ignore:
+    - '.github/**' # Ignore changes towards the .github directory
 
 jobs:
   build-esptool-binaries-arm:
@@ -16,7 +22,7 @@ jobs:
       PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
       - uses: uraimo/run-on-arch-action@v2
         name: Build and test in ${{ matrix.platform }}
         with:
@@ -58,11 +64,8 @@ jobs:
             ./${{ env.DISTPATH }}/espsecure -h || exit 1
             ./${{ env.DISTPATH }}/esp_rfc2217_server -h || exit 1
 
-            # Add license and readme
-            mv LICENSE README.md ./${{ env.DISTPATH }}
-
       - name: Archive artifact
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
@@ -90,7 +93,7 @@ jobs:
         - platform: linux-amd64
           TARGET: linux-amd64
           SEPARATOR: ':'
-          RUN_ON: ubuntu-22.04
+          RUN_ON: ubuntu-24.04
     env:
       DISTPATH: esptool-${{ matrix.TARGET }}
       STUBS_DIR: ./esptool/targets/stub_flasher/
@@ -98,11 +101,16 @@ jobs:
       PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
       - name: Set up Python 3.11
-        uses: actions/setup-python@master
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: 3.11
+      - name: Update esptool version when releasing
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          python ci/patch_release.py --version ${{ github.ref_name }} esptool/__init__.py
+          #git diff
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -114,17 +122,6 @@ jobs:
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.EFUSE_DIR }}*.yaml${{ matrix.SEPARATOR }}${{ env.EFUSE_DIR }}" espefuse.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
-      - name: Sign binaries
-        if: matrix.platform == 'windows' && github.event_name != 'pull_request'
-        env:
-          CERTIFICATE: ${{ secrets.CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-        shell: pwsh
-        run: |
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esptool.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espefuse.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espsecure.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esp_rfc2217_server.exe
       - name: Test binaries
         shell: bash
         run: |
@@ -132,63 +129,76 @@ jobs:
           ./${{ env.DISTPATH }}/espefuse${{ matrix.EXTEN }} -h
           ./${{ env.DISTPATH }}/espsecure${{ matrix.EXTEN }} -h
           ./${{ env.DISTPATH }}/esp_rfc2217_server${{ matrix.EXTEN }} -h
-      - name: Add license and readme
-        shell: bash
-        run: mv LICENSE README.md ./${{ env.DISTPATH }}
       - name: Archive artifact
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
+      - name: Update package.json when a release tag is set
+        if: startsWith(github.ref, 'refs/tags/') && matrix.platform == 'linux-amd64'
+        run: |
+          rm -f package.json
+          python ci/gen_pio_manifest.py -o "./" -s ${{ github.ref_name }}
+      - name: Upload package.json artifact
+        if: startsWith(github.ref, 'refs/tags/') && matrix.platform == 'linux-amd64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest
+          path: /home/runner/work/esptool/esptool/package.json
 
-  create_release:
-    name: Create GitHub release
-    if: startsWith(github.ref, 'refs/tags/') && !(contains(github.ref_name, 'dev'))
-    needs: [build-esptool-binaries, build-esptool-binaries-arm]
+  push_stubs:
+    name: Commit changed package.json
+    needs: build-esptool-binaries
     runs-on: ubuntu-latest
-    env:
-      PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
-    permissions:
-      contents: write
     steps:
-      - name: Get version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        shell: bash
-      - name: Checkout
-        uses: actions/checkout@master
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --user -e ".[dev]"
-      - name: Generate changelog
-        run: |
-          cz changelog ${{ steps.get_version.outputs.VERSION }} --template ci/gh_changelog_template.md.j2 --file-name changelog_body.md
-          cat changelog_body.md
-      - name: Download built binaries
-        uses: actions/download-artifact@master
-      - name: Compress and rename binaries
-        run: |
-          for dir in esptool-*; do
-            if [[ "$dir" == esptool-win* ]]; then
-              zip -r "esptool-v${{ steps.get_version.outputs.VERSION }}-${dir#esptool-}.zip" "$dir"
-            else
-              chmod -R u=rwx,g=rx,o=rx "$dir"
-              tar -cvzf "esptool-v${{ steps.get_version.outputs.VERSION }}-${dir#esptool-}.tar.gz" "$dir"
-            fi
-          done
-      - name: Create release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+        if: startsWith(github.ref, 'refs/tags/')
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          body_path: changelog_body.md
-          name: Version ${{ steps.get_version.outputs.VERSION }}
-          draft: true
-          prerelease: false
-          files: |
-            esptool-v${{ steps.get_version.outputs.VERSION }}-*.zip
-            esptool-v${{ steps.get_version.outputs.VERSION }}-*.tar.gz
+          name: |
+            manifest
+          path: |
+           ./
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          commit_message: update manifest
+
+  release:
+      name: Upload release binaries
+      needs: [build-esptool-binaries, build-esptool-binaries-arm, push_stubs]
+      if: startsWith(github.ref, 'refs/tags/')
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+        - name: Zip esptool.py
+          run: |
+            echo "Packaging new esptool release: ${{ github.ref_name }}"
+            python ci/patch_release.py --version ${{ github.ref_name }} esptool/__init__.py
+            rm package.json
+            python ci/gen_pio_manifest.py -o "./" -s ${{ github.ref_name }}
+            python ci/pack_python.py
+        - name: Download built binaries
+          uses: actions/download-artifact@v4
+        - name: Rename and package binaries
+          run: |
+            zip -r esptool-armv7.zip ./esptool-armv7
+            zip -r esptool-aarch64.zip ./esptool-aarch64
+            zip -r esptool-macos-arm64.zip ./esptool-macos-arm64
+            zip -r esptool-macos-amd64.zip ./esptool-macos-amd64
+            zip -r esptool-linux-amd64.zip ./esptool-linux-amd64
+            zip -r esptool-win64.zip ./esptool-win64
+        - name: Release
+          uses: jason2866/action-gh-release@v1.3
+          with:
+            prerelease: false
+            files: |
+              *.zip
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

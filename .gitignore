@@ -14,3 +14,4 @@ local.mk
 report.xml
 
 docs/_build/
+.DS_Store

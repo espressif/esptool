@@ -1,0 +1,19 @@
+{
+  "name": "tool-esptoolpy",
+  "description": "A serial utility to communicate & flash code to Espressif chips",
+  "keywords": [
+    "tools",
+    "uploader",
+    "tasmota",
+    "espressif",
+    "esp8266",
+    "esp32"
+  ],
+  "license": "GPL-2.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tasmota/esptool"
+  },
+  "version": "4.8.8",
+  "date": "2025-02-24"
+}
