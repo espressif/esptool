@@ -549,7 +549,7 @@ deploy_docs_preview:
   extends:
     - .deploy_docs_template
   rules:
-    - if: $CI_COMMIT_REF_NAME == "master" || $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_REF_NAME == "release/v4" || $CI_PIPELINE_SOURCE == "schedule"
       when: never
     - changes:
       - "docs/**/*"
@@ -567,7 +567,7 @@ deploy_docs_production:
   extends:
     - .deploy_docs_template
   rules:
-    - if: $CI_COMMIT_REF_NAME == "master" && $CI_PIPELINE_SOURCE != "schedule"
+    - if: $CI_COMMIT_REF_NAME == "release/v4" && $CI_PIPELINE_SOURCE != "schedule"
       changes:
       - "docs/**/*"
       - "CONTRIBUTING.rst"
