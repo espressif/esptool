@@ -2228,10 +2228,14 @@ def elf2image(
     if elf_sha256_offset:
         image.elf_sha256 = e.sha256()
         image.elf_sha256_offset = elf_sha256_offset
-    # If ELF file contains an app_desc section, put the SHA256 digest at correct offset
-    elif any(".flash.appdesc" in seg.name for seg in image.segments):
-        image.elf_sha256 = e.sha256()
-        image.elf_sha256_offset = 0xB0
+    else:
+        # If ELF file contains an app_desc section and it is in flash,
+        # put the SHA256 digest at correct offset.
+        # If it is flash build, it should always be 0xB0.
+        appdesc_segs = [seg for seg in image.segments if ".flash.appdesc" in seg.name]
+        if appdesc_segs and image.is_flash_addr(appdesc_segs[0].addr):
+            image.elf_sha256 = e.sha256()
+            image.elf_sha256_offset = 0xB0
 
     if ram_only_header:
         log.print(
