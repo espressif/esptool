@@ -90,9 +90,13 @@ def get_esp(
                 port if not skip_connect else StringIO(), baud
             )
             if not skip_connect:
-                esp.connect(connect_mode)
-                if esp.sync_stub_detected:
-                    esp = esp.STUB_CLASS(esp)
+                try:
+                    esp.connect(connect_mode)
+                    if esp.sync_stub_detected:
+                        esp = esp.STUB_CLASS(esp)
+                except Exception as e:
+                    esp._port.close()
+                    raise e
     return esp
 
 
