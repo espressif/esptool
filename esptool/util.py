@@ -118,6 +118,16 @@ def get_bytes(input: ImageSource) -> tuple[bytes, str | None]:
     return data, source
 
 
+def get_key_from_value(dict, val):
+    """
+    Get key from value in dictionary, assumes unique values in dictionary
+    """
+    for key, value in dict.items():
+        if value == val:
+            return key
+    return None
+
+
 class PrintOnce:
     """
     Class for printing messages just once. Can be useful when running in a loop

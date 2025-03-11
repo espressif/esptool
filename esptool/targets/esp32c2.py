@@ -118,7 +118,8 @@ class ESP32C2ROM(ESP32C3ROM):
 
             log.print(f"Changing baud rate to {baud}")
             self.command(
-                self.ESP_CHANGE_BAUDRATE, struct.pack("<II", false_rom_baud, 0)
+                self.ESP_CMDS["CHANGE_BAUDRATE"],
+                struct.pack("<II", false_rom_baud, 0),
             )
             log.print("Changed.")
             self._set_port_baudrate(baud)

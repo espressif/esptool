@@ -147,7 +147,9 @@ class ESP32C5ROM(ESP32C6ROM):
                 return
 
             log.print(f"Changing baud rate to {baud_rate}")
-            self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", baud_rate, 0))
+            self.command(
+                self.ESP_CMDS["CHANGE_BAUDRATE"], struct.pack("<II", baud_rate, 0)
+            )
             log.print("Changed.")
             self._set_port_baudrate(baud)
             time.sleep(0.05)  # get rid of garbage sent during baud rate change

@@ -952,15 +952,23 @@ class TestFlashDetection(EsptoolTestCase):
         """Test trace functionality on flash detection, running without stub"""
         res = self.run_esptool("--trace flash-id")
         # read register command
-        assert re.search(r"TRACE \+\d.\d{3} command op=0x0a .*", res) is not None
+        assert (
+            re.search(r"TRACE \+\d.\d{3}   --- Cmd READ_REG \(0x0a\) .*", res)
+            is not None
+        )
         # write register command
-        assert re.search(r"TRACE \+\d.\d{3} command op=0x09 .*", res) is not None
-        assert re.search(r"TRACE \+\d.\d{3} Read \d* bytes: .*", res) is not None
-        assert re.search(r"TRACE \+\d.\d{3} Write \d* bytes: .*", res) is not None
-        assert re.search(r"TRACE \+\d.\d{3} Received full packet: .*", res) is not None
+        assert (
+            re.search(r"TRACE \+\d.\d{3}   --- Cmd WRITE_REG \(0x09\) .*", res)
+            is not None
+        )
+        assert re.search(r"TRACE \+\d.\d{3}   Read \d* bytes:", res) is not None
+        assert re.search(r"TRACE \+\d.\d{3}   Write \d+ bytes:", res) is not None
+        assert (
+            re.search(r"TRACE \+\d.\d{3}   Received full packet: .*", res) is not None
+        )
         # flasher stub handshake
         assert (
-            re.search(r"TRACE \+\d.\d{3} Received full packet: 4f484149", res)
+            re.search(r"TRACE \+\d.\d{3}   Received full packet: 4f484149", res)
             is not None
         )
         assert "Manufacturer:" in res

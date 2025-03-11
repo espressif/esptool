@@ -391,7 +391,7 @@ class ESP32ROM(ESPLoader):
             try:
                 r = self.check_command(
                     "read flash block",
-                    self.ESP_READ_FLASH_SLOW,
+                    self.ESP_CMDS["READ_FLASH_SLOW"],
                     struct.pack("<II", offset + len(data), block_len),
                 )
             except FatalError:
@@ -431,7 +431,9 @@ class ESP32ROM(ESPLoader):
         false_rom_baud = int(baud * rom_calculated_freq // valid_freq)
 
         log.print(f"Changing baud rate to {baud}")
-        self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", false_rom_baud, 0))
+        self.command(
+            self.ESP_CMDS["CHANGE_BAUDRATE"], struct.pack("<II", false_rom_baud, 0)
+        )
         log.print("Changed.")
         self._set_port_baudrate(baud)
         time.sleep(0.05)  # get rid of garbage sent during baud rate change

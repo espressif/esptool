@@ -30,7 +30,14 @@ from .util import (
     NotSupportedError,
     UnsupportedCommandError,
 )
-from .util import byte, hexify, mask_to_shift, pad_to, strip_chip_name
+from .util import (
+    byte,
+    get_key_from_value,
+    hexify,
+    mask_to_shift,
+    pad_to,
+    strip_chip_name,
+)
 
 try:
     import serial
@@ -94,7 +101,7 @@ MD5_TIMEOUT_PER_MB = cfg.getfloat("md5_timeout_per_mb", 8)
 ERASE_REGION_TIMEOUT_PER_MB = cfg.getfloat("erase_region_timeout_per_mb", 30)
 # Timeout (per megabyte) for erasing and writing data
 ERASE_WRITE_TIMEOUT_PER_MB = cfg.getfloat("erase_write_timeout_per_mb", 40)
-# Short timeout for ESP_MEM_END, as it may never respond
+# Short timeout for MEM_END, as it may never respond
 MEM_END_ROM_TIMEOUT = cfg.getfloat("mem_end_rom_timeout", 0.2)
 # Timeout for serial port write
 DEFAULT_SERIAL_WRITE_TIMEOUT = cfg.getfloat("serial_write_timeout", 10)
@@ -218,38 +225,36 @@ class ESPLoader(object):
 
     USES_RFC2217 = False
 
-    # Commands supported by ESP8266 ROM bootloader
-    ESP_FLASH_BEGIN = 0x02
-    ESP_FLASH_DATA = 0x03
-    ESP_FLASH_END = 0x04
-    ESP_MEM_BEGIN = 0x05
-    ESP_MEM_END = 0x06
-    ESP_MEM_DATA = 0x07
-    ESP_SYNC = 0x08
-    ESP_WRITE_REG = 0x09
-    ESP_READ_REG = 0x0A
-
-    # Some commands supported by ESP32 and later chips ROM bootloader (or -8266 w/ stub)
-    ESP_SPI_SET_PARAMS = 0x0B
-    ESP_SPI_ATTACH = 0x0D
-    ESP_READ_FLASH_SLOW = 0x0E  # ROM only, much slower than the stub flash read
-    ESP_CHANGE_BAUDRATE = 0x0F
-    ESP_FLASH_DEFL_BEGIN = 0x10
-    ESP_FLASH_DEFL_DATA = 0x11
-    ESP_FLASH_DEFL_END = 0x12
-    ESP_SPI_FLASH_MD5 = 0x13
-
-    # Commands supported by ESP32-S2 and later chips ROM bootloader only
-    ESP_GET_SECURITY_INFO = 0x14
-
-    # Some commands supported by stub only
-    ESP_ERASE_FLASH = 0xD0
-    ESP_ERASE_REGION = 0xD1
-    ESP_READ_FLASH = 0xD2
-    ESP_RUN_USER_CODE = 0xD3
-
-    # Flash encryption encrypted data command
-    ESP_FLASH_ENCRYPT_DATA = 0xD4
+    ESP_CMDS = {
+        # Commands supported by ESP8266 ROM bootloader
+        "FLASH_BEGIN": 0x02,
+        "FLASH_DATA": 0x03,
+        "FLASH_END": 0x04,
+        "MEM_BEGIN": 0x05,
+        "MEM_END": 0x06,
+        "MEM_DATA": 0x07,
+        "SYNC": 0x08,
+        "WRITE_REG": 0x09,
+        "READ_REG": 0x0A,
+        # Commands supported by ESP32 and later chips ROM bootloader (or -8266 w/ stub)
+        "SPI_SET_PARAMS": 0x0B,
+        "SPI_ATTACH": 0x0D,
+        "READ_FLASH_SLOW": 0x0E,  # ROM only, much slower than the stub flash read
+        "CHANGE_BAUDRATE": 0x0F,
+        "FLASH_DEFL_BEGIN": 0x10,
+        "FLASH_DEFL_DATA": 0x11,
+        "FLASH_DEFL_END": 0x12,
+        "SPI_FLASH_MD5": 0x13,
+        # Commands supported by ESP32-S2 and later chips ROM bootloader only
+        "GET_SECURITY_INFO": 0x14,
+        # Some commands supported by stub only
+        "ERASE_FLASH": 0xD0,
+        "ERASE_REGION": 0xD1,
+        "READ_FLASH": 0xD2,
+        "RUN_USER_CODE": 0xD3,
+        # Flash encryption encrypted data command
+        "FLASH_ENCRYPT_DATA": 0xD4,
+    }
 
     # Response code(s) sent by ROM
     ROM_INVALID_RECV_MSG = 0x05  # response if an invalid message is received
@@ -295,7 +300,7 @@ class ESPLoader(object):
     # ROM supports an encrypted flashing mode
     SUPPORTS_ENCRYPTED_FLASH = False
 
-    # Response to ESP_SYNC might indicate that flasher stub is running
+    # Response to SYNC might indicate that flasher stub is running
     # instead of the ROM bootloader
     sync_stub_detected = False
 
@@ -435,10 +440,10 @@ class ESPLoader(object):
             + (packet.replace(b"\xdb", b"\xdb\xdd").replace(b"\xc0", b"\xdb\xdc"))
             + b"\xc0"
         )
-        self.trace("Write %d bytes: %s", len(buf), HexFormatter(buf))
+        self.trace(f"{f'Write {len(buf)} bytes:':<21} {HexFormatter(buf)}")
         self._port.write(buf)
 
-    def trace(self, message, *format_args):
+    def trace(self, message, newline=False):
         if self._trace_enabled:
             now = time.time()
             try:
@@ -446,8 +451,8 @@ class ESPLoader(object):
             except AttributeError:
                 delta = 0.0
             self._last_trace = now
-            prefix = "TRACE +%.3f " % delta
-            log.print(prefix + (message % format_args))
+            prefix = f" TRACE +{delta:.3f}  "
+            log.print("\n" if newline else "", f"{prefix} {message}")
 
     @staticmethod
     def checksum(data, state=ESP_CHECKSUM_MAGIC):
@@ -474,13 +479,10 @@ class ESPLoader(object):
         try:
             if op is not None:
                 self.trace(
-                    "command op=0x%02x data len=%s wait_response=%d "
-                    "timeout=%.3f data=%s",
-                    op,
-                    len(data),
-                    1 if wait_response else 0,
-                    timeout,
-                    HexFormatter(data),
+                    f"--- Cmd {get_key_from_value(self.ESP_CMDS, op)} ({op:#04x}) | "
+                    f"data_len {len(data)} | wait_response {1 if wait_response else 0}"
+                    f" | timeout {timeout:.3f} | data {HexFormatter(data)} ---",
+                    newline=True,
                 )
                 pkt = struct.pack(b"<BBHI", 0x00, op, len(data), chk) + data
                 self.write(pkt)
@@ -554,7 +556,9 @@ class ESPLoader(object):
 
     def sync(self):
         val, _ = self.command(
-            self.ESP_SYNC, b"\x07\x07\x12\x20" + 32 * b"\x55", timeout=SYNC_TIMEOUT
+            self.ESP_CMDS["SYNC"],
+            b"\x07\x07\x12\x20" + 32 * b"\x55",
+            timeout=SYNC_TIMEOUT,
         )
 
         # ROM bootloaders send some non-zero "val" response. The flasher stub sends 0.
@@ -851,7 +855,7 @@ class ESPLoader(object):
         # when detecting chip type, and the way we check for success
         # (STATUS_BYTES_LENGTH) is different for different chip types (!)
         val, data = self.command(
-            self.ESP_READ_REG, struct.pack("<I", addr), timeout=timeout
+            self.ESP_CMDS["READ_REG"], struct.pack("<I", addr), timeout=timeout
         )
         if byte(data, 0) != 0:
             raise FatalError.WithResult(
@@ -868,7 +872,9 @@ class ESPLoader(object):
                 "<IIII", self.UART_DATE_REG_ADDR, 0, 0, delay_after_us
             )
 
-        return self.check_command("write target memory", self.ESP_WRITE_REG, command)
+        return self.check_command(
+            "write target memory", self.ESP_CMDS["WRITE_REG"], command
+        )
 
     def update_reg(self, addr, mask, new_val):
         """
@@ -910,7 +916,7 @@ class ESPLoader(object):
 
         return self.check_command(
             "enter RAM download mode",
-            self.ESP_MEM_BEGIN,
+            self.ESP_CMDS["MEM_BEGIN"],
             struct.pack("<IIII", size, blocks, blocksize, offset),
         )
 
@@ -918,14 +924,14 @@ class ESPLoader(object):
         """Send a block of an image to RAM"""
         return self.check_command(
             "write to target RAM",
-            self.ESP_MEM_DATA,
+            self.ESP_CMDS["MEM_DATA"],
             struct.pack("<IIII", len(data), seq, 0, 0) + data,
             self.checksum(data),
         )
 
     def mem_finish(self, entrypoint=0):
         """Leave download mode and run the application"""
-        # Sending ESP_MEM_END usually sends a correct response back, however sometimes
+        # Sending MEM_END usually sends a correct response back, however sometimes
         # (with ROM loader) the executed code may reset the UART or change the baud rate
         # before the transmit FIFO is empty. So in these cases we set a short timeout
         # and ignore errors.
@@ -933,7 +939,10 @@ class ESPLoader(object):
         data = struct.pack("<II", int(entrypoint == 0), entrypoint)
         try:
             return self.check_command(
-                "leave RAM download mode", self.ESP_MEM_END, data=data, timeout=timeout
+                "leave RAM download mode",
+                self.ESP_CMDS["MEM_END"],
+                data=data,
+                timeout=timeout,
             )
         except FatalError:
             if self.IS_STUB:
@@ -963,7 +972,10 @@ class ESPLoader(object):
         if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
             params += struct.pack("<I", 1 if begin_rom_encrypted else 0)
         self.check_command(
-            "enter Flash download mode", self.ESP_FLASH_BEGIN, params, timeout=timeout
+            "enter flash download mode",
+            self.ESP_CMDS["FLASH_BEGIN"],
+            params,
+            timeout=timeout,
         )
         if size != 0 and not self.IS_STUB and logging:
             log.print(f"Took {time.time() - t:.2f}s to erase flash block")
@@ -974,8 +986,8 @@ class ESPLoader(object):
         for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
             try:
                 self.check_command(
-                    f"write to target Flash after seq {seq}",
-                    self.ESP_FLASH_DATA,
+                    f"write to target flash after seq {seq}",
+                    self.ESP_CMDS["FLASH_DATA"],
                     struct.pack("<IIII", len(data), seq, 0, 0) + data,
                     self.checksum(data),
                     timeout=timeout,
@@ -1000,8 +1012,8 @@ class ESPLoader(object):
         for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
             try:
                 self.check_command(
-                    "Write encrypted to target Flash after seq %d" % seq,
-                    self.ESP_FLASH_ENCRYPT_DATA,
+                    f"Write encrypted to target flash after seq {seq}",
+                    self.ESP_CMDS["FLASH_ENCRYPT_DATA"],
                     struct.pack("<IIII", len(data), seq, 0, 0) + data,
                     self.checksum(data),
                     timeout=timeout,
@@ -1020,7 +1032,7 @@ class ESPLoader(object):
         """Leave flash mode and run/reboot"""
         pkt = struct.pack("<I", int(not reboot))
         # stub sends a reply to this command
-        self.check_command("leave Flash mode", self.ESP_FLASH_END, pkt)
+        self.check_command("leave flash download mode", self.ESP_CMDS["FLASH_END"], pkt)
 
     def run(self, reboot=False):
         """Run application code in flash"""
@@ -1040,7 +1052,9 @@ class ESPLoader(object):
         return None  # not implemented for all chip targets
 
     def get_security_info(self):
-        res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
+        res = self.check_command(
+            "get security info", self.ESP_CMDS["GET_SECURITY_INFO"], b""
+        )
         esp32s2 = True if len(res) == 12 else False
         res = struct.unpack("<IBBBBBBBB" if esp32s2 else "<IBBBBBBBBII", res)
         return {
@@ -1054,7 +1068,7 @@ class ESPLoader(object):
     def get_chip_id(self):
         if self.cache["chip_id"] is None:
             res = self.check_command(
-                "get security info", self.ESP_GET_SECURITY_INFO, b""
+                "get security info", self.ESP_CMDS["GET_SECURITY_INFO"], b""
             )
             res = struct.unpack(
                 "<IBBBBBBBBI", res[:16]
@@ -1231,7 +1245,7 @@ class ESPLoader(object):
             params += struct.pack("<I", 0)
         self.check_command(
             "enter compressed flash mode",
-            self.ESP_FLASH_DEFL_BEGIN,
+            self.ESP_CMDS["FLASH_DEFL_BEGIN"],
             params,
             timeout=timeout,
         )
@@ -1246,8 +1260,8 @@ class ESPLoader(object):
         for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
             try:
                 self.check_command(
-                    "write compressed data to flash after seq %d" % seq,
-                    self.ESP_FLASH_DEFL_DATA,
+                    f"write compressed data to flash after seq {seq}",
+                    self.ESP_CMDS["FLASH_DEFL_DATA"],
                     struct.pack("<IIII", len(data), seq, 0, 0) + data,
                     self.checksum(data),
                     timeout=timeout,
@@ -1270,7 +1284,9 @@ class ESPLoader(object):
             # exits the bootloader. Stub doesn't do this.
             return
         pkt = struct.pack("<I", int(not reboot))
-        self.check_command("leave compressed flash mode", self.ESP_FLASH_DEFL_END, pkt)
+        self.check_command(
+            "leave compressed flash mode", self.ESP_CMDS["FLASH_DEFL_END"], pkt
+        )
         self.in_bootloader = False
 
     @stub_and_esp32_function_only
@@ -1280,7 +1296,7 @@ class ESPLoader(object):
         timeout = timeout_per_mb(MD5_TIMEOUT_PER_MB, size)
         res = self.check_command(
             "calculate md5sum",
-            self.ESP_SPI_FLASH_MD5,
+            self.ESP_CMDS["SPI_FLASH_MD5"],
             struct.pack("<IIII", addr, size, 0, 0),
             timeout=timeout,
         )
@@ -1297,7 +1313,9 @@ class ESPLoader(object):
         log.print(f"Changing baud rate to {baud}")
         # stub takes the new baud rate and the old one
         second_arg = self._port.baudrate if self.IS_STUB else 0
-        self.command(self.ESP_CHANGE_BAUDRATE, struct.pack("<II", baud, second_arg))
+        self.command(
+            self.ESP_CMDS["CHANGE_BAUDRATE"], struct.pack("<II", baud, second_arg)
+        )
         log.print("Changed.")
         self._set_port_baudrate(baud)
         time.sleep(0.05)  # get rid of crap sent during baud rate change
@@ -1307,7 +1325,7 @@ class ESPLoader(object):
     def erase_flash(self):
         # depending on flash chip model the erase may take this long (maybe longer!)
         self.check_command(
-            "erase flash", self.ESP_ERASE_FLASH, timeout=CHIP_ERASE_TIMEOUT
+            "erase flash", self.ESP_CMDS["ERASE_FLASH"], timeout=CHIP_ERASE_TIMEOUT
         )
 
     @stub_function_only
@@ -1315,7 +1333,7 @@ class ESPLoader(object):
         timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)
         self.check_command(
             "erase region",
-            self.ESP_ERASE_REGION,
+            self.ESP_CMDS["ERASE_REGION"],
             struct.pack("<II", offset, size),
             timeout=timeout,
         )
@@ -1330,7 +1348,7 @@ class ESPLoader(object):
         # issue a standard bootloader command to trigger the read
         self.check_command(
             "read flash",
-            self.ESP_READ_FLASH,
+            self.ESP_CMDS["READ_FLASH"],
             struct.pack("<IIII", offset, length, self.FLASH_SECTOR_SIZE, 64),
         )
         # now we expect (length // block_size) SLIP frames with the data
@@ -1366,7 +1384,7 @@ class ESPLoader(object):
         ESP8266 ROM does this when you send flash_begin, ESP32 ROM
         has it as a SPI command.
         """
-        # last 3 bytes in ESP_SPI_ATTACH argument are reserved values
+        # last 3 bytes in SPI_ATTACH argument are reserved values
         arg = struct.pack("<I", hspi_arg)
         if not self.IS_STUB:
             # ESP32 ROM loader takes additional 'is legacy' arg, which is not
@@ -1374,7 +1392,7 @@ class ESPLoader(object):
             # (as it's not usually needed.)
             is_legacy = 0
             arg += struct.pack("BBBB", is_legacy, 0, 0, 0)
-        self.check_command("configure SPI flash pins", self.ESP_SPI_ATTACH, arg)
+        self.check_command("configure SPI flash pins", self.ESP_CMDS["SPI_ATTACH"], arg)
 
     def flash_set_parameters(self, size):
         """Tell the ESP bootloader the parameters of the chip
@@ -1395,7 +1413,7 @@ class ESPLoader(object):
         status_mask = 0xFFFF
         self.check_command(
             "set SPI params",
-            self.ESP_SPI_SET_PARAMS,
+            self.ESP_CMDS["SPI_SET_PARAMS"],
             struct.pack(
                 "<IIIIII",
                 fl_id,
@@ -1663,7 +1681,7 @@ class ESPLoader(object):
             else:
                 # running user code from stub loader requires some hacks
                 # in the stub loader
-                self.command(self.ESP_RUN_USER_CODE, wait_response=False)
+                self.command(self.ESP_CMDS["RUN_USER_CODE"], wait_response=False)
 
     def watchdog_reset(self):
         log.note(
@@ -1744,28 +1762,29 @@ def slip_reader(port, trace_function):
                     else "No serial data received."
                 )
             else:  # fail during packet transfer
-                msg = "Packet content transfer stopped (received {} bytes)".format(
-                    len(partial_packet)
-                )
+                msg = "Packet content transfer stopped "
+                f"(received {len(partial_packet)} bytes)"
             trace_function(msg)
             raise FatalError(msg)
-        trace_function("Read %d bytes: %s", len(read_bytes), HexFormatter(read_bytes))
+        trace_function(
+            f"{f'Read {len(read_bytes)} bytes:':<21} {HexFormatter(read_bytes)}"
+        )
         for b in read_bytes:
             b = bytes([b])
             if partial_packet is None:  # waiting for packet header
                 if b == b"\xc0":
                     partial_packet = b""
                 else:
-                    trace_function("Read invalid data: %s", HexFormatter(read_bytes))
+                    trace_function(f"Read invalid data: {HexFormatter(read_bytes)}")
                     remaining_data = port.read(port.inWaiting())
                     trace_function(
-                        "Remaining data in serial buffer: %s",
-                        HexFormatter(remaining_data),
+                        "Remaining data in serial buffer: "
+                        f"{HexFormatter(remaining_data)}",
                     )
                     detect_panic_handler(read_bytes + remaining_data)
                     raise FatalError(
-                        "Invalid head of packet (0x%s): "
-                        "Possible serial noise or corruption." % hexify(b)
+                        f"Invalid head of packet (0x{hexify(b)}): "
+                        "Possible serial noise or corruption."
                     )
             elif in_escape:  # part-way through escape sequence
                 in_escape = False
@@ -1774,18 +1793,18 @@ def slip_reader(port, trace_function):
                 elif b == b"\xdd":
                     partial_packet += b"\xdb"
                 else:
-                    trace_function("Read invalid data: %s", HexFormatter(read_bytes))
+                    trace_function(f"Read invalid data: {HexFormatter(read_bytes)}")
                     remaining_data = port.read(port.inWaiting())
                     trace_function(
-                        "Remaining data in serial buffer: %s",
-                        HexFormatter(remaining_data),
+                        "Remaining data in serial buffer: "
+                        f"{HexFormatter(remaining_data)}"
                     )
                     detect_panic_handler(read_bytes + remaining_data)
-                    raise FatalError("Invalid SLIP escape (0xdb, 0x%s)" % (hexify(b)))
+                    raise FatalError(f"Invalid SLIP escape (0xdb, 0x{hexify(b)})")
             elif b == b"\xdb":  # start of escape sequence
                 in_escape = True
             elif b == b"\xc0":  # end of packet
-                trace_function("Received full packet: %s", HexFormatter(partial_packet))
+                trace_function(f"Received full packet: {HexFormatter(partial_packet)}")
                 yield partial_packet
                 partial_packet = None
                 successful_slip = True
