@@ -278,7 +278,8 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     cls=Group,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
-    help=f"esptool.py v{__version__} - Espressif chips ROM Bootloader Utility",
+    help=f"esptool.py v{__version__} - Espressif SoCs flashing, debugging, "
+    "and provisioning utility",
 )
 @click.option(
     "--chip",
@@ -376,6 +377,12 @@ def prepare_esp_object(ctx):
     # 1) Get the ESP object
     #######################
 
+    # Disable output stage collapsing, colors, and overwriting in trace mode
+    if ctx.obj["trace"]:
+        log._smart_features = False
+
+    log.stage()
+
     if ctx.obj["before"] != "no_reset_no_sync":
         initial_baud = min(
             ESPLoader.ESP_ROM_BAUD, ctx.obj["baud"]
@@ -430,19 +437,23 @@ def prepare_esp_object(ctx):
             f"on any of the {len(ser_list)} available serial ports."
         )
 
+    log.stage(finish=True)
+    log.print(f"Connected to {esp.CHIP_NAME} on {esp._port.port}:")
+
     # 2) Print the chip info
     ########################
 
     if esp.secure_download_mode:
         log.print(f"Chip is {esp.CHIP_NAME} in Secure Download Mode")
     else:
-        log.print(f"Chip is {esp.get_chip_description()}")
-        log.print(f"Features: {', '.join(esp.get_chip_features())}")
-        log.print(f"Crystal is {esp.get_crystal_freq()}MHz")
+        log.print(f"{'Chip type:':<20}{esp.get_chip_description()}")
+        log.print(f"{'Features:':<20}{', '.join(esp.get_chip_features())}")
+        log.print(f"{'Crystal frequency:':<20}{esp.get_crystal_freq()}MHz")
         usb_mode = esp.get_usb_mode()
         if usb_mode is not None:
-            log.print(f"USB mode: {usb_mode}")
+            log.print(f"{'USB mode:':<20}{usb_mode}")
         read_mac(esp)
+        log.print()
 
     # 3) Upload the stub flasher
     ############################
@@ -488,6 +499,7 @@ def prepare_esp_object(ctx):
 
         # 8) Reset the chip
         ###################
+        log.print()
         # Handle post-operation behaviour (reset or other)
         if ctx.obj["invoked_subcommand"] == "load-ram":
             # the ESP is now running the loaded image, so let it run

@@ -141,7 +141,7 @@ class TestImageInfo:
 
     def test_application_info(self):
         out = self.run_image_info("auto", "esp_idf_blink_esp32s2.bin")
-        assert "Application information" in out
+        assert "Application Information" in out
         assert "Project name: blink" in out
         assert "App version: qa-test-v5.0-20220830-4-g4532e6" in out
         assert "Secure version: 0" in out
@@ -152,16 +152,16 @@ class TestImageInfo:
         assert "ESP-IDF: v5.0-beta1-427-g4532e6e0b2-dirt" in out
         # No application info in image
         out = self.run_image_info("auto", "bootloader_esp32.bin")
-        assert "Application information" not in out
+        assert "Application Information" not in out
         out = self.run_image_info("auto", ESP8266_BIN)
-        assert "Application information" not in out
+        assert "Application Information" not in out
 
     def test_bootloader_info(self):
         # This bootloader binary is built from "hello_world" project
         # with default settings, IDF version is v5.2.
         out = self.run_image_info("esp32", "bootloader_esp32_v5_2.bin")
         assert "Image size: 26768 bytes" in out
-        assert "Bootloader information" in out
+        assert "Bootloader Information" in out
         assert "Bootloader version: 1" in out
         assert "ESP-IDF: v5.2-dev-254-g1950b15" in out
         assert "Compile time: Apr 25 2023 00:13:32" in out
@@ -194,7 +194,7 @@ class TestImageInfo:
             convert_bin2hex(file)
             out = self.run_image_info("esp32", file)
             assert "Image size: 26768 bytes" in out
-            assert "Bootloader information" in out
+            assert "Bootloader Information" in out
             assert "Bootloader version: 1" in out
             assert "ESP-IDF: v5.2-dev-254-g1950b15" in out
             assert "Compile time: Apr 25 2023 00:13:32" in out

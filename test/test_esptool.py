@@ -803,7 +803,7 @@ class TestFlashing(EsptoolTestCase):
         output = self.run_esptool(
             "--before no_reset --after no_reset_stub flash-id", preload=False
         )
-        assert "Stub is already running. No upload is necessary." in output
+        assert "Stub flasher is already running. No upload is necessary." in output
 
         sleep(10)  # Wait if RTC WDT triggers
 
@@ -1145,8 +1145,8 @@ class TestVerifyCommand(EsptoolTestCase):
     def test_verify_failure(self):
         self.run_esptool("write-flash 0x6000 images/sector.bin")
         output = self.run_esptool_error("verify-flash --diff 0x6000 images/one_kb.bin")
-        assert "verify FAILED" in output
-        assert "first at 0x00006000" in output
+        assert "Verification failed:" in output
+        assert "first at 0x00006000:" in output
 
     def test_verify_unaligned_length(self):
         self.run_esptool("write-flash 0x0 images/not_4_byte_aligned.bin")
@@ -1177,7 +1177,8 @@ class TestMemoryOperations(EsptoolTestCase):
     @pytest.mark.quick_test
     def test_memory_dump(self):
         output = self.run_esptool("dump-mem 0x50000000 128 memout.bin")
-        assert "Successfully read 128 bytes" in output
+        assert "Dumped 128 bytes from 0x50000000" in output
+        assert "to 'memout.bin'" in output
         os.remove("memout.bin")
 
     def test_memory_write(self):
@@ -1381,7 +1382,7 @@ class TestAutoDetect(EsptoolTestCase):
         if arg_chip not in ["esp8266", "esp32", "esp32s2"]:
             assert "Unsupported detection protocol" not in output
         assert f"Detecting chip type... {expected_chip_name}" in output
-        assert f"Chip is {expected_chip_name}" in output
+        assert f"{'Chip type:':<20}{expected_chip_name}" in output
 
     @pytest.mark.quick_test
     def test_auto_detect(self):
@@ -1402,7 +1403,8 @@ class TestUSBMode(EsptoolTestCase):
         )
 
         if expected_usb_mode:
-            assert f"USB mode: {expected_usb_mode}" in output
+            assert "USB mode: " in output
+            assert expected_usb_mode in output
 
 
 @pytest.mark.flaky(reruns=5)
@@ -1757,7 +1759,7 @@ class TestESPObjectOperations(EsptoolTestCase):
             read_mac(esp)
             reset_chip(esp, "hard_reset")
             output = fake_out.getvalue()
-        assert "Stub running..." in output
+        assert "Stub flasher running" in output
         assert "MAC:" in output
 
     @capture_stdout
@@ -1778,10 +1780,10 @@ class TestESPObjectOperations(EsptoolTestCase):
                 reset_chip(esp, "hard_reset")
                 os.remove("output.bin")
         output = fake_out.getvalue()
-        assert "Stub running..." in output
-        assert "Hash of data verified." in output
+        assert "Stub flasher running" in output
+        assert "Hash of data verified" in output
         assert "Read 9216 bytes" in output
-        assert "verify OK (digest matched)" in output
+        assert "Verification successful (digest matched)" in output
         assert "Chip erase completed" in output
         assert "Hard resetting" in output
 

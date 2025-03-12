@@ -97,7 +97,7 @@ Complete list of configurable options:
 +------------------------------+-----------------------------------------------------------+----------+
 | erase_write_timeout_per_mb   | Timeout (per megabyte) for erasing and writing data       | 40 s     |
 +------------------------------+-----------------------------------------------------------+----------+
-| mem_end_rom_timeout          | Short timeout for ESP_MEM_END                             | 0.2 s    |
+| mem_end_rom_timeout          | Short timeout for MEM_END                                 | 0.2 s    |
 +------------------------------+-----------------------------------------------------------+----------+
 | serial_write_timeout         | Timeout for serial port write                             | 10 s     |
 +------------------------------+-----------------------------------------------------------+----------+

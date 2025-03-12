@@ -978,7 +978,7 @@ class ESPLoader(object):
             timeout=timeout,
         )
         if size != 0 and not self.IS_STUB and logging:
-            log.print(f"Took {time.time() - t:.2f}s to erase flash block")
+            log.print(f"Took {time.time() - t:.2f}s to erase flash block.")
         return num_blocks
 
     def flash_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
@@ -997,7 +997,7 @@ class ESPLoader(object):
                 if attempts_left:
                     self.trace(
                         "Block write failed, "
-                        f"retrying with {attempts_left} attempts left"
+                        f"retrying with {attempts_left} attempts left..."
                     )
                 else:
                     raise
@@ -1177,15 +1177,17 @@ class ESPLoader(object):
             )
 
     def run_stub(self, stub: StubFlasher | None = None) -> "ESPLoader":
+        log.stage()
         if stub is None:
             stub = StubFlasher(self.CHIP_NAME)
 
         if self.sync_stub_detected:
-            log.print("Stub is already running. No upload is necessary.")
+            log.stage(finish=True)
+            log.print("Stub flasher is already running. No upload is necessary.")
             return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
 
         # Upload
-        log.print("Uploading stub...")
+        log.print("Uploading stub flasher...")
         for field in [stub.text, stub.data]:
             if field is not None:
                 offs = stub.text_start if field == stub.text else stub.data_start
@@ -1196,20 +1198,21 @@ class ESPLoader(object):
                     from_offs = seq * self.ESP_RAM_BLOCK
                     to_offs = from_offs + self.ESP_RAM_BLOCK
                     self.mem_block(field[from_offs:to_offs], seq)
-        log.print("Running stub...")
+        log.print("Running stub flasher...")
         self.mem_finish(stub.entry)
         try:
             p = self.read()
         except StopIteration:
             raise FatalError(
-                "Failed to start stub. There was no response."
+                "Failed to start stub flasher. There was no response."
                 "\nTry increasing timeouts, for more information see: "
                 "https://docs.espressif.com/projects/esptool/en/latest/esptool/configuration-file.html"  # noqa E501
             )
 
         if p != b"OHAI":
-            raise FatalError(f"Failed to start stub. Unexpected response: {p}")
-        log.print("Stub running...")
+            raise FatalError(f"Failed to start stub flasher. Unexpected response: {p}")
+        log.stage(finish=True)
+        log.print("Stub flasher running.")
         return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
 
     @stub_and_esp32_function_only
@@ -1251,7 +1254,7 @@ class ESPLoader(object):
         )
         if size != 0 and not self.IS_STUB:
             # (stub erases as it writes, but ROM loaders erase on begin)
-            log.print(f"Took {time.time() - t:.2f}s to erase flash block")
+            log.print(f"Took {time.time() - t:.2f}s to erase flash block.")
         return num_blocks
 
     @stub_and_esp32_function_only
@@ -1310,7 +1313,7 @@ class ESPLoader(object):
 
     @stub_and_esp32_function_only
     def change_baud(self, baud):
-        log.print(f"Changing baud rate to {baud}")
+        log.print(f"Changing baud rate to {baud}...")
         # stub takes the new baud rate and the old one
         second_arg = self._port.baudrate if self.IS_STUB else 0
         self.command(
@@ -1356,25 +1359,26 @@ class ESPLoader(object):
         while len(data) < length:
             p = self.read()
             data += p
-            if len(data) < length and len(p) < self.FLASH_SECTOR_SIZE:
+            data_len = len(data)
+            if data_len < length and len(p) < self.FLASH_SECTOR_SIZE:
                 raise FatalError(
-                    "Corrupt data, expected 0x%x bytes but received 0x%x bytes"
-                    % (self.FLASH_SECTOR_SIZE, len(p))
+                    f"Corrupt data, expected {self.FLASH_SECTOR_SIZE:#x} "
+                    f"bytes but received {len(p):#x} bytes"
                 )
-            self.write(struct.pack("<I", len(data)))
-            if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
-                progress_fn(len(data), length)
+            self.write(struct.pack("<I", data_len))
+            if progress_fn and (data_len % 1024 == 0 or data_len == length):
+                progress_fn(data_len, length, offset)
         if len(data) > length:
             raise FatalError("Read more than expected")
 
         digest_frame = self.read()
         if len(digest_frame) != 16:
-            raise FatalError("Expected digest, got: %s" % hexify(digest_frame))
+            raise FatalError(f"Expected digest, got: {hexify(digest_frame)}")
         expected_digest = hexify(digest_frame).upper()
         digest = hashlib.md5(data).hexdigest().upper()
         if digest != expected_digest:
             raise FatalError(
-                "Digest mismatch: expected %s, got %s" % (expected_digest, digest)
+                f"Digest mismatch: expected {expected_digest}, got {digest}"
             )
         return data
 

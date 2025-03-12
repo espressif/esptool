@@ -116,7 +116,7 @@ class ESP32C2ROM(ESP32C3ROM):
             # a 26 MHz XTAL.
             false_rom_baud = baud * 40 // 26
 
-            log.print(f"Changing baud rate to {baud}")
+            log.print(f"Changing baud rate to {baud}...")
             self.command(
                 self.ESP_CMDS["CHANGE_BAUDRATE"],
                 struct.pack("<II", false_rom_baud, 0),

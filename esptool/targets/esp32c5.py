@@ -133,7 +133,7 @@ class ESP32C5ROM(ESP32C6ROM):
             crystal_freq_detect = self.get_crystal_freq()
             log.print(
                 f"ROM expects crystal freq: {crystal_freq_rom_expect} MHz, "
-                f"detected {crystal_freq_detect} MHz"
+                f"detected {crystal_freq_detect} MHz."
             )
             baud_rate = baud
             # If detect the XTAL is 48MHz, but the ROM code expects it to be 40MHz
@@ -146,7 +146,7 @@ class ESP32C5ROM(ESP32C6ROM):
                 ESPLoader.change_baud(self, baud_rate)
                 return
 
-            log.print(f"Changing baud rate to {baud_rate}")
+            log.print(f"Changing baud rate to {baud_rate}...")
             self.command(
                 self.ESP_CMDS["CHANGE_BAUDRATE"], struct.pack("<II", baud_rate, 0)
             )

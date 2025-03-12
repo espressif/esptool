@@ -295,7 +295,7 @@ Esptool allows redirecting output by implementing a custom logger class. This ca
         log_to_file = True
         log_file = "esptool.log"
 
-        def print(self, message, *args, **kwargs):
+        def print(self, message="", *args, **kwargs):
             # Print to console
             print(f"[CustomLogger]: {message}", *args, **kwargs)
             # Optionally log to a file
@@ -312,13 +312,21 @@ Esptool allows redirecting output by implementing a custom logger class. This ca
         def error(self, message):
             self.print(message, file=sys.stderr)
 
-        def print_overwrite(self, message, last_line=False):
-            # Overwriting not needed, print normally
-            self.print(message)
-
-        def set_progress(self, percentage):
-            # Progress updates not needed, pass
+        def stage(self, finish=False):
+            # Collapsible stages not needed in this example
             pass
+
+        def progress_bar(
+            self,
+            cur_iter,
+            total_iters,
+            prefix = "",
+            suffix = "",
+            bar_length: int = 30,
+        ):
+            # Progress bars replaced with simple percentage output in this example
+            percent = f"{100 * (cur_iter / float(total_iters)):.1f}"
+            self.print(f"Finished: {percent}%")
 
     # Replace the default logger with the custom logger
     log.set_logger(CustomLogger())
@@ -334,11 +342,11 @@ To ensure compatibility with esptool, the custom logger should re-implement (or 
 - ``note``: Logs informational messages.
 - ``warning``: Logs warning messages.
 - ``error``: Logs error messages.
-- ``print_overwrite``: Handles message overwriting (can be a simple ``print()`` if overwriting is not needed).
-- ``set_progress``: Handles percentage updates of long-running operations - ``write-flash``, ``read-flash``, and ``dump-mem`` (useful for GUI visualisation, e.g. as a progress bar).
+- ``stage``: Starts or ends a collapsible output stage.
+- ``progress_bar``: Displays a progress bar.
 
 .. autoclass:: esptool.logger.EsptoolLogger
-   :members: print, note, warning, error, print_overwrite, set_progress
+   :members: print, note, warning, error, stage, progress_bar
    :member-order: bysource
 
-These methods are essential for maintaining proper integration and behavior with esptool. Additionally, all calls to the logger should be made using ``log.print()`` (or the respective method, such as ``log.info()`` or ``log.warning()``) instead of the standard ``print()`` function to ensure the output is routed through the custom logger. This ensures consistency and allows the custom logger to handle all output appropriately. You can further customize this logger to fit your application's needs, such as integrating with GUI components or advanced logging frameworks.
+These methods are essential for maintaining proper integration and behavior with esptool. Additionally, all output printing should be made using ``log.print()`` (or the respective method, such as ``log.info()`` or ``log.warning()``) instead of the standard ``print()`` function to ensure the output is routed through the custom logger. This ensures consistency and allows the custom logger to handle all output appropriately. You can further customize this logger to fit your application's needs, such as integrating with GUI components or advanced logging frameworks.

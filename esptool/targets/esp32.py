@@ -406,7 +406,7 @@ class ESP32ROM(ESPLoader):
             # regardless of how many bytes were actually read from flash
             data += r[:block_len]
             if progress_fn and (len(data) % 1024 == 0 or len(data) == length):
-                progress_fn(len(data), length)
+                progress_fn(len(data), length, offset)
         return data
 
     def get_rom_cal_crystal_freq(self):
@@ -430,7 +430,7 @@ class ESP32ROM(ESPLoader):
         valid_freq = 40000000 if rom_calculated_freq > 33000000 else 26000000
         false_rom_baud = int(baud * rom_calculated_freq // valid_freq)
 
-        log.print(f"Changing baud rate to {baud}")
+        log.print(f"Changing baud rate to {baud}...")
         self.command(
             self.ESP_CMDS["CHANGE_BAUDRATE"], struct.pack("<II", false_rom_baud, 0)
         )
