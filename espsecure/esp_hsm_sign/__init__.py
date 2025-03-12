@@ -7,6 +7,7 @@ import configparser
 import os
 import sys
 from getpass import getpass
+from typing import IO
 
 try:
     import pkcs11
@@ -24,7 +25,7 @@ import cryptography.hazmat.primitives.asymmetric.rsa as RSA
 import ecdsa
 
 
-def read_hsm_config(configfile):
+def read_hsm_config(configfile: IO) -> configparser.SectionProxy:
     config = configparser.ConfigParser()
     config.read(configfile)
 
@@ -46,7 +47,7 @@ def read_hsm_config(configfile):
     return config[section]
 
 
-def establish_session(config):
+def establish_session(config: configparser.SectionProxy) -> pkcs11.Session:
     print("Trying to establish a session with the HSM.")
     try:
         if os.path.exists(config["pkcs11_lib"]):
@@ -69,7 +70,9 @@ def establish_session(config):
         sys.exit(1)
 
 
-def get_privkey_info(session, config):
+def get_privkey_info(
+    session: pkcs11.Session, config: configparser.SectionProxy
+) -> pkcs11.Key:
     try:
         private_key = session.get_key(
             object_class=pkcs11.constants.ObjectClass.PRIVATE_KEY, label=config["label"]
@@ -83,7 +86,9 @@ def get_privkey_info(session, config):
         sys.exit(1)
 
 
-def get_pubkey(session, config):
+def get_pubkey(
+    session: pkcs11.Session, config: configparser.SectionProxy
+) -> EC.EllipticCurvePublicKey | RSA.RSAPublicKey:
     print("Trying to extract public key from the HSM.")
     try:
         if "label_pubkey" in config:
@@ -127,12 +132,12 @@ def get_pubkey(session, config):
         sys.exit(1)
 
 
-def sign_payload(private_key, payload):
+def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
     try:
         print("Signing payload using the HSM.")
         key_type = private_key.key_type
         mechanism, mechanism_params = get_mechanism(key_type)
-        signature = private_key.sign(
+        signature: bytes = private_key.sign(
             data=payload, mechanism=mechanism, mechanism_param=mechanism_params
         )
 
@@ -156,7 +161,9 @@ def sign_payload(private_key, payload):
         sys.exit(1)
 
 
-def get_mechanism(key_type):
+def get_mechanism(
+    key_type: pkcs11.mechanisms.KeyType,
+) -> tuple[pkcs11.mechanisms.Mechanism, tuple | None]:
     if key_type == pkcs11.mechanisms.KeyType.RSA:
         return pkcs11.mechanisms.Mechanism.SHA256_RSA_PKCS_PSS, (
             pkcs11.mechanisms.Mechanism.SHA256,
@@ -170,7 +177,7 @@ def get_mechanism(key_type):
         sys.exit(1)
 
 
-def close_connection(session):
+def close_connection(session: pkcs11.Session):
     try:
         session.close()
         print("Connection closed successfully")

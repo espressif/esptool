@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+import configparser
+from dataclasses import dataclass
 import rich_click as click
 import hashlib
 import operator
@@ -9,7 +11,6 @@ import struct
 import sys
 import tempfile
 import zlib
-from collections import namedtuple
 from typing import IO
 
 from cryptography import exceptions
@@ -47,26 +48,28 @@ SIG_BLOCK_SIZE = (
 )
 
 
-def get_chunks(source, chunk_len):
+def get_chunks(source: bytes, chunk_len: int):
     """Returns an iterator over 'chunk_len' chunks of 'source'"""
     return (source[i : i + chunk_len] for i in range(0, len(source), chunk_len))
 
 
-def endian_swap_words(source):
+def endian_swap_words(source: bytes) -> bytes:
     """Endian-swap each word in 'source' bitstring"""
     assert len(source) % 4 == 0
     words = "I" * (len(source) // 4)
     return struct.pack("<" + words, *struct.unpack(">" + words, source))
 
 
-def swap_word_order(source):
+def swap_word_order(source: bytes) -> bytes:
     """Swap the order of the words in 'source' bitstring"""
     assert len(source) % 4 == 0
     words = "I" * (len(source) // 4)
     return struct.pack(words, *reversed(struct.unpack(words, source)))
 
 
-def _load_hardware_key(keyfile, is_flash_encryption_key, aes_xts=None):
+def _load_hardware_key(
+    keyfile: IO, is_flash_encryption_key: bool, aes_xts: bool = False
+):
     """Load a 128/256/512-bit key, similar to stored in efuse, from a file
 
     128-bit keys will be extended to 256-bit using the SHA256 of the key
@@ -106,16 +109,18 @@ def _load_hardware_key(keyfile, is_flash_encryption_key, aes_xts=None):
     return key
 
 
-def digest_secure_bootloader(keyfile, output, image, iv):
+def digest_secure_bootloader(
+    keyfile: IO, output: str | None, iv_file: IO | None, image: IO
+):
     """Calculate the digest of a bootloader image, in the same way the hardware
     secure boot engine would do so. Can be used with a pre-loaded key to update a
     secure bootloader."""
     _check_output_is_not_input(keyfile, output)
     _check_output_is_not_input(image, output)
-    _check_output_is_not_input(iv, output)
-    if iv is not None:
+    _check_output_is_not_input(iv_file, output)
+    if iv_file is not None:
         print("WARNING: --iv argument is for TESTING PURPOSES ONLY")
-        iv = iv.read(128)
+        iv = iv_file.read(128)
     else:
         iv = os.urandom(128)
     plaintext_image = image.read()
@@ -163,21 +168,20 @@ def digest_secure_bootloader(keyfile, output, image, iv):
         output = os.path.splitext(image.name)[0] + "-digest-0x0000.bin"
     with open(output, "wb") as f:
         f.write(iv)
-        digest = digest.digest()
-        for word in get_chunks(digest, 4):
+        for word in get_chunks(digest.digest(), 4):
             f.write(word[::-1])  # swap word order in the result
         f.write(b"\xff" * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
     print("digest+image written to %s" % output)
 
 
-def _generate_ecdsa_signing_key(curve_id, keyfile):
+def _generate_ecdsa_signing_key(curve_id: ecdsa.curves.Curve, keyfile: str):
     sk = ecdsa.SigningKey.generate(curve=curve_id)
     with open(keyfile, "wb") as f:
         f.write(sk.to_pem())
 
 
-def generate_signing_key(version, scheme, keyfile):
+def generate_signing_key(version: int, scheme: str | None, keyfile: str):
     if os.path.exists(keyfile):
         raise esptool.FatalError(f"ERROR: Key file {keyfile} already exists")
     if version == "1":
@@ -218,7 +222,7 @@ def generate_signing_key(version, scheme, keyfile):
             raise esptool.FatalError(f"ERROR: Unsupported signing scheme {scheme}")
 
 
-def load_ecdsa_signing_key(keyfile):
+def load_ecdsa_signing_key(keyfile: IO) -> ecdsa.SigningKey:
     """Load ECDSA signing key"""
     try:
         sk = ecdsa.SigningKey.from_pem(keyfile.read())
@@ -232,7 +236,7 @@ def load_ecdsa_signing_key(keyfile):
     return sk
 
 
-def _load_ecdsa_signing_key(keyfile):
+def _load_ecdsa_signing_key(keyfile: IO) -> ecdsa.SigningKey:
     """Load ECDSA signing key for Secure Boot V1 only"""
     sk = load_ecdsa_signing_key(keyfile)
     if sk.curve != ecdsa.NIST256p:
@@ -243,7 +247,7 @@ def _load_ecdsa_signing_key(keyfile):
     return sk
 
 
-def _load_ecdsa_verifying_key(keyfile):
+def _load_ecdsa_verifying_key(keyfile: IO) -> ecdsa.VerifyingKey:
     """Load ECDSA verifying key for Secure Boot V1 only"""
     try:
         vk = ecdsa.VerifyingKey.from_pem(keyfile.read())
@@ -260,7 +264,9 @@ def _load_ecdsa_verifying_key(keyfile):
     return vk
 
 
-def _load_sbv2_signing_key(keydata):
+def _load_sbv2_signing_key(
+    keydata: bytes,
+) -> rsa.RSAPrivateKey | ec.EllipticCurvePrivateKey:
     """
     Load Secure Boot V2 signing key
 
@@ -288,7 +294,7 @@ def _load_sbv2_signing_key(keydata):
     raise esptool.FatalError("Unsupported signing key for Secure Boot V2")
 
 
-def _load_sbv2_pub_key(keydata):
+def _load_sbv2_pub_key(keydata: bytes) -> rsa.RSAPublicKey | ec.EllipticCurvePublicKey:
     """
     Load Secure Boot V2 public key, can be rsa.RSAPublicKey or ec.EllipticCurvePublicKey
     """
@@ -312,7 +318,7 @@ def _load_sbv2_pub_key(keydata):
     raise esptool.FatalError("Unsupported public key for Secure Boot V2")
 
 
-def _get_sbv2_pub_key(keyfile):
+def _get_sbv2_pub_key(keyfile: IO) -> rsa.RSAPublicKey | ec.EllipticCurvePublicKey:
     key_data = keyfile.read()
     if (
         b"-BEGIN RSA PRIVATE KEY" in key_data
@@ -330,10 +336,18 @@ def _get_sbv2_pub_key(keyfile):
     return vk
 
 
-def _get_sbv2_rsa_primitives(public_key):
-    primitives = namedtuple("primitives", ["n", "e", "m", "rinv"])
+@dataclass
+class Primitives:
+    n: int
+    e: int
+    m: int
+    rinv: int
+
+
+def _get_sbv2_rsa_primitives(public_key: rsa.RSAPublicKey) -> Primitives:
+    primitives = Primitives(0, 0, 0, 0)
     numbers = public_key.public_numbers()
-    primitives.n = numbers.n  #
+    primitives.n = numbers.n
     primitives.e = numbers.e  # two public key components
 
     # Note: this cheats and calls a private 'rsa' method to get the modular
@@ -345,14 +359,14 @@ def _get_sbv2_rsa_primitives(public_key):
     return primitives
 
 
-def _microecc_format(a, b, curve_len):
+def _microecc_format(a: int, b: int, curve_len: int) -> bytes:
     """
     Given two numbers (curve coordinates or (r,s) signature), write them out as a
     little-endian byte sequence suitable for micro-ecc
     "native little endian" mode
     """
     byte_len = int(curve_len / 8)
-    ab = int_to_bytes(a, byte_len)[::-1] + int_to_bytes(b, byte_len)[::-1]
+    ab: bytes = int_to_bytes(a, byte_len)[::-1] + int_to_bytes(b, byte_len)[::-1]
     assert len(ab) in [48, 64, 96]
     return ab
 
@@ -373,21 +387,28 @@ def sign_data(
             _check_output_is_not_input(file, output)
     _check_output_is_not_input(datafile, output)
     if version == "1":
-        return sign_secure_boot_v1(hsm, pub_key, signature, datafile, keyfile, output)
+        return sign_secure_boot_v1(keyfile, output, hsm, pub_key, signature, datafile)
     elif version == "2":
         return sign_secure_boot_v2(
+            keyfile,
+            output,
             append_signatures,
             hsm,
             hsm_config,
             pub_key,
             signature,
             datafile,
-            keyfile,
-            output,
         )
 
 
-def sign_secure_boot_v1(hsm, pub_key, signature, datafile, keyfile, output):
+def sign_secure_boot_v1(
+    keyfile: list[IO],
+    output: str | None,
+    hsm: bool,
+    pub_key: list[IO],
+    signatures: list[IO],
+    datafile: IO,
+):
     """
     Sign a data file with a ECDSA private key, append binary signature to file contents
     """
@@ -399,11 +420,11 @@ def sign_secure_boot_v1(hsm, pub_key, signature, datafile, keyfile, output):
             "external Hardware Security Module (HSM)"
         )
 
-    if signature:
+    if signatures:
         print("Pre-calculated signatures found")
         if len(pub_key) > 1:
             raise esptool.FatalError("Secure Boot V1 only supports one signing key")
-        signature = signature[0].read()
+        signature = signatures[0].read()
         # get verifying/public key
         vk = _load_ecdsa_verifying_key(pub_key[0])
     else:
@@ -435,7 +456,14 @@ def sign_secure_boot_v1(hsm, pub_key, signature, datafile, keyfile, output):
 
 
 def sign_secure_boot_v2(
-    append_signatures, hsm, hsm_config, pub_key, signature, datafile, keyfile, output
+    keyfile: list[IO],
+    output: str | None,
+    append_signatures: bool,
+    hsm: bool,
+    hsm_config: IO | None,
+    pub_key: list[IO],
+    signature: list[IO],
+    datafile: IO,
 ):
     """
     Sign a firmware app image with an RSA private key using RSA-PSS,
@@ -501,10 +529,10 @@ def sign_secure_boot_v2(
             raise esptool.FatalError(
                 "Config file is required to generate signature using an external HSM."
             )
-        import espsecure.esp_hsm_sign as hsm
+        import espsecure.esp_hsm_sign as hsm_sign
 
         try:
-            config = hsm.read_hsm_config(hsm_config)
+            config = hsm_sign.read_hsm_config(hsm_config)
         except Exception as e:
             raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
         if pub_key is None:
@@ -573,7 +601,9 @@ def sign_secure_boot_v2(
     )
 
 
-def generate_signature_using_hsm(config, contents):
+def generate_signature_using_hsm(
+    config: configparser.SectionProxy, contents: bytes
+) -> list[IO]:
     import espsecure.esp_hsm_sign as hsm
 
     session = hsm.establish_session(config)
@@ -589,13 +619,13 @@ def generate_signature_using_hsm(config, contents):
 
 
 def generate_signature_block_using_pre_calculated_signature(
-    signature, pub_key, contents
-):
+    signature: list[IO], pub_key: list[IO], contents: bytes
+) -> bytes:
     signature_blocks = b""
     for sig, pk in zip(signature, pub_key):
         try:
             public_key = _get_sbv2_pub_key(pk)
-            signature = sig.read()
+            sig_bytes = sig.read()
             if isinstance(public_key, rsa.RSAPublicKey):
                 # Calculate digest of data file
                 digest = _sha256_digest(contents)
@@ -603,14 +633,14 @@ def generate_signature_block_using_pre_calculated_signature(
                 rsa_primitives = _get_sbv2_rsa_primitives(public_key)
                 # Verify the signature
                 public_key.verify(
-                    signature,
+                    sig_bytes,
                     digest,
                     padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=32),
                     utils.Prehashed(hashes.SHA256()),
                 )
 
                 signature_block = generate_rsa_signature_block(
-                    digest, rsa_primitives, signature
+                    digest, rsa_primitives, sig_bytes
                 )
             else:
                 # ECDSA signature
@@ -635,11 +665,11 @@ def generate_signature_block_using_pre_calculated_signature(
 
                 # Verify the signature
                 public_key.verify(
-                    signature, digest, ec.ECDSA(utils.Prehashed(hash_type))
+                    sig_bytes, digest, ec.ECDSA(utils.Prehashed(hash_type))
                 )
 
                 pubkey_point = _microecc_format(numbers.x, numbers.y, curve_len)
-                r, s = utils.decode_dss_signature(signature)
+                r, s = utils.decode_dss_signature(sig_bytes)
                 signature_rs = _microecc_format(r, s, curve_len)
                 signature_block = generate_ecdsa_signature_block(
                     digest, curve_id, pubkey_point, signature_rs
@@ -660,7 +690,9 @@ def generate_signature_block_using_pre_calculated_signature(
     return signature_blocks
 
 
-def generate_signature_block_using_private_key(keyfiles, contents):
+def generate_signature_block_using_private_key(
+    keyfiles: list[IO], contents: bytes
+) -> bytes:
     signature_blocks = b""
     for keyfile in keyfiles:
         private_key = _load_sbv2_signing_key(keyfile.read())
@@ -722,7 +754,9 @@ def generate_signature_block_using_private_key(keyfiles, contents):
     return signature_blocks
 
 
-def generate_rsa_signature_block(digest, rsa_primitives, signature):
+def generate_rsa_signature_block(
+    digest: bytes, rsa_primitives: Primitives, signature: bytes
+) -> bytes:
     """
     Encode in rsa signature block format
 
@@ -745,7 +779,9 @@ def generate_rsa_signature_block(digest, rsa_primitives, signature):
     return signature_block
 
 
-def generate_ecdsa_signature_block(digest, curve_id, pubkey_point, signature_rs):
+def generate_ecdsa_signature_block(
+    digest: bytes, curve_id: int, pubkey_point: bytes, signature_rs: bytes
+) -> bytes:
     """
     Encode in rsa signature block format
 
@@ -836,7 +872,7 @@ def verify_signature_v1(keyfile: IO, datafile: IO):
         raise esptool.FatalError("Signature is not valid")
 
 
-def validate_signature_block(image_content, sig_blk_num):
+def validate_signature_block(image_content: bytes, sig_blk_num: int) -> bytes | None:
     offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
     sig_blk = image_content[offset : offset + SIG_BLOCK_SIZE]
     assert len(sig_blk) == SIG_BLOCK_SIZE
@@ -861,7 +897,7 @@ def validate_signature_block(image_content, sig_blk_num):
     return sig_blk
 
 
-def verify_signature_v2(hsm, hsm_config, keyfile, datafile):
+def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile: IO):
     """Verify a previously signed binary image, using the RSA or ECDSA public key"""
 
     if hsm:
@@ -869,10 +905,10 @@ def verify_signature_v2(hsm, hsm_config, keyfile, datafile):
             raise esptool.FatalError(
                 "Config file is required to extract public key from an external HSM."
             )
-        import espsecure.esp_hsm_sign as hsm
+        import espsecure.esp_hsm_sign as hsm_sign
 
         try:
-            config = hsm.read_hsm_config(hsm_config)
+            config = hsm_sign.read_hsm_config(hsm_config)
         except Exception as e:
             raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
         # get public key from HSM
@@ -975,7 +1011,7 @@ def verify_signature_v2(hsm, hsm_config, keyfile, datafile):
         )
 
 
-def extract_public_key(version, keyfile, public_keyfile):
+def extract_public_key(version: int, keyfile: IO, public_keyfile: IO):
     _check_output_is_not_input(keyfile, public_keyfile)
     if version == "1":
         """
@@ -999,7 +1035,7 @@ def extract_public_key(version, keyfile, public_keyfile):
     print(f"{keyfile.name} public key extracted to {public_keyfile.name}")
 
 
-def extract_pubkey_from_hsm(config):
+def extract_pubkey_from_hsm(config: configparser.SectionProxy) -> list[IO]:
     import espsecure.esp_hsm_sign as hsm
 
     session = hsm.establish_session(config)
@@ -1030,7 +1066,7 @@ def _sha384_digest(contents):
     return digest.digest()
 
 
-def signature_info_v2(datafile):
+def signature_info_v2(datafile: IO):
     """
     Validates the signature block and prints the RSA/ECDSA public key
     digest for valid blocks
@@ -1068,14 +1104,14 @@ def signature_info_v2(datafile):
             )
 
         offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
-        sig_blk = image_content[offset : offset + SIG_BLOCK_SIZE]
+        sig_block = image_content[offset : offset + SIG_BLOCK_SIZE]
         if sig_data[1] == SIG_BLOCK_VERSION_RSA:
-            key_digest = _sha256_digest(sig_blk[36:812])
+            key_digest = _sha256_digest(sig_block[36:812])
         elif sig_data[1] == SIG_BLOCK_VERSION_ECDSA:
             if ecdsa_sha_version == ECDSA_SHA_384:
-                key_digest = _sha256_digest(sig_blk[52:149])
+                key_digest = _sha256_digest(sig_block[52:149])
             else:
-                key_digest = _sha256_digest(sig_blk[36:101])
+                key_digest = _sha256_digest(sig_block[36:101])
         else:
             raise esptool.FatalError(
                 "Unsupported scheme in signature block %d" % (sig_blk_num)
@@ -1087,7 +1123,7 @@ def signature_info_v2(datafile):
         )
 
 
-def _digest_sbv2_public_key(keyfile):
+def _digest_sbv2_public_key(keyfile: IO) -> bytes:
     public_key = _get_sbv2_pub_key(keyfile)
 
     if isinstance(public_key, rsa.RSAPublicKey):
@@ -1136,7 +1172,7 @@ def _digest_sbv2_public_key(keyfile):
     return hashlib.sha256(binary_format).digest()
 
 
-def digest_sbv2_public_key(keyfile, output):
+def digest_sbv2_public_key(keyfile: IO, output: str):
     _check_output_is_not_input(keyfile, output)
     public_key_digest = _digest_sbv2_public_key(keyfile)
     with open(output, "wb") as f:
@@ -1144,7 +1180,7 @@ def digest_sbv2_public_key(keyfile, output):
         f.write(public_key_digest)
 
 
-def digest_private_key(keyfile, keylen, digest_file):
+def digest_private_key(keyfile: IO, keylen: int, digest_file: IO):
     _check_output_is_not_input(keyfile, digest_file)
     sk = _load_ecdsa_signing_key(keyfile)
     repr(sk.to_string())
@@ -1190,23 +1226,7 @@ assert len(_FLASH_ENCRYPTION_TWEAK_PATTERN) == 256
 # fmt: on
 
 
-def _flash_encryption_tweak_range(flash_crypt_config=0xF):
-    """Return a list of the bit indexes that the "key tweak" applies to,
-    as determined by the FLASH_CRYPT_CONFIG 4 bit efuse value.
-    """
-    tweak_range = []
-    if (flash_crypt_config & 1) != 0:
-        tweak_range += range(67)
-    if (flash_crypt_config & 2) != 0:
-        tweak_range += range(67, 132)
-    if (flash_crypt_config & 4) != 0:
-        tweak_range += range(132, 195)
-    if (flash_crypt_config & 8) != 0:
-        tweak_range += range(195, 256)
-    return tweak_range
-
-
-def _flash_encryption_tweak_range_bits(flash_crypt_config=0xF):
+def _flash_encryption_tweak_range_bits(flash_crypt_config: int = 0xF) -> int:
     """Return bits (in reverse order) that the "key tweak" applies to,
     as determined by the FLASH_CRYPT_CONFIG 4 bit efuse value.
     """
@@ -1238,7 +1258,7 @@ mul1_mask = 0xFFFFFFFFFFFFFF801FFFFFFFFFFFFFF00FFFFFFFFFFFFFF81FFFFFFFFFFFFFF0
 mul2_mask = 0x000000000000007FE00000000000000FF000000000000007E00000000000000F
 
 
-def _flash_encryption_tweak_key(key, offset, tweak_range):
+def _flash_encryption_tweak_key(key: int, offset: int, tweak_range: int) -> bytes:
     """Apply XOR "tweak" values to the key, derived from flash offset
     'offset'. This matches the ESP32 hardware flash encryption.
 
@@ -1254,7 +1274,12 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
 
 
 def _flash_encryption_operation_esp32(
-    output_file, input_file, flash_address, keyfile, flash_crypt_conf, do_decrypt
+    output_file: IO,
+    input_file: IO,
+    flash_address: int,
+    keyfile: IO,
+    flash_crypt_conf: int,
+    do_decrypt: bool,
 ):
     """
     Perform flash encryption or decryption operation for ESP32.
@@ -1343,7 +1368,7 @@ def _flash_encryption_operation_esp32(
 
 
 def _flash_encryption_operation_aes_xts(
-    output_file, input_file, flash_address, keyfile, do_decrypt
+    output_file: IO, input_file: IO, flash_address: int, keyfile: IO, do_decrypt: bool
 ):
     """
     Apply the AES-XTS algorithm with the hardware addressing scheme used by Espressif
@@ -1385,7 +1410,7 @@ def _flash_encryption_operation_aes_xts(
 
     inblocks = _split_blocks(indata, 0x80)  # split into 1024 bit blocks
 
-    output = []
+    output_list = []
     for inblock in inblocks:  # for each block
         tweak = struct.pack("<I", (flash_address & ~0x7F)) + (b"\x00" * 12)
         flash_address += 0x80  # for next block
@@ -1400,9 +1425,9 @@ def _flash_encryption_operation_aes_xts(
 
         inblock = inblock[::-1]  # reverse input
         outblock = encryptor.update(inblock)  # standard algo
-        output.append(outblock[::-1])  # reverse output
+        output_list.append(outblock[::-1])  # reverse output
 
-    output = b"".join(output)
+    output = b"".join(output_list)
 
     # undo any padding we applied to the input
     if pad_right != 0:
@@ -1421,8 +1446,8 @@ def _flash_encryption_operation_aes_xts(
     output_file.write(output)
 
 
-def _split_blocks(text, block_len=16):
-    """Take a bitstring, split it into chunks of "block_len" each"""
+def _split_blocks(text: bytes, block_len: int = 16):
+    """Take bytes, split it into chunks of "block_len" each"""
     assert len(text) % block_len == 0
     pos = 0
     while pos < len(text):
@@ -1486,7 +1511,9 @@ def _samefile(p1, p2):
     )
 
 
-def _check_output_is_not_input(input_file, output_file):
+def _check_output_is_not_input(
+    input_file: IO | str | None, output_file: IO | str | None
+):
     i = getattr(input_file, "name", input_file)
     o = getattr(output_file, "name", output_file)
     # i & o should be string containing the path to files if espsecure
@@ -1531,7 +1558,7 @@ def cli():
 def digest_secure_bootloader_cli(keyfile, output, iv, image):
     """Take a bootloader binary image and a secure boot key, and output a combined
     digest+binary suitable for flashing along with the precalculated secure boot key."""
-    digest_secure_bootloader(keyfile, output, image, iv)
+    digest_secure_bootloader(keyfile, output, iv, image)
 
 
 @cli.command("generate_signing_key")
@@ -1772,7 +1799,7 @@ def digest_private_key_cli(keyfile, keylen, digest_file):
     "requires 192 bit key.",
 )
 @click.argument("key_file", type=click.File("wb", lazy=True))
-def generate_flash_encryption_key(keylen, key_file):
+def generate_flash_encryption_key(keylen: int, key_file: IO):
     """Generate a development-use flash encryption key with random data."""
     print(f"Writing {keylen} random bits to key file {key_file.name}")
     key_file.write(os.urandom(keylen // 8))

@@ -86,15 +86,9 @@ class TestESP32SecureBootloader(EspSecureTestCase):
             output_file.close()
 
             out = self.run_espsecure(
-                " ".join(
-                    [
-                        "digest_rsa_public_key",
-                        "--keyfile",
-                        "secure_images/rsa_secure_boot_signing_key.pem",
-                        "-o",
-                        output_file.name,
-                    ]
-                )
+                "digest_rsa_public_key --keyfile "
+                "secure_images/rsa_secure_boot_signing_key.pem "
+                f"-o {output_file.name}"
             )
             assert (
                 "DeprecationWarning: The command 'digest_rsa_public_key' is deprecated."
