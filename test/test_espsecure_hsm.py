@@ -7,7 +7,6 @@ import os
 import os.path
 import sys
 import tempfile
-from collections import namedtuple
 
 from conftest import need_to_install_package_err
 
@@ -127,30 +126,11 @@ class EspSecureHSMTestCase:
 
 
 class TestSigning(EspSecureHSMTestCase):
-    VerifyArgs = namedtuple(
-        "verify_signature_args", ["version", "hsm", "hsm_config", "keyfile", "datafile"]
-    )
-
-    SignArgs = namedtuple(
-        "sign_data_args",
-        [
-            "version",
-            "keyfile",
-            "output",
-            "append_signatures",
-            "hsm",
-            "hsm_config",
-            "pub_key",
-            "signature",
-            "datafile",
-        ],
-    )
-
     def test_sign_v2_hsm(self):
         # Sign using SoftHSMv2 + Verify
         self.softhsm_setup_token("softhsm_v2.ini", "softhsm-test-token")
         with tempfile.NamedTemporaryFile() as output_file:
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 None,
                 output_file.name,
@@ -161,22 +141,20 @@ class TestSigning(EspSecureHSMTestCase):
                 None,
                 self._open("bootloader_unsigned_v2.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 True,
                 os.path.join(TEST_DIR, "secure_images", "softhsm_v2.ini"),
                 None,
                 output_file,
             )
-            espsecure.verify_signature(args)
 
     def test_sign_v2_hsm_append_signatures_multiple_steps(self):
         # Append signatures using HSM + Verify with an appended key
         self.softhsm_setup_token("softhsm_v2_1.ini", "softhsm-test-token-1")
         with tempfile.NamedTemporaryFile() as output_file1:
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 None,
                 output_file1.name,
@@ -187,11 +165,10 @@ class TestSigning(EspSecureHSMTestCase):
                 None,
                 self._open("bootloader_unsigned_v2.bin"),
             )
-            espsecure.sign_data(args)
 
             self.softhsm_setup_token("softhsm_v2_2.ini", "softhsm-test-token-2")
             with tempfile.NamedTemporaryFile() as output_file2:
-                args = self.SignArgs(
+                espsecure.sign_data(
                     "2",
                     None,
                     output_file2.name,
@@ -202,11 +179,10 @@ class TestSigning(EspSecureHSMTestCase):
                     None,
                     self._open(output_file1.name),
                 )
-                espsecure.sign_data(args)
 
                 self.softhsm_setup_token("softhsm_v2_3.ini", "softhsm-test-token-3")
                 with tempfile.NamedTemporaryFile() as output_file3:
-                    args = self.SignArgs(
+                    espsecure.sign_data(
                         "2",
                         None,
                         output_file3.name,
@@ -217,33 +193,29 @@ class TestSigning(EspSecureHSMTestCase):
                         None,
                         self._open(output_file2.name),
                     )
-                    espsecure.sign_data(args)
 
-                    args = self.VerifyArgs(
+                    espsecure.verify_signature(
                         "2",
                         True,
                         os.path.join(TEST_DIR, "secure_images", "softhsm_v2_1.ini"),
                         None,
                         output_file3,
                     )
-                    espsecure.verify_signature(args)
                     output_file3.seek(0)
 
-                    args = self.VerifyArgs(
+                    espsecure.verify_signature(
                         "2",
                         True,
                         os.path.join(TEST_DIR, "secure_images", "softhsm_v2_2.ini"),
                         None,
                         output_file3,
                     )
-                    espsecure.verify_signature(args)
                     output_file3.seek(0)
 
-                    args = self.VerifyArgs(
+                    espsecure.verify_signature(
                         "2",
                         True,
                         os.path.join(TEST_DIR, "secure_images", "softhsm_v2_3.ini"),
                         None,
                         output_file3,
                     )
-                    espsecure.verify_signature(args)

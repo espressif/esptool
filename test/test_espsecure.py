@@ -9,7 +9,6 @@ import os.path
 import subprocess
 import sys
 import tempfile
-from collections import namedtuple
 
 from conftest import need_to_install_package_err
 
@@ -64,21 +63,16 @@ class EspSecureTestCase:
 
 class TestESP32SecureBootloader(EspSecureTestCase):
     def test_digest_bootloader(self):
-        DBArgs = namedtuple(
-            "digest_bootloader_args", ["keyfile", "output", "iv", "image"]
-        )
-
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
             output_file.close()
 
-            args = DBArgs(
+            espsecure.digest_secure_bootloader(
                 self._open("256bit_key.bin"),
                 output_file.name,
                 self._open("256bit_iv.bin"),
                 self._open("bootloader.bin"),
             )
-            espsecure.digest_secure_bootloader(args)
 
             with open(output_file.name, "rb") as of:
                 with self._open("bootloader_digested.bin") as ef:
@@ -87,16 +81,25 @@ class TestESP32SecureBootloader(EspSecureTestCase):
             os.unlink(output_file.name)
 
     def test_digest_rsa_public_key(self):
-        DigestRSAArgs = namedtuple("digest_rsa_public_key_args", ["keyfile", "output"])
-
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
             output_file.close()
 
-            args = DigestRSAArgs(
-                self._open("rsa_secure_boot_signing_key.pem"), output_file.name
+            out = self.run_espsecure(
+                " ".join(
+                    [
+                        "digest_rsa_public_key",
+                        "--keyfile",
+                        "secure_images/rsa_secure_boot_signing_key.pem",
+                        "-o",
+                        output_file.name,
+                    ]
+                )
             )
-            espsecure.digest_rsa_public_key(args)
+            assert (
+                "DeprecationWarning: The command 'digest_rsa_public_key' is deprecated."
+                in out
+            )
 
             with open(output_file.name, "rb") as of:
                 with self._open("rsa_public_key_digest.bin") as ef:
@@ -106,31 +109,6 @@ class TestESP32SecureBootloader(EspSecureTestCase):
 
 
 class TestSigning(EspSecureTestCase):
-    VerifyArgs = namedtuple(
-        "verify_signature_args", ["version", "hsm", "hsm_config", "keyfile", "datafile"]
-    )
-
-    SignArgs = namedtuple(
-        "sign_data_args",
-        [
-            "version",
-            "keyfile",
-            "output",
-            "append_signatures",
-            "hsm",
-            "hsm_config",
-            "pub_key",
-            "signature",
-            "datafile",
-        ],
-    )
-
-    ExtractKeyArgs = namedtuple(
-        "extract_public_key_args", ["version", "keyfile", "public_keyfile"]
-    )
-
-    GenerateKeyArgs = namedtuple("generate_key_args", ["version", "scheme", "keyfile"])
-
     def test_key_generation_v1(self):
         with tempfile.TemporaryDirectory() as keydir:
             # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
@@ -152,7 +130,7 @@ class TestSigning(EspSecureTestCase):
 
             # Note: signing bootloader is not actually needed
             # for ESP32, it's just a handy file to sign
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "1",
                 [self._open(key_name)],
                 output_file.name,
@@ -163,7 +141,6 @@ class TestSigning(EspSecureTestCase):
                 None,
                 self._open("bootloader.bin"),
             )
-            espsecure.sign_data(args)
 
             with open(output_file.name, "rb") as of:
                 with self._open("bootloader_signed.bin") as ef:
@@ -185,7 +162,7 @@ class TestSigning(EspSecureTestCase):
 
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "1",
                 None,
                 output_file.name,
@@ -196,12 +173,10 @@ class TestSigning(EspSecureTestCase):
                 [self._open(pre_calculated_signature)],
                 self._open("bootloader.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "1", False, None, self._open(signing_pubkey), output_file
             )
-            espsecure.verify_signature(args)
         finally:
             output_file.close()
             os.unlink(output_file.name)
@@ -211,7 +186,7 @@ class TestSigning(EspSecureTestCase):
         key = f"{scheme}_secure_boot_signing_key.pem"
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 [self._open(key)],
                 output_file.name,
@@ -222,10 +197,8 @@ class TestSigning(EspSecureTestCase):
                 None,
                 self._open("bootloader_unsigned_v2.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs("2", False, None, self._open(key), output_file)
-            espsecure.verify_signature(args)
+            espsecure.verify_signature("2", False, None, self._open(key), output_file)
         finally:
             output_file.close()
             os.unlink(output_file.name)
@@ -234,7 +207,7 @@ class TestSigning(EspSecureTestCase):
         # 3 keys + Verify with 3rd key
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 [
                     self._open("rsa_secure_boot_signing_key.pem"),
@@ -249,36 +222,32 @@ class TestSigning(EspSecureTestCase):
                 None,
                 self._open("bootloader_unsigned_v2.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key3.pem"),
                 output_file,
             )
-            espsecure.verify_signature(args)
 
             output_file.seek(0)
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key2.pem"),
                 output_file,
             )
-            espsecure.verify_signature(args)
 
             output_file.seek(0)
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key.pem"),
                 output_file,
             )
-            espsecure.verify_signature(args)
         finally:
             output_file.close()
             os.unlink(output_file.name)
@@ -289,7 +258,7 @@ class TestSigning(EspSecureTestCase):
         # rsa_secure_boot_signing_key.pem)
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 [
                     self._open("rsa_secure_boot_signing_key2.pem"),
@@ -303,36 +272,32 @@ class TestSigning(EspSecureTestCase):
                 None,
                 self._open("bootloader_signed_v2_rsa.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key.pem"),
                 output_file,
             )
-            espsecure.verify_signature(args)
 
             output_file.seek(0)
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key2.pem"),
                 output_file,
             )
-            espsecure.verify_signature(args)
 
             output_file.seek(0)
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key3.pem"),
                 output_file,
             )
-            espsecure.verify_signature(args)
         finally:
             output_file.close()
             os.unlink(output_file.name)
@@ -342,7 +307,7 @@ class TestSigning(EspSecureTestCase):
         try:
             output_file1 = tempfile.NamedTemporaryFile(delete=False)
             output_file2 = tempfile.NamedTemporaryFile(delete=False)
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 [self._open("rsa_secure_boot_signing_key2.pem")],
                 output_file1.name,
@@ -353,9 +318,8 @@ class TestSigning(EspSecureTestCase):
                 None,
                 self._open("bootloader_signed_v2_rsa.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 [self._open("rsa_secure_boot_signing_key3.pem")],
                 output_file2.name,
@@ -366,36 +330,32 @@ class TestSigning(EspSecureTestCase):
                 None,
                 output_file1,
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key.pem"),
                 output_file2,
             )
-            espsecure.verify_signature(args)
 
             output_file2.seek(0)
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key2.pem"),
                 output_file2,
             )
-            espsecure.verify_signature(args)
 
             output_file2.seek(0)
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2",
                 False,
                 None,
                 self._open("rsa_secure_boot_signing_key3.pem"),
                 output_file2,
             )
-            espsecure.verify_signature(args)
         finally:
             output_file1.close()
             os.unlink(output_file1.name)
@@ -409,7 +369,7 @@ class TestSigning(EspSecureTestCase):
         signature = f"pre_calculated_bootloader_signature_{scheme}.bin"
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 None,
                 output_file.name,
@@ -420,10 +380,10 @@ class TestSigning(EspSecureTestCase):
                 [self._open(signature)],
                 self._open("bootloader_unsigned_v2.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs("2", False, None, self._open(pub_key), output_file)
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "2", False, None, self._open(pub_key), output_file
+            )
         finally:
             output_file.close()
             os.unlink(output_file.name)
@@ -442,7 +402,7 @@ class TestSigning(EspSecureTestCase):
         ]
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            args = self.SignArgs(
+            espsecure.sign_data(
                 "2",
                 None,
                 output_file.name,
@@ -453,12 +413,10 @@ class TestSigning(EspSecureTestCase):
                 [self._open(signature) for signature in pre_calculated_signatures],
                 self._open("bootloader_unsigned_v2.bin"),
             )
-            espsecure.sign_data(args)
 
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "2", False, None, self._open(signing_pubkeys[0]), output_file
             )
-            espsecure.verify_signature(args)
         finally:
             output_file.close()
             os.unlink(output_file.name)
@@ -487,62 +445,57 @@ class TestSigning(EspSecureTestCase):
         ids=["v1", "v2_rsa", "v2_ecdsa384", "v2_ecdsa256", "v2_ecdsa192"],
     )
     def test_verify_signature_correct_key(self, version, keyfile, datafile):
-        args = self.VerifyArgs(
+        espsecure.verify_signature(
             version,
             False,
             None,
             self._open(keyfile),
             self._open(datafile),
         )
-        espsecure.verify_signature(args)
 
     def test_verify_signature_wrong_key_v1(self):
-        args = self.VerifyArgs(
-            "1",
-            False,
-            None,
-            self._open("ecdsa256_secure_boot_signing_key2.pem"),
-            self._open("bootloader_signed.bin"),
-        )
         with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "1",
+                False,
+                None,
+                self._open("ecdsa256_secure_boot_signing_key2.pem"),
+                self._open("bootloader_signed.bin"),
+            )
         assert "Signature is not valid" in str(cm.value)
 
     @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_verify_signature_wrong_key_v2(self, scheme):
-        args = self.VerifyArgs(
-            "2",
-            False,
-            None,
-            self._open(f"{scheme}_secure_boot_signing_key2.pem"),
-            self._open(f"bootloader_signed_v2_{scheme}.bin"),
-        )
         with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "2",
+                False,
+                None,
+                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
+                self._open(f"bootloader_signed_v2_{scheme}.bin"),
+            )
         assert "Signature could not be verified with the provided key." in str(cm.value)
 
     def test_verify_signature_wrong_scheme(self):
-        args = self.VerifyArgs(
-            "2",
-            False,
-            None,
-            self._open("ecdsa256_secure_boot_signing_key.pem"),
-            self._open("bootloader_signed.bin"),
-        )
         with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "2",
+                False,
+                None,
+                self._open("ecdsa256_secure_boot_signing_key.pem"),
+                self._open("bootloader_signed.bin"),
+            )
         assert "Invalid datafile" in str(cm.value)
 
     def test_verify_signature_multi_signed_wrong_key(self):
-        args = self.VerifyArgs(
-            "2",
-            False,
-            None,
-            self._open("rsa_secure_boot_signing_key4.pem"),
-            self._open("bootloader_multi_signed_v2.bin"),
-        )
         with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_key4.pem"),
+                self._open("bootloader_multi_signed_v2.bin"),
+            )
         assert "Signature could not be verified with the provided key." in str(cm.value)
 
     @pytest.mark.parametrize(
@@ -569,50 +522,46 @@ class TestSigning(EspSecureTestCase):
         ids=["v1", "v2_rsa", "v2_ecdsa384", "v2_ecdsa256", "v2_ecdsa192"],
     )
     def test_verify_signature_correct_pubkey(self, version, keyfile, datafile):
-        args = self.VerifyArgs(
+        espsecure.verify_signature(
             version,
             False,
             None,
             self._open(keyfile),
             self._open(datafile),
         )
-        espsecure.verify_signature(args)
 
     def test_verify_signature_wrong_pubkey_v1(self):
-        args = self.VerifyArgs(
-            "1",
-            False,
-            None,
-            self._open("ecdsa256_secure_boot_signing_pubkey2.pem"),
-            self._open("bootloader_signed.bin"),
-        )
         with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "1",
+                False,
+                None,
+                self._open("ecdsa256_secure_boot_signing_pubkey2.pem"),
+                self._open("bootloader_signed.bin"),
+            )
         assert "Signature is not valid" in str(cm.value)
 
     @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_verify_signature_wrong_pubkey_v2(self, scheme):
-        args = self.VerifyArgs(
-            "2",
-            False,
-            None,
-            self._open(f"{scheme}_secure_boot_signing_pubkey2.pem"),
-            self._open(f"bootloader_signed_v2_{scheme}.bin"),
-        )
         with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "2",
+                False,
+                None,
+                self._open(f"{scheme}_secure_boot_signing_pubkey2.pem"),
+                self._open(f"bootloader_signed_v2_{scheme}.bin"),
+            )
         assert "Signature could not be verified with the provided key." in str(cm.value)
 
     def test_verify_signature_multi_signed_wrong_pubkey(self):
-        args = self.VerifyArgs(
-            "2",
-            False,
-            None,
-            self._open("rsa_secure_boot_signing_pubkey4.pem"),
-            self._open("bootloader_multi_signed_v2.bin"),
-        )
         with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(args)
+            espsecure.verify_signature(
+                "2",
+                False,
+                None,
+                self._open("rsa_secure_boot_signing_pubkey4.pem"),
+                self._open("bootloader_multi_signed_v2.bin"),
+            )
         assert "Signature could not be verified with the provided key." in str(cm.value)
 
     def test_extract_binary_public_key(self):
@@ -620,31 +569,27 @@ class TestSigning(EspSecureTestCase):
             tempfile.NamedTemporaryFile() as pub_keyfile,
             tempfile.NamedTemporaryFile() as pub_keyfile2,
         ):
-            args = self.ExtractKeyArgs(
+            espsecure.extract_public_key(
                 "1", self._open("ecdsa256_secure_boot_signing_key.pem"), pub_keyfile
             )
-            espsecure.extract_public_key(args)
 
-            args = self.ExtractKeyArgs(
+            espsecure.extract_public_key(
                 "1", self._open("ecdsa256_secure_boot_signing_key2.pem"), pub_keyfile2
             )
-            espsecure.extract_public_key(args)
 
             pub_keyfile.seek(0)
             pub_keyfile2.seek(0)
 
             # use correct extracted public key to verify
-            args = self.VerifyArgs(
+            espsecure.verify_signature(
                 "1", False, None, pub_keyfile, self._open("bootloader_signed.bin")
             )
-            espsecure.verify_signature(args)
 
             # use wrong extracted public key to try and verify
-            args = self.VerifyArgs(
-                "1", False, None, pub_keyfile2, self._open("bootloader_signed.bin")
-            )
             with pytest.raises(esptool.FatalError) as cm:
-                espsecure.verify_signature(args)
+                espsecure.verify_signature(
+                    "1", False, None, pub_keyfile2, self._open("bootloader_signed.bin")
+                )
             assert "Signature is not valid" in str(cm.value)
 
     @pytest.mark.parametrize("scheme", ["rsa3072", "ecdsa192", "ecdsa256", "ecdsa384"])
@@ -654,42 +599,16 @@ class TestSigning(EspSecureTestCase):
             # cannot be used for keyfile
             keyfile_name = os.path.join(keydir, "key.pem")
 
-            args = self.GenerateKeyArgs("2", scheme, keyfile_name)
-            espsecure.generate_signing_key(args)
+            espsecure.generate_signing_key("2", scheme, keyfile_name)
 
             with (
                 tempfile.NamedTemporaryFile() as pub_keyfile,
                 open(keyfile_name, "rb") as keyfile,
             ):
-                args = self.ExtractKeyArgs("2", keyfile, pub_keyfile)
-                espsecure.extract_public_key(args)
+                espsecure.extract_public_key("2", keyfile, pub_keyfile)
 
 
 class TestFlashEncryption(EspSecureTestCase):
-    EncryptArgs = namedtuple(
-        "encrypt_flash_data_args",
-        [
-            "keyfile",
-            "output",
-            "address",
-            "flash_crypt_conf",
-            "aes_xts",
-            "plaintext_file",
-        ],
-    )
-
-    DecryptArgs = namedtuple(
-        "decrypt_flash_data_args",
-        [
-            "keyfile",
-            "output",
-            "address",
-            "flash_crypt_conf",
-            "aes_xts",
-            "encrypted_file",
-        ],
-    )
-
     def _test_encrypt_decrypt(
         self,
         input_plaintext,
@@ -703,10 +622,9 @@ class TestFlashEncryption(EspSecureTestCase):
         keyfile = self._open(key_path)
         ciphertext = io.BytesIO()
 
-        args = self.EncryptArgs(
+        espsecure.encrypt_flash_data(
             keyfile, ciphertext, offset, flash_crypt_conf, aes_xts, original_plaintext
         )
-        espsecure.encrypt_flash_data(args)
 
         original_plaintext.seek(0)
         assert original_plaintext.read() != ciphertext.getvalue()
@@ -716,10 +634,9 @@ class TestFlashEncryption(EspSecureTestCase):
         ciphertext.seek(0)
         keyfile.seek(0)
         plaintext = io.BytesIO()
-        args = self.DecryptArgs(
+        espsecure.decrypt_flash_data(
             keyfile, plaintext, offset, flash_crypt_conf, aes_xts, ciphertext
         )
-        espsecure.decrypt_flash_data(args)
 
         original_plaintext.seek(0)
         assert original_plaintext.read() == plaintext.getvalue()
@@ -807,11 +724,9 @@ class TestAesXtsFlashEncryption(TestFlashEncryption):
         keyfile = self._open("256bit_key.bin")
         address = 0x1000
 
-        encrypt_args_padded = self.EncryptArgs(
+        espsecure.encrypt_flash_data(
             keyfile, ciphertext_full_block, address, None, "aes_xts", plaintext_file
         )
-
-        espsecure.encrypt_flash_data(encrypt_args_padded)
 
         # Test with different number of bytes per encryption call
         # Final ciphertext should still be the same if padding is done correctly
@@ -828,7 +743,7 @@ class TestAesXtsFlashEncryption(TestFlashEncryption):
                 # encrypt the whole plaintext a substring of b bytes at a time
                 plaintext_sub = io.BytesIO(plaintext[offset : offset + b])
 
-                encrypt_args = self.EncryptArgs(
+                espsecure.encrypt_flash_data(
                     keyfile,
                     ciphertext,
                     address + offset,
@@ -836,8 +751,6 @@ class TestAesXtsFlashEncryption(TestFlashEncryption):
                     "aes_xts",
                     plaintext_sub,
                 )
-
-                espsecure.encrypt_flash_data(encrypt_args)
 
             assert ciphertext_full_block.getvalue() == ciphertext.getvalue()
 

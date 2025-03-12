@@ -1,8 +1,7 @@
 # SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
-# PYTHON_ARGCOMPLETE_OK
-import argparse
+import rich_click as click
 import hashlib
 import operator
 import os
@@ -11,7 +10,7 @@ import sys
 import tempfile
 import zlib
 from collections import namedtuple
-from io import IOBase
+from typing import IO
 
 from cryptography import exceptions
 from cryptography.hazmat.backends import default_backend
@@ -107,24 +106,24 @@ def _load_hardware_key(keyfile, is_flash_encryption_key, aes_xts=None):
     return key
 
 
-def digest_secure_bootloader(args):
+def digest_secure_bootloader(keyfile, output, image, iv):
     """Calculate the digest of a bootloader image, in the same way the hardware
     secure boot engine would do so. Can be used with a pre-loaded key to update a
     secure bootloader."""
-    _check_output_is_not_input(args.keyfile, args.output)
-    _check_output_is_not_input(args.image, args.output)
-    _check_output_is_not_input(args.iv, args.output)
-    if args.iv is not None:
+    _check_output_is_not_input(keyfile, output)
+    _check_output_is_not_input(image, output)
+    _check_output_is_not_input(iv, output)
+    if iv is not None:
         print("WARNING: --iv argument is for TESTING PURPOSES ONLY")
-        iv = args.iv.read(128)
+        iv = iv.read(128)
     else:
         iv = os.urandom(128)
-    plaintext_image = args.image.read()
-    args.image.seek(0)
+    plaintext_image = image.read()
+    image.seek(0)
 
     # secure boot engine reads in 128 byte blocks (ie SHA512 block
     # size), but also doesn't look for any appended SHA-256 digest
-    fw_image = esptool.bin_image.ESP32FirmwareImage(args.image)
+    fw_image = esptool.bin_image.ESP32FirmwareImage(image)
     if fw_image.append_digest:
         if len(plaintext_image) % 128 <= 32:
             # ROM bootloader will read to the end of the 128 byte block, but not
@@ -144,7 +143,7 @@ def digest_secure_bootloader(args):
     # produce the digest. Each block in/out of ECB is reordered
     # (due to hardware quirks not for security.)
 
-    key = _load_hardware_key(args.keyfile, False)
+    key = _load_hardware_key(keyfile, False)
     backend = default_backend()
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=backend)
     encryptor = cipher.encryptor()
@@ -160,16 +159,16 @@ def digest_secure_bootloader(args):
             # Python hashlib can build each SHA block internally
             digest.update(block[::-1])
 
-    if args.output is None:
-        args.output = os.path.splitext(args.image.name)[0] + "-digest-0x0000.bin"
-    with open(args.output, "wb") as f:
+    if output is None:
+        output = os.path.splitext(image.name)[0] + "-digest-0x0000.bin"
+    with open(output, "wb") as f:
         f.write(iv)
         digest = digest.digest()
         for word in get_chunks(digest, 4):
             f.write(word[::-1])  # swap word order in the result
         f.write(b"\xff" * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
-    print("digest+image written to %s" % args.output)
+    print("digest+image written to %s" % output)
 
 
 def _generate_ecdsa_signing_key(curve_id, keyfile):
@@ -178,20 +177,20 @@ def _generate_ecdsa_signing_key(curve_id, keyfile):
         f.write(sk.to_pem())
 
 
-def generate_signing_key(args):
-    if os.path.exists(args.keyfile):
-        raise esptool.FatalError("ERROR: Key file %s already exists" % args.keyfile)
-    if args.version == "1":
-        if hasattr(args, "scheme"):
-            if args.scheme != "ecdsa256" and args.scheme is not None:
+def generate_signing_key(version, scheme, keyfile):
+    if os.path.exists(keyfile):
+        raise esptool.FatalError(f"ERROR: Key file {keyfile} already exists")
+    if version == "1":
+        if scheme is not None:
+            if scheme != "ecdsa256" and scheme is not None:
                 raise esptool.FatalError("ERROR: V1 only supports ECDSA256")
         """
         Generate an ECDSA signing key for signing secure boot images (post-bootloader)
         """
-        _generate_ecdsa_signing_key(ecdsa.NIST256p, args.keyfile)
-        print("ECDSA NIST256p private key in PEM format written to %s" % args.keyfile)
-    elif args.version == "2":
-        if args.scheme == "rsa3072" or args.scheme is None:
+        _generate_ecdsa_signing_key(ecdsa.NIST256p, keyfile)
+        print(f"ECDSA NIST256p private key in PEM format written to {keyfile}")
+    elif version == "2":
+        if scheme == "rsa3072" or scheme is None:
             """Generate a RSA 3072 signing key for signing secure boot images"""
             private_key = rsa.generate_private_key(
                 public_exponent=65537, key_size=3072, backend=default_backend()
@@ -200,23 +199,23 @@ def generate_signing_key(args):
                 format=serialization.PrivateFormat.TraditionalOpenSSL,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-            with open(args.keyfile, "wb") as f:
+            with open(keyfile, "wb") as f:
                 f.write(private_key)
-            print(f"RSA 3072 private key in PEM format written to {args.keyfile}")
-        elif args.scheme == "ecdsa192":
+            print(f"RSA 3072 private key in PEM format written to {keyfile}")
+        elif scheme == "ecdsa192":
             """Generate a ECDSA 192 signing key for signing secure boot images"""
-            _generate_ecdsa_signing_key(ecdsa.NIST192p, args.keyfile)
-            print(f"ECDSA NIST192p private key in PEM format written to {args.keyfile}")
-        elif args.scheme == "ecdsa256":
+            _generate_ecdsa_signing_key(ecdsa.NIST192p, keyfile)
+            print(f"ECDSA NIST192p private key in PEM format written to {keyfile}")
+        elif scheme == "ecdsa256":
             """Generate a ECDSA 256 signing key for signing secure boot images"""
-            _generate_ecdsa_signing_key(ecdsa.NIST256p, args.keyfile)
-            print(f"ECDSA NIST256p private key in PEM format written to {args.keyfile}")
-        elif args.scheme == "ecdsa384":
+            _generate_ecdsa_signing_key(ecdsa.NIST256p, keyfile)
+            print(f"ECDSA NIST256p private key in PEM format written to {keyfile}")
+        elif scheme == "ecdsa384":
             """Generate a ECDSA 384 signing key for signing secure boot images"""
-            _generate_ecdsa_signing_key(ecdsa.NIST384p, args.keyfile)
-            print(f"ECDSA NIST384p private key in PEM format written to {args.keyfile}")
+            _generate_ecdsa_signing_key(ecdsa.NIST384p, keyfile)
+            print(f"ECDSA NIST384p private key in PEM format written to {keyfile}")
         else:
-            raise esptool.FatalError("ERROR: Unsupported signing scheme {args.scheme}")
+            raise esptool.FatalError(f"ERROR: Unsupported signing scheme {scheme}")
 
 
 def load_ecdsa_signing_key(keyfile):
@@ -358,39 +357,59 @@ def _microecc_format(a, b, curve_len):
     return ab
 
 
-def sign_data(args):
-    if args.keyfile:
-        _check_output_is_not_input(args.keyfile, args.output)
-    _check_output_is_not_input(args.datafile, args.output)
-    if args.version == "1":
-        return sign_secure_boot_v1(args)
-    elif args.version == "2":
-        return sign_secure_boot_v2(args)
+def sign_data(
+    version: int,
+    keyfile: list[IO],
+    output: str | None,
+    append_signatures: bool,
+    hsm: bool,
+    hsm_config: IO | None,
+    pub_key: list[IO],
+    signature: list[IO],
+    datafile: IO,
+):
+    if keyfile:
+        for file in keyfile:
+            _check_output_is_not_input(file, output)
+    _check_output_is_not_input(datafile, output)
+    if version == "1":
+        return sign_secure_boot_v1(hsm, pub_key, signature, datafile, keyfile, output)
+    elif version == "2":
+        return sign_secure_boot_v2(
+            append_signatures,
+            hsm,
+            hsm_config,
+            pub_key,
+            signature,
+            datafile,
+            keyfile,
+            output,
+        )
 
 
-def sign_secure_boot_v1(args):
+def sign_secure_boot_v1(hsm, pub_key, signature, datafile, keyfile, output):
     """
     Sign a data file with a ECDSA private key, append binary signature to file contents
     """
-    binary_content = args.datafile.read()
+    binary_content = datafile.read()
 
-    if args.hsm:
+    if hsm:
         raise esptool.FatalError(
             "Secure Boot V1 does not support signing using an "
             "external Hardware Security Module (HSM)"
         )
 
-    if args.signature:
+    if signature:
         print("Pre-calculated signatures found")
-        if len(args.pub_key) > 1:
+        if len(pub_key) > 1:
             raise esptool.FatalError("Secure Boot V1 only supports one signing key")
-        signature = args.signature[0].read()
+        signature = signature[0].read()
         # get verifying/public key
-        vk = _load_ecdsa_verifying_key(args.pub_key[0])
+        vk = _load_ecdsa_verifying_key(pub_key[0])
     else:
-        if len(args.keyfile) > 1:
+        if len(keyfile) > 1:
             raise esptool.FatalError("Secure Boot V1 only supports one signing key")
-        sk = _load_ecdsa_signing_key(args.keyfile[0])
+        sk = _load_ecdsa_signing_key(keyfile[0])
 
         # calculate signature of binary data
         signature = sk.sign_deterministic(binary_content, hashlib.sha256)
@@ -399,23 +418,25 @@ def sign_secure_boot_v1(args):
 
     # back-verify signature
     vk.verify(signature, binary_content, hashlib.sha256)  # throws exception on failure
-    if args.output is None or os.path.abspath(args.output) == os.path.abspath(
-        args.datafile.name
+    if output is None or os.path.abspath(output) == os.path.abspath(
+        datafile.name
     ):  # append signature to input file
-        args.datafile.close()
-        outfile = open(args.datafile.name, "ab")
+        datafile.close()
+        outfile = open(datafile.name, "ab")
     else:  # write file & signature to new file
-        outfile = open(args.output, "wb")
+        outfile = open(output, "wb")
         outfile.write(binary_content)
     outfile.write(
         struct.pack("I", 0)
     )  # Version indicator, allow for different curves/formats later
     outfile.write(signature)
     outfile.close()
-    print("Signed %d bytes of data from %s" % (len(binary_content), args.datafile.name))
+    print("Signed %d bytes of data from %s" % (len(binary_content), datafile.name))
 
 
-def sign_secure_boot_v2(args):
+def sign_secure_boot_v2(
+    append_signatures, hsm, hsm_config, pub_key, signature, datafile, keyfile, output
+):
     """
     Sign a firmware app image with an RSA private key using RSA-PSS,
     or ECDSA private key using P192 or P256 or P384.
@@ -423,15 +444,12 @@ def sign_secure_boot_v2(args):
     Write output file with a Secure Boot V2 header appended.
     """
     SIG_BLOCK_MAX_COUNT = 3
-    contents = args.datafile.read()
+    contents = datafile.read()
     sig_block_num = 0
     signature_sector = b""
 
-    signature = args.signature
-    pub_key = args.pub_key
-
     if len(contents) % SECTOR_SIZE != 0:
-        if args.signature:
+        if signature:
             raise esptool.FatalError(
                 "Secure Boot V2 requires the signature block to start "
                 "from a 4KB aligned sector "
@@ -445,7 +463,7 @@ def sign_secure_boot_v2(args):
             )
             contents += b"\xff" * pad_by
 
-    elif args.append_signatures:
+    elif append_signatures:
         while sig_block_num < SIG_BLOCK_MAX_COUNT:
             sig_block = validate_signature_block(contents, sig_block_num)
             if sig_block is None:
@@ -478,15 +496,15 @@ def sign_secure_boot_v2(args):
             # (the legitimate blocks are included in signature_sector)
             contents = contents[: len(contents) - SECTOR_SIZE]
 
-    if args.hsm:
-        if args.hsm_config is None:
+    if hsm:
+        if hsm_config is None:
             raise esptool.FatalError(
                 "Config file is required to generate signature using an external HSM."
             )
         import espsecure.esp_hsm_sign as hsm
 
         try:
-            config = hsm.read_hsm_config(args.hsm_config)
+            config = hsm.read_hsm_config(hsm_config)
         except Exception as e:
             raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
         if pub_key is None:
@@ -502,7 +520,7 @@ def sign_secure_boot_v2(args):
                 f"the number of signatures {len(signature)}."
             )
     else:
-        key_count = len(args.keyfile)
+        key_count = len(keyfile)
 
     empty_signature_blocks = SIG_BLOCK_MAX_COUNT - sig_block_num
     if key_count > empty_signature_blocks:
@@ -520,9 +538,7 @@ def sign_secure_boot_v2(args):
         )
     # Generate signature block by signing using private keys
     else:
-        signature_block = generate_signature_block_using_private_key(
-            args.keyfile, contents
-        )
+        signature_block = generate_signature_block_using_private_key(keyfile, contents)
 
     if signature_block is None or len(signature_block) == 0:
         raise esptool.FatalError("Signature Block generation failed")
@@ -546,13 +562,13 @@ def sign_secure_boot_v2(args):
         raise esptool.FatalError("Incorrect signature sector size")
 
     # Write to output file, or append to existing file
-    if args.output is None:
-        args.datafile.close()
-        args.output = args.datafile.name
-    with open(args.output, "wb") as f:
+    if output is None:
+        datafile.close()
+        output = datafile.name
+    with open(output, "wb") as f:
         f.write(contents + signature_sector)
     print(
-        f"Signed {len(contents)} bytes of data from {args.datafile.name}. "
+        f"Signed {len(contents)} bytes of data from {datafile.name}. "
         f"Signature sector now has {total_sig_blocks} signature blocks."
     )
 
@@ -767,16 +783,22 @@ def generate_ecdsa_signature_block(digest, curve_id, pubkey_point, signature_rs)
     return signature_block
 
 
-def verify_signature(args):
-    if args.version == "1":
-        return verify_signature_v1(args)
-    elif args.version == "2":
-        return verify_signature_v2(args)
+def verify_signature(
+    version: int,
+    hsm: bool,
+    hsm_config: IO | None,
+    keyfile: IO,
+    datafile: IO,
+):
+    if version == "1":
+        return verify_signature_v1(keyfile, datafile)
+    elif version == "2":
+        return verify_signature_v2(hsm, hsm_config, keyfile, datafile)
 
 
-def verify_signature_v1(args):
+def verify_signature_v1(keyfile: IO, datafile: IO):
     """Verify a previously signed binary image, using the ECDSA public key"""
-    key_data = args.keyfile.read()
+    key_data = keyfile.read()
     if b"-BEGIN EC PRIVATE KEY" in key_data:
         sk = ecdsa.SigningKey.from_pem(key_data)
         vk = sk.get_verifying_key()
@@ -796,7 +818,7 @@ def verify_signature_v1(args):
             "NIST256p (openssl calls this curve 'prime256v1"
         )
 
-    binary_content = args.datafile.read()
+    binary_content = datafile.read()
     data = binary_content[0:-68]
     sig_version, signature = struct.unpack("I64s", binary_content[-68:])
     if sig_version != 0:
@@ -839,19 +861,18 @@ def validate_signature_block(image_content, sig_blk_num):
     return sig_blk
 
 
-def verify_signature_v2(args):
+def verify_signature_v2(hsm, hsm_config, keyfile, datafile):
     """Verify a previously signed binary image, using the RSA or ECDSA public key"""
 
-    keyfile = args.keyfile
-    if args.hsm:
-        if args.hsm_config is None:
+    if hsm:
+        if hsm_config is None:
             raise esptool.FatalError(
                 "Config file is required to extract public key from an external HSM."
             )
         import espsecure.esp_hsm_sign as hsm
 
         try:
-            config = hsm.read_hsm_config(args.hsm_config)
+            config = hsm.read_hsm_config(hsm_config)
         except Exception as e:
             raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
         # get public key from HSM
@@ -864,7 +885,7 @@ def verify_signature_v2(args):
     elif isinstance(vk, ec.EllipticCurvePublicKey):
         SIG_BLOCK_MAX_COUNT = 1
 
-    image_content = args.datafile.read()
+    image_content = datafile.read()
     if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
         raise esptool.FatalError(
             "Invalid datafile. Data size should be non-zero & a multiple of 4096."
@@ -954,30 +975,28 @@ def verify_signature_v2(args):
         )
 
 
-def extract_public_key(args):
-    _check_output_is_not_input(args.keyfile, args.public_keyfile)
-    if args.version == "1":
+def extract_public_key(version, keyfile, public_keyfile):
+    _check_output_is_not_input(keyfile, public_keyfile)
+    if version == "1":
         """
         Load an ECDSA private key and extract the embedded public key
         as raw binary data.
         """
-        sk = _load_ecdsa_signing_key(args.keyfile)
+        sk = _load_ecdsa_signing_key(keyfile)
         vk = sk.get_verifying_key()
-        args.public_keyfile.write(vk.to_string())
-    elif args.version == "2":
+        public_keyfile.write(vk.to_string())
+    elif version == "2":
         """
         Load an RSA or an ECDSA private key and extract the public key
         as raw binary data.
         """
-        sk = _load_sbv2_signing_key(args.keyfile.read())
+        sk = _load_sbv2_signing_key(keyfile.read())
         vk = sk.public_key().public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo,
         )
-        args.public_keyfile.write(vk)
-    print(
-        "%s public key extracted to %s" % (args.keyfile.name, args.public_keyfile.name)
-    )
+        public_keyfile.write(vk)
+    print(f"{keyfile.name} public key extracted to {public_keyfile.name}")
 
 
 def extract_pubkey_from_hsm(config):
@@ -1011,14 +1030,14 @@ def _sha384_digest(contents):
     return digest.digest()
 
 
-def signature_info_v2(args):
+def signature_info_v2(datafile):
     """
     Validates the signature block and prints the RSA/ECDSA public key
     digest for valid blocks
     """
     SIG_BLOCK_MAX_COUNT = 3
 
-    image_content = args.datafile.read()
+    image_content = datafile.read()
     if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
         raise esptool.FatalError(
             "Invalid datafile. Data size should be non-zero & a multiple of 4096."
@@ -1117,38 +1136,30 @@ def _digest_sbv2_public_key(keyfile):
     return hashlib.sha256(binary_format).digest()
 
 
-def digest_sbv2_public_key(args):
-    _check_output_is_not_input(args.keyfile, args.output)
-    public_key_digest = _digest_sbv2_public_key(args.keyfile)
-    with open(args.output, "wb") as f:
-        print(
-            "Writing the public key digest of %s to %s."
-            % (args.keyfile.name, args.output)
-        )
+def digest_sbv2_public_key(keyfile, output):
+    _check_output_is_not_input(keyfile, output)
+    public_key_digest = _digest_sbv2_public_key(keyfile)
+    with open(output, "wb") as f:
+        print(f"Writing the public key digest of {keyfile.name} to {output}.")
         f.write(public_key_digest)
 
 
-def digest_rsa_public_key(args):
-    # Kept for compatibility purpose
-    digest_sbv2_public_key(args)
-
-
-def digest_private_key(args):
-    _check_output_is_not_input(args.keyfile, args.digest_file)
-    sk = _load_ecdsa_signing_key(args.keyfile)
+def digest_private_key(keyfile, keylen, digest_file):
+    _check_output_is_not_input(keyfile, digest_file)
+    sk = _load_ecdsa_signing_key(keyfile)
     repr(sk.to_string())
     digest = hashlib.sha256()
     digest.update(sk.to_string())
     result = digest.digest()
-    if args.keylen == 192:
+    if keylen == 192:
         result = result[0:24]
-    args.digest_file.write(result)
+    digest_file.write(result)
     print(
         "SHA-256 digest of private key %s%s written to %s"
         % (
-            args.keyfile.name,
-            "" if args.keylen == 256 else " (truncated to 192 bits)",
-            args.digest_file.name,
+            keyfile.name,
+            "" if keylen == 256 else " (truncated to 192 bits)",
+            digest_file.name,
         )
     )
 
@@ -1240,11 +1251,6 @@ def _flash_encryption_tweak_key(key, offset, tweak_range):
     addr = offset >> 5
     key ^= ((mul1 * addr) | ((mul2 * addr) & mul2_mask)) & tweak_range
     return int.to_bytes(key, length=32, byteorder="big", signed=False)
-
-
-def generate_flash_encryption_key(args):
-    print("Writing %d random bits to key file %s" % (args.keylen, args.key_file.name))
-    args.key_file.write(os.urandom(args.keylen // 8))
 
 
 def _flash_encryption_operation_esp32(
@@ -1424,38 +1430,52 @@ def _split_blocks(text, block_len=16):
         pos = pos + block_len
 
 
-def decrypt_flash_data(args):
-    _check_output_is_not_input(args.keyfile, args.output)
-    _check_output_is_not_input(args.encrypted_file, args.output)
-    if args.aes_xts:
+def decrypt_flash_data(
+    keyfile: IO,
+    output: IO,
+    address: int,
+    flash_crypt_conf: int,
+    aes_xts: bool,
+    encrypted_file: IO,
+):
+    _check_output_is_not_input(keyfile, output)
+    _check_output_is_not_input(encrypted_file, output)
+    if aes_xts:
         return _flash_encryption_operation_aes_xts(
-            args.output, args.encrypted_file, args.address, args.keyfile, True
+            output, encrypted_file, address, keyfile, True
         )
     else:
         return _flash_encryption_operation_esp32(
-            args.output,
-            args.encrypted_file,
-            args.address,
-            args.keyfile,
-            args.flash_crypt_conf,
+            output,
+            encrypted_file,
+            address,
+            keyfile,
+            flash_crypt_conf,
             True,
         )
 
 
-def encrypt_flash_data(args):
-    _check_output_is_not_input(args.keyfile, args.output)
-    _check_output_is_not_input(args.plaintext_file, args.output)
-    if args.aes_xts:
+def encrypt_flash_data(
+    keyfile: IO,
+    output: IO,
+    address: int,
+    flash_crypt_conf: int,
+    aes_xts: bool,
+    plaintext_file: IO,
+):
+    _check_output_is_not_input(keyfile, output)
+    _check_output_is_not_input(plaintext_file, output)
+    if aes_xts:
         return _flash_encryption_operation_aes_xts(
-            args.output, args.plaintext_file, args.address, args.keyfile, False
+            output, plaintext_file, address, keyfile, False
         )
     else:
         return _flash_encryption_operation_esp32(
-            args.output,
-            args.plaintext_file,
-            args.address,
-            args.keyfile,
-            args.flash_crypt_conf,
+            output,
+            plaintext_file,
+            address,
+            keyfile,
+            flash_crypt_conf,
             False,
         )
 
@@ -1476,454 +1496,388 @@ def _check_output_is_not_input(input_file, output_file):
     check_f = _samefile if isinstance(i, str) and isinstance(o, str) else operator.eq
     if check_f(i, o):
         raise esptool.FatalError(
-            'The input "{}" and output "{}" should not be the same!'.format(i, o)
+            f'The input "{i}" and output "{o}" should not be the same!'
         )
 
 
-class OutFileType(object):
-    """
-    This class is a replacement of argparse.FileType('wb').
-    It doesn't create a file immediately but only during thefirst write.
-    This allows us to do some checking before,
-    e.g. that we are not overwriting the input.
-
-    argparse.FileType('w')('-') returns STDOUT but argparse.FileType('wb') is not.
-
-    The file object is not closed on failure
-    just like in the case of argparse.FileType('w').
-    """
-
-    def __init__(self):
-        self.path = None
-        self.file_obj = None
-
-    def __call__(self, path):
-        self.path = path
-        return self
-
-    def __repr__(self):
-        return "{}({})".format(type(self).__name__, self.path)
-
-    def write(self, payload):
-        if len(payload) > 0:
-            if not self.file_obj:
-                self.file_obj = open(self.path, "wb")
-            self.file_obj.write(payload)
-
-    def close(self):
-        if self.file_obj:
-            self.file_obj.close()
-            self.file_obj = None
-
-    @property
-    def name(self):
-        return self.path
+@click.group(
+    no_args_is_help=True,
+    context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
+    help=f"espsecure.py v{esptool.__version__} - ESP32 Secure Boot & Flash Encryption "
+    "tool",
+)
+def cli():
+    print(f"espsecure.py v{esptool.__version__}")
 
 
-def main(custom_commandline=None):
+@cli.command("digest_secure_bootloader")
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    required=True,
+    help="256 bit key for secure boot digest.",
+)
+@click.option(
+    "--output", "-o", type=click.Path(), help="Output file for signed digest image."
+)
+@click.option(
+    "--iv",
+    type=click.File("rb"),
+    help="128 byte IV file. Supply a file for testing purposes only, if not supplied an"
+    " IV will be randomly generated.",
+)
+@click.argument("image", type=click.File("rb"))
+def digest_secure_bootloader_cli(keyfile, output, iv, image):
+    """Take a bootloader binary image and a secure boot key, and output a combined
+    digest+binary suitable for flashing along with the precalculated secure boot key."""
+    digest_secure_bootloader(keyfile, output, image, iv)
+
+
+@cli.command("generate_signing_key")
+@click.option(
+    "--version",
+    "-v",
+    type=click.Choice(["1", "2"]),
+    default="1",
+    help="Version of the secure boot signing scheme to use.",
+)
+@click.option(
+    "--scheme",
+    "-s",
+    type=click.Choice(["rsa3072", "ecdsa192", "ecdsa256", "ecdsa384"]),
+    help="Scheme of secure boot signing.",
+    required=False,
+)
+@click.argument("keyfile", type=click.Path())
+def generate_signing_key_cli(version, scheme, keyfile):
+    """Generate a private key for signing secure boot images as per the secure boot
+    version."""
+    generate_signing_key(version, scheme, keyfile)
+
+
+@cli.command("sign_data")
+@click.option(
+    "--version",
+    "-v",
+    type=click.Choice(["1", "2"]),
+    required=True,
+    help="Version of the secure boot signing scheme to use.",
+)
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    multiple=True,
+    help="Private key file for signing. Key is in PEM format.",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output file for signed digest image. Default is to sign the input file.",
+)
+@click.option(
+    "--append_signatures",
+    "-a",
+    is_flag=True,
+    help="Append signature block(s) to already signed image. Not valid for ESP32 and "
+    "ESP32-C2.",
+)
+@click.option(
+    "--hsm",
+    is_flag=True,
+    help="Use an external Hardware Security Module to generate signature using PKCS#11 "
+    "interface.",
+)
+@click.option(
+    "--hsm-config",
+    type=click.File("r"),
+    default=None,
+    help="Config file for the external Hardware Security Module to be used to generate "
+    "signature.",
+)
+@click.option(
+    "--pub-key",
+    type=click.File("rb"),
+    multiple=True,
+    help="Public key files corresponding to the private key used to generate the "
+    "pre-calculated signatures. Keys should be in PEM format.",
+)
+@click.option(
+    "--signature",
+    type=click.File("rb"),
+    multiple=True,
+    default=None,
+    help="Pre-calculated signatures. Signatures generated using external private keys "
+    "e.g. keys stored in HSM.",
+)
+@click.argument("datafile", type=click.File("rb"))
+def sign_data_cli(
+    version,
+    keyfile,
+    output,
+    append_signatures,
+    hsm,
+    hsm_config,
+    pub_key,
+    signature,
+    datafile,
+):
+    """Sign a data file for use with secure boot."""
+    sign_data(
+        version,
+        keyfile,
+        output,
+        append_signatures,
+        hsm,
+        hsm_config,
+        pub_key,
+        signature,
+        datafile,
+    )
+
+
+@cli.command("verify_signature")
+@click.option(
+    "--version",
+    "-v",
+    type=click.Choice(["1", "2"]),
+    required=True,
+    help="Version of the secure boot scheme to use.",
+)
+@click.option(
+    "--hsm",
+    is_flag=True,
+    help="Use an external Hardware Security Module to verify signature using PKCS#11 "
+    "interface.",
+)
+@click.option(
+    "--hsm-config",
+    default=None,
+    type=click.File("r"),
+    help="Config file for the external Hardware Security Module to be used to verify "
+    "signature.",
+)
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    help="Public key file for verification. Can be private or public key in PEM format",
+)
+@click.argument("datafile", type=click.File("rb"))
+def verify_signature_cli(version, hsm, hsm_config, keyfile, datafile):
+    """Verify a data file previously signed by "sign_data", using the public key."""
+    verify_signature(version, hsm, hsm_config, keyfile, datafile)
+
+
+@cli.command("extract_public_key")
+@click.option(
+    "--version",
+    "-v",
+    type=click.Choice(["1", "2"]),
+    default="1",
+    help="Version of the secure boot signing scheme to use.",
+)
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    required=True,
+    help="Private key file (PEM format) to extract the public verification key from.",
+)
+@click.argument("public_keyfile", type=click.File("wb", lazy=True))
+def extract_public_key_cli(version, keyfile, public_keyfile):
+    """Extract the public verification key for signatures, save it as a raw binary
+    file"""
+    extract_public_key(version, keyfile, public_keyfile)
+
+
+@cli.command("digest_rsa_public_key", deprecated=True)
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    required=True,
+    help="Public key file for verification. Can be private or public key in PEM format",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    required=True,
+    help="Output file for the digest.",
+)
+def digest_rsa_public_key(keyfile, output):
+    """Generate an SHA-256 digest of the RSA public key."""
+    digest_sbv2_public_key(keyfile, output)
+
+
+@cli.command("digest_sbv2_public_key")
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    required=True,
+    help="Public key file for verification. Can be private or public key in PEM format",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    required=True,
+    help="Output file for the digest.",
+)
+def digest_sbv2_public_key_cli(keyfile, output):
+    """Generate an SHA-256 digest of the public key."""
+    digest_sbv2_public_key(keyfile, output)
+
+
+@cli.command("signature_info_v2")
+@click.argument("datafile", type=click.File("rb"))
+def signature_info_v2_cli(datafile):
+    """Reads the signature block and provides the signature block information."""
+    signature_info_v2(datafile)
+
+
+@cli.command("digest_private_key")
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    required=True,
+    help="Private key file (PEM format) to generate a digest from.",
+)
+@click.option(
+    "--keylen",
+    "-l",
+    type=int,
+    default=256,
+    help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme "
+    "requires 192 bit key.",
+)
+@click.argument("digest_file", type=click.File("wb", lazy=True))
+def digest_private_key_cli(keyfile, keylen, digest_file):
+    """Generate an SHA-256 digest of the private signing key."""
+    digest_private_key(keyfile, keylen, digest_file)
+
+
+@cli.command("generate_flash_encryption_key")
+@click.option(
+    "--keylen",
+    "-l",
+    type=int,
+    default=256,
+    help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme "
+    "requires 192 bit key.",
+)
+@click.argument("key_file", type=click.File("wb", lazy=True))
+def generate_flash_encryption_key(keylen, key_file):
+    """Generate a development-use flash encryption key with random data."""
+    print(f"Writing {keylen} random bits to key file {key_file.name}")
+    key_file.write(os.urandom(keylen // 8))
+
+
+@cli.command("decrypt_flash_data")
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    required=True,
+    help="File with flash encryption key",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.File("wb", lazy=True),
+    required=True,
+    help="Output file for plaintext data.",
+)
+@click.option(
+    "--address",
+    "-a",
+    type=esptool.cli_util.AnyIntType(),
+    required=True,
+    help="Address offset in flash that file was read from.",
+)
+@click.option(
+    "--flash_crypt_conf",
+    type=esptool.cli_util.AnyIntType(),
+    default=0xF,
+    help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for "
+    "ESP32).",
+)
+@click.option(
+    "--aes_xts",
+    "-x",
+    is_flag=True,
+    help="Decrypt data using AES-XTS (not applicable for ESP32)",
+)
+@click.argument("encrypted_file", type=click.File("rb"))
+def decrypt_flash_data_cli(
+    keyfile, output, address, flash_crypt_conf, aes_xts, encrypted_file
+):
+    """Decrypt some data read from encrypted flash (using known key)."""
+    decrypt_flash_data(
+        keyfile, output, address, flash_crypt_conf, aes_xts, encrypted_file
+    )
+
+
+@cli.command("encrypt_flash_data")
+@click.option(
+    "--keyfile",
+    "-k",
+    type=click.File("rb"),
+    required=True,
+    help="File with flash encryption key",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.File("wb", lazy=True),
+    required=True,
+    help="Output file for encrypted data.",
+)
+@click.option(
+    "--address",
+    "-a",
+    type=esptool.cli_util.AnyIntType(),
+    help="Address offset in flash where file will be flashed.",
+    required=True,
+)
+@click.option(
+    "--flash_crypt_conf",
+    type=esptool.cli_util.AnyIntType(),
+    default=0xF,
+    help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for "
+    "ESP32)",
+)
+@click.option(
+    "--aes_xts",
+    "-x",
+    is_flag=True,
+    help="Encrypt data using AES-XTS (not applicable for ESP32)",
+)
+@click.argument("plaintext_file", type=click.File("rb"))
+def encrypt_flash_data_cli(
+    keyfile, output, address, flash_crypt_conf, aes_xts, plaintext_file
+):
+    """Encrypt some data suitable for encrypted flash (using known key)."""
+    encrypt_flash_data(
+        keyfile, output, address, flash_crypt_conf, aes_xts, plaintext_file
+    )
+
+
+def main(argv: list[str] | None = None):
     """
     Main function for espsecure
 
-    custom_commandline - Optional override for default arguments parsing
+    argv - Optional override for default arguments parsing
     (that uses sys.argv), can be a list of custom arguments as strings.
     Arguments and their values need to be added as individual items to the list
     e.g. "--port /dev/ttyUSB1" thus becomes ['--port', '/dev/ttyUSB1'].
     """
-    parser = argparse.ArgumentParser(
-        description="espsecure.py v%s - ESP32 Secure Boot & Flash Encryption tool"
-        % esptool.__version__,
-        prog="espsecure",
-    )
-
-    subparsers = parser.add_subparsers(
-        dest="operation", help="Run espsecure.py {command} -h for additional help"
-    )
-
-    p = subparsers.add_parser(
-        "digest_secure_bootloader",
-        help="Take a bootloader binary image and a secure boot key, "
-        "and output a combined digest+binary suitable for flashing along "
-        "with the precalculated secure boot key.",
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="256 bit key for secure boot digest.",
-        type=argparse.FileType("rb"),
-        required=True,
-    )
-    p.add_argument("--output", "-o", help="Output file for signed digest image.")
-    p.add_argument(
-        "--iv",
-        help="128 byte IV file. Supply a file for testing purposes only, "
-        "if not supplied an IV will be randomly generated.",
-        type=argparse.FileType("rb"),
-    )
-    p.add_argument(
-        "image",
-        help="Bootloader image file to calculate digest from",
-        type=argparse.FileType("rb"),
-    )
-
-    p = subparsers.add_parser(
-        "generate_signing_key",
-        help="Generate a private key for signing secure boot images "
-        "as per the secure boot version. "
-        "Key file is generated in PEM format, "
-        "Secure Boot V1 - ECDSA NIST256p private key. "
-        "Secure Boot V2 - RSA 3072, ECDSA NIST384p, ECDSA NIST256p, "
-        "ECDSA NIST192p private key.",
-    )
-    p.add_argument(
-        "--version",
-        "-v",
-        help="Version of the secure boot signing scheme to use.",
-        choices=["1", "2"],
-        default="1",
-    )
-    p.add_argument(
-        "--scheme",
-        "-s",
-        help="Scheme of secure boot signing.",
-        choices=["rsa3072", "ecdsa192", "ecdsa256", "ecdsa384"],
-        required=False,
-    )
-    p.add_argument(
-        "keyfile", help="Filename for private key file (embedded public key)"
-    )
-
-    p = subparsers.add_parser(
-        "sign_data",
-        help="Sign a data file for use with secure boot. "
-        "Signing algorithm is deterministic ECDSA w/ SHA-512 (V1) "
-        "or either RSA-PSS or ECDSA w/ SHA-256 or ECDSA w/ SHA-384 (V2).",
-    )
-    p.add_argument(
-        "--version",
-        "-v",
-        help="Version of the secure boot signing scheme to use.",
-        choices=["1", "2"],
-        required=True,
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="Private key file for signing. Key is in PEM format.",
-        type=argparse.FileType("rb"),
-        nargs="+",
-    )
-    p.add_argument(
-        "--append_signatures",
-        "-a",
-        help="Append signature block(s) to already signed image. "
-        "Not valid for ESP32 and ESP32-C2.",
-        action="store_true",
-    )
-    p.add_argument(
-        "--hsm",
-        help="Use an external Hardware Security Module "
-        "to generate signature using PKCS#11 interface.",
-        action="store_true",
-    )
-    p.add_argument(
-        "--hsm-config",
-        help="Config file for the external Hardware Security Module "
-        "to be used to generate signature.",
-        default=None,
-    )
-    p.add_argument(
-        "--pub-key",
-        help="Public key files corresponding to the private key used to generate "
-        "the pre-calculated signatures. Keys should be in PEM format.",
-        type=argparse.FileType("rb"),
-        nargs="+",
-    )
-    p.add_argument(
-        "--signature",
-        help="Pre-calculated signatures. "
-        "Signatures generated using external private keys e.g. keys stored in HSM.",
-        type=argparse.FileType("rb"),
-        nargs="+",
-        default=None,
-    )
-    p.add_argument(
-        "--output",
-        "-o",
-        help="Output file for signed digest image. Default is to sign the input file.",
-    )
-    p.add_argument(
-        "datafile",
-        help="File to sign. For version 1, this can be any file. "
-        "For version 2, this must be a valid app image.",
-        type=argparse.FileType("rb"),
-    )
-
-    p = subparsers.add_parser(
-        "verify_signature",
-        help='Verify a data file previously signed by "sign_data", '
-        "using the public key.",
-    )
-    p.add_argument(
-        "--version",
-        "-v",
-        help="Version of the secure boot scheme to use.",
-        choices=["1", "2"],
-        required=True,
-    )
-    p.add_argument(
-        "--hsm",
-        help="Use an external Hardware Security Module "
-        "to verify signature using PKCS#11 interface.",
-        action="store_true",
-    )
-    p.add_argument(
-        "--hsm-config",
-        help="Config file for the external Hardware Security Module "
-        "to be used to verify signature.",
-        default=None,
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="Public key file for verification. "
-        "Can be private or public key in PEM format.",
-        type=argparse.FileType("rb"),
-    )
-    p.add_argument(
-        "datafile",
-        help="Signed data file to verify signature.",
-        type=argparse.FileType("rb"),
-    )
-
-    p = subparsers.add_parser(
-        "extract_public_key",
-        help="Extract the public verification key for signatures, "
-        "save it as a raw binary file.",
-    )
-    p.add_argument(
-        "--version",
-        "-v",
-        help="Version of the secure boot signing scheme to use.",
-        choices=["1", "2"],
-        default="1",
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="Private key file (PEM format) to extract the "
-        "public verification key from.",
-        type=argparse.FileType("rb"),
-        required=True,
-    )
-    p.add_argument(
-        "public_keyfile", help="File to save new public key into", type=OutFileType()
-    )
-
-    # Kept for compatibility purpose. We can deprecate this in a future release
-    p = subparsers.add_parser(
-        "digest_rsa_public_key",
-        help="Generate an SHA-256 digest of the RSA public key. "
-        "This digest is burned into the eFuse and asserts the legitimacy "
-        "of the public key for Secure boot v2.",
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="Public key file for verification. "
-        "Can be private or public key in PEM format.",
-        type=argparse.FileType("rb"),
-        required=True,
-    )
-    p.add_argument("--output", "-o", help="Output file for the digest.", required=True)
-
-    p = subparsers.add_parser(
-        "digest_sbv2_public_key",
-        help="Generate an SHA-256 digest of the public key. "
-        "This digest is burned into the eFuse and asserts the legitimacy "
-        "of the public key for Secure boot v2.",
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="Public key file for verification. "
-        "Can be private or public key in PEM format.",
-        type=argparse.FileType("rb"),
-        required=True,
-    )
-    p.add_argument("--output", "-o", help="Output file for the digest.", required=True)
-
-    p = subparsers.add_parser(
-        "signature_info_v2",
-        help="Reads the signature block and provides the signature block information.",
-    )
-    p.add_argument(
-        "datafile",
-        help="Secure boot v2 signed data file.",
-        type=argparse.FileType("rb"),
-    )
-
-    p = subparsers.add_parser(
-        "digest_private_key",
-        help="Generate an SHA-256 digest of the private signing key. "
-        "This can be used as a reproducible secure bootloader (only secure boot v1) "
-        "or flash encryption key.",
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="Private key file (PEM format) to generate a digest from.",
-        type=argparse.FileType("rb"),
-        required=True,
-    )
-    p.add_argument(
-        "--keylen",
-        "-l",
-        help="Length of private key digest file to generate (in bits). "
-        "3/4 Coding Scheme requires 192 bit key.",
-        choices=[192, 256],
-        default=256,
-        type=int,
-    )
-    p.add_argument(
-        "digest_file", help="File to write 32 byte digest into", type=OutFileType()
-    )
-
-    p = subparsers.add_parser(
-        "generate_flash_encryption_key",
-        help="Generate a development-use flash encryption key with random data.",
-    )
-    p.add_argument(
-        "--keylen",
-        "-l",
-        help="Length of private key digest file to generate (in bits). "
-        "3/4 Coding Scheme requires 192 bit key.",
-        choices=[128, 192, 256, 512],
-        default=256,
-        type=int,
-    )
-    p.add_argument(
-        "key_file",
-        help="File to write 16, 24, 32 or 64 byte key into",
-        type=OutFileType(),
-    )
-
-    p = subparsers.add_parser(
-        "decrypt_flash_data",
-        help="Decrypt some data read from encrypted flash (using known key)",
-    )
-    p.add_argument(
-        "encrypted_file",
-        help="File with encrypted flash contents",
-        type=argparse.FileType("rb"),
-    )
-    p.add_argument(
-        "--aes_xts",
-        "-x",
-        help="Decrypt data using AES-XTS (not applicable for ESP32)",
-        action="store_true",
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="File with flash encryption key",
-        type=argparse.FileType("rb"),
-        required=True,
-    )
-    p.add_argument(
-        "--output",
-        "-o",
-        help="Output file for plaintext data.",
-        type=OutFileType(),
-        required=True,
-    )
-    p.add_argument(
-        "--address",
-        "-a",
-        help="Address offset in flash that file was read from.",
-        required=True,
-        type=esptool.cli_util.arg_auto_int,
-    )
-    p.add_argument(
-        "--flash_crypt_conf",
-        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) "
-        "(applicable only for ESP32).",
-        required=False,
-        default=0xF,
-        type=esptool.cli_util.arg_auto_int,
-    )
-
-    p = subparsers.add_parser(
-        "encrypt_flash_data",
-        help="Encrypt some data suitable for encrypted flash (using known key)",
-    )
-    p.add_argument(
-        "--aes_xts",
-        "-x",
-        help="Encrypt data using AES-XTS (not applicable for ESP32)",
-        action="store_true",
-    )
-    p.add_argument(
-        "--keyfile",
-        "-k",
-        help="File with flash encryption key",
-        type=argparse.FileType("rb"),
-        required=True,
-    )
-    p.add_argument(
-        "--output",
-        "-o",
-        help="Output file for encrypted data.",
-        type=OutFileType(),
-        required=True,
-    )
-    p.add_argument(
-        "--address",
-        "-a",
-        help="Address offset in flash where file will be flashed.",
-        required=True,
-        type=esptool.cli_util.arg_auto_int,
-    )
-    p.add_argument(
-        "--flash_crypt_conf",
-        help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) "
-        "(applicable only for ESP32)",
-        required=False,
-        default=0xF,
-        type=esptool.cli_util.arg_auto_int,
-    )
-    p.add_argument(
-        "plaintext_file",
-        help="File with plaintext content for encrypting",
-        type=argparse.FileType("rb"),
-    )
-
-    # Enable argcomplete only on Unix-like systems
-    if sys.platform != "win32":
-        try:
-            import argcomplete
-
-            argcomplete.autocomplete(parser)
-        except ImportError:
-            pass
-
-    args = parser.parse_args(custom_commandline)
-    print("espsecure.py v%s" % esptool.__version__)
-    if args.operation is None:
-        parser.print_help()
-        parser.exit(1)
-
-    try:
-        # each 'operation' is a module-level function of the same name
-        operation_func = globals()[args.operation]
-        operation_func(args)
-    finally:
-        for arg_name in vars(args):
-            obj = getattr(args, arg_name)
-            if isinstance(obj, (OutFileType, IOBase)):
-                obj.close()
-            elif isinstance(obj, list):
-                for f in [o for o in obj if isinstance(o, IOBase)]:
-                    f.close()
+    cli(args=argv)
 
 
 def _main():
