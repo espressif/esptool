@@ -180,7 +180,7 @@ def add_spi_connection_arg(function):
     function = click.option(
         "--spi-connection",
         "-sc",
-        help="Override default SPI Flash connection. "
+        help="Override default SPI flash memory connection. "
         "Value can be SPI, HSPI or a comma-separated list of 5 I/O numbers "
         "to use for SPI flash (CLK,Q,D,HD,CS). Not supported with ESP8266.",
         type=SpiConnectionType(),
@@ -206,7 +206,7 @@ def add_spi_flash_options(
             function = click.option(
                 "--flash-freq",
                 "-ff",
-                help="SPI Flash frequency",
+                help="SPI flash memory frequency.",
                 type=click.Choice(
                     extra_keep_args
                     + [
@@ -228,7 +228,7 @@ def add_spi_flash_options(
             function = click.option(
                 "--flash-mode",
                 "-fm",
-                help="SPI Flash mode",
+                help="SPI flash memory mode.",
                 type=click.Choice(extra_keep_args + ["qio", "qout", "dio", "dout"]),
                 default=os.environ.get("ESPTOOL_FM", "keep" if allow_keep else "qio"),
             )(function)
@@ -236,8 +236,8 @@ def add_spi_flash_options(
         function = click.option(
             "--flash-size",
             "-fs",
-            help="SPI Flash size in MegaBytes. "
-            "ESP8266-only sizes: 256KB, 512KB, 2MB-c1, 4MB-c1",
+            help="SPI flash memory size. "
+            "ESP8266-only sizes: 256KB, 512KB, 2MB-c1, 4MB-c1.",
             type=click.Choice(
                 flash_sizes
                 + [
@@ -263,12 +263,13 @@ def add_spi_flash_options(
 
 
 def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
-    if esp.IS_STUB:  # Check if we are writing/reading past 16MB boundary
-        if esp.CHIP_NAME != "ESP32-S3" and address + size > 0x1000000:
-            log.note(
-                "Flasher stub doesn't fully support flash size larger "
-                "than 16MB, in case of failure use --no-stub."
-            )
+    # Check if we are writing/erasing/reading past 16MB boundary
+    if not (esp.IS_STUB and esp.CHIP_NAME == "ESP32-S3") and address + size > 0x1000000:
+        raise FatalError(
+            f"Can't access flash regions larger than 16MB "
+            f"(set size {size:#x} from address {address:#010x} goes past 16MB "
+            f"by {address + size - 0x1000000:#x} bytes)."
+        )
 
 
 ############################### GLOBAL OPTIONS AND MAIN ###############################
@@ -278,28 +279,28 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     cls=Group,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
-    help=f"esptool.py v{__version__} - Espressif SoCs flashing, debugging, "
-    "and provisioning utility",
+    help=f"esptool.py v{__version__} - serial utility for flashing, provisioning, "
+    "and interacting with Espressif SoCs.",
 )
 @click.option(
     "--chip",
     "-c",
     type=ChipType(["auto"] + CHIP_LIST),
     default=os.environ.get("ESPTOOL_CHIP", "auto"),
-    help="Target chip type",
+    help="Target chip type.",
 )
 @click.option(
     "--port",
     "-p",
     default=os.environ.get("ESPTOOL_PORT", None),
-    help="Serial port device",
+    help="Serial port device.",
 )
 @click.option(
     "--baud",
     "-b",
     type=AnyIntType(),
     default=os.environ.get("ESPTOOL_BAUD", ESPLoader.ESP_ROM_BAUD),
-    help="Serial port baud rate used when flashing/reading",
+    help="Serial port baud rate used when flashing/reading.",
 )
 @click.option(
     "--port-filter",
@@ -307,13 +308,13 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     type=str,
     cls=OptionEatAll,
     help="Serial port device filter, can be vid=NUMBER, pid=NUMBER, name=SUBSTRING, "
-    "serial=SUBSTRING",
+    "serial=SUBSTRING.",
 )
 @click.option(
     "--before",
     type=click.Choice(["default_reset", "usb_reset", "no_reset", "no_reset_no_sync"]),
     default=os.environ.get("ESPTOOL_BEFORE", "default_reset"),
-    help="What to do before connecting to the chip",
+    help="Which reset to perform before connecting to the chip.",
 )
 @click.option(
     "--after",
@@ -322,7 +323,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
         ["hard_reset", "soft_reset", "no_reset", "no_reset_stub", "watchdog_reset"]
     ),
     default=os.environ.get("ESPTOOL_AFTER", "hard_reset"),
-    help="What to do after esptool.py is finished",
+    help="Which reset to perform after operation is finished.",
 )
 @click.option(
     "--no-stub",
@@ -348,7 +349,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
 @click.option(
     "--override-vddsdio",
     type=click.Choice(ESP32ROM.OVERRIDE_VDDSDIO_CHOICES),
-    help="Override ESP32 VDDSDIO internal voltage regulator (use with care)",
+    help="Override ESP32 VDDSDIO internal voltage regulator (use with care).",
 )
 @click.option(
     "--connect-attempts",
@@ -393,7 +394,7 @@ def prepare_esp_object(ctx):
     if ctx.obj["port"] is None:
         filters = parse_port_filters(ctx.obj["port_filter"])
         ser_list = get_port_list(*filters)
-        log.print(f"Found {len(ser_list)} serial ports")
+        log.print(f"Found {len(ser_list)} serial ports...")
     else:
         ser_list = [ctx.obj["port"]]
     open_port_attempts = os.environ.get(
@@ -402,7 +403,7 @@ def prepare_esp_object(ctx):
     try:
         open_port_attempts = int(open_port_attempts)
     except ValueError:
-        raise SystemExit("Invalid value for ESPTOOL_OPEN_PORT_ATTEMPTS")
+        raise SystemExit("Invalid value for ESPTOOL_OPEN_PORT_ATTEMPTS.")
 
     esp = ctx.obj.get("esp", None)
     ctx.obj["external_esp"] = esp is not None
@@ -444,7 +445,7 @@ def prepare_esp_object(ctx):
     ########################
 
     if esp.secure_download_mode:
-        log.print(f"Chip is {esp.CHIP_NAME} in Secure Download Mode")
+        log.print(f"{'Chip type:':<20}{esp.CHIP_NAME} in Secure Download Mode")
     else:
         log.print(f"{'Chip type:':<20}{esp.get_chip_description()}")
         log.print(f"{'Features:':<20}{', '.join(esp.get_chip_features())}")
@@ -453,15 +454,28 @@ def prepare_esp_object(ctx):
         if usb_mode is not None:
             log.print(f"{'USB mode:':<20}{usb_mode}")
         read_mac(esp)
-        log.print()
+    log.print()
 
-    # 3) Upload the stub flasher
+    # 3) Perform sanity checks
+    ##########################
+
+    if esp.secure_download_mode and ctx.obj["invoked_subcommand"] not in (
+        "get-security-info",
+        "write-flash",
+        "erase-region",
+    ):
+        raise FatalError(
+            f"The '{ctx.obj['invoked_subcommand']}' command is not available "
+            "in Secure Download Mode."
+        )
+
+    # 4) Upload the stub flasher
     ############################
 
     if not ctx.obj["no_stub"]:
         esp = run_stub(esp)
 
-    # 4) Configure the baud rate and voltage regulator
+    # 5) Configure the baud rate and voltage regulator
     ##################################################
 
     if ctx.obj["override_vddsdio"]:
@@ -473,17 +487,18 @@ def prepare_esp_object(ctx):
         except NotImplementedInROMError:
             log.warning(
                 f"ROM doesn't support changing baud rate. "
-                f"Keeping initial baud rate {initial_baud}"
+                f"Keeping initial baud rate {initial_baud}."
             )
 
-    # 5) Prepare to run the operation
+    # 6) Prepare to run the operation
     #################################
     # Running operation is done inside each command function, as they have different
     # arguments and behaviour
     # Prepare object for operation (commands)
     ctx.obj["esp"] = esp
+    log.print()
 
-    # 6) Attach the onboard/external flash chip and perform command
+    # 7) Attach the onboard/external flash chip and perform command
     ###############################################################
     # This will follow in command-specific functions or argument processing decorators
     # After the command is done (either successfully or with an error), the following
@@ -492,12 +507,12 @@ def prepare_esp_object(ctx):
     @ctx.call_on_close
     def teardown():
         """Common teardown for all commands with chip - reset chip and close port"""
-        # 7) Close all open files
+        # 8) Close all open files
         #########################
         for f in getattr(ctx, "_open_files", []):
             f.close()
 
-        # 8) Reset the chip
+        # 9) Reset the chip
         ###################
         log.print()
         # Handle post-operation behaviour (reset or other)
@@ -507,7 +522,7 @@ def prepare_esp_object(ctx):
         else:
             reset_chip(esp, ctx.obj["after"])
 
-        # 9) Finish and close the port
+        # 10) Finish and close the port
         ##############################
 
         if not ctx.obj["external_esp"]:
@@ -521,7 +536,7 @@ def prepare_esp_object(ctx):
 @click.argument("filename", type=AutoHex2BinType())
 @click.pass_context
 def load_ram_cli(ctx, filename):
-    """Download an image to RAM and execute"""
+    """Download an image to RAM and execute."""
     prepare_esp_object(ctx)
     load_ram(ctx.obj["esp"], filename)
 
@@ -532,7 +547,7 @@ def load_ram_cli(ctx, filename):
 @click.argument("output", type=click.Path())
 @click.pass_context
 def dump_mem_cli(ctx, address, size, output):
-    """Dump arbitrary memory to disk"""
+    """Dump arbitrary memory to a file."""
     prepare_esp_object(ctx)
     dump_mem(ctx.obj["esp"], address, size, output)
 
@@ -541,7 +556,7 @@ def dump_mem_cli(ctx, address, size, output):
 @click.argument("address", type=AnyIntType())
 @click.pass_context
 def read_mem_cli(ctx, address):
-    """Read arbitrary memory location"""
+    """Read arbitrary memory location."""
     prepare_esp_object(ctx)
     read_mem(ctx.obj["esp"], address)
 
@@ -552,7 +567,7 @@ def read_mem_cli(ctx, address):
 @click.argument("mask", type=AnyIntType(), default=0xFFFFFFFF)
 @click.pass_context
 def write_mem_cli(ctx, address, value, mask):
-    """Read-modify-write to arbitrary memory location"""
+    """Modify or write to arbitrary memory location."""
     prepare_esp_object(ctx)
     write_mem(ctx.obj["esp"], address, value, mask)
 
@@ -563,25 +578,25 @@ def write_mem_cli(ctx, address, value, mask):
     "--erase-all",
     "-e",
     is_flag=True,
-    help="Erase all regions of flash (not just write areas) before programming",
+    help="Erase all regions of flash (not just write areas) before programming.",
 )
-@click.option("--no-progress", "-p", is_flag=True, help="Suppress progress output")
+@click.option("--no-progress", "-p", is_flag=True, help="Suppress progress output.")
 @click.option(
     "--encrypt",
     is_flag=True,
-    help="Apply flash encryption when writing data (required correct efuse settings)",
+    help="Apply flash encryption when writing data (required correct eFuse settings).",
 )
 @click.option(
     "--encrypt-files",
     type=AddrFilenamePairType(),
     cls=OptionEatAll,
-    help="Files to be encrypted on the flash. The address is followed by binary "
+    help="Files to be encrypted during flashing. The address is followed by binary "
     "filename, separated by space.",
 )
 @click.option(
     "--ignore-flash-enc-efuse",
     is_flag=True,
-    help="Ignore flash encryption eFuse settings",
+    help="Ignore flash encryption eFuse settings.",
 )
 @click.option(
     "--force",
@@ -592,7 +607,7 @@ def write_mem_cli(ctx, address, value, mask):
     "--compress",
     "-z",
     is_flag=True,
-    help="Compress data in transfer (default unless --no-stub is specified)",
+    help="Compress data during transfer (default unless --no-stub is specified).",
     exclusive_with=["no-compress"],
     cls=MutuallyExclusiveOption,
 )
@@ -628,7 +643,7 @@ def write_flash_cli(ctx, addr_filename, **kwargs):
 @cli.command("run")
 @click.pass_context
 def run_cli(ctx):
-    """Run application code in flash"""
+    """Run application code loaded in flash."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"])
     run(ctx.obj["esp"])
@@ -638,7 +653,7 @@ def run_cli(ctx):
 @click.argument("filename", type=AutoHex2BinType())
 @click.pass_context
 def image_info_cli(ctx, filename):
-    """Dump headers from a binary file (bootloader or application)"""
+    """Print information about a firmware image (bootloader or application)."""
     image_info(filename, chip=None if ctx.obj["chip"] == "auto" else ctx.obj["chip"])
 
 
@@ -648,14 +663,14 @@ def image_info_cli(ctx, filename):
     "--output",
     "-o",
     type=str,
-    help="Output filename or filename prefix (for ESP8266 V1 image)",
+    help="Output filename or filename prefix (for ESP8266 v1 image).",
 )
 @click.option(
     "--version",
     "-e",
     type=click.Choice(["1", "2", "3"]),
     default="1",
-    help="Output image version",
+    help="Output image version.",
 )
 @click.option(
     # Kept for compatibility
@@ -670,13 +685,13 @@ def image_info_cli(ctx, filename):
     "--min-rev-full",
     type=click.IntRange(0, 65536),
     default=0,
-    help="Minimal chip revision (in format: major * 100 + minor)",
+    help="Minimal chip revision (in format: major * 100 + minor).",
 )
 @click.option(
     "--max-rev-full",
     type=click.IntRange(0, 65536),
     default=65535,
-    help="Maximal chip revision (in format: major * 100 + minor)",
+    help="Maximal chip revision (in format: major * 100 + minor).",
 )
 @click.option(
     "--secure-pad",
@@ -719,17 +734,17 @@ def image_info_cli(ctx, filename):
     "--pad-to-size",
     type=int,
     default=None,
-    help="The block size with which the final binary image after padding must be "
-    "aligned to. Value 0xFF is used for padding",
+    help="The block size to pad the final binary image to. "
+    "Value 0xFF is used for padding.",
 )
 @click.option(
     "--ram-only-header",
     is_flag=True,
-    help="Order segments of the output so IRAM and DRAM are placed at the beginning "
+    help="Order segments so IRAM and DRAM are placed at the beginning "
     "and force the main header segment number to RAM segments quantity. This will "
-    "make the other segments invisible to the ROM loader. Use this argument with "
-    "care because the ROM loader will load only the RAM segments although the other "
-    "segments being present in the output. Implies --dont-append-digest",
+    "make the other segments invisible to the ROM loader. Use with "
+    "care, the ROM loader will only load the RAM segments although the other "
+    "segments being present in the output. Implies --dont-append-digest.",
 )
 @add_spi_flash_options(allow_keep=False, auto_detect=False)
 @click.pass_context
@@ -737,7 +752,7 @@ def elf2image_cli(ctx, filename, **kwargs):
     """Create an application image from ELF file"""
     if ctx.obj["chip"] == "auto":
         raise FatalError(
-            f"Specify the --chip argument (choose from {', '.join(CHIP_LIST)})"
+            f"Specify the --chip argument (choose from {', '.join(CHIP_LIST)})."
         )
     append_digest = not kwargs.pop("dont_append_digest", False)
     output = kwargs.pop("output", None)
@@ -748,7 +763,7 @@ def elf2image_cli(ctx, filename, **kwargs):
 @cli.command("read-mac")
 @click.pass_context
 def read_mac_cli(ctx):
-    """Read MAC address from OTP ROM"""
+    """Print the device MAC address."""
     prepare_esp_object(ctx)
     read_mac(ctx.obj["esp"])
 
@@ -756,7 +771,7 @@ def read_mac_cli(ctx):
 @cli.command("chip-id")
 @click.pass_context
 def chip_id_cli(ctx):
-    """Read Chip ID from OTP ROM"""
+    """Print the device chip ID."""
     prepare_esp_object(ctx)
     chip_id(ctx.obj["esp"])
 
@@ -765,7 +780,7 @@ def chip_id_cli(ctx):
 @add_spi_connection_arg
 @click.pass_context
 def flash_id_cli(ctx, **kwargs):
-    """Read SPI flash manufacturer and device ID"""
+    """Print the SPI flash memory manufacturer and device ID."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
     flash_id(ctx.obj["esp"])
@@ -774,51 +789,51 @@ def flash_id_cli(ctx, **kwargs):
 @cli.command("read-flash-status")
 @click.option(
     "--bytes",
-    type=click.Choice([1, 2, 3]),
-    default=2,
-    help="Number of status bytes to read (1-3)",
+    type=click.Choice(["1", "2", "3"]),
+    default="2",
+    help="Number of status bytes to read (1-3).",
 )
 @add_spi_connection_arg
 @click.pass_context
 def read_flash_status_cli(ctx, bytes, **kwargs):
-    """Read SPI flash status register"""
+    """Read SPI flash memory status register."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
-    read_flash_status(ctx.obj["esp"], bytes)
+    read_flash_status(ctx.obj["esp"], int(bytes))
 
 
 @cli.command("write-flash-status")
 @click.option(
     "--non-volatile",
     is_flag=True,
-    help="Write non-volatile bits (use with caution)",
+    help="Write non-volatile bits (use with caution).",
 )
 @click.option(
     "--bytes",
-    type=click.Choice([1, 2, 3]),
-    default=2,
-    help="Number of status bytes to write (1-3)",
+    type=click.Choice(["1", "2", "3"]),
+    default="2",
+    help="Number of status bytes to write (1-3).",
 )
 @click.argument("value", type=AnyIntType())
 @add_spi_connection_arg
 @click.pass_context
-def write_flash_status_cli(ctx, value, **kwargs):
-    """Write SPI flash status register"""
+def write_flash_status_cli(ctx, value, bytes, **kwargs):
+    """Write SPI flash memory status register."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
-    write_flash_status(ctx.obj["esp"], value, **kwargs)
+    write_flash_status(ctx.obj["esp"], value, int(bytes), **kwargs)
 
 
 @cli.command("read-flash")
 @click.argument("address", type=AnyIntType())
 @click.argument("size", type=AutoSizeType())
 @click.argument("output", type=click.Path())
-@click.option("--no-progress", "-p", is_flag=True, help="Suppress progress output")
+@click.option("--no-progress", "-p", is_flag=True, help="Suppress progress output.")
 @add_spi_flash_options(allow_keep=True, auto_detect=True, size_only=True)
 @add_spi_connection_arg
 @click.pass_context
 def read_flash_cli(ctx, address, size, output, **kwargs):
-    """Read SPI flash content"""
+    """Read SPI flash memory content."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
     size = parse_size_arg(ctx.obj["esp"], size)
@@ -828,12 +843,12 @@ def read_flash_cli(ctx, address, size, output, **kwargs):
 
 @cli.command("verify-flash")
 @click.argument("addr-filename", nargs=-1, required=True, cls=AddrFilenameArg)
-@click.option("--diff", "-d", is_flag=True, help="Show differences")
+@click.option("--diff", "-d", is_flag=True, help="Show differences.")
 @add_spi_flash_options(allow_keep=True, auto_detect=True)
 @add_spi_connection_arg
 @click.pass_context
 def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
-    """Verify a binary blob against flash"""
+    """Verify a binary blob against the flash memory content."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
     verify_flash(ctx.obj["esp"], addr_filename, diff=diff, **kwargs)
@@ -848,7 +863,7 @@ def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
 @add_spi_connection_arg
 @click.pass_context
 def erase_flash_cli(ctx, force, **kwargs):
-    """Perform Chip Erase on SPI flash"""
+    """Erase the SPI flash memory."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
     erase_flash(ctx.obj["esp"], force)
@@ -870,7 +885,7 @@ def erase_flash_cli(ctx, force, **kwargs):
 @add_spi_connection_arg
 @click.pass_context
 def erase_region_cli(ctx, address, size, force, **kwargs):
-    """Erase a region of the flash"""
+    """Erase a region of the SPI flash memory."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
     size = parse_size_arg(ctx.obj["esp"], size)
@@ -885,7 +900,7 @@ def erase_region_cli(ctx, address, size, force, **kwargs):
 @add_spi_connection_arg
 @click.pass_context
 def read_flash_sfdp_cli(ctx, address, bytes, **kwargs):
-    """Read SPI flash SFDP (Serial Flash Discoverable Parameters)"""
+    """Read SPI flash SFDP (Serial Flash Discoverable Parameters)."""
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
     read_flash_sfdp(ctx.obj["esp"], address, bytes)
@@ -893,13 +908,13 @@ def read_flash_sfdp_cli(ctx, address, bytes, **kwargs):
 
 @cli.command("merge-bin")
 @click.argument("addr-filename", nargs=-1, required=True, cls=AddrFilenameArg)
-@click.option("--output", "-o", type=str, required=True, help="Output filename")
+@click.option("--output", "-o", type=str, required=True, help="Output filename.")
 @click.option(
     "--format",
     "-f",
     type=click.Choice(["raw", "uf2", "hex"]),
     default="raw",
-    help="Format of the output file",
+    help="Format of the output file.",
 )
 @click.option(  # UF2 only
     "--chunk-size",
@@ -910,14 +925,14 @@ def read_flash_sfdp_cli(ctx, address, bytes, **kwargs):
 @click.option(  # UF2 only
     "--md5-disable",
     is_flag=True,
-    help="Disable MD5 checksum in UF2 output",
+    help="Disable MD5 checksum in UF2 output.",
 )
 @click.option(  # RAW only
     "--target-offset",
     "-t",
     type=AnyIntType(),
     default=0,
-    help="Target offset where the output file will be flashed",
+    help="Target offset where the output file will be flashed.",
 )
 @click.option(  # RAW only
     "--pad-to-size",
@@ -930,10 +945,10 @@ def read_flash_sfdp_cli(ctx, address, bytes, **kwargs):
 @add_spi_flash_options(allow_keep=True, auto_detect=False)
 @click.pass_context
 def merge_bin_cli(ctx, addr_filename, **kwargs):
-    """Merge multiple raw binary files into a single file for later flashing"""
+    """Merge multiple raw binary files into a single flashable file."""
     if ctx.obj["chip"] == "auto":
         raise FatalError(
-            f"Specify the --chip argument (choose from {', '.join(CHIP_LIST)})"
+            f"Specify the --chip argument (choose from {', '.join(CHIP_LIST)})."
         )
     merge_bin(addr_filename, chip=ctx.obj["chip"], **kwargs)
 
@@ -941,14 +956,14 @@ def merge_bin_cli(ctx, addr_filename, **kwargs):
 @cli.command("get-security-info")
 @click.pass_context
 def get_security_info_cli(ctx):
-    """Get some security-related data"""
+    """Print security information report."""
     prepare_esp_object(ctx)
     get_security_info(ctx.obj["esp"])
 
 
 @cli.command("version")
 def version_cli():
-    """Print esptool version"""
+    """Print esptool version."""
     version()
 
 
@@ -978,7 +993,7 @@ def get_port_list(
         raise FatalError(
             "Listing all serial ports is currently not available. "
             "Please try to specify the port when running esptool.py or update "
-            "the pyserial package to the latest version"
+            "the pyserial package to the latest version."
         )
     ports = []
     for port in list_ports.comports():
@@ -1036,7 +1051,7 @@ def connect_loop(
 ):
     chip_class = CHIP_DEFS[chip]
     esp = None
-    log.print(f"Serial port {port}")
+    log.print(f"Serial port {port}:")
 
     first = True
     ten_cycle = cycle(chain(repeat(False, 9), (True,)))
@@ -1084,7 +1099,7 @@ def get_default_connected_device(
 ):
     _esp = None
     for each_port in reversed(serial_list):
-        log.print(f"Serial port {each_port}")
+        log.print(f"Serial port {each_port}:")
         try:
             if chip == "auto":
                 _esp = detect_chip(

@@ -37,7 +37,7 @@ class AnyIntType(click.ParamType):
         try:
             return arg_auto_int(value)
         except ValueError:
-            raise click.BadParameter(f"{value!r} is not a valid integer")
+            raise click.BadParameter(f"{value!r} is not a valid integer.")
 
 
 class AutoSizeType(AnyIntType):
@@ -61,7 +61,7 @@ class AutoChunkSizeType(AnyIntType):
     ) -> int:
         num = super().convert(value, param, ctx)
         if num & 3 != 0:
-            raise click.BadParameter("Chunk size should be a 4-byte aligned number")
+            raise click.BadParameter("Chunk size should be a 4-byte aligned number.")
         return num
 
 
@@ -90,7 +90,7 @@ class SpiConnectionType(click.ParamType):
             except ValueError:
                 raise click.BadParameter(
                     f"{values} is not a valid argument. "
-                    "All pins must be numeric values",
+                    "All pins must be numeric values.",
                 )
         else:
             raise click.BadParameter(
@@ -133,7 +133,7 @@ class AddrFilenamePairType(click.Path):
     ):
         if len(value) % 2 != 0:
             raise click.BadParameter(
-                "Must be pairs of an address and the binary filename to write there",
+                "Must be pairs of an address and the binary filename to write there.",
             )
         if len(value) == 0:
             return value
@@ -143,7 +143,7 @@ class AddrFilenamePairType(click.Path):
             try:
                 address = arg_auto_int(value[i])
             except ValueError:
-                raise click.BadParameter(f'Address "{value[i]}" must be a number')
+                raise click.BadParameter(f'Address "{value[i]}" must be a number.')
             try:
                 # Store file handle in context for later cleanup
                 if not hasattr(ctx, "_open_files"):
@@ -170,7 +170,7 @@ class AddrFilenamePairType(click.Path):
             if sector_start < end:
                 raise click.BadParameter(
                     f"Detected overlap at address: "
-                    f"{address:#x} for file: {argfile.name}",
+                    f"{address:#x} for file: {argfile.name}.",
                 )
             end = sector_end
         return pairs
@@ -355,7 +355,7 @@ def parse_port_filters(
     for f in value:
         kvp = f.split("=")
         if len(kvp) != 2:
-            FatalError("Option --port-filter argument must consist of key=value")
+            FatalError("Option --port-filter argument must consist of key=value.")
         if kvp[0] == "vid":
             filterVids.append(arg_auto_int(kvp[1]))
         elif kvp[0] == "pid":
@@ -365,7 +365,7 @@ def parse_port_filters(
         elif kvp[0] == "serial":
             filterSerials.append(kvp[1])
         else:
-            raise FatalError("Option --port-filter argument key not recognized")
+            raise FatalError("Option --port-filter argument key not recognized.")
     return filterVids, filterPids, filterNames, filterSerials
 
 

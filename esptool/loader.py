@@ -189,7 +189,9 @@ class StubFlasher:
 
                 return json_path
         else:
-            raise FileNotFoundError(f"Stub flasher JSON file for {chip_name} not found")
+            raise FileNotFoundError(
+                f"Stub flasher JSON file for {chip_name} not found."
+            )
 
     @classmethod
     def set_preferred_stub_subdir(cls, subdir):
@@ -425,8 +427,7 @@ class ESPLoader(object):
             self._port.baudrate = baud
         except IOError:
             raise FatalError(
-                "Failed to set baud rate %d. The driver may not support this rate."
-                % baud
+                f"Failed to set baud rate {baud}. The driver may not support this rate."
             )
 
     def read(self):
@@ -515,7 +516,7 @@ class ESPLoader(object):
             if new_timeout != saved_timeout:
                 self._port.timeout = saved_timeout
 
-        raise FatalError("Response doesn't match request")
+        raise FatalError("Response doesn't match request.")
 
     def check_command(
         self, op_description, op=None, data=b"", chk=0, timeout=DEFAULT_TIMEOUT
@@ -533,13 +534,13 @@ class ESPLoader(object):
         # the status bytes are the last 2/4 bytes in the data (depending on chip)
         if len(data) < self.STATUS_BYTES_LENGTH:
             raise FatalError(
-                "Failed to %s. Only got %d byte status response."
-                % (op_description, len(data))
+                f"Failed to {op_description}. "
+                f"Only got {len(data)} byte status response."
             )
         status_bytes = data[-self.STATUS_BYTES_LENGTH :]
         # only care if the first one is non-zero. If it is, the second byte is a reason.
         if byte(status_bytes, 0) != 0:
-            raise FatalError.WithResult("Failed to %s" % op_description, status_bytes)
+            raise FatalError.WithResult(f"Failed to {op_description}", status_bytes)
 
         # if we had more data than just the status bytes, return it as the result
         # (this is used by the md5sum command, maybe other commands?)
@@ -814,7 +815,7 @@ class ESPLoader(object):
                     chip_arg_wrong = True
                     detected = "ESP32 or ESP32-S2"
                 else:
-                    log.warning(
+                    log.note(
                         f"Can't verify this chip is {self.CHIP_NAME} "
                         "because of active Secure Download Mode. "
                         "Please check it manually."
@@ -1363,13 +1364,13 @@ class ESPLoader(object):
             if data_len < length and len(p) < self.FLASH_SECTOR_SIZE:
                 raise FatalError(
                     f"Corrupt data, expected {self.FLASH_SECTOR_SIZE:#x} "
-                    f"bytes but received {len(p):#x} bytes"
+                    f"bytes but received {len(p):#x} bytes."
                 )
             self.write(struct.pack("<I", data_len))
             if progress_fn and (data_len % 1024 == 0 or data_len == length):
                 progress_fn(data_len, length, offset)
         if len(data) > length:
-            raise FatalError("Read more than expected")
+            raise FatalError("Read more than expected.")
 
         digest_frame = self.read()
         if len(digest_frame) != 16:
@@ -1749,7 +1750,7 @@ def slip_reader(port, trace_function):
                 if i is not None
             ]
             cause = f" {cause[0]}" if len(cause) else ""
-            msg = f"Guru Meditation Error detected{cause}"
+            msg = f"Guru Meditation Error detected{cause}."
             raise FatalError(msg)
 
     partial_packet = None
@@ -1767,7 +1768,7 @@ def slip_reader(port, trace_function):
                 )
             else:  # fail during packet transfer
                 msg = "Packet content transfer stopped "
-                f"(received {len(partial_packet)} bytes)"
+                f"(received {len(partial_packet)} bytes)."
             trace_function(msg)
             raise FatalError(msg)
         trace_function(
@@ -1804,7 +1805,7 @@ def slip_reader(port, trace_function):
                         f"{HexFormatter(remaining_data)}"
                     )
                     detect_panic_handler(read_bytes + remaining_data)
-                    raise FatalError(f"Invalid SLIP escape (0xdb, 0x{hexify(b)})")
+                    raise FatalError(f"Invalid SLIP escape (0xdb, 0x{hexify(b)}).")
             elif b == b"\xdb":  # start of escape sequence
                 in_escape = True
             elif b == b"\xc0":  # end of packet

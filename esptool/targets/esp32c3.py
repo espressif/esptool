@@ -146,7 +146,7 @@ class ESP32C3ROM(ESP32ROM):
             1: "ESP8685 (QFN28)",
             2: "ESP32-C3 AZ (QFN32)",
             3: "ESP8686 (QFN24)",
-        }.get(self.get_pkg_version(), "unknown ESP32-C3")
+        }.get(self.get_pkg_version(), "Unknown ESP32-C3")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"

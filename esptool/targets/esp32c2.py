@@ -78,7 +78,7 @@ class ESP32C2ROM(ESP32C3ROM):
         chip_name = {
             0: "ESP32-C2",
             1: "ESP32-C2",
-        }.get(self.get_pkg_version(), "unknown ESP32-C2")
+        }.get(self.get_pkg_version(), "Unknown ESP32-C2")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"

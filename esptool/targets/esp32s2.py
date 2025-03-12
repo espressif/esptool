@@ -173,7 +173,7 @@ class ESP32S2ROM(ESP32ROM):
             100: "ESP32-S2R2",
         }.get(
             self.get_flash_cap() + self.get_psram_cap() * 100,
-            "unknown ESP32-S2",
+            "Unknown ESP32-S2",
         )
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()

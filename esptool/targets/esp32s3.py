@@ -194,7 +194,7 @@ class ESP32S3ROM(ESP32ROM):
         chip_name = {
             0: "ESP32-S3 (QFN56)",
             1: "ESP32-S3-PICO-1 (LGA56)",
-        }.get(pkg_version, "unknown ESP32-S3")
+        }.get(pkg_version, "Unknown ESP32-S3")
 
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 

@@ -100,7 +100,7 @@ class ESP32C61ROM(ESP32C6ROM):
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C61",
-        }.get(self.get_pkg_version(), "unknown ESP32-C61")
+        }.get(self.get_pkg_version(), "Unknown ESP32-C61")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"

@@ -121,7 +121,7 @@ class ESP32H4ROM(ESP32C3ROM):
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-H4 (QFN40)",
-        }.get(self.get_pkg_version(), "unknown ESP32-H4")
+        }.get(self.get_pkg_version(), "Unknown ESP32-H4")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"

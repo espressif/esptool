@@ -22,33 +22,31 @@ from test_esptool import EsptoolTestCase, arg_chip, esptool, pytest
 class TestSecureDownloadMode(EsptoolTestCase):
     expected_chip_name = esptool.util.expand_chip_name(arg_chip)
 
+    @pytest.mark.skipif(
+        arg_chip in ("esp8266", "esp32"),
+        reason="No get-security-info on ESP8266 and ESP32",
+    )
     def test_auto_detect(self):
-        output = self.run_esptool_error("flash-id", chip="auto")
+        output = self.run_esptool("get-security-info", chip="auto")
 
-        if arg_chip in ["esp32", "esp32s2"]:  # no autodetection with get-security-info
+        if arg_chip == "esp32s2":  # no autodetection from security info, only magic no.
             assert "Secure Download Mode is enabled" in output
             assert "Unsupported detection protocol" in output
         else:
             assert "Unsupported detection protocol" not in output
             assert f"Detecting chip type... {self.expected_chip_name}" in output
-            assert "Stub loader is not supported in Secure Download Mode" in output
             assert (
-                f"Chip is {self.expected_chip_name} in Secure Download Mode" in output
+                f"{'Chip type:':<20}{self.expected_chip_name} "
+                "in Secure Download Mode" in output
             )
 
     # Commands not supported in SDM
     def test_sdm_incompatible_commands(self):
         output = self.run_esptool_error("flash-id")  # flash-id
-        assert "This command (0xa) is not supported in Secure Download Mode" in output
+        assert "The 'flash-id' command is not available" in output
 
         output = self.run_esptool_error("read-flash 0 10 out.bin")  # read-flash
-        assert "This command (0xe) is not supported in Secure Download Mode" in output
-
-        output = self.run_esptool_error("erase-flash")  # erase-flash
-        assert (
-            f"{self.expected_chip_name} ROM does not support function erase_flash"
-            in output
-        )
+        assert "The 'read-flash' command is not available" in output
 
     # Commands supported in SDM
     def test_sdm_compatible_commands(self):
@@ -63,6 +61,10 @@ class TestSecureDownloadMode(EsptoolTestCase):
         assert (
             "Detecting flash size is not supported in secure download mode." in output
         )
+
+        output = self.run_esptool("erase-region 0 4096")  # erase-region
+        assert "Stub flasher is not supported in Secure Download Mode" in output
+        assert "Flash memory region erased successfully" in output
 
         if arg_chip != "esp32":  # esp32 does not support get-security-info
             output = self.run_esptool("get-security-info")

@@ -231,7 +231,7 @@ class ESP32ROM(ESPLoader):
             5: "ESP32-PICO-V3" if rev3 else "ESP32-PICO-D4",
             6: "ESP32-PICO-V3-02",
             7: "ESP32-D0WDR2-V3",
-        }.get(pkg_version, "unknown ESP32")
+        }.get(pkg_version, "Unknown ESP32")
 
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
@@ -271,7 +271,7 @@ class ESP32ROM(ESPLoader):
         word4 = self.read_efuse(4)
         adc_vref = (word4 >> 8) & 0x1F
         if adc_vref:
-            features += ["VRef calibration in efuse"]
+            features += ["Vref calibration in eFuse"]
 
         blk3_part_res = word3 >> 14 & 0x1
         if blk3_part_res:
@@ -356,7 +356,7 @@ class ESP32ROM(ESPLoader):
             strap_reg &= self.GPIO_STRAP_VDDSPI_MASK
             voltage = "1.8V" if strap_reg else "3.3V"
             source = "a strapping pin"
-        log.print(f"Flash voltage set by {source} to {voltage}")
+        log.print(f"Flash voltage set by {source}: {voltage}")
 
     def override_vddsdio(self, new_voltage):
         new_voltage = new_voltage.upper()
@@ -380,7 +380,7 @@ class ESP32ROM(ESPLoader):
                 | self.RTC_CNTL_DREFL_SDIO_M
             )  # boost voltage
         self.write_reg(self.RTC_CNTL_SDIO_CONF_REG, reg_val)
-        log.print(f"VDDSDIO regulator set to {new_voltage}")
+        log.print(f"VDDSDIO regulator set to {new_voltage}.")
 
     def read_flash_slow(self, offset, length, progress_fn):
         BLOCK_LEN = 64  # ROM read limit per command (this limit is why it's so slow)
@@ -395,7 +395,7 @@ class ESP32ROM(ESPLoader):
                     struct.pack("<II", offset + len(data), block_len),
                 )
             except FatalError:
-                log.note("Consider specifying flash size using flash size argument")
+                log.note("Consider specifying the flash size argument.")
                 raise
             if len(r) < block_len:
                 raise FatalError(

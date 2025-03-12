@@ -202,3 +202,12 @@ This change affects most of the commands and the following options: ``--flash_si
 **Migration Steps:**
 
 1. Replace all underscores in command and option names with ``-`` in your scripts and CI pipelines.
+
+Log Format Changes
+******************
+
+A significant amount of changes have been made to the log styling and formatting in ``v5``. Some of the messages, warnings, and errors are now formatted differently or reworded to provide more context and improve readability. Exhaustive list of changed messages won't be provided.
+
+**Migration Steps:**
+
+1. Make sure to adjust any of your scripts, asserts, CI workflows, or others to accommodate the new/changed format of messages. If you are parsing the log output (not recommended), consider importing esptool as a module and using the public API (see :ref:`here <scripting>`) to get the information you need.

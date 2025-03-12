@@ -1,6 +1,6 @@
 # esptool.py
 
-A Python-based, open-source, platform-independent utility to communicate with the ROM bootloader in Espressif chips.
+A Python-based, open-source, platform-independent serial utility for flashing, provisioning, and interacting with Espressif SoCs.
 
 [![Test esptool](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml) [![Build esptool](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml)
 
