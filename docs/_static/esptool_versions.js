@@ -4,7 +4,7 @@ var DOCUMENTATION_VERSIONS = {
               },
     VERSIONS: [
        { name: "latest", old: false, pre_release: false },
-       { name: "release/v4", old: false, pre_release: false },
+       { name: "release-v4", old: false, pre_release: false },
     ],
     IDF_TARGETS: [
        { text: "ESP8266", value: "esp8266" },
