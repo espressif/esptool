@@ -71,7 +71,7 @@ class ESP32H2ROM(ESP32C6ROM):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["BLE", "IEEE802.15.4"]
+        return ["BT 5 (LE)", "IEEE802.15.4", "Single Core", "96MHz"]
 
     def get_crystal_freq(self):
         # ESP32H2 XTAL is fixed to 32MHz

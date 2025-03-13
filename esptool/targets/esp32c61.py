@@ -106,7 +106,7 @@ class ESP32C61ROM(ESP32C6ROM):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["WiFi 6", "BT 5"]
+        return ["Wi-Fi 6", "BT 5 (LE)", "Single Core", "160MHz"]
 
     def read_mac(self, mac_type="BASE_MAC"):
         """Read MAC from EFUSE region"""

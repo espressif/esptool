@@ -127,7 +127,7 @@ class ESP32H4ROM(ESP32C3ROM):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["BLE", "IEEE802.15.4"]
+        return ["BT 5 (LE)", "IEEE802.15.4", "Dual Core", "96MHz"]
 
     def get_crystal_freq(self):
         # ESP32H4 XTAL is fixed to 32MHz

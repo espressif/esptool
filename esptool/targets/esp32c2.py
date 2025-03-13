@@ -83,6 +83,9 @@ class ESP32C2ROM(ESP32C3ROM):
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
+    def get_chip_features(self):
+        return ["Wi-Fi", "BT 5 (LE)", "Single Core", "120MHz"]
+
     def get_minor_chip_version(self):
         num_word = 1
         return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 16) & 0xF

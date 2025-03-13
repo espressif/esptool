@@ -222,7 +222,7 @@ class ESP32S3ROM(ESP32ROM):
         return {1: "AP_3v3", 2: "AP_1v8"}.get(vendor_id, "")
 
     def get_chip_features(self):
-        features = ["WiFi", "BLE"]
+        features = ["Wi-Fi", "BT 5 (LE)", "Dual Core + LP Core", "240MHz"]
 
         flash = {
             0: None,

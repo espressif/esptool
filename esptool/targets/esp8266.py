@@ -106,7 +106,7 @@ class ESP8266ROM(ESPLoader):
         return "ESP8266EX"
 
     def get_chip_features(self):
-        features = ["WiFi"]
+        features = ["Wi-Fi", "160MHz"]
         if "ESP8285" in self.get_chip_description():
             features += ["Embedded Flash"]
         return features

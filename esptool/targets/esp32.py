@@ -236,7 +236,7 @@ class ESP32ROM(ESPLoader):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        features = ["WiFi"]
+        features = ["Wi-Fi"]
         word3 = self.read_efuse(3)
 
         # names of variables in this section are lowercase
@@ -249,9 +249,9 @@ class ESP32ROM(ESPLoader):
 
         chip_ver_dis_app_cpu = word3 & (1 << 0)
         if chip_ver_dis_app_cpu:
-            features += ["Single Core"]
+            features += ["Single Core + LP Core"]
         else:
-            features += ["Dual Core"]
+            features += ["Dual Core + LP Core"]
 
         chip_cpu_freq_rated = word3 & (1 << 13)
         if chip_cpu_freq_rated:

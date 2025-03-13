@@ -148,7 +148,7 @@ class ESP32P4ROM(ESP32ROM):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["High-Performance MCU"]
+        return ["Dual Core + LP Core", "400MHz"]
 
     def get_crystal_freq(self):
         # ESP32P4 XTAL is fixed to 40MHz

@@ -152,7 +152,7 @@ class ESP32C3ROM(ESP32ROM):
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        features = ["WiFi", "BLE"]
+        features = ["Wi-Fi", "BT 5 (LE)", "Single Core", "160MHz"]
 
         flash = {
             0: None,
