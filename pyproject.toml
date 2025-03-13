@@ -28,7 +28,7 @@
         "Programming Language :: Python :: 3.13",
     ]
     requires-python = ">=3.10"
-    dynamic = ["version", "scripts"]
+    dynamic = ["version"]
 
     dependencies = [
         "bitstring>=3.1.6,!=4.2.0",
@@ -40,6 +40,12 @@
         "intelhex",
         "rich_click",
     ]
+
+[project.scripts]
+    esptool = "esptool.__init__:_main"
+    espsecure = "espsecure.__init__:_main"
+    espefuse = "espefuse.__init__:_main"
+    esp_rfc2217_server = "esp_rfc2217_server.__init__:main"
 
 [project.urls]
     Homepage = "https://github.com/espressif/esptool/"
