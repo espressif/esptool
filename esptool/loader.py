@@ -509,7 +509,8 @@ class ESPLoader(object):
                 if byte(data, 0) != 0 and byte(data, 1) == self.ROM_INVALID_RECV_MSG:
                     # Unsupported read_reg can result in
                     # more than one error response for some reason
-                    self.flush_input()
+                    time.sleep(0.2)  # Wait for input buffer to fill
+                    self.flush_input()  # Flush input buffer of hanging response
                     raise UnsupportedCommandError(self, op)
 
         finally:

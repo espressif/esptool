@@ -34,8 +34,7 @@ The order of registers in the dump:
 
         > espefuse.py  dump
 
-        Detecting chip type... Unsupported detection protocol, switching and trying again...
-        Connecting....
+        Connecting.........
         Detecting chip type... ESP32
         BLOCK0          (                ) [0 ] read_regs: 00000000 7e5a6e58 00e294b9 0000a200 00000333 00100000 00000004
         BLOCK1          (flash_encryption) [1 ] read_regs: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000

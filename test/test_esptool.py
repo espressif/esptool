@@ -1379,8 +1379,6 @@ class TestBootloaderHeaderRewriteCases(EsptoolTestCase):
 class TestAutoDetect(EsptoolTestCase):
     def _check_output(self, output):
         expected_chip_name = esptool.util.expand_chip_name(arg_chip)
-        if arg_chip not in ["esp8266", "esp32", "esp32s2"]:
-            assert "Unsupported detection protocol" not in output
         assert f"Detecting chip type... {expected_chip_name}" in output
         assert f"{'Chip type:':<20}{expected_chip_name}" in output
 

@@ -31,9 +31,8 @@ class TestSecureDownloadMode(EsptoolTestCase):
 
         if arg_chip == "esp32s2":  # no autodetection from security info, only magic no.
             assert "Secure Download Mode is enabled" in output
-            assert "Unsupported detection protocol" in output
+            assert "autodetection will not work" in output
         else:
-            assert "Unsupported detection protocol" not in output
             assert f"Detecting chip type... {self.expected_chip_name}" in output
             assert (
                 f"{'Chip type:':<20}{self.expected_chip_name} "

@@ -128,7 +128,7 @@ def detect_chip(
     This way we use one memory read and compare it to the magic number for each chip.
     """
     try:
-        log.print("Detecting chip type...", end="")
+        log.print("Detecting chip type...", end="", flush=True)
         chip_id = detect_port.get_chip_id()
         for cls in ROM_LIST:
             # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip-id
@@ -147,39 +147,41 @@ def detect_chip(
                 break
         else:
             err_msg = f"Unexpected chip ID value {chip_id}."
-    except (UnsupportedCommandError, struct.error, FatalError) as e:
+    except (UnsupportedCommandError, struct.error, FatalError):
         # UnsupportedCommandError: ESP8266/ESP32 ROM
         # struct.error: ESP32-S2
         # FatalError: ESP8266/ESP32 STUB
-        log.print(" Unsupported detection protocol, switching and trying again...")
         try:
-            # ESP32/ESP8266 are reset after an unsupported command, need to reconnect
-            # (not needed on ESP32-S2)
-            if not isinstance(e, struct.error):
-                detect_port.connect(
-                    connect_mode, connect_attempts, detecting=True, warnings=False
-                )
-            log.print("Detecting chip type...", end="", flush=True)
             chip_magic_value = detect_port.read_reg(
                 ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
             )
-
-            for cls in ROM_LIST:
-                if not cls.USES_MAGIC_VALUE:
-                    continue
-                if chip_magic_value == cls.MAGIC_VALUE:
-                    inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
-                    inst = check_if_stub(inst)
-                    inst._post_connect()
-                    break
-            else:
-                err_msg = f"Unexpected chip magic value {chip_magic_value:#010x}."
         except UnsupportedCommandError:
             raise FatalError(
                 "Unsupported Command Error received. "
                 "Probably this means Secure Download Mode is enabled, "
                 "autodetection will not work. Need to manually specify the chip."
             )
+        except FatalError:
+            log.print(" Autodetection failed, trying again...")
+            detect_port.connect(
+                connect_mode, connect_attempts, detecting=True, warnings=False
+            )
+            log.print("Detecting chip type...", end="", flush=True)
+            chip_magic_value = detect_port.read_reg(
+                ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
+            )
+
+        for cls in ROM_LIST:
+            if not cls.USES_MAGIC_VALUE:
+                continue
+            if chip_magic_value == cls.MAGIC_VALUE:
+                inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
+                inst = check_if_stub(inst)
+                inst._post_connect()
+                break
+        else:
+            err_msg = f"Unexpected chip magic value {chip_magic_value:#010x}."
+
     if inst is not None:
         return inst
 
