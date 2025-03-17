@@ -179,17 +179,16 @@ class AddrFilenamePairType(click.Path):
 ########################### Custom option/argument ############################
 
 
-DEPRECATED_OPTIONS = {
-    "--flash_size": "--flash-size",
-    "--flash_freq": "--flash-freq",
-    "--flash_mode": "--flash-mode",
-    "--use_segments": "--use-segments",
-    "--ignore_flash_encryption_efuse_setting": "--ignore-flash-enc-efuse",
-    "--fill-flash-size": "--pad-to-size",
-}
-
-
 class Group(click.RichGroup):
+    DEPRECATED_OPTIONS = {
+        "--flash_size": "--flash-size",
+        "--flash_freq": "--flash-freq",
+        "--flash_mode": "--flash-mode",
+        "--use_segments": "--use-segments",
+        "--ignore_flash_encryption_efuse_setting": "--ignore-flash-enc-efuse",
+        "--fill-flash-size": "--pad-to-size",
+    }
+
     def __call__(self, esp: ESPLoader | None = None, *args, **kwargs):
         self._esp = esp  # store the external esp object in the group
         return super().__call__(*args, **kwargs)
@@ -197,9 +196,9 @@ class Group(click.RichGroup):
     def _replace_deprecated_args(self, args: list[str]) -> list[str]:
         new_args = []
         for arg in args:
-            if arg in DEPRECATED_OPTIONS.keys():
+            if arg in self.DEPRECATED_OPTIONS.keys():
                 # Replace underscores with hyphens in option names
-                new_name = DEPRECATED_OPTIONS[arg]
+                new_name = self.DEPRECATED_OPTIONS[arg]
                 if new_name != arg:
                     log.warning(
                         f"Deprecated: Option '{arg}' is deprecated. "

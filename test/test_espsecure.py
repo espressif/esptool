@@ -86,12 +86,12 @@ class TestESP32SecureBootloader(EspSecureTestCase):
             output_file.close()
 
             out = self.run_espsecure(
-                "digest_rsa_public_key --keyfile "
+                "digest-rsa-public-key --keyfile "
                 "secure_images/rsa_secure_boot_signing_key.pem "
                 f"-o {output_file.name}"
             )
             assert (
-                "DeprecationWarning: The command 'digest_rsa_public_key' is deprecated."
+                "DeprecationWarning: The command 'digest-rsa-public-key' is deprecated."
                 in out
             )
 
@@ -108,14 +108,14 @@ class TestSigning(EspSecureTestCase):
             # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
             # cannot be used for keyfile
             keyfile_name = os.path.join(keydir, "key.pem")
-            self.run_espsecure(f"generate_signing_key --version 1 {keyfile_name}")
+            self.run_espsecure(f"generate-signing-key --version 1 {keyfile_name}")
 
     def test_key_generation_v2(self):
         with tempfile.TemporaryDirectory() as keydir:
             # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
             # cannot be used for keyfile
             keyfile_name = os.path.join(keydir, "key.pem")
-            self.run_espsecure(f"generate_signing_key --version 2 {keyfile_name}")
+            self.run_espsecure(f"generate-signing-key --version 2 {keyfile_name}")
 
     def _test_sign_v1_data(self, key_name):
         try:
@@ -755,7 +755,7 @@ class TestDigest(EspSecureTestCase):
             outfile_name = f.name
 
         self.run_espsecure(
-            "digest_private_key "
+            "digest-private-key "
             "--keyfile secure_images/ecdsa256_secure_boot_signing_key.pem "
             f"{outfile_name}"
         )
@@ -769,6 +769,6 @@ class TestDigest(EspSecureTestCase):
         fname = "secure_images/ecdsa256_secure_boot_signing_key.pem"
 
         with pytest.raises(subprocess.CalledProcessError):
-            self.run_espsecure(f"digest_private_key --keyfile {fname} {fname}")
+            self.run_espsecure(f"digest-private-key --keyfile {fname} {fname}")
         output = capsys.readouterr().out
         assert "should not be the same!" in output

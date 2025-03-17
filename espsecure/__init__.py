@@ -1527,7 +1527,16 @@ def _check_output_is_not_input(
         )
 
 
+class Group(esptool.cli_util.Group):
+    DEPRECATED_OPTIONS = {
+        "--aes_xts": "--aes-xts",
+        "--flash_crypt_conf": "--flash-crypt-conf",
+        "--append_signatures": "--append-signatures",
+    }
+
+
 @click.group(
+    cls=Group,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
     help=f"espsecure.py v{esptool.__version__} - ESP32 Secure Boot & Flash Encryption "
@@ -1537,7 +1546,7 @@ def cli():
     print(f"espsecure.py v{esptool.__version__}")
 
 
-@cli.command("digest_secure_bootloader")
+@cli.command("digest-secure-bootloader")
 @click.option(
     "--keyfile",
     "-k",
@@ -1561,7 +1570,7 @@ def digest_secure_bootloader_cli(keyfile, output, iv, image):
     digest_secure_bootloader(keyfile, output, iv, image)
 
 
-@cli.command("generate_signing_key")
+@cli.command("generate-signing-key")
 @click.option(
     "--version",
     "-v",
@@ -1583,7 +1592,7 @@ def generate_signing_key_cli(version, scheme, keyfile):
     generate_signing_key(version, scheme, keyfile)
 
 
-@cli.command("sign_data")
+@cli.command("sign-data")
 @click.option(
     "--version",
     "-v",
@@ -1605,7 +1614,7 @@ def generate_signing_key_cli(version, scheme, keyfile):
     help="Output file for signed digest image. Default is to sign the input file.",
 )
 @click.option(
-    "--append_signatures",
+    "--append-signatures",
     "-a",
     is_flag=True,
     help="Append signature block(s) to already signed image. Not valid for ESP32 and "
@@ -1665,7 +1674,7 @@ def sign_data_cli(
     )
 
 
-@cli.command("verify_signature")
+@cli.command("verify-signature")
 @click.option(
     "--version",
     "-v",
@@ -1698,7 +1707,7 @@ def verify_signature_cli(version, hsm, hsm_config, keyfile, datafile):
     verify_signature(version, hsm, hsm_config, keyfile, datafile)
 
 
-@cli.command("extract_public_key")
+@cli.command("extract-public-key")
 @click.option(
     "--version",
     "-v",
@@ -1713,14 +1722,14 @@ def verify_signature_cli(version, hsm, hsm_config, keyfile, datafile):
     required=True,
     help="Private key file (PEM format) to extract the public verification key from.",
 )
-@click.argument("public_keyfile", type=click.File("wb", lazy=True))
+@click.argument("public-keyfile", type=click.File("wb", lazy=True))
 def extract_public_key_cli(version, keyfile, public_keyfile):
     """Extract the public verification key for signatures, save it as a raw binary
     file"""
     extract_public_key(version, keyfile, public_keyfile)
 
 
-@cli.command("digest_rsa_public_key", deprecated=True)
+@cli.command("digest-rsa-public-key", deprecated=True)
 @click.option(
     "--keyfile",
     "-k",
@@ -1740,7 +1749,7 @@ def digest_rsa_public_key(keyfile, output):
     digest_sbv2_public_key(keyfile, output)
 
 
-@cli.command("digest_sbv2_public_key")
+@cli.command("digest-sbv2-public-key")
 @click.option(
     "--keyfile",
     "-k",
@@ -1760,14 +1769,14 @@ def digest_sbv2_public_key_cli(keyfile, output):
     digest_sbv2_public_key(keyfile, output)
 
 
-@cli.command("signature_info_v2")
+@cli.command("signature-info-v2")
 @click.argument("datafile", type=click.File("rb"))
 def signature_info_v2_cli(datafile):
     """Reads the signature block and provides the signature block information."""
     signature_info_v2(datafile)
 
 
-@cli.command("digest_private_key")
+@cli.command("digest-private-key")
 @click.option(
     "--keyfile",
     "-k",
@@ -1783,13 +1792,13 @@ def signature_info_v2_cli(datafile):
     help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme "
     "requires 192 bit key.",
 )
-@click.argument("digest_file", type=click.File("wb", lazy=True))
+@click.argument("digest-file", type=click.File("wb", lazy=True))
 def digest_private_key_cli(keyfile, keylen, digest_file):
     """Generate an SHA-256 digest of the private signing key."""
     digest_private_key(keyfile, keylen, digest_file)
 
 
-@cli.command("generate_flash_encryption_key")
+@cli.command("generate-flash-encryption-key")
 @click.option(
     "--keylen",
     "-l",
@@ -1798,14 +1807,14 @@ def digest_private_key_cli(keyfile, keylen, digest_file):
     help="Length of private key digest file to generate (in bits). 3/4 Coding Scheme "
     "requires 192 bit key.",
 )
-@click.argument("key_file", type=click.File("wb", lazy=True))
+@click.argument("key-file", type=click.File("wb", lazy=True))
 def generate_flash_encryption_key(keylen: int, key_file: IO):
     """Generate a development-use flash encryption key with random data."""
     print(f"Writing {keylen} random bits to key file {key_file.name}")
     key_file.write(os.urandom(keylen // 8))
 
 
-@cli.command("decrypt_flash_data")
+@cli.command("decrypt-flash-data")
 @click.option(
     "--keyfile",
     "-k",
@@ -1828,19 +1837,19 @@ def generate_flash_encryption_key(keylen: int, key_file: IO):
     help="Address offset in flash that file was read from.",
 )
 @click.option(
-    "--flash_crypt_conf",
+    "--flash-crypt-conf",
     type=esptool.cli_util.AnyIntType(),
     default=0xF,
     help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for "
     "ESP32).",
 )
 @click.option(
-    "--aes_xts",
+    "--aes-xts",
     "-x",
     is_flag=True,
     help="Decrypt data using AES-XTS (not applicable for ESP32)",
 )
-@click.argument("encrypted_file", type=click.File("rb"))
+@click.argument("encrypted-file", type=click.File("rb"))
 def decrypt_flash_data_cli(
     keyfile, output, address, flash_crypt_conf, aes_xts, encrypted_file
 ):
@@ -1850,7 +1859,7 @@ def decrypt_flash_data_cli(
     )
 
 
-@cli.command("encrypt_flash_data")
+@cli.command("encrypt-flash-data")
 @click.option(
     "--keyfile",
     "-k",
@@ -1873,19 +1882,19 @@ def decrypt_flash_data_cli(
     required=True,
 )
 @click.option(
-    "--flash_crypt_conf",
+    "--flash-crypt-conf",
     type=esptool.cli_util.AnyIntType(),
     default=0xF,
     help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for "
     "ESP32)",
 )
 @click.option(
-    "--aes_xts",
+    "--aes-xts",
     "-x",
     is_flag=True,
     help="Encrypt data using AES-XTS (not applicable for ESP32)",
 )
-@click.argument("plaintext_file", type=click.File("rb"))
+@click.argument("plaintext-file", type=click.File("rb"))
 def encrypt_flash_data_cli(
     keyfile, output, address, flash_crypt_conf, aes_xts, plaintext_file
 ):
