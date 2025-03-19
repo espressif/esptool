@@ -1359,6 +1359,7 @@ class ESPLoader(object):
         # now we expect (length // block_size) SLIP frames with the data
         data = b""
         while len(data) < length:
+            self._port.timeout = 3
             p = self.read()
             data += p
             data_len = len(data)
