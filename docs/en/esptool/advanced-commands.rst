@@ -41,7 +41,8 @@ The ``dump-mem`` command will dump a region from the chip's memory space to a fi
 
 ::
 
-    esptool.py dump-mem 0x40000000 65536 iram0.bin
+    esptool.py dump-mem 0x40000000 64k iram0.bin
+
 
 .. _load-ram:
 

@@ -108,6 +108,8 @@ The read-flash command allows reading back the contents of flash. The arguments 
     esptool.py -p PORT -b 460800 read-flash 0 0x200000 flash_contents.bin
 
 
+Size can be specified in bytes, or with suffixes like ``k`` and ``M``. So ``0x200000`` in example can be replaced with ``2M``.
+
 It is also possible to autodetect flash size by using ``ALL`` as size. The above example with autodetection would look like this:
 
 ::
@@ -135,11 +137,11 @@ To erase the entire flash chip (all data replaced with 0xFF bytes):
 
     esptool.py erase-flash
 
-To erase a region of the flash, starting at address 0x20000 with length 0x4000 bytes (16KB):
+To erase a region of the flash, starting at address 0x20000 with length 16 kB (0x4000 bytes):
 
 ::
 
-    esptool.py erase-region 0x20000 0x4000
+    esptool.py erase-region 0x20000 16k
 
 The address and length must both be multiples of the SPI flash erase sector size. This is 0x1000 (4096) bytes for supported flash chips.
 

@@ -439,6 +439,7 @@ class TestFlashing(EsptoolTestCase):
         self.run_esptool("write-flash 0x0 images/one_kb.bin")
         self.verify_readback(0, 1024, "images/one_kb.bin")
 
+    @pytest.mark.skipif(arg_chip != "esp32", reason="Don't need to test multiple times")
     def test_short_flash_deprecated(self):
         out = self.run_esptool(
             "--before default_reset write_flash 0x0 images/one_kb.bin --flash_size keep"
@@ -877,6 +878,13 @@ class TestFlashSizes(EsptoolTestCase):
         assert "File 'images/one_kb.bin'" in output
         assert "will not fit" in output
 
+    @pytest.mark.skipif(arg_chip != "esp32", reason="Don't need to test multiple times")
+    def test_read_past_end_fails(self):
+        output = self.run_esptool_error(
+            "read-flash 0xffffff 1 out.bin"
+        )  # 0xffffff is well past the end of the flash in most cases (16MB)
+        assert "Can't access flash regions larger than detected flash size" in output
+
     def test_write_no_compression_past_end_fails(self):
         output = self.run_esptool_error(
             "write-flash -u -fs 1MB 0x280000 images/one_kb.bin"
@@ -913,7 +921,7 @@ class TestFlashSizes(EsptoolTestCase):
         # readback with no-stub and flash-size set
         try:
             self.run_esptool(
-                f"--no-stub read-flash -fs detect {offset} 1024 {dump_file.name}"
+                f"--no-stub read-flash -fs detect {offset} 1k {dump_file.name}"
             )
             with open(dump_file.name, "rb") as f:
                 rb = f.read()

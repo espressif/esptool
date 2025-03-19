@@ -58,13 +58,29 @@ class AnyIntType(click.ParamType):
 
 
 class AutoSizeType(AnyIntType):
-    """Similar to AnyIntType but allows 'all' as a value to e.g. read whole flash"""
+    """Similar to AnyIntType but allows 'k', 'M' suffixes for kilo(1024), Mega(1024^2)
+    and 'all' as a value to e.g. read whole flash"""
+
+    def __init__(self, allow_all: bool = True):
+        self.allow_all = allow_all
+        super().__init__()
 
     def convert(
         self, value: str, param: click.Parameter | None, ctx: click.Context
     ) -> Any:
-        if value.lower() == "all":
+        if self.allow_all and value.lower() == "all":
             return value
+        # Handle suffixes like 'k', 'M' for kilo, mega
+        if value[-1] in ("k", "M"):
+            try:
+                num = arg_auto_int(value[:-1])
+            except ValueError:
+                raise click.BadParameter(f"{value!r} is not a valid integer")
+            if value[-1] == "k":
+                num *= 1024
+            elif value[-1] == "M":
+                num *= 1024 * 1024
+            return num
         return super().convert(value, param, ctx)
 
 
@@ -388,6 +404,13 @@ def parse_port_filters(
 def parse_size_arg(esp: ESPLoader, size: int | str) -> int:
     """Parse the flash size argument and return the size in bytes"""
     if isinstance(size, int):
+        if not esp.secure_download_mode:
+            detected_size = flash_size_bytes(detect_flash_size(esp))
+            if detected_size and size > detected_size:
+                raise FatalError(
+                    f"Specified size {size:#x} is greater than detected flash size "
+                    f"{detected_size:#x}.",
+                )
         return size
     if size.lower() != "all":
         raise FatalError(f"Invalid size value: {size}. Use an integer or 'all'.")

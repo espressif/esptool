@@ -44,6 +44,7 @@ import typing as t
 from esptool.cmds import (
     chip_id,
     detect_chip,
+    detect_flash_size,
     dump_mem,
     elf2image,
     erase_flash,
@@ -81,6 +82,7 @@ from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
     NotImplementedInROMError,
+    flash_size_bytes,
 )
 from itertools import chain, cycle, repeat
 
@@ -271,6 +273,18 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
             f"(set size {size:#x} from address {address:#010x} goes past 16MB "
             f"by {address + size - 0x1000000:#x} bytes)."
         )
+    # Check if we are writing/reading past detected flash size
+    if not esp.secure_download_mode:
+        detected_size_str = detect_flash_size(esp)
+        if not detected_size_str:
+            return
+        detected_size = flash_size_bytes(detected_size_str)
+        if address + size > detected_size:
+            raise FatalError(
+                f"Can't access flash regions larger than detected flash size "
+                f"(set size {size:#x} from address {address:#010x} goes past "
+                f"{detected_size_str} by {address + size - detected_size:#x} bytes)."
+            )
 
 
 ############################### GLOBAL OPTIONS AND MAIN ###############################
@@ -544,7 +558,7 @@ def load_ram_cli(ctx, filename):
 
 @cli.command("dump-mem")
 @click.argument("address", type=AnyIntType())
-@click.argument("size", type=AnyIntType())
+@click.argument("size", type=AutoSizeType(allow_all=False))
 @click.argument("output", type=click.Path())
 @click.pass_context
 def dump_mem_cli(ctx, address, size, output):
