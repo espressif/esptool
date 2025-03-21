@@ -229,6 +229,7 @@ def burn_key(esp, efuses, args):
             raise esptool.FatalError("Unknown block name - %s" % (block_name))
         num_bytes = efuse.bit_len // 8
         data = datafile.read()
+        datafile.close()
         revers_msg = None
         if block_name in ("flash_encryption", "secure_boot_v1"):
             revers_msg = "\tReversing the byte order"

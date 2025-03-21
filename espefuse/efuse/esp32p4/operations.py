@@ -315,6 +315,7 @@ def burn_key(esp, efuses, args, digest=None):
                     data = b"\x00" * 8 + data
             else:
                 data = datafile.read()
+                datafile.close()
         else:
             data = datafile
 

@@ -367,6 +367,7 @@ def burn_key(esp, efuses, args, digest=None):
 
         if digest is None:
             data = datafile.read()
+            datafile.close()
         else:
             data = datafile
 
