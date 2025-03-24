@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2016-2025 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import configparser
@@ -22,8 +22,6 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.utils import int_to_bytes
 
 from esptool.logger import log
-
-import ecdsa
 
 import esptool
 
@@ -175,10 +173,22 @@ def digest_secure_bootloader(
     print("digest+image written to %s" % output)
 
 
-def _generate_ecdsa_signing_key(curve_id: ecdsa.curves.Curve, keyfile: str):
-    sk = ecdsa.SigningKey.generate(curve=curve_id)
+def _generate_ecdsa_signing_key(curve_id: ec.EllipticCurve, keyfile: str):
+    if curve_id not in [ec.SECP192R1, ec.SECP256R1, ec.SECP384R1]:
+        raise ValueError(
+            f"Unsupported curve: {curve_id}, "
+            "only NIST192p, NIST256p, NIST384p are supported."
+        )
+
+    private_key = ec.generate_private_key(curve_id())
+    pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
     with open(keyfile, "wb") as f:
-        f.write(sk.to_pem())
+        f.write(pem)
 
 
 def generate_signing_key(version: int, scheme: str | None, keyfile: str):
@@ -191,7 +201,7 @@ def generate_signing_key(version: int, scheme: str | None, keyfile: str):
         """
         Generate an ECDSA signing key for signing secure boot images (post-bootloader)
         """
-        _generate_ecdsa_signing_key(ecdsa.NIST256p, keyfile)
+        _generate_ecdsa_signing_key(ec.SECP256R1, keyfile)
         print(f"ECDSA NIST256p private key in PEM format written to {keyfile}")
     elif version == "2":
         if scheme == "rsa3072" or scheme is None:
@@ -208,38 +218,40 @@ def generate_signing_key(version: int, scheme: str | None, keyfile: str):
             print(f"RSA 3072 private key in PEM format written to {keyfile}")
         elif scheme == "ecdsa192":
             """Generate a ECDSA 192 signing key for signing secure boot images"""
-            _generate_ecdsa_signing_key(ecdsa.NIST192p, keyfile)
+            _generate_ecdsa_signing_key(ec.SECP192R1, keyfile)
             print(f"ECDSA NIST192p private key in PEM format written to {keyfile}")
         elif scheme == "ecdsa256":
             """Generate a ECDSA 256 signing key for signing secure boot images"""
-            _generate_ecdsa_signing_key(ecdsa.NIST256p, keyfile)
+            _generate_ecdsa_signing_key(ec.SECP256R1, keyfile)
             print(f"ECDSA NIST256p private key in PEM format written to {keyfile}")
         elif scheme == "ecdsa384":
             """Generate a ECDSA 384 signing key for signing secure boot images"""
-            _generate_ecdsa_signing_key(ecdsa.NIST384p, keyfile)
+            _generate_ecdsa_signing_key(ec.SECP384R1, keyfile)
             print(f"ECDSA NIST384p private key in PEM format written to {keyfile}")
         else:
             raise esptool.FatalError(f"ERROR: Unsupported signing scheme {scheme}")
 
 
-def load_ecdsa_signing_key(keyfile: IO) -> ecdsa.SigningKey:
+def load_ecdsa_signing_key(keyfile: IO) -> ec.EllipticCurvePrivateKey:
     """Load ECDSA signing key"""
     try:
-        sk = ecdsa.SigningKey.from_pem(keyfile.read())
+        sk = serialization.load_pem_private_key(
+            keyfile.read(), password=None, backend=default_backend()
+        )
     except ValueError:
         raise esptool.FatalError(
             "Incorrect ECDSA private key specified. "
             "Please check algorithm and/or format."
         )
-    if sk.curve not in [ecdsa.NIST192p, ecdsa.NIST256p]:
+    if not isinstance(sk.curve, (ec.SECP192R1, ec.SECP256R1)):
         raise esptool.FatalError("Supports NIST192p and NIST256p keys only")
     return sk
 
 
-def _load_ecdsa_signing_key(keyfile: IO) -> ecdsa.SigningKey:
+def _load_ecdsa_signing_key(keyfile: IO) -> ec.EllipticCurvePrivateKey:
     """Load ECDSA signing key for Secure Boot V1 only"""
     sk = load_ecdsa_signing_key(keyfile)
-    if sk.curve != ecdsa.NIST256p:
+    if not isinstance(sk.curve, ec.SECP256R1):
         raise esptool.FatalError(
             "Signing key uses incorrect curve. ESP32 Secure Boot only supports "
             "NIST256p (openssl calls this curve 'prime256v1')"
@@ -247,16 +259,18 @@ def _load_ecdsa_signing_key(keyfile: IO) -> ecdsa.SigningKey:
     return sk
 
 
-def _load_ecdsa_verifying_key(keyfile: IO) -> ecdsa.VerifyingKey:
+def _load_ecdsa_verifying_key(keyfile: IO) -> ec.EllipticCurvePublicKey:
     """Load ECDSA verifying key for Secure Boot V1 only"""
     try:
-        vk = ecdsa.VerifyingKey.from_pem(keyfile.read())
+        vk = serialization.load_pem_public_key(
+            keyfile.read(), backend=default_backend()
+        )
     except ValueError:
         raise esptool.FatalError(
             "Incorrect ECDSA public key specified. "
             "Please check algorithm and/or format."
         )
-    if vk.curve != ecdsa.NIST256p:
+    if not isinstance(vk.curve, ec.SECP256R1):
         raise esptool.FatalError(
             "Signing key uses incorrect curve. ESP32 Secure Boot only supports "
             "NIST256p (openssl calls this curve 'prime256v1')"
@@ -424,7 +438,11 @@ def sign_secure_boot_v1(
         print("Pre-calculated signatures found")
         if len(pub_key) > 1:
             raise esptool.FatalError("Secure Boot V1 only supports one signing key")
-        signature = signatures[0].read()
+        raw_signature = signatures[0].read()
+        # Signature needs to be DER-encoded for verification
+        r = int.from_bytes(raw_signature[:32], "big")
+        s = int.from_bytes(raw_signature[32:], "big")
+        signature = utils.encode_dss_signature(r, s)
         # get verifying/public key
         vk = _load_ecdsa_verifying_key(pub_key[0])
     else:
@@ -432,13 +450,24 @@ def sign_secure_boot_v1(
             raise esptool.FatalError("Secure Boot V1 only supports one signing key")
         sk = _load_ecdsa_signing_key(keyfile[0])
 
-        # calculate signature of binary data
-        signature = sk.sign_deterministic(binary_content, hashlib.sha256)
+        # calculate signature of binary data, returns DER-encoded signature
+        signature = sk.sign(
+            binary_content, ec.ECDSA(hashes.SHA256(), deterministic_signing=True)
+        )
         # get verifying/public key
-        vk = sk.get_verifying_key()
+        vk = sk.public_key()
 
     # back-verify signature
-    vk.verify(signature, binary_content, hashlib.sha256)  # throws exception on failure
+    vk.verify(
+        signature, binary_content, ec.ECDSA(hashes.SHA256())
+    )  # throws exception on failure
+
+    # Secure boot signature block stores raw signature bytes, create raw signature
+    r, s = utils.decode_dss_signature(signature)
+    r_bytes = r.to_bytes(32, byteorder="big")
+    s_bytes = s.to_bytes(32, byteorder="big")
+    signature = r_bytes + s_bytes
+
     if output is None or os.path.abspath(output) == os.path.abspath(
         datafile.name
     ):  # append signature to input file
@@ -535,7 +564,7 @@ def sign_secure_boot_v2(
             config = hsm_sign.read_hsm_config(hsm_config)
         except Exception as e:
             raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
-        if pub_key is None:
+        if len(pub_key) == 0:
             pub_key = extract_pubkey_from_hsm(config)
         signature = generate_signature_using_hsm(config, contents)
 
@@ -836,22 +865,27 @@ def verify_signature_v1(keyfile: IO, datafile: IO):
     """Verify a previously signed binary image, using the ECDSA public key"""
     key_data = keyfile.read()
     if b"-BEGIN EC PRIVATE KEY" in key_data:
-        sk = ecdsa.SigningKey.from_pem(key_data)
-        vk = sk.get_verifying_key()
+        sk = serialization.load_pem_private_key(
+            key_data, password=None, backend=default_backend()
+        )
+        vk = sk.public_key()
     elif b"-BEGIN PUBLIC KEY" in key_data:
-        vk = ecdsa.VerifyingKey.from_pem(key_data)
-    elif len(key_data) == 64:
-        vk = ecdsa.VerifyingKey.from_string(key_data, curve=ecdsa.NIST256p)
+        vk = serialization.load_pem_public_key(key_data, backend=default_backend())
+    elif len(key_data) == 64:  # Raw public key bytes
+        x = int.from_bytes(key_data[:32], byteorder="big")  # x coordinates
+        y = int.from_bytes(key_data[32:], byteorder="big")  # y coordinates
+        numbers = ec.EllipticCurvePublicNumbers(x, y, ec.SECP256R1())
+        vk = numbers.public_key(backend=default_backend())
     else:
         raise esptool.FatalError(
             "Verification key does not appear to be an EC key in PEM format "
             "or binary EC public key data. Unsupported"
         )
 
-    if vk.curve != ecdsa.NIST256p:
+    if not isinstance(vk.curve, ec.SECP256R1):
         raise esptool.FatalError(
             "Public key uses incorrect curve. ESP32 Secure Boot only supports "
-            "NIST256p (openssl calls this curve 'prime256v1"
+            "NIST256p (openssl calls this curve 'prime256v1')"
         )
 
     binary_content = datafile.read()
@@ -864,12 +898,15 @@ def verify_signature_v1(keyfile: IO, datafile: IO):
         )
     print("Verifying %d bytes of data" % len(data))
     try:
-        if vk.verify(signature, data, hashlib.sha256):
-            print("Signature is valid")
-        else:
-            raise esptool.FatalError("Signature is not valid")
-    except ecdsa.keys.BadSignatureError:
-        raise esptool.FatalError("Signature is not valid")
+        # Convert raw signature to DER format
+        r = int.from_bytes(signature[:32], byteorder="big")
+        s = int.from_bytes(signature[32:], byteorder="big")
+        der_signature = utils.encode_dss_signature(r, s)
+
+        vk.verify(der_signature, data, ec.ECDSA(hashes.SHA256()))
+        print("Signature is valid.")
+    except exceptions.InvalidSignature:
+        raise esptool.FatalError("Signature is not valid.")
 
 
 def validate_signature_block(image_content: bytes, sig_blk_num: int) -> bytes | None:
@@ -1019,19 +1056,17 @@ def extract_public_key(version: int, keyfile: IO, public_keyfile: IO):
         as raw binary data.
         """
         sk = _load_ecdsa_signing_key(keyfile)
-        vk = sk.get_verifying_key()
-        public_keyfile.write(vk.to_string())
     elif version == "2":
         """
         Load an RSA or an ECDSA private key and extract the public key
         as raw binary data.
         """
         sk = _load_sbv2_signing_key(keyfile.read())
-        vk = sk.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        )
-        public_keyfile.write(vk)
+    vk = sk.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    public_keyfile.write(vk)
     print(f"{keyfile.name} public key extracted to {public_keyfile.name}")
 
 
@@ -1180,13 +1215,17 @@ def digest_sbv2_public_key(keyfile: IO, output: str):
         f.write(public_key_digest)
 
 
+def get_ecdsa_signing_key_raw_bytes(sk):
+    return sk.private_numbers().private_value.to_bytes(
+        length=(sk.key_size + 7) // 8, byteorder="big"
+    )
+
+
 def digest_private_key(keyfile: IO, keylen: int, digest_file: IO):
     _check_output_is_not_input(keyfile, digest_file)
     sk = _load_ecdsa_signing_key(keyfile)
-    repr(sk.to_string())
-    digest = hashlib.sha256()
-    digest.update(sk.to_string())
-    result = digest.digest()
+    private_bytes = get_ecdsa_signing_key_raw_bytes(sk)
+    result = hashlib.sha256(private_bytes).digest()
     if keylen == 192:
         result = result[0:24]
     digest_file.write(result)
@@ -1794,7 +1833,7 @@ def signature_info_v2_cli(datafile):
 )
 @click.argument("digest-file", type=click.File("wb", lazy=True))
 def digest_private_key_cli(keyfile, keylen, digest_file):
-    """Generate an SHA-256 digest of the private signing key."""
+    """Generate a SHA-256 digest of the private signing key."""
     digest_private_key(keyfile, keylen, digest_file)
 
 

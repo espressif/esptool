@@ -129,23 +129,28 @@ class TestSigning(EspSecureHSMTestCase):
     def test_sign_v2_hsm(self):
         # Sign using SoftHSMv2 + Verify
         self.softhsm_setup_token("softhsm_v2.ini", "softhsm-test-token")
-        with tempfile.NamedTemporaryFile() as output_file:
+        with (
+            tempfile.NamedTemporaryFile() as output_file,
+            open(
+                os.path.join(TEST_DIR, "secure_images", "softhsm_v2.ini"), "r"
+            ) as config_file,
+        ):
             espsecure.sign_data(
                 "2",
                 None,
                 output_file.name,
                 False,
                 True,
-                os.path.join(TEST_DIR, "secure_images", "softhsm_v2.ini"),
-                None,
-                None,
+                config_file,
+                [],
+                [],
                 self._open("bootloader_unsigned_v2.bin"),
             )
-
+            config_file.seek(0)
             espsecure.verify_signature(
                 "2",
                 True,
-                os.path.join(TEST_DIR, "secure_images", "softhsm_v2.ini"),
+                config_file,
                 None,
                 output_file,
             )
@@ -153,51 +158,71 @@ class TestSigning(EspSecureHSMTestCase):
     def test_sign_v2_hsm_append_signatures_multiple_steps(self):
         # Append signatures using HSM + Verify with an appended key
         self.softhsm_setup_token("softhsm_v2_1.ini", "softhsm-test-token-1")
-        with tempfile.NamedTemporaryFile() as output_file1:
+        with (
+            tempfile.NamedTemporaryFile() as output_file1,
+            open(
+                os.path.join(TEST_DIR, "secure_images", "softhsm_v2_1.ini"), "r"
+            ) as config_file1,
+        ):
             espsecure.sign_data(
                 "2",
                 None,
                 output_file1.name,
                 True,
                 True,
-                os.path.join(TEST_DIR, "secure_images", "softhsm_v2_1.ini"),
-                None,
-                None,
+                config_file1,
+                [],
+                [],
                 self._open("bootloader_unsigned_v2.bin"),
             )
 
             self.softhsm_setup_token("softhsm_v2_2.ini", "softhsm-test-token-2")
-            with tempfile.NamedTemporaryFile() as output_file2:
+            with (
+                tempfile.NamedTemporaryFile() as output_file2,
+                open(
+                    os.path.join(TEST_DIR, "secure_images", "softhsm_v2_2.ini"), "r"
+                ) as config_file2,
+            ):
                 espsecure.sign_data(
                     "2",
                     None,
                     output_file2.name,
                     True,
                     True,
-                    os.path.join(TEST_DIR, "secure_images", "softhsm_v2_2.ini"),
-                    None,
-                    None,
+                    config_file2,
+                    [],
+                    [],
                     self._open(output_file1.name),
                 )
 
                 self.softhsm_setup_token("softhsm_v2_3.ini", "softhsm-test-token-3")
-                with tempfile.NamedTemporaryFile() as output_file3:
+                with (
+                    tempfile.NamedTemporaryFile() as output_file3,
+                    open(
+                        os.path.join(TEST_DIR, "secure_images", "softhsm_v2_3.ini"),
+                        "r",
+                    ) as config_file3,
+                ):
                     espsecure.sign_data(
                         "2",
                         None,
                         output_file3.name,
                         True,
                         True,
-                        os.path.join(TEST_DIR, "secure_images", "softhsm_v2_3.ini"),
-                        None,
-                        None,
+                        config_file3,
+                        [],
+                        [],
                         self._open(output_file2.name),
                     )
 
+                    config_file1.seek(0)
+                    config_file2.seek(0)
+                    config_file3.seek(0)
+
                     espsecure.verify_signature(
                         "2",
                         True,
-                        os.path.join(TEST_DIR, "secure_images", "softhsm_v2_1.ini"),
+                        config_file1,
                         None,
                         output_file3,
                     )
@@ -206,7 +231,7 @@ class TestSigning(EspSecureHSMTestCase):
                     espsecure.verify_signature(
                         "2",
                         True,
-                        os.path.join(TEST_DIR, "secure_images", "softhsm_v2_2.ini"),
+                        config_file2,
                         None,
                         output_file3,
                     )
@@ -215,7 +240,7 @@ class TestSigning(EspSecureHSMTestCase):
                     espsecure.verify_signature(
                         "2",
                         True,
-                        os.path.join(TEST_DIR, "secure_images", "softhsm_v2_3.ini"),
+                        config_file3,
                         None,
                         output_file3,
                     )

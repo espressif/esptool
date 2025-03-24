@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -21,13 +21,12 @@ except ImportError:
 
 import cryptography.hazmat.primitives.asymmetric.ec as EC
 import cryptography.hazmat.primitives.asymmetric.rsa as RSA
-
-import ecdsa
+import cryptography.hazmat.primitives.asymmetric.utils as utils
 
 
 def read_hsm_config(configfile: IO) -> configparser.SectionProxy:
     config = configparser.ConfigParser()
-    config.read(configfile)
+    config.read_file(configfile)
 
     section = "hsm_config"
     if not config.has_section(section):
@@ -112,9 +111,17 @@ def get_pubkey(
             public_key = RSA.RSAPublicNumbers(e, n).public_key()
 
         elif public_key.key_type == pkcs11.mechanisms.KeyType.EC:
-            ecpoints, _ = ecdsa.der.remove_octet_string(
-                public_key[pkcs11.Attribute.EC_POINT]
-            )
+            # EC_POINT is encoded as an octet string
+            # First byte is "0x04" indicating uncompressed point format
+            # followed by length bytes
+            ec_point_der = public_key[pkcs11.Attribute.EC_POINT]
+            if ec_point_der[0] != 0x04:  # octet string tag
+                raise ValueError(
+                    f"Invalid EC_POINT encoding. "
+                    f"Wanted type 'octetstring' (0x04), got {ec_point_der[0]:#02x}"
+                )
+            length = ec_point_der[1]
+            ecpoints = ec_point_der[2 : 2 + length]
             public_key = EC.EllipticCurvePublicKey.from_encoded_point(
                 EC.SECP256R1(), ecpoints
             )
@@ -148,10 +155,8 @@ def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
             r = int(binascii.hexlify(signature[:32]), 16)
             s = int(binascii.hexlify(signature[32:]), 16)
 
-            # der encoding in case of ecdsa signatures
-            signature = ecdsa.der.encode_sequence(
-                ecdsa.der.encode_integer(r), ecdsa.der.encode_integer(s)
-            )
+            # ECDSA signature is encoded as a DER sequence
+            signature = utils.encode_dss_signature(r, s)
 
         return signature
 

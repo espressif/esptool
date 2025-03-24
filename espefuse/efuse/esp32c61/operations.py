@@ -309,7 +309,7 @@ def burn_key(esp, efuses, args, digest=None):
         if digest is None:
             if keypurpose == "ECDSA_KEY":
                 sk = espsecure.load_ecdsa_signing_key(datafile)
-                data = sk.to_string()
+                data = espsecure.get_ecdsa_signing_key_raw_bytes(sk)
                 if len(data) == 24:
                     # the private key is 24 bytes long for NIST192p, and 8 bytes of padding
                     data = b"\x00" * 8 + data

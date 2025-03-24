@@ -419,6 +419,11 @@ class TestSigning(EspSecureTestCase):
         "version, keyfile, datafile",
         [
             ("1", "ecdsa256_secure_boot_signing_key.pem", "bootloader_signed.bin"),
+            (
+                "1",
+                "ecdsa256_secure_boot_signing_pubkey_raw.bin",
+                "bootloader_signed.bin",
+            ),
             ("2", "rsa_secure_boot_signing_key.pem", "bootloader_signed_v2_rsa.bin"),
             (
                 "2",
@@ -436,7 +441,14 @@ class TestSigning(EspSecureTestCase):
                 "bootloader_signed_v2_ecdsa192.bin",
             ),
         ],
-        ids=["v1", "v2_rsa", "v2_ecdsa384", "v2_ecdsa256", "v2_ecdsa192"],
+        ids=[
+            "v1_pem",
+            "v1_raw",
+            "v2_rsa",
+            "v2_ecdsa384",
+            "v2_ecdsa256",
+            "v2_ecdsa192",
+        ],
     )
     def test_verify_signature_correct_key(self, version, keyfile, datafile):
         espsecure.verify_signature(
