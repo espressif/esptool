@@ -2,7 +2,7 @@
 
 {IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO8", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32p4="GPIO36", esp32c5="GPIO27"}
 
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0", esp32="1000", esp32s2="1000", esp32p4="2000"}
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000"}
 
 .. _boot-mode:
 
@@ -224,7 +224,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 
    **chksum:**
 
-   If value of “chksum” == value of “csum”, it means flash has been read correctly during booting.
+   If value of "chksum" == value of "csum", it means flash has been read correctly during booting.
 
    The rest of boot messages are used internally by Espressif.
 
@@ -290,15 +290,23 @@ Depending on the kind of hardware you have, it may also be possible to manually 
    Early Flash Read Error
    """"""""""""""""""""""
 
-   ::
+   .. only:: esp8266
 
-      flash read err, {IDF_TARGET_BOOTLOADER_OFFSET}
+      ::
 
-   This fatal error indicates that the bootloader tried to read the software bootloader header at address 0x{IDF_TARGET_BOOTLOADER_OFFSET} but failed to read valid data. Possible reasons for this include:
+         flash read err, 0
+
+   .. only:: not esp8266
+
+      ::
+
+         Invalid header <value at {IDF_TARGET_BOOTLOADER_OFFSET}>
+
+   This fatal error indicates that the bootloader tried to read the software bootloader header at address {IDF_TARGET_BOOTLOADER_OFFSET} but failed to read valid data. Possible reasons for this include:
 
    .. list::
 
-      -  There isn't actually a bootloader at offset 0x{IDF_TARGET_BOOTLOADER_OFFSET} (maybe the bootloader was flashed to the wrong offset by mistake, or the flash has been erased and no bootloader has been flashed yet.)
+      -  There isn't actually a bootloader at offset {IDF_TARGET_BOOTLOADER_OFFSET} (maybe the bootloader was flashed to the wrong offset by mistake, or the flash has been erased and no bootloader has been flashed yet.)
       -  Physical problem with the connection to the flash chip, or flash chip power.
       -  Flash encryption is enabled but the bootloader is plaintext. Alternatively, flash encryption is disabled but the bootloader is encrypted ciphertext.
 
@@ -326,7 +334,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
          mode:DIO, clock div:1
 
 
-   This is normal boot output based on a combination of eFuse values and information read from the bootloader header at flash offset 0x{IDF_TARGET_BOOTLOADER_OFFSET}:
+   This is normal boot output based on a combination of eFuse values and information read from the bootloader header at flash offset {IDF_TARGET_BOOTLOADER_OFFSET}:
 
    .. list::
 
