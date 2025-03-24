@@ -95,6 +95,7 @@ from esptool.cli_util import (
     AnyIntType,
     OptionEatAll,
     MutuallyExclusiveOption,
+    ResetModeType,
     SpiConnectionType,
     AutoHex2BinType,
     AddrFilenamePairType,
@@ -312,17 +313,17 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
 )
 @click.option(
     "--before",
-    type=click.Choice(["default_reset", "usb_reset", "no_reset", "no_reset_no_sync"]),
-    default=os.environ.get("ESPTOOL_BEFORE", "default_reset"),
+    type=ResetModeType(["default-reset", "usb-reset", "no-reset", "no-reset-no-sync"]),
+    default=os.environ.get("ESPTOOL_BEFORE", "default-reset"),
     help="Which reset to perform before connecting to the chip.",
 )
 @click.option(
     "--after",
     "-a",
-    type=click.Choice(
-        ["hard_reset", "soft_reset", "no_reset", "no_reset_stub", "watchdog_reset"]
+    type=ResetModeType(
+        ["hard-reset", "soft-reset", "no-reset", "no-reset-stub", "watchdog-reset"]
     ),
-    default=os.environ.get("ESPTOOL_AFTER", "hard_reset"),
+    default=os.environ.get("ESPTOOL_AFTER", "hard-reset"),
     help="Which reset to perform after operation is finished.",
 )
 @click.option(
@@ -384,7 +385,7 @@ def prepare_esp_object(ctx):
 
     log.stage()
 
-    if ctx.obj["before"] != "no_reset_no_sync":
+    if ctx.obj["before"] != "no-reset-no-sync":
         initial_baud = min(
             ESPLoader.ESP_ROM_BAUD, ctx.obj["baud"]
         )  # don't sync faster than the default baud rate
@@ -1047,7 +1048,7 @@ def connect_loop(
     chip: str,
     max_retries: int,
     trace: bool = False,
-    before: str = "default_reset",
+    before: str = "default-reset",
 ):
     chip_class = CHIP_DEFS[chip]
     esp = None
@@ -1095,7 +1096,7 @@ def get_default_connected_device(
     initial_baud: int,
     chip: str = "auto",
     trace: bool = False,
-    before: str = "default_reset",
+    before: str = "default-reset",
 ):
     _esp = None
     for each_port in reversed(serial_list):

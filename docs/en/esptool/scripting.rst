@@ -52,7 +52,7 @@ This example demonstrates writing two binary files using high-level commands:
         attach_flash(esp)  # Attach the flash memory chip, required for flash operations
         with open(BOOTLOADER, "rb") as bl_file, open(FIRMWARE, "rb") as fw_file:
             write_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Write the binary files
-        reset_chip(esp, "hard_reset")  # Reset the chip
+        reset_chip(esp, "hard-reset")  # Reset the chip
 
 - The ``esp`` object has to be replaced with the stub flasher object returned by ``run_stub(esp)`` when the stub flasher is activated. This step can be skipped if the stub flasher is not needed.
 - Running ``attach_flash(esp)`` is required for any flash-memory-related operations to work.
@@ -90,7 +90,7 @@ The following example demonstrates running a series of flash memory operations i
             write_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Write the binary files
             verify_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Verify the written data
         read_flash(esp, 0x0, 0x2400, "output.bin")  # Read the flash memory into a file
-        reset_chip(esp, "hard_reset")  # Reset the chip
+        reset_chip(esp, "hard-reset")  # Reset the chip
 
 - This example doesn't use ``detect_chip()``, but instantiates a ``ESP32ROM`` class directly. This is useful when you know the target chip in advance. In this scenario ``esp.connect()`` is required to establish a connection with the device.
 - Multiple operations can be chained together in a single context manager block.

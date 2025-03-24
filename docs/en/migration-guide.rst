@@ -215,6 +215,17 @@ A significant amount of changes have been made to the log styling and formatting
 1. Make sure to adjust any of your scripts, asserts, CI workflows, or others to accommodate the new/changed format of messages. If you are parsing the log output (not recommended), consider importing esptool as a module and using the public API (see :ref:`here <scripting>`) to get the information you need.
 
 
+Reset Mode Renaming
+###################
+
+Choices for the ``--before`` and ``--after`` options have been renamed to use ``-`` instead of ``_`` as a separator (e.g., ``default_reset`` -> ``default-reset``).
+
+
+**Migration Steps:**
+
+1. Replace all underscores in the ``--before`` and ``--after`` options with ``-`` in your scripts.
+
+
 espsecure.py ``v5`` Migration Guide
 ***********************************
 
@@ -261,3 +272,15 @@ The public API of ``espsecure.py`` has been updated to provide a more consistent
    or if you were mocking the args object, now you don't have to do that and you can pass parameters directly to the function like:
    ``sign_data(data=data, key=key, ...)``.
 2. Replace the ``custom_commandline`` parameter with ``argv`` in the ``main`` function call.
+
+espefuse.py ``v5`` Migration Guide
+***********************************
+
+Reset Mode Renaming
+###################
+
+Choices for the ``--before`` option have been renamed to use ``-`` instead of ``_`` as a separator (e.g., ``default_reset`` -> ``default-reset``).
+
+**Migration Steps:**
+
+1. Replace all underscores in the ``--before`` option with ``-`` in your scripts.

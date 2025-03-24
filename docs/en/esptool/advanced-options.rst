@@ -3,7 +3,7 @@
 Advanced Options
 ================
 
-The following advanced global configuration options can be used for all esptool commands. They are placed before the command name on the command line. For example, the option ``--before no_reset`` has to be placed before ``flash-id``. The command should look like this: ``esptool.py --before no_reset flash-id``.
+The following advanced global configuration options can be used for all esptool commands. They are placed before the command name on the command line. For example, the option ``--before no-reset`` has to be placed before ``flash-id``. The command should look like this: ``esptool.py --before no-reset flash-id``.
 
 For basic/fundamental global configuration options, see the :ref:`options` page.
 
@@ -19,10 +19,10 @@ The ``--before`` argument allows you to specify whether the chip needs resetting
 
 .. list::
 
-    * ``--before default_reset`` is the default, which uses DTR & RTS serial control lines (see :ref:`entering-the-bootloader`) to try to reset the chip into bootloader mode.
-    * ``--before no_reset`` will skip DTR/RTS control signal assignments and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
-    * ``--before no_reset_no_sync`` will skip DTR/RTS control signal assignments and skip also the serial synchronization command. This is useful if your chip is already running the :ref:`stub bootloader <stub>` and you want to avoid resetting the chip and uploading the stub again.
-    :esp32c3 or esp32s3 or esp32c6 or esp32h2 or esp32p4 or esp32c5 or esp32c61: * ``--before usb_reset`` will use custom reset sequence for USB-JTAG-Serial (used for example for ESP chips connected through the USB-JTAG-Serial peripheral). Usually, this option doesn't have to be used directly. Esptool should be able to detect connection through USB-JTAG-Serial.
+    * ``--before default-reset`` is the default, which uses DTR & RTS serial control lines (see :ref:`entering-the-bootloader`) to try to reset the chip into bootloader mode.
+    * ``--before no-reset`` will skip DTR/RTS control signal assignments and just start sending a serial synchronisation command to the chip. This is useful if your chip doesn't have DTR/RTS, or for some serial interfaces (like Arduino board onboard serial) which behave differently when DTR/RTS are toggled.
+    * ``--before no-reset-no-sync`` will skip DTR/RTS control signal assignments and skip also the serial synchronization command. This is useful if your chip is already running the :ref:`stub bootloader <stub>` and you want to avoid resetting the chip and uploading the stub again.
+    :esp32c3 or esp32s3 or esp32c6 or esp32h2 or esp32p4 or esp32c5 or esp32c61: * ``--before usb-reset`` will use custom reset sequence for USB-JTAG-Serial (used for example for ESP chips connected through the USB-JTAG-Serial peripheral). Usually, this option doesn't have to be used directly. Esptool should be able to detect connection through USB-JTAG-Serial.
 
 Reset After Operation: ``--after``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,11 +31,11 @@ The ``--after`` argument allows you to specify whether the chip should be reset 
 
 .. list::
 
-    * ``--after hard_reset`` is the default. The RTS serial control line is used to reset the chip into a normal boot sequence.
-    :esp8266: * ``--after soft_reset`` runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
-    * ``--after no_reset`` leaves the chip in the serial bootloader, no reset is performed.
-    * ``--after no_reset_stub`` leaves the chip in the stub bootloader, no reset is performed.
-    :not esp8266 and not esp32 and not esp32h2 and not esp32c6: * ``--after watchdog_reset`` hard-resets the chip by triggering an internal watchdog reset. This is useful when the RTS control line is not available, especially in the USB-OTG and USB-Serial/JTAG modes. Use this if a chip is getting stuck in download mode when using the default reset method in USB-Serial/JTAG mode. Using this may cause the port to re-enumerate on Linux (e.g. ``/dev/ttyACM0`` -> ``/dev/ttyACM1``).
+    * ``--after hard-reset`` is the default. The RTS serial control line is used to reset the chip into a normal boot sequence.
+    :esp8266: * ``--after soft-reset`` runs the user firmware, but any subsequent reset will return to the serial bootloader. This was the reset behaviour in esptool v1.x.
+    * ``--after no-reset`` leaves the chip in the serial bootloader, no reset is performed.
+    * ``--after no-reset-stub`` leaves the chip in the stub bootloader, no reset is performed.
+    :not esp8266 and not esp32 and not esp32h2 and not esp32c6: * ``--after watchdog-reset`` hard-resets the chip by triggering an internal watchdog reset. This is useful when the RTS control line is not available, especially in the USB-OTG and USB-Serial/JTAG modes. Use this if a chip is getting stuck in download mode when using the default reset method in USB-Serial/JTAG mode. Using this may cause the port to re-enumerate on Linux (e.g. ``/dev/ttyACM0`` -> ``/dev/ttyACM1``).
 
 
 Connect Loop

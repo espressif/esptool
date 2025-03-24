@@ -610,7 +610,7 @@ class ESPLoader(object):
             "using standard reset sequence."
         )
 
-    def _connect_attempt(self, reset_strategy, mode="default_reset"):
+    def _connect_attempt(self, reset_strategy, mode="default-reset"):
         """A single connection attempt"""
         last_error = None
         boot_log_detected = False
@@ -618,10 +618,10 @@ class ESPLoader(object):
 
         # If we're doing no_sync, we're likely communicating as a pass through
         # with an intermediate device to the ESP32
-        if mode == "no_reset_no_sync":
+        if mode == "no-reset-no-sync":
             return last_error
 
-        if mode != "no_reset":
+        if mode != "no-reset":
             if not self.USES_RFC2217:  # Might block on rfc2217 ports
                 # Empty serial buffer to isolate boot log
                 self._port.reset_input_buffer()
@@ -699,7 +699,7 @@ class ESPLoader(object):
             delay = extra_delay = 7
 
         # USB-JTAG/Serial mode
-        if mode == "usb_reset" or self._get_pid() == self.USB_JTAG_SERIAL_PID:
+        if mode == "usb-reset" or self._get_pid() == self.USB_JTAG_SERIAL_PID:
             return (USBJTAGSerialReset(self._port),)
 
         # USB-to-Serial bridge
@@ -718,13 +718,13 @@ class ESPLoader(object):
 
     def connect(
         self,
-        mode="default_reset",
+        mode="default-reset",
         attempts=DEFAULT_CONNECT_ATTEMPTS,
         detecting=False,
         warnings=True,
     ):
         """Try connecting repeatedly until successful, or giving up"""
-        if warnings and mode in ["no_reset", "no_reset_no_sync"]:
+        if warnings and mode in ["no-reset", "no-reset-no-sync"]:
             log.note(
                 f'Pre-connection option "{mode}" was selected. '
                 "Connection may fail if the chip is not in bootloader "
@@ -732,7 +732,7 @@ class ESPLoader(object):
             )
 
         if self._port.name.startswith("socket:"):
-            mode = "no_reset"  # not possible to toggle DTR/RTS over a TCP socket
+            mode = "no-reset"  # not possible to toggle DTR/RTS over a TCP socket
             log.note(
                 "It's not possible to reset the chip over a TCP socket. "
                 "Automatic resetting to bootloader has been disabled, "

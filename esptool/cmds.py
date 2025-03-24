@@ -87,7 +87,7 @@ FLASH_MODES = {
 def detect_chip(
     port: str = ESPLoader.DEFAULT_PORT,
     baud: int = ESPLoader.ESP_ROM_BAUD,
-    connect_mode: str = "default_reset",
+    connect_mode: str = "default-reset",
     trace_enabled: bool = False,
     connect_attempts: int = DEFAULT_CONNECT_ATTEMPTS,
 ) -> ESPLoader:
@@ -99,8 +99,8 @@ def detect_chip(
         port: The serial port to use for communication.
         baud: The baud rate for serial communication.
         connect_mode: The chip reset method to perform when connecting to the ESP device
-            (``"default_reset"``, ``"usb_reset"``,
-            ``"no_reset"``, ``"no_reset_no_sync"``)
+            (``"default-reset"``, ``"usb-reset"``,
+            ``"no-reset"``, ``"no-reset-no-sync"``)
         trace_enabled: Enables or disables tracing for debugging purposes.
         connect_attempts: Number of connection attempts before failing.
 
@@ -1558,30 +1558,30 @@ def get_security_info(esp: ESPLoader) -> None:
         log.print("USB Access: Disabled")
 
 
-def reset_chip(esp: ESPLoader, reset_mode: str = "hard_reset") -> None:
+def reset_chip(esp: ESPLoader, reset_mode: str = "hard-reset") -> None:
     """
     Reset the ESP device.
 
     Args:
         esp: Initiated esp object connected to a real device.
         reset_mode: Reset mode to use (
-            ``"hard_reset"``: perform a hard reset using the RTS control line,
-            ``"soft_reset"``: perform a soft reset,
-            ``"no_reset"``: stay in bootloader,
-            ``"no_reset_stub"``: stay in flasher stub,
-            ``"watchdog_reset"``: perform a hard reset utilizing a software watchdog.
+            ``"hard-reset"``: perform a hard reset using the RTS control line,
+            ``"soft-reset"``: perform a soft reset,
+            ``"no-reset"``: stay in bootloader,
+            ``"no-reset-stub"``: stay in flasher stub,
+            ``"watchdog-reset"``: perform a hard reset utilizing a software watchdog.
             )
 
     """
-    if reset_mode == "hard_reset":
+    if reset_mode == "hard-reset":
         esp.hard_reset()
-    elif reset_mode == "soft_reset":
+    elif reset_mode == "soft-reset":
         log.print("Soft resetting...")
         # flash_finish will trigger a soft reset
         esp.soft_reset(False)
-    elif reset_mode == "no_reset_stub":
+    elif reset_mode == "no-reset-stub":
         log.print("Staying in flasher stub.")
-    elif reset_mode == "watchdog_reset":
+    elif reset_mode == "watchdog-reset":
         if esp.secure_download_mode:
             log.warning(
                 "Watchdog hard reset is not supported in Secure Download Mode, "
@@ -1590,7 +1590,7 @@ def reset_chip(esp: ESPLoader, reset_mode: str = "hard_reset") -> None:
             esp.hard_reset()
         else:
             esp.watchdog_reset()
-    elif reset_mode == "no_reset":
+    elif reset_mode == "no-reset":
         log.print("Staying in bootloader.")
         if esp.IS_STUB:
             esp.soft_reset(True)  # Exit the stub flasher back to ROM loader

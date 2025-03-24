@@ -197,8 +197,8 @@ def main(custom_commandline=None, esp=None):
     init_parser.add_argument(
         "--before",
         help="What to do before connecting to the chip",
-        choices=["default_reset", "usb_reset", "no_reset", "no_reset_no_sync"],
-        default="default_reset",
+        choices=["default-reset", "usb-reset", "no-reset", "no-reset-no-sync"],
+        default="default-reset",
     )
 
     init_parser.add_argument(

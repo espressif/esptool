@@ -195,9 +195,9 @@ class EsptoolTestCase:
             base_cmd += ["--port", port or arg_port]
         if baud or arg_baud is not None:
             base_cmd += ["--baud", str(baud or arg_baud)]
-        usb_jtag_serial_reset = ["--before", "usb_reset"] if arg_preload_port else []
+        usb_jtag_serial_reset = ["--before", "usb-reset"] if arg_preload_port else []
         usb_otg_dont_reset = (
-            ["--after", "no_reset_stub"] if "ESPTOOL_TEST_USB_OTG" in os.environ else []
+            ["--after", "no-reset-stub"] if "ESPTOOL_TEST_USB_OTG" in os.environ else []
         )
         full_cmd = (
             base_cmd + usb_jtag_serial_reset + usb_otg_dont_reset + args.split(" ")
@@ -271,7 +271,7 @@ class EsptoolTestCase:
         dump_file = tempfile.NamedTemporaryFile(delete=False)  # a file we can read into
         try:
             cmd = (
-                f"--before default_reset read-flash {offset} {length} {dump_file.name}"
+                f"--before default-reset read-flash {offset} {length} {dump_file.name}"
             )
             if spi_connection:
                 cmd += f" --spi-connection {spi_connection}"
@@ -440,7 +440,13 @@ class TestFlashing(EsptoolTestCase):
         self.verify_readback(0, 1024, "images/one_kb.bin")
 
     def test_short_flash_deprecated(self):
-        out = self.run_esptool("write_flash 0x0 images/one_kb.bin --flash_size keep")
+        out = self.run_esptool(
+            "--before default_reset write_flash 0x0 images/one_kb.bin --flash_size keep"
+        )
+        assert (
+            "Deprecated: Choice 'default_reset' for option '--before' is deprecated. "
+            "Use 'default-reset' instead." in out
+        )
         assert (
             "Deprecated: Option '--flash_size' is deprecated. "
             "Use '--flash-size' instead." in out
@@ -746,13 +752,13 @@ class TestFlashing(EsptoolTestCase):
         SYSTEM_SOC_CLK_MAX = 1
 
         output = self.run_esptool(
-            "--after no_reset_stub write-flash 0x0 images/one_mb.bin", preload=False
+            "--after no-reset-stub write-flash 0x0 images/one_mb.bin", preload=False
         )
         faster = re.search(r"(\d+(\.\d+)?)\s+seconds", output)
         assert faster, "Duration summary not found in the output"
 
         with esptool.cmds.detect_chip(
-            port=arg_port, connect_mode="no_reset"
+            port=arg_port, connect_mode="no-reset"
         ) as reg_mod:
             reg_mod.write_reg(
                 SYSTEM_SYSCLK_CONF_REG,
@@ -767,7 +773,7 @@ class TestFlashing(EsptoolTestCase):
             )
 
         output = self.run_esptool(
-            "--before no_reset write-flash 0x0 images/one_mb.bin", preload=False
+            "--before no-reset write-flash 0x0 images/one_mb.bin", preload=False
         )
         slower = re.search(r"(\d+(\.\d+)?)\s+seconds", output)
         assert slower, "Duration summary not found in the output"
@@ -801,14 +807,14 @@ class TestFlashing(EsptoolTestCase):
             reg_mod.run_stub()
 
         output = self.run_esptool(
-            "--before no_reset --after no_reset_stub flash-id", preload=False
+            "--before no-reset --after no-reset-stub flash-id", preload=False
         )
         assert "Stub flasher is already running. No upload is necessary." in output
 
         sleep(10)  # Wait if RTC WDT triggers
 
         with esptool.cmds.detect_chip(
-            port=arg_port, connect_mode="no_reset"
+            port=arg_port, connect_mode="no-reset"
         ) as reg_mod:
             output = reg_mod.read_reg(reg_mod.RTC_CNTL_WDTCONFIG0_REG)
             assert output == 0, "RTC WDT is not disabled"
@@ -1046,17 +1052,17 @@ class TestExternalFlash(EsptoolTestCase):
 
 @pytest.mark.skipif(
     "ESPTOOL_TEST_USB_OTG" in os.environ,
-    reason="USB-OTG tests require --after no_reset for stability.",
+    reason="USB-OTG tests require --after no-reset for stability.",
 )
 class TestStubReuse(EsptoolTestCase):
     def test_stub_reuse_with_synchronization(self):
         """Keep the flasher stub running and reuse it the next time."""
         res = self.run_esptool(
-            "--after no_reset_stub flash-id"
+            "--after no-reset-stub flash-id"
         )  # flasher stub keeps running after this
         assert "Manufacturer:" in res
         res = self.run_esptool(
-            "--before no_reset flash-id",
+            "--before no-reset flash-id",
             preload=False,
         )  # do sync before (without reset it talks to the flasher stub)
         assert "Manufacturer:" in res
@@ -1071,9 +1077,9 @@ class TestStubReuse(EsptoolTestCase):
         status length in comparison to the flasher stub.
         Therefore, this is ESP8266 only test.
         """
-        res = self.run_esptool("--after no_reset_stub flash-id")
+        res = self.run_esptool("--after no-reset-stub flash-id")
         assert "Manufacturer:" in res
-        res = self.run_esptool("--before no_reset_no_sync flash-id")
+        res = self.run_esptool("--before no-reset-no-sync flash-id")
         assert "Manufacturer:" in res
 
 
@@ -1561,7 +1567,7 @@ class TestReadWriteMemory(EsptoolTestCase):
 class TestReset(EsptoolTestCase):
     def test_watchdog_reset(self):
         # Erase the bootloader to get "invalid header" output + test watchdog reset
-        res = self.run_esptool("--after watchdog_reset erase-region 0x0 0x4000")
+        res = self.run_esptool("--after watchdog-reset erase-region 0x0 0x4000")
         if arg_chip in ["esp8266", "esp32", "esp32h2", "esp32c6"]:
             assert "Watchdog hard reset is not supported" in res
             assert "Hard resetting via RTS pin..." in res
@@ -1736,7 +1742,7 @@ class TestESPObjectOperations(EsptoolTestCase):
             attach_flash(esp)
             flash_id(esp)
             read_flash_sfdp(esp, 0, 4)
-            reset_chip(esp, "hard_reset")
+            reset_chip(esp, "hard-reset")
             output_post = fake_out.getvalue()
         assert "Detected flash size: Unknown" in output_pre
         assert "Device: ffff" in output_pre or "Device: 0000" in output_pre
@@ -1755,7 +1761,7 @@ class TestESPObjectOperations(EsptoolTestCase):
             esp.connect()
             esp = esp.run_stub()
             read_mac(esp)
-            reset_chip(esp, "hard_reset")
+            reset_chip(esp, "hard-reset")
             output = fake_out.getvalue()
         assert "Stub flasher running" in output
         assert "MAC:" in output
@@ -1775,7 +1781,7 @@ class TestESPObjectOperations(EsptoolTestCase):
                 erase_flash(esp)
                 read_flash(esp, 0x0, 0x10, "output.bin")
             finally:
-                reset_chip(esp, "hard_reset")
+                reset_chip(esp, "hard-reset")
                 os.remove("output.bin")
         output = fake_out.getvalue()
         assert "Stub flasher running" in output

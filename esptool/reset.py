@@ -53,7 +53,7 @@ class ResetStrategy(object):
                     self.print_once(
                         "Chip was NOT reset. Setting RTS/DTR lines is not "
                         f"supported for port '{self.port.name}'. Set --before and "
-                        "--after arguments to 'no_reset' and switch to bootloader "
+                        "--after arguments to 'no-reset' and switch to bootloader "
                         "manually to avoid this warning."
                     )
                     break

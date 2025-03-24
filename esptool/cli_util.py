@@ -24,6 +24,23 @@ class ChipType(click.Choice):
         return super().convert(value, param, ctx)
 
 
+class ResetModeType(click.Choice):
+    """Custom type to accept reset mode names with underscores as separators
+    for compatibility with v4"""
+
+    def convert(self, value: str, param: click.Parameter, ctx: click.Context) -> Any:
+        if "_" in value:
+            new_value = value.replace("_", "-")
+            if new_value not in self.choices:
+                raise click.BadParameter(f"{value} is not a valid reset mode.")
+            log.warning(
+                f"Deprecated: Choice '{value}' for option '--{param.name}' is "
+                f"deprecated. Use '{new_value}' instead."
+            )
+            return new_value
+        return super().convert(value, param, ctx)
+
+
 class AnyIntType(click.ParamType):
     """Custom type to parse any integer value - decimal, hex, octal, or binary"""
 
