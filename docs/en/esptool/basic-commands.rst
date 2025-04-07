@@ -281,6 +281,14 @@ Intel Hex format offers distinct advantages when compared to the binary format, 
 * **Size**: Data is carefully allocated to specific memory addresses eliminating the need for unnecessary padding. Binary images often lack detailed addressing information, leading to the inclusion of data for all memory locations from the file's initial address to its end.
 * **Validity Checks**: Each line in an Intel Hex file has a checksum to help find errors and make sure data stays unchanged.
 
+When using a merged Intel Hex file with the ``write_flash`` or ``image_info`` commands, the file is automatically split into temporary raw binary files at the gaps between input files.
+
+.. note::
+
+    The ``image_info`` command will show the information for the first file in a merged Intel Hex file.
+
+The splitting behavior of Intel Hex files offers an advantage during flashing: since no padding is used between sections, flash sectors between input files remain unerased. This can significantly improve flashing speed compared to using a merged raw binary file.
+
 .. code:: sh
 
     esptool.py --chip {IDF_TARGET_NAME} merge_bin --format hex -o merged-flash.hex --flash_mode dio --flash_size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin

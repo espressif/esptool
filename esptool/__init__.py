@@ -1291,7 +1291,12 @@ class AutoHex2BinAction(argparse.Action):
             with open(value, "rb") as f:
                 # if hex file was detected replace hex file with converted temp bin
                 # otherwise keep the original file
-                value = intel_hex_to_bin(f).name
+                converted = intel_hex_to_bin(f)
+                if len(converted) != 1:
+                    print(
+                        "Note: Detected merged IntelHex file, processing only first file"
+                    )
+                value = converted[0][1].name
         except IOError as e:
             raise argparse.ArgumentError(self, e)
         setattr(namespace, self.dest, value)
@@ -1326,8 +1331,7 @@ class AddrFilenamePairAction(argparse.Action):
                     "and the binary filename to write there",
                 )
             # check for intel hex files and convert them to bin
-            argfile = intel_hex_to_bin(argfile, address)
-            pairs.append((address, argfile))
+            pairs.extend(intel_hex_to_bin(argfile, address))
 
         # Sort the addresses and check for overlapping
         end = 0

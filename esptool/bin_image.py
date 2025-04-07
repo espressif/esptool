@@ -11,7 +11,7 @@ import os
 import re
 import struct
 import tempfile
-from typing import IO, Optional, Tuple
+from typing import IO, List, Optional, Tuple
 
 from intelhex import HexRecordError, IntelHex
 
@@ -45,9 +45,46 @@ def align_file_position(f, size):
     f.seek(align, 1)
 
 
-def intel_hex_to_bin(file: IO[bytes], start_addr: Optional[int] = None) -> IO[bytes]:
-    """Convert IntelHex file to temp binary file with padding from start_addr
-    If hex file was detected return temp bin file object; input file otherwise"""
+def _find_subsequences(addresses: List[int]) -> List[Tuple[int, int]]:
+    """Find continuous subsequences in a list of addresses"""
+    if not addresses:
+        return []
+
+    sorted_seq = sorted(addresses)
+
+    subsequences = []
+    start = sorted_seq[0]
+
+    for prev, num in zip(sorted_seq, sorted_seq[1:]):
+        if num != prev + 1:
+            # Found a gap, save the current subsequence
+            subsequences.append((start, prev))
+            start = num
+
+    # Add the last subsequence
+    subsequences.append((start, sorted_seq[-1]))
+
+    return subsequences
+
+
+def _split_intel_hex_file(ih: IntelHex) -> List[Tuple[int, IO[bytes]]]:
+    """Split an IntelHex file into multiple temporary binary files based on the gaps
+    in the addresses"""
+    subsequences = _find_subsequences(ih.addresses())
+    bins: List[Tuple[int, IO[bytes]]] = []
+    for start, end in subsequences:
+        bin = tempfile.NamedTemporaryFile(suffix=".bin", delete=False)
+        ih.tobinfile(bin, start=start, end=end)
+        bin.seek(0)  # make sure the file is at the beginning
+        bins.append((start, bin))
+    return bins
+
+
+def intel_hex_to_bin(
+    file: IO[bytes], start_addr: Optional[int] = None
+) -> List[Tuple[Optional[int], IO[bytes]]]:
+    """Convert IntelHex file to list of temp binary files
+    If not hex file return input file otherwise"""
     INTEL_HEX_MAGIC = b":"
     magic = file.read(1)
     file.seek(0)
@@ -56,14 +93,12 @@ def intel_hex_to_bin(file: IO[bytes], start_addr: Optional[int] = None) -> IO[by
             ih = IntelHex()
             ih.loadhex(file.name)
             file.close()
-            bin = tempfile.NamedTemporaryFile(suffix=".bin", delete=False)
-            ih.tobinfile(bin, start=start_addr)
-            return bin
+            return _split_intel_hex_file(ih)  # type: ignore
         else:
-            return file
+            return [(start_addr, file)]
     except (HexRecordError, UnicodeDecodeError):
         # file started with HEX magic but the rest was not according to the standard
-        return file
+        return [(start_addr, file)]
 
 
 def LoadFirmwareImage(chip, image_file):

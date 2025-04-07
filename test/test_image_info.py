@@ -97,7 +97,7 @@ class TestImageInfo:
         ), "Wrong flash pins drive settings"
 
         assert "Minimal chip revision: v0.0" in out, "Wrong min revision"
-        assert "Maximal chip revision: v0.0" in out, "Wrong min revision"
+        assert "Maximal chip revision: v0.0" in out, "Wrong max revision"
 
         # Segments
         assert (
@@ -194,9 +194,9 @@ class TestImageInfo:
         assert "Compile time: Apr 25 2023 00:13:32" in out
 
     def test_intel_hex(self):
-        # This bootloader binary is built from "hello_world" project
-        # with default settings, IDF version is v5.2.
-        # File is converted to Intel Hex using merge_bin
+        # Convert and merge two files to Intel Hex using merge_bin
+        # Run image_info on the resulting Intel Hex file
+        # Verify that image info is shown for the first file
 
         def convert_bin2hex(file):
             subprocess.check_output(
@@ -205,12 +205,14 @@ class TestImageInfo:
                     "-m",
                     "esptool",
                     "--chip",
-                    "esp32",
+                    "esp32c3",
                     "merge_bin",
                     "--format",
                     "hex",
                     "0x0",
-                    "".join([IMAGES_DIR, os.sep, "bootloader_esp32_v5_2.bin"]),
+                    os.path.join(IMAGES_DIR, "bootloader_esp32c3.bin"),
+                    "0x8000",
+                    os.path.join(IMAGES_DIR, "esp32c3_header_min_rev.bin"),
                     "-o",
                     file,
                 ]
@@ -219,12 +221,29 @@ class TestImageInfo:
         fd, file = tempfile.mkstemp(suffix=".hex")
         try:
             convert_bin2hex(file)
-            out = self.run_image_info("esp32", file, "2")
-            assert "File size: 26768 (bytes)" in out
-            assert "Bootloader information" in out
-            assert "Bootloader version: 1" in out
-            assert "ESP-IDF: v5.2-dev-254-g1950b15" in out
-            assert "Compile time: Apr 25 2023 00:13:32" in out
+            out = self.run_image_info("esp32c3", file, "2")
+
+            # Only the first files should be shown with Note
+            assert (
+                "Note: Detected merged IntelHex file, processing only first file" in out
+            )
+            # Header
+            assert "Entry point: 0x403c0000" in out, "Wrong entry point"
+            assert "Segments: 4" in out, "Wrong num of segments"
+            assert "Flash size: 2MB" in out, "Wrong flash size"
+            assert "Flash freq: 40m" in out, "Wrong flash frequency"
+            assert "Flash mode: DIO" in out, "Wrong flash mode"
+
+            # Extended header
+            assert "WP pin: 0xee (disabled)" in out, "Wrong WP pin"
+            assert "Chip ID: 5 (ESP32-C3)" in out, "Wrong chip ID"
+            assert (
+                "clk_drv: 0x0, q_drv: 0x0, d_drv: 0x0, "
+                "cs0_drv: 0x0, hd_drv: 0x0, wp_drv: 0x0" in out
+            ), "Wrong flash pins drive settings"
+
+            assert "Minimal chip revision: v0.0" in out, "Wrong min revision"
+            assert "Maximal chip revision: v0.0" in out, "Wrong max revision"
         finally:
             try:
                 # make sure that file was closed before removing it
