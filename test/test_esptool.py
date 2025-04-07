@@ -374,8 +374,8 @@ class TestFlashEncryption(EsptoolTestCase):
         )
         self.run_esptool("read-flash 0x10000 192 images/read_encrypted_flash.bin")
         self.run_espsecure(
-            "encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin "
-            "--flash_crypt_conf 0 --output images/local_enc.bin "
+            "encrypt-flash-data --address 0x10000 --keyfile images/aes_key.bin "
+            "--flash-crypt-conf 0 --output images/local_enc.bin "
             "images/ram_helloworld/helloworld-esp32.bin"
         )
 
@@ -413,8 +413,8 @@ class TestFlashEncryption(EsptoolTestCase):
         )
         self.run_esptool("read-flash 0x10000 192 images/read_encrypted_flash.bin")
         self.run_espsecure(
-            "encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin "
-            "--flash_crypt_conf 0 --output images/local_enc.bin "
+            "encrypt-flash-data --address 0x10000 --keyfile images/aes_key.bin "
+            "--flash-crypt-conf 0 --output images/local_enc.bin "
             "images/ram_helloworld/helloworld-esp32.bin"
         )
 

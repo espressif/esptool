@@ -77,8 +77,8 @@ def _load_hardware_key(
     key = keyfile.read()
     if len(key) not in [16, 24, 32, 64]:
         raise esptool.FatalError(
-            "Key file contains wrong length (%d bytes), 16, 24, 32 or 64 expected."
-            % len(key)
+            f"Key file contains wrong length ({len(key)} bytes), "
+            "16, 24, 32 or 64 expected."
         )
     if is_flash_encryption_key:
         if aes_xts:
@@ -95,15 +95,15 @@ def _load_hardware_key(
                 )
     if len(key) == 16:
         key = _sha256_digest(key)
-        print("Using 128-bit key (extended)")
+        log.print("Using 128-bit key (extended).")
     elif len(key) == 24:
         key = key + key[8:16]
         assert len(key) == 32
-        print("Using 192-bit key (extended)")
+        log.print("Using 192-bit key (extended).")
     elif len(key) == 32:
-        print("Using 256-bit key")
+        log.print("Using 256-bit key.")
     else:
-        print("Using 512-bit key")
+        log.print("Using 512-bit key.")
     return key
 
 
@@ -117,7 +117,7 @@ def digest_secure_bootloader(
     _check_output_is_not_input(image, output)
     _check_output_is_not_input(iv_file, output)
     if iv_file is not None:
-        print("WARNING: --iv argument is for TESTING PURPOSES ONLY")
+        log.warning("--iv argument is for TESTING PURPOSES ONLY")
         iv = iv_file.read(128)
     else:
         iv = os.urandom(128)
@@ -170,7 +170,7 @@ def digest_secure_bootloader(
             f.write(word[::-1])  # swap word order in the result
         f.write(b"\xff" * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
-    print("digest+image written to %s" % output)
+    log.print(f'Digest + image written to "{output}"')
 
 
 def _generate_ecdsa_signing_key(curve_id: ec.EllipticCurve, keyfile: str):
@@ -193,16 +193,16 @@ def _generate_ecdsa_signing_key(curve_id: ec.EllipticCurve, keyfile: str):
 
 def generate_signing_key(version: int, scheme: str | None, keyfile: str):
     if os.path.exists(keyfile):
-        raise esptool.FatalError(f"ERROR: Key file {keyfile} already exists")
+        raise esptool.FatalError(f"ERROR: Key file {keyfile} already exists.")
     if version == "1":
         if scheme is not None:
             if scheme != "ecdsa256" and scheme is not None:
-                raise esptool.FatalError("ERROR: V1 only supports ECDSA256")
+                raise esptool.FatalError("ERROR: V1 only supports ECDSA256.")
         """
         Generate an ECDSA signing key for signing secure boot images (post-bootloader)
         """
         _generate_ecdsa_signing_key(ec.SECP256R1, keyfile)
-        print(f"ECDSA NIST256p private key in PEM format written to {keyfile}")
+        log.print(f'ECDSA NIST256p private key in PEM format written to "{keyfile}".')
     elif version == "2":
         if scheme == "rsa3072" or scheme is None:
             """Generate a RSA 3072 signing key for signing secure boot images"""
@@ -215,21 +215,27 @@ def generate_signing_key(version: int, scheme: str | None, keyfile: str):
             )
             with open(keyfile, "wb") as f:
                 f.write(private_key)
-            print(f"RSA 3072 private key in PEM format written to {keyfile}")
+            log.print(f'RSA 3072 private key in PEM format written to "{keyfile}".')
         elif scheme == "ecdsa192":
             """Generate a ECDSA 192 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ec.SECP192R1, keyfile)
-            print(f"ECDSA NIST192p private key in PEM format written to {keyfile}")
+            log.print(
+                f'ECDSA NIST192p private key in PEM format written to "{keyfile}".'
+            )
         elif scheme == "ecdsa256":
             """Generate a ECDSA 256 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ec.SECP256R1, keyfile)
-            print(f"ECDSA NIST256p private key in PEM format written to {keyfile}")
+            log.print(
+                f'ECDSA NIST256p private key in PEM format written to "{keyfile}".'
+            )
         elif scheme == "ecdsa384":
             """Generate a ECDSA 384 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ec.SECP384R1, keyfile)
-            print(f"ECDSA NIST384p private key in PEM format written to {keyfile}")
+            log.print(
+                f'ECDSA NIST384p private key in PEM format written to "{keyfile}".'
+            )
         else:
-            raise esptool.FatalError(f"ERROR: Unsupported signing scheme {scheme}")
+            raise esptool.FatalError(f"ERROR: Unsupported signing scheme {scheme}.")
 
 
 def load_ecdsa_signing_key(keyfile: IO) -> ec.EllipticCurvePrivateKey:
@@ -244,7 +250,7 @@ def load_ecdsa_signing_key(keyfile: IO) -> ec.EllipticCurvePrivateKey:
             "Please check algorithm and/or format."
         )
     if not isinstance(sk.curve, (ec.SECP192R1, ec.SECP256R1)):
-        raise esptool.FatalError("Supports NIST192p and NIST256p keys only")
+        raise esptool.FatalError("Supports NIST192p and NIST256p keys only.")
     return sk
 
 
@@ -254,7 +260,7 @@ def _load_ecdsa_signing_key(keyfile: IO) -> ec.EllipticCurvePrivateKey:
     if not isinstance(sk.curve, ec.SECP256R1):
         raise esptool.FatalError(
             "Signing key uses incorrect curve. ESP32 Secure Boot only supports "
-            "NIST256p (openssl calls this curve 'prime256v1')"
+            "NIST256p (openssl calls this curve 'prime256v1')."
         )
     return sk
 
@@ -273,7 +279,7 @@ def _load_ecdsa_verifying_key(keyfile: IO) -> ec.EllipticCurvePublicKey:
     if not isinstance(vk.curve, ec.SECP256R1):
         raise esptool.FatalError(
             "Signing key uses incorrect curve. ESP32 Secure Boot only supports "
-            "NIST256p (openssl calls this curve 'prime256v1')"
+            "NIST256p (openssl calls this curve 'prime256v1')."
         )
     return vk
 
@@ -292,8 +298,8 @@ def _load_sbv2_signing_key(
     if isinstance(sk, rsa.RSAPrivateKey):
         if sk.key_size != 3072:
             raise esptool.FatalError(
-                "Key file has length %d bits. Secure boot v2 only supports RSA-3072."
-                % sk.key_size
+                f"Key file has length {sk.key_size} bits. Secure boot v2 only "
+                "supports RSA-3072."
             )
         return sk
     if isinstance(sk, ec.EllipticCurvePrivateKey):
@@ -301,11 +307,11 @@ def _load_sbv2_signing_key(
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
                 "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, "
-                "prime256v1 / secp256r1, secp384r1)"
+                "prime256v1 / secp256r1, secp384r1)."
             )
         return sk
 
-    raise esptool.FatalError("Unsupported signing key for Secure Boot V2")
+    raise esptool.FatalError("Unsupported signing key for Secure Boot V2.")
 
 
 def _load_sbv2_pub_key(keydata: bytes) -> rsa.RSAPublicKey | ec.EllipticCurvePublicKey:
@@ -316,8 +322,8 @@ def _load_sbv2_pub_key(keydata: bytes) -> rsa.RSAPublicKey | ec.EllipticCurvePub
     if isinstance(vk, rsa.RSAPublicKey):
         if vk.key_size != 3072:
             raise esptool.FatalError(
-                "Key file has length %d bits. Secure boot v2 only supports RSA-3072."
-                % vk.key_size
+                f"Key file has length {vk.key_size} bits. Secure boot v2 only "
+                "supports RSA-3072."
             )
         return vk
     if isinstance(vk, ec.EllipticCurvePublicKey):
@@ -325,11 +331,11 @@ def _load_sbv2_pub_key(keydata: bytes) -> rsa.RSAPublicKey | ec.EllipticCurvePub
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
                 "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, "
-                "prime256v1 / secp256r1, secp384r1)"
+                "prime256v1 / secp256r1, secp384r1)."
             )
         return vk
 
-    raise esptool.FatalError("Unsupported public key for Secure Boot V2")
+    raise esptool.FatalError("Unsupported public key for Secure Boot V2.")
 
 
 def _get_sbv2_pub_key(keyfile: IO) -> rsa.RSAPublicKey | ec.EllipticCurvePublicKey:
@@ -345,7 +351,7 @@ def _get_sbv2_pub_key(keyfile: IO) -> rsa.RSAPublicKey | ec.EllipticCurvePublicK
     else:
         raise esptool.FatalError(
             "Verification key does not appear to be an RSA Private or "
-            "Public key in PEM format. Unsupported"
+            "Public key in PEM format. Unsupported."
         )
     return vk
 
@@ -435,9 +441,9 @@ def sign_secure_boot_v1(
         )
 
     if signatures:
-        print("Pre-calculated signatures found")
+        log.print("Pre-calculated signatures found...")
         if len(pub_key) > 1:
-            raise esptool.FatalError("Secure Boot V1 only supports one signing key")
+            raise esptool.FatalError("Secure Boot V1 only supports one signing key.")
         raw_signature = signatures[0].read()
         # Signature needs to be DER-encoded for verification
         r = int.from_bytes(raw_signature[:32], "big")
@@ -447,7 +453,7 @@ def sign_secure_boot_v1(
         vk = _load_ecdsa_verifying_key(pub_key[0])
     else:
         if len(keyfile) > 1:
-            raise esptool.FatalError("Secure Boot V1 only supports one signing key")
+            raise esptool.FatalError("Secure Boot V1 only supports one signing key.")
         sk = _load_ecdsa_signing_key(keyfile[0])
 
         # calculate signature of binary data, returns DER-encoded signature
@@ -481,7 +487,7 @@ def sign_secure_boot_v1(
     )  # Version indicator, allow for different curves/formats later
     outfile.write(signature)
     outfile.close()
-    print("Signed %d bytes of data from %s" % (len(binary_content), datafile.name))
+    log.print(f'Signed {len(binary_content)} bytes of data from "{datafile.name}".')
 
 
 def sign_secure_boot_v2(
@@ -514,9 +520,9 @@ def sign_secure_boot_v2(
             )
         else:
             pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
-            print(
+            log.print(
                 f"Padding data contents by {pad_by} bytes "
-                "so signature sector aligns at sector boundary"
+                "so signature sector aligns at sector boundary."
             )
             contents += b"\xff" * pad_by
 
@@ -531,22 +537,22 @@ def sign_secure_boot_v2(
             sig_block_num += 1
 
         if len(signature_sector) % SIG_BLOCK_SIZE != 0:
-            raise esptool.FatalError("Incorrect signature sector size")
+            raise esptool.FatalError("Incorrect signature sector size.")
 
         if sig_block_num == 0:
-            print(
+            log.print(
                 "No valid signature blocks found. "
                 "Discarding --append-signature and proceeding to sign the image afresh."
             )
         else:
-            print(
+            log.print(
                 f"{sig_block_num} valid signature block(s) already present "
                 "in the signature sector."
             )
             if sig_block_num == SIG_BLOCK_MAX_COUNT:
                 raise esptool.FatalError(
-                    f"Upto {SIG_BLOCK_MAX_COUNT} signature blocks are supported. "
-                    "(For ESP32-ECO3 only 1 signature block is supported)"
+                    f"Up to {SIG_BLOCK_MAX_COUNT} signature blocks are supported "
+                    "(For ESP32-ECO3 only 1 signature block is supported)."
                 )
 
             # Signature stripped off the content
@@ -563,18 +569,18 @@ def sign_secure_boot_v2(
         try:
             config = hsm_sign.read_hsm_config(hsm_config)
         except Exception as e:
-            raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
+            raise esptool.FatalError(f"Incorrect HSM config file format ({e}).")
         if len(pub_key) == 0:
             pub_key = extract_pubkey_from_hsm(config)
         signature = generate_signature_using_hsm(config, contents)
 
     if signature:
-        print("Pre-calculated signatures found")
+        log.print("Pre-calculated signatures found...")
         key_count = len(pub_key)
         if len(signature) != key_count:
             raise esptool.FatalError(
                 f"Number of public keys ({key_count}) not equal to "
-                f"the number of signatures {len(signature)}."
+                f"the number of signatures ({len(signature)})."
             )
     else:
         key_count = len(keyfile)
@@ -582,11 +588,11 @@ def sign_secure_boot_v2(
     empty_signature_blocks = SIG_BLOCK_MAX_COUNT - sig_block_num
     if key_count > empty_signature_blocks:
         raise esptool.FatalError(
-            f"Number of keys({key_count}) more than the empty signature blocks."
-            f"({empty_signature_blocks})"
+            f"Number of keys ({key_count}) more than the empty signature blocks "
+            f"({empty_signature_blocks})."
         )
 
-    print(f"{key_count} signing key(s) found.")
+    log.print(f"{key_count} signing key(s) found.")
 
     # Generate signature block using pre-calculated signatures
     if signature:
@@ -598,7 +604,7 @@ def sign_secure_boot_v2(
         signature_block = generate_signature_block_using_private_key(keyfile, contents)
 
     if signature_block is None or len(signature_block) == 0:
-        raise esptool.FatalError("Signature Block generation failed")
+        raise esptool.FatalError("Signature Block generation failed.")
 
     signature_sector += signature_block
 
@@ -607,7 +613,7 @@ def sign_secure_boot_v2(
         and len(signature_sector) > SIG_BLOCK_SIZE * 3
         and len(signature_sector) % SIG_BLOCK_SIZE != 0
     ):
-        raise esptool.FatalError("Incorrect signature sector generation")
+        raise esptool.FatalError("Incorrect signature sector generation.")
 
     total_sig_blocks = len(signature_sector) // SIG_BLOCK_SIZE
 
@@ -616,7 +622,7 @@ def sign_secure_boot_v2(
         b"\xff" * (SECTOR_SIZE - len(signature_sector))
     )
     if len(signature_sector) != SECTOR_SIZE:
-        raise esptool.FatalError("Incorrect signature sector size")
+        raise esptool.FatalError("Incorrect signature sector size.")
 
     # Write to output file, or append to existing file
     if output is None:
@@ -624,8 +630,8 @@ def sign_secure_boot_v2(
         output = datafile.name
     with open(output, "wb") as f:
         f.write(contents + signature_sector)
-    print(
-        f"Signed {len(contents)} bytes of data from {datafile.name}. "
+    log.print(
+        f'Signed {len(contents)} bytes of data from "{datafile.name}". '
         f"Signature sector now has {total_sig_blocks} signature blocks."
     )
 
@@ -707,13 +713,13 @@ def generate_signature_block_using_pre_calculated_signature(
             raise esptool.FatalError(
                 "Signature verification failed: Invalid Signature\n"
                 "The pre-calculated signature has not been signed "
-                "using the given public key"
+                "using the given public key."
             )
         signature_block += struct.pack("<I", zlib.crc32(signature_block) & 0xFFFFFFFF)
         signature_block += b"\x00" * 16  # padding
 
         if len(signature_block) != SIG_BLOCK_SIZE:
-            raise esptool.FatalError("Incorrect signature block size")
+            raise esptool.FatalError("Incorrect signature block size.")
 
         signature_blocks += signature_block
     return signature_blocks
@@ -777,7 +783,7 @@ def generate_signature_block_using_private_key(
         signature_block += b"\x00" * 16  # padding
 
         if len(signature_block) != SIG_BLOCK_SIZE:
-            raise esptool.FatalError("Incorrect signature block size")
+            raise esptool.FatalError("Incorrect signature block size.")
 
         signature_blocks += signature_block
     return signature_blocks
@@ -879,13 +885,13 @@ def verify_signature_v1(keyfile: IO, datafile: IO):
     else:
         raise esptool.FatalError(
             "Verification key does not appear to be an EC key in PEM format "
-            "or binary EC public key data. Unsupported"
+            "or binary EC public key data. Unsupported."
         )
 
     if not isinstance(vk.curve, ec.SECP256R1):
         raise esptool.FatalError(
             "Public key uses incorrect curve. ESP32 Secure Boot only supports "
-            "NIST256p (openssl calls this curve 'prime256v1')"
+            "NIST256p (openssl calls this curve 'prime256v1')."
         )
 
     binary_content = datafile.read()
@@ -893,10 +899,10 @@ def verify_signature_v1(keyfile: IO, datafile: IO):
     sig_version, signature = struct.unpack("I64s", binary_content[-68:])
     if sig_version != 0:
         raise esptool.FatalError(
-            "Signature block has version %d. This version of espsecure "
-            "only supports version 0." % sig_version
+            f"Signature block has version {sig_version}. This version of espsecure "
+            "only supports version 0."
         )
-    print("Verifying %d bytes of data" % len(data))
+    log.print(f"Verifying {len(data)} bytes of data...")
     try:
         # Convert raw signature to DER format
         r = int.from_bytes(signature[:32], byteorder="big")
@@ -904,7 +910,7 @@ def verify_signature_v1(keyfile: IO, datafile: IO):
         der_signature = utils.encode_dss_signature(r, s)
 
         vk.verify(der_signature, data, ec.ECDSA(hashes.SHA256()))
-        print("Signature is valid.")
+        log.print("Signature is valid.")
     except exceptions.InvalidSignature:
         raise esptool.FatalError("Signature is not valid.")
 
@@ -930,7 +936,7 @@ def validate_signature_block(image_content: bytes, sig_blk_num: int) -> bytes | 
     if is_invalid_block or blk_crc != calc_crc & 0xFFFFFFFF:  # Signature block invalid
         return None
     key_type = "RSA" if version == SIG_BLOCK_VERSION_RSA else "ECDSA"
-    print(f"Signature block {sig_blk_num} is valid ({key_type}).")
+    log.print(f"Signature block {sig_blk_num} is valid ({key_type}).")
     return sig_blk
 
 
@@ -947,7 +953,7 @@ def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile:
         try:
             config = hsm_sign.read_hsm_config(hsm_config)
         except Exception as e:
-            raise esptool.FatalError(f"Incorrect HSM config file format ({e})")
+            raise esptool.FatalError(f"Incorrect HSM config file format ({e}).")
         # get public key from HSM
         keyfile = extract_pubkey_from_hsm(config)[0]
 
@@ -969,7 +975,7 @@ def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile:
     for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
         sig_blk = validate_signature_block(image_content, sig_blk_num)
         if sig_blk is None:
-            print(f"Signature block {sig_blk_num} invalid. Skipping.")
+            log.print(f"Signature block {sig_blk_num} invalid. Skipping.")
             continue
         _, version, ecdsa_sha_version = struct.unpack("<BBBx", sig_blk[:4])
 
@@ -1029,16 +1035,16 @@ def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile:
 
             key_type = "RSA" if isinstance(vk, rsa.RSAPublicKey) else "ECDSA"
 
-            print(
+            log.print(
                 f"Signature block {sig_blk_num} verification successful using "
                 f"the supplied key ({key_type})."
             )
             valid = True
 
         except exceptions.InvalidSignature:
-            print(
+            log.print(
                 f"Signature block {sig_blk_num} is not signed by the supplied key. "
-                "Checking the next block"
+                "Checking the next block..."
             )
             continue
 
@@ -1067,7 +1073,7 @@ def extract_public_key(version: int, keyfile: IO, public_keyfile: IO):
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
     public_keyfile.write(vk)
-    print(f"{keyfile.name} public key extracted to {public_keyfile.name}")
+    log.print(f'"{keyfile.name}" public key extracted to "{public_keyfile.name}".')
 
 
 def extract_pubkey_from_hsm(config: configparser.SectionProxy) -> list[IO]:
@@ -1117,9 +1123,9 @@ def signature_info_v2(datafile: IO):
     for sig_blk_num in range(SIG_BLOCK_MAX_COUNT):
         sig_blk = validate_signature_block(image_content, sig_blk_num)
         if sig_blk is None:
-            print(
-                "Signature block %d absent/invalid. Skipping checking next blocks."
-                % sig_blk_num
+            log.print(
+                f"Signature block {sig_blk_num} absent/invalid. Skipping checking "
+                "next blocks..."
             )
             return
 
@@ -1134,8 +1140,8 @@ def signature_info_v2(datafile: IO):
 
         if sig_data[2] != digest:
             raise esptool.FatalError(
-                "Digest in signature block %d doesn't match the image digest."
-                % (sig_blk_num)
+                f"Digest in signature block {sig_blk_num} doesn't match "
+                "the image digest."
             )
 
         offset = -SECTOR_SIZE + sig_blk_num * SIG_BLOCK_SIZE
@@ -1149,12 +1155,13 @@ def signature_info_v2(datafile: IO):
                 key_digest = _sha256_digest(sig_block[36:101])
         else:
             raise esptool.FatalError(
-                "Unsupported scheme in signature block %d" % (sig_blk_num)
+                f"Unsupported scheme in signature block {sig_blk_num}."
             )
 
-        print(
-            "Public key digest for block %d: %s"
-            % (sig_blk_num, " ".join("{:02x}".format(c) for c in bytearray(key_digest)))
+        log.print(
+            f"Public key digest for block {sig_blk_num}: ".join(
+                f"{c:02x}" for c in bytearray(key_digest)
+            )
         )
 
 
@@ -1211,7 +1218,7 @@ def digest_sbv2_public_key(keyfile: IO, output: str):
     _check_output_is_not_input(keyfile, output)
     public_key_digest = _digest_sbv2_public_key(keyfile)
     with open(output, "wb") as f:
-        print(f"Writing the public key digest of {keyfile.name} to {output}.")
+        log.print(f'Writing the public key digest of "{keyfile.name}" to "{output}".')
         f.write(public_key_digest)
 
 
@@ -1229,13 +1236,10 @@ def digest_private_key(keyfile: IO, keylen: int, digest_file: IO):
     if keylen == 192:
         result = result[0:24]
     digest_file.write(result)
-    print(
-        "SHA-256 digest of private key %s%s written to %s"
-        % (
-            keyfile.name,
-            "" if keylen == 256 else " (truncated to 192 bits)",
-            digest_file.name,
-        )
+    len_msg = "" if keylen == 256 else " (truncated to 192 bits)"
+    log.print(
+        f'SHA-256 digest of private key "{keyfile.name}"{len_msg} '
+        f'written to "{digest_file.name}".'
     )
 
 
@@ -1336,11 +1340,11 @@ def _flash_encryption_operation_esp32(
 
     if flash_address % 16 != 0:
         raise esptool.FatalError(
-            "Starting flash address 0x%x must be a multiple of 16" % flash_address
+            f"Starting flash address {flash_address:#x} must be a multiple of 16."
         )
 
     if flash_crypt_conf == 0:
-        print("WARNING: Setting FLASH_CRYPT_CONF to zero is not recommended")
+        log.warning("Setting FLASH_CRYPT_CONF to zero is not recommended.")
 
     tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
     key = int.from_bytes(key, byteorder="big", signed=False)
@@ -1355,12 +1359,12 @@ def _flash_encryption_operation_esp32(
             break
         elif len(block) < 16:
             if do_decrypt:
-                raise esptool.FatalError("Data length is not a multiple of 16 bytes")
+                raise esptool.FatalError("Data length is not a multiple of 16 bytes.")
             pad = 16 - len(block)
             block = block + os.urandom(pad)
-            print(
-                "Note: Padding with %d bytes of random data "
-                "(encrypted data must be multiple of 16 bytes long)" % pad
+            log.print(
+                f"Note: Padding with {pad} bytes of random data "
+                "(encrypted data must be multiple of 16 bytes long)."
             )
 
         if block_offs % 32 == 0 or cipher is None:
@@ -1426,16 +1430,16 @@ def _flash_encryption_operation_aes_xts(
 
     if flash_address % 16 != 0:
         raise esptool.FatalError(
-            "Starting flash address 0x%x must be a multiple of 16" % flash_address
+            f"Starting flash address {flash_address:#x} must be a multiple of 16."
         )
 
     if len(indata) % 16 != 0:
         raise esptool.FatalError(
-            "Input data length (%d) must be a multiple of 16" % len(indata)
+            f"Input data length ({len(indata)}) must be a multiple of 16."
         )
 
     if len(indata) == 0:
-        raise esptool.FatalError("Input data must be longer than 0")
+        raise esptool.FatalError("Input data must be longer than 0.")
 
     # left pad for a 1024-bit aligned address
     pad_left = flash_address % 0x80
@@ -1455,9 +1459,7 @@ def _flash_encryption_operation_aes_xts(
         flash_address += 0x80  # for next block
 
         if len(tweak) != 16:
-            raise esptool.FatalError(
-                "Length of tweak must be 16, was {}".format(len(tweak))
-            )
+            raise esptool.FatalError(f"Length of tweak must be 16, was {len(tweak)}.")
 
         cipher = Cipher(algorithms.AES(key), modes.XTS(tweak), backend=backend)
         encryptor = cipher.decryptor() if do_decrypt else cipher.encryptor()
@@ -1477,9 +1479,8 @@ def _flash_encryption_operation_aes_xts(
     # output length matches original input
     if len(output) != len(indata) - pad_left - pad_right:
         raise esptool.FatalError(
-            "Length of input data ({}) should match the output data ({})".format(
-                len(indata) - pad_left - pad_right, len(output)
-            )
+            f"Length of input data ({len(indata) - pad_left - pad_right}) "
+            f"should match the output data ({len(output)})."
         )
 
     output_file.write(output)
@@ -1582,7 +1583,7 @@ class Group(esptool.cli_util.Group):
     "tool",
 )
 def cli():
-    print(f"espsecure.py v{esptool.__version__}")
+    log.print(f"espsecure.py v{esptool.__version__}")
 
 
 @cli.command("digest-secure-bootloader")
@@ -1738,11 +1739,12 @@ def sign_data_cli(
     "--keyfile",
     "-k",
     type=click.File("rb"),
-    help="Public key file for verification. Can be private or public key in PEM format",
+    help="Public key file for verification. "
+    "Can be private or public key in PEM format.",
 )
 @click.argument("datafile", type=click.File("rb"))
 def verify_signature_cli(version, hsm, hsm_config, keyfile, datafile):
-    """Verify a data file previously signed by "sign_data", using the public key."""
+    """Verify a data file previously signed by "sign_data" using the public key."""
     verify_signature(version, hsm, hsm_config, keyfile, datafile)
 
 
@@ -1764,7 +1766,7 @@ def verify_signature_cli(version, hsm, hsm_config, keyfile, datafile):
 @click.argument("public-keyfile", type=click.File("wb", lazy=True))
 def extract_public_key_cli(version, keyfile, public_keyfile):
     """Extract the public verification key for signatures, save it as a raw binary
-    file"""
+    file."""
     extract_public_key(version, keyfile, public_keyfile)
 
 
@@ -1774,7 +1776,8 @@ def extract_public_key_cli(version, keyfile, public_keyfile):
     "-k",
     type=click.File("rb"),
     required=True,
-    help="Public key file for verification. Can be private or public key in PEM format",
+    help="Public key file for verification. "
+    "Can be private or public key in PEM format.",
 )
 @click.option(
     "--output",
@@ -1794,7 +1797,8 @@ def digest_rsa_public_key(keyfile, output):
     "-k",
     type=click.File("rb"),
     required=True,
-    help="Public key file for verification. Can be private or public key in PEM format",
+    help="Public key file for verification. "
+    "Can be private or public key in PEM format.",
 )
 @click.option(
     "--output",
@@ -1849,7 +1853,7 @@ def digest_private_key_cli(keyfile, keylen, digest_file):
 @click.argument("key-file", type=click.File("wb", lazy=True))
 def generate_flash_encryption_key(keylen: int, key_file: IO):
     """Generate a development-use flash encryption key with random data."""
-    print(f"Writing {keylen} random bits to key file {key_file.name}")
+    log.print(f'Writing {keylen} random bits to key file "{key_file.name}".')
     key_file.write(os.urandom(keylen // 8))
 
 
@@ -1859,7 +1863,7 @@ def generate_flash_encryption_key(keylen: int, key_file: IO):
     "-k",
     type=click.File("rb"),
     required=True,
-    help="File with flash encryption key",
+    help="File with flash encryption key.",
 )
 @click.option(
     "--output",
@@ -1879,14 +1883,14 @@ def generate_flash_encryption_key(keylen: int, key_file: IO):
     "--flash-crypt-conf",
     type=esptool.cli_util.AnyIntType(),
     default=0xF,
-    help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for "
+    help="Override FLASH_CRYPT_CONF eFuse value (default is 0xF) (applicable only for "
     "ESP32).",
 )
 @click.option(
     "--aes-xts",
     "-x",
     is_flag=True,
-    help="Decrypt data using AES-XTS (not applicable for ESP32)",
+    help="Decrypt data using AES-XTS (not applicable for ESP32).",
 )
 @click.argument("encrypted-file", type=click.File("rb"))
 def decrypt_flash_data_cli(
@@ -1904,7 +1908,7 @@ def decrypt_flash_data_cli(
     "-k",
     type=click.File("rb"),
     required=True,
-    help="File with flash encryption key",
+    help="File with flash encryption key.",
 )
 @click.option(
     "--output",
@@ -1924,14 +1928,14 @@ def decrypt_flash_data_cli(
     "--flash-crypt-conf",
     type=esptool.cli_util.AnyIntType(),
     default=0xF,
-    help="Override FLASH_CRYPT_CONF efuse value (default is 0XF) (applicable only for "
-    "ESP32)",
+    help="Override FLASH_CRYPT_CONF eFuse value (default is 0xF) (applicable only for "
+    "ESP32).",
 )
 @click.option(
     "--aes-xts",
     "-x",
     is_flag=True,
-    help="Encrypt data using AES-XTS (not applicable for ESP32)",
+    help="Encrypt data using AES-XTS (not applicable for ESP32).",
 )
 @click.argument("plaintext-file", type=click.File("rb"))
 def encrypt_flash_data_cli(

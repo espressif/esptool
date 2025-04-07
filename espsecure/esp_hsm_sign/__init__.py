@@ -6,6 +6,7 @@ import binascii
 import configparser
 import os
 import sys
+from esptool.logger import log
 from getpass import getpass
 from typing import IO
 
@@ -47,12 +48,12 @@ def read_hsm_config(configfile: IO) -> configparser.SectionProxy:
 
 
 def establish_session(config: configparser.SectionProxy) -> pkcs11.Session:
-    print("Trying to establish a session with the HSM.")
+    log.print("Trying to establish a session with the HSM...")
     try:
         if os.path.exists(config["pkcs11_lib"]):
             lib = pkcs11.lib(config["pkcs11_lib"])
         else:
-            print(f"LIB file does not exist at {config['pkcs11_lib']}")
+            log.error(f'LIB file does not exist at "{config["pkcs11_lib"]}".')
             sys.exit(1)
         for slot in lib.get_slots(token_present=True):
             if slot.slot_id == int(config["slot"]):
@@ -60,12 +61,12 @@ def establish_session(config: configparser.SectionProxy) -> pkcs11.Session:
 
         token = slot.get_token()
         session = token.open(rw=True, user_pin=config["credentials"])
-        print(f"Session creation successful with HSM slot {int(config['slot'])}.")
+        log.print(f"Session creation successful with HSM slot {int(config['slot'])}.")
         return session
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        print("Session establishment failed")
+        log.error("Session establishment failed.")
         sys.exit(1)
 
 
@@ -76,24 +77,24 @@ def get_privkey_info(
         private_key = session.get_key(
             object_class=pkcs11.constants.ObjectClass.PRIVATE_KEY, label=config["label"]
         )
-        print(f"Got private key metadata with label {config['label']}.")
+        log.print(f"Got private key metadata with label {config['label']}.")
         return private_key
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        print("Failed to get the private key")
+        log.error("Failed to get the private key.")
         sys.exit(1)
 
 
 def get_pubkey(
     session: pkcs11.Session, config: configparser.SectionProxy
 ) -> EC.EllipticCurvePublicKey | RSA.RSAPublicKey:
-    print("Trying to extract public key from the HSM.")
+    log.print("Trying to extract public key from the HSM...")
     try:
         if "label_pubkey" in config:
             public_key_label = config["label_pubkey"]
         else:
-            print(
+            log.print(
                 "Config option 'label_pubkey' not found, "
                 "using config option 'label' for public key."
             )
@@ -117,8 +118,8 @@ def get_pubkey(
             ec_point_der = public_key[pkcs11.Attribute.EC_POINT]
             if ec_point_der[0] != 0x04:  # octet string tag
                 raise ValueError(
-                    f"Invalid EC_POINT encoding. "
-                    f"Wanted type 'octetstring' (0x04), got {ec_point_der[0]:#02x}"
+                    "Invalid EC_POINT encoding. "
+                    f"Wanted type 'octetstring' (0x04), got {ec_point_der[0]:#02x}."
                 )
             length = ec_point_der[1]
             ecpoints = ec_point_der[2 : 2 + length]
@@ -127,21 +128,21 @@ def get_pubkey(
             )
 
         else:
-            print("Incorrect public key algorithm")
+            log.error("Incorrect public key algorithm.")
             sys.exit(1)
 
-        print(f"Got public key with label {public_key_label}.")
+        log.print(f"Got public key with label {public_key_label}.")
         return public_key
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        print("Failed to extract the public key")
+        log.error("Failed to extract the public key.")
         sys.exit(1)
 
 
 def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
     try:
-        print("Signing payload using the HSM.")
+        log.print("Signing payload using the HSM...")
         key_type = private_key.key_type
         mechanism, mechanism_params = get_mechanism(key_type)
         signature: bytes = private_key.sign(
@@ -149,7 +150,7 @@ def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
         )
 
         if len(signature) != 0:
-            print("Signature generation successful.")
+            log.print("Signature generation successful.")
 
         if key_type == pkcs11.mechanisms.KeyType.EC:
             r = int(binascii.hexlify(signature[:32]), 16)
@@ -162,7 +163,7 @@ def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e, mechanism)
-        print("Payload Signing Failed")
+        log.error("Payload signing failed.")
         sys.exit(1)
 
 
@@ -178,15 +179,15 @@ def get_mechanism(
     elif key_type == pkcs11.mechanisms.KeyType.EC:
         return pkcs11.mechanisms.Mechanism.ECDSA_SHA256, None
     else:
-        print("Invalid signing key mechanism")
+        log.error("Invalid signing key mechanism.")
         sys.exit(1)
 
 
 def close_connection(session: pkcs11.Session):
     try:
         session.close()
-        print("Connection closed successfully")
+        log.print("Connection closed successfully.")
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        print("Failed to close the HSM session")
+        log.error("Failed to close the HSM session.")
         sys.exit(1)

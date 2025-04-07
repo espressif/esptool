@@ -1,6 +1,8 @@
-# SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+
+from esptool.logger import log
 
 from pkcs11.exceptions import (
     AlreadyInitialized,
@@ -20,31 +22,33 @@ from pkcs11.exceptions import (
 def handle_exceptions(e, info=""):
     exception_type = e.__class__
     if exception_type == MechanismInvalid:
-        print("The External HSM does not support the given mechanism", info)
+        log.error(f"The External HSM does not support the given mechanism: {info}")
     elif exception_type == FunctionFailed:
-        print(
-            "Please ensure proper configuration, privileges and environment variables"
+        log.error(
+            "Please ensure proper configuration, privileges and environment variables."
         )
     elif exception_type == AlreadyInitialized:
-        print("pkcs11 is already initialized with another library")
+        log.error("pkcs11 is already initialized with another library.")
     elif exception_type == AnotherUserAlreadyLoggedIn:
-        print("Another User has been already logged in")
+        log.error("Another User has been already logged in.")
     elif exception_type == ArgumentsBad:
-        print("Please check the arguments supplied to the function")
+        log.error("Please check the arguments supplied to the function.")
     elif exception_type == DomainParamsInvalid:
-        print("Invalid or unsupported domain parameters were supplied to the function")
+        log.error(
+            "Invalid or unsupported domain parameters were supplied to the function."
+        )
     elif exception_type == DeviceRemoved:
-        print(
+        log.error(
             "The token has been removed from its slot during "
-            "the execution of the function"
+            "the execution of the function."
         )
     elif exception_type == NoSuchToken:
-        print("No such token found")
+        log.error("No such token found.")
     elif exception_type == NoSuchKey:
-        print("No such key found")
+        log.error("No such key found.")
     elif exception_type == OperationNotInitialized:
-        print("Operation not Initialized")
+        log.error("Operation not initialized.")
     elif exception_type == SessionClosed:
-        print("Session already closed")
+        log.error("Session already closed.")
     else:
-        print(e.__class__, info)
+        log.error(f"{e.__class__}: {info}")
