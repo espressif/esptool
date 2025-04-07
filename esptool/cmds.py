@@ -1731,19 +1731,62 @@ def _parse_bootloader_info(bootloader_info_segment):
     }
 
 
-def image_info(input: ImageSource, chip: str | None = None) -> None:
+def image_info(
+    input: ImageSource | list[tuple[int, ImageSource]], chip: str | None = None
+) -> None:
     """
     Display detailed information about an ESP firmware image.
 
     Args:
         input: Path to the firmware image file, opened file-like object,
-            or the image data as bytes.
+            or the image data as bytes. If a list of tuples is provided,
+            each tuple contains an offset and an image data as bytes. Used for
+            merged binary images.
         chip: Target ESP device type (e.g., ``"esp32"``). If None, the chip
             type will be automatically detected from the image header.
     """
+    if isinstance(input, list):
+        log.print("Merged binary image detected. Processing each file individually.")
+        for i, file in enumerate(input):
+            data, _ = get_bytes(file[1])
 
-    data, _ = get_bytes(input)
-    log.print(f"Image size: {len(data)} bytes")
+            offset_str = hex(file[0]) if file[0] is not None else "unknown"
+            line = (
+                f"Processing file {i + 1}/{len(input)}, "
+                f"offset: {offset_str}, size: {len(data)} bytes"
+            )
+            log.print()
+            log.print("=" * len(line))
+            log.print(line)
+            log.print("=" * len(line))
+
+            try:
+                detected_chip = _parse_image_info_header(data, chip)
+            except Exception as e:
+                log.error(f"Error processing file {i + 1}/{len(input)}: {e}")
+                log.error("Probably not a valid firmware image (e.g. partition table).")
+                continue
+
+            if (
+                i == 0 and chip is None
+            ):  # We don't need to print the image type for each file
+                log.print(f"Detected image type: {detected_chip.upper()}")
+                chip = detected_chip
+            _print_image_info(detected_chip, data)
+
+    else:
+        data, _ = get_bytes(input)
+        detected_chip = _parse_image_info_header(data, chip)
+
+        log.print(f"Image size: {len(data)} bytes")
+        if chip is None:
+            log.print(f"Detected image type: {detected_chip.upper()}")
+
+        _print_image_info(detected_chip, data)
+
+
+def _parse_image_info_header(data: bytes, chip: str | None = None) -> str:
+    """Parse the image info header and return the chip type."""
     stream = io.BytesIO(data)
     common_header = stream.read(8)
     if chip is None:
@@ -1779,8 +1822,10 @@ def image_info(input: ImageSource, chip: str | None = None) -> None:
         except FatalError:
             chip = "esp8266"
 
-        log.print(f"Detected image type: {chip.upper()}")
+    return chip
 
+
+def _print_image_info(chip: str, data: bytes) -> None:
     image = LoadFirmwareImage(chip, data)
 
     log.print()

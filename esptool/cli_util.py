@@ -9,7 +9,7 @@ from esptool.bin_image import ESPLoader, intel_hex_to_bin
 from esptool.cmds import detect_flash_size
 from esptool.util import FatalError, flash_size_bytes, strip_chip_name
 from esptool.logger import log
-from typing import Any
+from typing import IO, Any
 
 ################################ Custom types #################################
 
@@ -140,12 +140,12 @@ class AutoHex2BinType(click.Path):
 
     def convert(
         self, value: str, param: click.Parameter | None, ctx: click.Context
-    ) -> str:
+    ) -> list[tuple[int | None, IO[bytes]]]:
         try:
             with open(value, "rb") as f:
                 # if hex file was detected replace hex file with converted temp bin
                 # otherwise keep the original file
-                return intel_hex_to_bin(f).name
+                return intel_hex_to_bin(f)
         except IOError as e:
             raise click.BadParameter(str(e))
 
@@ -171,7 +171,7 @@ class AddrFilenamePairType(click.Path):
         if len(value) == 0:
             return value
 
-        pairs = []
+        pairs: list[tuple[int, IO[bytes]]] = []
         for i in range(0, len(value), 2):
             try:
                 address = arg_auto_int(value[i])
@@ -186,8 +186,8 @@ class AddrFilenamePairType(click.Path):
             except IOError as e:
                 raise click.BadParameter(str(e))
             # check for intel hex files and convert them to bin
-            argfile = intel_hex_to_bin(argfile_f, address)
-            pairs.append((address, argfile))
+            argfile_list = intel_hex_to_bin(argfile_f, address)
+            pairs.extend(argfile_list)  # type: ignore
 
         # Sort the addresses and check for overlapping
         end = 0
