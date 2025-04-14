@@ -64,7 +64,7 @@
 
     Jtag fuses:
     JTAG_SEL_ENABLE (BLOCK0)                           Represents whether the selection between usb_to_jt = False R/W (0b0)
-                                                       ag and pad_to_jtag through strapping gpio15 when b
+                                                       ag and pad_to_jtag through strapping gpio34 when b
                                                        oth EFUSE_DIS_PAD_JTAG and EFUSE_DIS_USB_JTAG are
                                                        equal to 0 is enabled or disabled. 1: enabled. 0:
                                                        disabled
