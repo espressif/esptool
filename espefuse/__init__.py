@@ -67,7 +67,7 @@ def get_efuses(
 
 @click.group(
     cls=Group,
-    # chain=True,  # allow using multiple commands in a single run
+    chain=True,  # allow using multiple commands in a single run
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
     help=f"espefuse.py v{esptool.__version__} - ESP32xx eFuse get/set tool",

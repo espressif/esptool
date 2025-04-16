@@ -98,7 +98,7 @@ class TupleParameter(click.Argument):
             ctx.exit()
 
         # Check if we have more values than allowed by max_arity
-        if len(value) > self.max_arity * self.type.arity:
+        if self.max_arity is not None and len(value) > self.max_arity * self.type.arity:
             raise click.BadParameter(
                 f"Expected at most {self.max_arity} groups ({self.type.arity} values "
                 f"each), got {len(value)} (values: {value})"
@@ -294,8 +294,8 @@ class BaseCommands:
             "split - each eFuse block is placed into its own file.",
         )
         @click.option(
-            "--file_name",
-            type=click.Path(exists=True, writable=True),
+            "--file-name",
+            type=click.File("w"),
             default=sys.stdout,
             help="The path to the file in which to save the dump, if not specified, "
             "output to the console.",
