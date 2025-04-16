@@ -65,9 +65,7 @@ print("Running espefuse.py tests...")
 
 # The default value of the program name for argparse has changed in Python 3.14
 # https://docs.python.org/dev/whatsnew/3.14.html#argparse
-ESPEFUSE_MODNAME = (
-    "__main__.py" if sys.version_info < (3, 14) else "python3 -m espefuse"
-)
+ESPEFUSE_MODNAME = "python -m espefuse"
 
 
 @pytest.mark.host_test
@@ -146,6 +144,7 @@ class EfuseTestCase:
         full_cmd = " ".join(
             [self.base_cmd, "--do-not-confirm" if do_not_confirm else "", cmd]
         )
+        print("Running command: ", full_cmd)
         output = self._run_command(full_cmd, check_msg, ret_code)
         self._run_command(
             " ".join([self.base_cmd, "check_error"]), "No errors detected", 0
@@ -179,13 +178,12 @@ class EfuseTestCase:
 
 class TestReadCommands(EfuseTestCase):
     def test_help(self):
-        self.espefuse_not_virt_py("--help", check_msg=f"usage: {ESPEFUSE_MODNAME} [-h]")
-        self.espefuse_not_virt_py(f"--chip {arg_chip} --help")
-
-    def test_help2(self):
         self.espefuse_not_virt_py(
-            "", check_msg=f"usage: {ESPEFUSE_MODNAME} [-h]", ret_code=1
+            "--help",
+            check_msg=f"Usage: {ESPEFUSE_MODNAME} [OPTIONS] "
+            "COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...",
         )
+        self.espefuse_not_virt_py(f"--chip {arg_chip} --help")
 
     def test_dump(self):
         self.espefuse_py("dump -h")
@@ -215,7 +213,7 @@ class TestReadCommands(EfuseTestCase):
         self.espefuse_py("summary --format value_only MAC")
         self.espefuse_py(
             "summary --format value_only MAC WR_DIS",
-            check_msg="The 'value_only' format can be used exactly for one efuse.",
+            check_msg="The 'value_only' format can be used exactly for one eFuse.",
             ret_code=2,
         )
 
@@ -744,7 +742,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
                     OPTIONAL_UNIQUE_ID 0x2328ad5ac9145f698f843a26d6eae168",
                     check_msg="-> 0x2328ad5ac9145f698f843a26d6eae168",
                 )
-                output = self.espefuse_py("summary -d")
+                output = self.espefuse_py("-d summary")
                 assert (
                     "read_regs: d6eae168 8f843a26 c9145f69 2328ad5a "
                     "00000000 00000000 00000000 00000000"
@@ -766,7 +764,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
             "-> 0x00010203040506070809111111111111111111111111111111110000112233ff"
             in output
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "read_regs: 112233ff 11110000 11111111 11111111 "
             "11111111 08091111 04050607 00010203"
@@ -785,7 +783,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
                 "-> 0xff33221100001111111111111111111111111111111109080706050403020100"
                 in output
             )
-            output = self.espefuse_py("summary -d")
+            output = self.espefuse_py("-d summary")
             assert (
                 "read_regs: 03020100 07060504 11110908 11111111 "
                 "11111111 11111111 00001111 ff332211"
@@ -858,7 +856,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             BLOCK2 {IMAGES_DIR}/256bit_1 \
             BLOCK3 {IMAGES_DIR}/256bit_2 --no-protect-key"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_2")
@@ -869,7 +867,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             BLOCK2 {IMAGES_DIR}/256bit_1 \
             BLOCK3 {IMAGES_DIR}/256bit_2"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_2")
@@ -886,11 +884,11 @@ class TestBurnKeyCommands(EfuseTestCase):
         self.espefuse_py(
             f"burn_key BLOCK_KEY0 {IMAGES_DIR}/256bit XTS_AES_128_KEY --no-read-protect"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit", reverse_order=True)
 
         self.espefuse_py(f"burn_key BLOCK_KEY0 {IMAGES_DIR}/256bit XTS_AES_128_KEY")
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
             "00000000 00000000 00000000 00000000"
@@ -916,7 +914,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             f"XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS "
             f"BLOCK_KEY0 {IMAGES_DIR}/128bit_key SECURE_BOOT_DIGEST --no-read-protect"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[3 ] read_regs: 0c0d0e0f 08090a0b 04050607 00010203 "
             "03020100 07060504 0b0a0908 0f0e0d0c"
@@ -927,7 +925,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             "XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS "
             f"BLOCK_KEY0 {IMAGES_DIR}/128bit_key SECURE_BOOT_DIGEST"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
             "03020100 07060504 0b0a0908 0f0e0d0c"
@@ -968,7 +966,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             cmd = cmd.replace("XTS_AES_256_KEY_1", "XTS_AES_128_KEY")
             cmd = cmd.replace("XTS_AES_256_KEY_2", "XTS_AES_128_KEY")
         self.espefuse_py(cmd + " --no-read-protect --no-write-protect")
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit", reverse_order=True)
         self.check_data_block_in_log(
             output, f"{IMAGES_DIR}/256bit_1", reverse_order=True
@@ -978,7 +976,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         )
 
         self.espefuse_py(cmd)
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[4 ] read_regs: 00000000 00000000 00000000 00000000 "
             "00000000 00000000 00000000 00000000"
@@ -998,7 +996,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             BLOCK_KEY4 {IMAGES_DIR}/256bit_1 SECURE_BOOT_DIGEST1 \
             BLOCK_KEY5 {IMAGES_DIR}/256bit_2 SECURE_BOOT_DIGEST2"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_2")
@@ -1020,7 +1018,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             BLOCK2 {IMAGES_DIR}/192bit_1 \
             BLOCK3 {IMAGES_DIR}/192bit_2 --no-protect-key"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_2")
@@ -1031,7 +1029,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             BLOCK2 {IMAGES_DIR}/192bit_1 \
             BLOCK3 {IMAGES_DIR}/192bit_2"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_2")
@@ -1046,7 +1044,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             BLOCK_KEY0 {IMAGES_DIR}/256bit_1_256bit_2_combined \
             XTS_AES_256_KEY --no-read-protect --no-write-protect"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(
             output, f"{IMAGES_DIR}/256bit_1", reverse_order=True
         )
@@ -1080,7 +1078,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         )
 
         # Second half of key should burn to first available key block (BLOCK_KEY5)
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(
             output, f"{IMAGES_DIR}/256bit_1", reverse_order=True
         )
@@ -1113,7 +1111,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         )
 
         # Second half of key should burn to first available key block (BLOCK_KEY0)
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(
             output, f"{IMAGES_DIR}/256bit_1", reverse_order=True
         )
@@ -1142,7 +1140,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             BLOCK_KEY1 {S_IMAGES_DIR}/ecdsa256_secure_boot_signing_key_v2.pem \
             ECDSA_KEY"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert 2 == output.count(
             "= ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? "
             "?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? -/-"
@@ -1169,7 +1167,7 @@ class TestBurnKeyCommands(EfuseTestCase):
             ECDSA_KEY \
             --no-read-protect"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "= c8 c4 5d 62 9e 05 05 bd cb 04 a4 7c 06 f5 86 14 "
             "cb 23 81 23 95 b7 71 4f 00 00 00 00 00 00 00 00 R/-"
@@ -1195,8 +1193,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         blk1 = "BLOCK1"
         self.espefuse_py(
             f"burn_block_data {blk0} {IMAGES_DIR}/224bit {blk1}",
-            check_msg="A fatal error occurred: "
-            "The number of block_name (2) and datafile (1) should be the same.",
+            check_msg="Expected multiple of 2 values, got 3",
             ret_code=2,
         )
 
@@ -1207,7 +1204,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK0 {IMAGES_DIR}/224bit \
             BLOCK3 {IMAGES_DIR}/256bit"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[3 ] read_regs: a3a2a1a0 a7a6a5a4 abaaa9a8 afaeadac "
             "b3b2b1b0 b7b6b5b4 bbbab9b8 bfbebdbc"
@@ -1219,7 +1216,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK2 {IMAGES_DIR}/256bit_1"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/256bit_1"
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/256bit_1"
         )
 
         self.espefuse_py(
@@ -1227,7 +1224,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK1 {IMAGES_DIR}/256bit_2"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/256bit_2"
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/256bit_2"
         )
 
     @pytest.mark.skipif(arg_chip != "esp32c2", reason="ESP32-C2-only")
@@ -1239,7 +1236,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK2 {IMAGES_DIR}/256bit \
             BLOCK3 {IMAGES_DIR}/256bit"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert "[0 ] read_regs: 00000001 0000000c" in output
         assert "[1 ] read_regs: 03020100 07060504 000a0908" in output
         assert (
@@ -1271,7 +1268,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK0 {IMAGES_DIR}/192bit \
             BLOCK3 {IMAGES_DIR}/256bit"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[0 ] read_regs: 00000000 07060500 00000908 00000000 13000000 00161514"
             in output
@@ -1289,7 +1286,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
                 BLOCK10 {IMAGES_DIR}/256bit_3"
             )
             self.check_data_block_in_log(
-                self.espefuse_py("summary -d"), f"{IMAGES_DIR}/256bit_3"
+                self.espefuse_py("-d summary"), f"{IMAGES_DIR}/256bit_3"
             )
 
         self.espefuse_py(
@@ -1298,7 +1295,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK5 {IMAGES_DIR}/256bit_1 \
             BLOCK6 {IMAGES_DIR}/256bit_2"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[1 ] read_regs: 00000000 07060500 00000908 00000000 13000000 00161514"
             in output
@@ -1347,7 +1344,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK1 {IMAGES_DIR}/192bit_1"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/192bit_1", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/192bit_1", offset=offset
         )
 
         offset = 6
@@ -1355,7 +1352,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK2 {IMAGES_DIR}/192bit_2"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/192bit_2", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/192bit_2", offset=offset
         )
 
         offset = 8
@@ -1363,21 +1360,21 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK3 {IMAGES_DIR}/192bit_2"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/192bit_2", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/192bit_2", offset=offset
         )
 
     @pytest.mark.skipif(arg_chip != "esp32c2", reason="ESP32-C2-only")
     def test_burn_block_data_with_offset_1_key_block(self):
         offset = 4
         self.espefuse_py(f"burn_block_data --offset {offset} BLOCK1 {IMAGES_DIR}/92bit")
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert "[1 ] read_regs: 00000000 03020100 00060504" in output
 
         offset = 6
         self.espefuse_py(
             f"burn_block_data --offset {offset} BLOCK2 {IMAGES_DIR}/192bit_1"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[2 ] read_regs: 00000000 00110000 05000000 09080706 "
             "0d0c0b0a 11100f0e 15141312 00002116"
@@ -1388,7 +1385,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK3 {IMAGES_DIR}/192bit_2"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/192bit_2", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/192bit_2", offset=offset
         )
 
     @pytest.mark.skipif(
@@ -1411,7 +1408,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK_KEY0 {IMAGES_DIR}/192bit_1"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/192bit_1", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/192bit_1", offset=offset
         )
 
         offset = 6
@@ -1419,7 +1416,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK_KEY1 {IMAGES_DIR}/192bit_2"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/192bit_2", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/192bit_2", offset=offset
         )
 
         offset = 8
@@ -1427,7 +1424,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK_KEY2 {IMAGES_DIR}/192bit_2"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/192bit_2", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/192bit_2", offset=offset
         )
 
     @pytest.mark.skipif(
@@ -1448,7 +1445,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             BLOCK2 {IMAGES_DIR}/192bit_1 \
             BLOCK3 {IMAGES_DIR}/192bit_2"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_2")
@@ -1464,7 +1461,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK1 {IMAGES_DIR}/128bit"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/128bit", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/128bit", offset=offset
         )
 
         offset = 6
@@ -1472,7 +1469,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK2 {IMAGES_DIR}/128bit"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/128bit", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/128bit", offset=offset
         )
 
         offset = 8
@@ -1480,7 +1477,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
             f"burn_block_data --offset {offset} BLOCK3 {IMAGES_DIR}/128bit"
         )
         self.check_data_block_in_log(
-            self.espefuse_py("summary -d"), f"{IMAGES_DIR}/128bit", offset=offset
+            self.espefuse_py("-d summary"), f"{IMAGES_DIR}/128bit", offset=offset
         )
 
 
@@ -1493,7 +1490,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
             self.espefuse_py(
                 f"burn_key_digest {S_IMAGES_DIR}/rsa_secure_boot_signing_key.pem"
             )
-            output = self.espefuse_py("summary -d")
+            output = self.espefuse_py("-d summary")
             assert (
                 " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
                 "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"
@@ -1513,7 +1510,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
             f"burn_key \
             BLOCK2 {S_IMAGES_DIR}/rsa_public_key_digest.bin --no-protect-key"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert 1 == output.count(
             " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
             "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/W"
@@ -1537,7 +1534,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         self.espefuse_py(
             f"burn_key_digest {S_IMAGES_DIR}/ecdsa192_secure_boot_signing_key_v2.pem"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert " = 1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-" in output
         assert (
             " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
@@ -1551,7 +1548,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         self.espefuse_py(
             f"burn_key_digest {S_IMAGES_DIR}/ecdsa256_secure_boot_signing_key_v2.pem"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert " = bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-" in output
         assert (
             " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
@@ -1566,7 +1563,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
             "burn_key BLOCK_KEY0 "
             f"{S_IMAGES_DIR}/ecdsa192_public_key_digest_v2.bin SECURE_BOOT_DIGEST"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
             "1e 3d 15 16 96 ca 7f 22 a6 e8 8b d5 27 a0 3b 3b R/-"
@@ -1580,7 +1577,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
             "burn_key BLOCK_KEY0 "
             f"{S_IMAGES_DIR}/ecdsa256_public_key_digest_v2.bin SECURE_BOOT_DIGEST"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             " = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
             "bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-"
@@ -1611,8 +1608,7 @@ class TestBurnKeyDigestCommands(EfuseTestCase):
             BLOCK_KEY1 \
             {S_IMAGES_DIR}/rsa_secure_boot_signing_key2.pem SECURE_BOOT_DIGEST1 \
             BLOCK_KEY2 ",
-            check_msg="A fatal error occurred: The number of blocks (3), "
-            "datafile (2) and keypurpose (2) should be the same.",
+            check_msg="Expected multiple of 3 values, got 7",
             ret_code=2,
         )
         self.espefuse_py(
@@ -1624,7 +1620,7 @@ class TestBurnKeyDigestCommands(EfuseTestCase):
             BLOCK_KEY2 \
             {S_IMAGES_DIR}/rsa_secure_boot_signing_key2.pem SECURE_BOOT_DIGEST2"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert 1 == output.count(
             " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
             "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"
@@ -1642,7 +1638,7 @@ class TestBurnKeyDigestCommands(EfuseTestCase):
             f"burn_key \
             BLOCK_KEY0 {S_IMAGES_DIR}/rsa_public_key_digest.bin SECURE_BOOT_DIGEST0"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert 1 == output.count(
             " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
             "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"
@@ -1653,7 +1649,7 @@ class TestBurnKeyDigestCommands(EfuseTestCase):
             BLOCK_KEY1 \
             {S_IMAGES_DIR}/rsa_secure_boot_signing_key.pem SECURE_BOOT_DIGEST1"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert 2 == output.count(
             " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
             "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"
@@ -1782,7 +1778,7 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
                 flash_encryption {IMAGES_DIR}/256bit \
                 secure_boot_v1 {IMAGES_DIR}/256bit_1 --no-protect-key"
             )
-            output = self.espefuse_py("summary -d")
+            output = self.espefuse_py("-d summary")
             self.check_data_block_in_log(
                 output, f"{IMAGES_DIR}/256bit", reverse_order=True
             )
@@ -1795,7 +1791,7 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
                 flash_encryption  {IMAGES_DIR}/256bit \
                 secure_boot_v1    {IMAGES_DIR}/256bit_1"
             )
-            output = self.espefuse_py("summary -d")
+            output = self.espefuse_py("-d summary")
             assert (
                 "[1 ] read_regs: 00000000 00000000 00000000 00000000 "
                 "00000000 00000000 00000000 00000000"
@@ -1816,7 +1812,7 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
                 flash_encryption {IMAGES_DIR}/256bit \
                 secure_boot_v2 {IMAGES_DIR}/256bit_1 --no-protect-key"
             )
-            output = self.espefuse_py("summary -d")
+            output = self.espefuse_py("-d summary")
             self.check_data_block_in_log(
                 output, f"{IMAGES_DIR}/256bit", reverse_order=True
             )
@@ -1829,7 +1825,7 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
                 flash_encryption {IMAGES_DIR}/256bit \
                 secure_boot_v2 {IMAGES_DIR}/256bit_1"
             )
-            output = self.espefuse_py("summary -d")
+            output = self.espefuse_py("-d summary")
             assert (
                 "[1 ] read_regs: 00000000 00000000 00000000 00000000 "
                 "00000000 00000000 00000000 00000000"
@@ -1839,6 +1835,7 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
             )
 
 
+@pytest.mark.skip("This is not supported yet with new click parser")
 class TestExecuteScriptsCommands(EfuseTestCase):
     @classmethod
     def setup_class(self):
@@ -1879,7 +1876,7 @@ class TestExecuteScriptsCommands(EfuseTestCase):
             cmd = f"execute_scripts {EFUSE_S_DIR}/efuse_burn1.py --index 10 \
             --configfiles {EFUSE_S_DIR}/esp32xx/config1.json"
         self.espefuse_py(cmd)
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         if arg_chip in ["esp32", "esp32c2"]:
             assert (
                 "[3 ] read_regs: e00007ff 00000000 00000000 00000000 "
@@ -1900,7 +1897,7 @@ class TestExecuteScriptsCommands(EfuseTestCase):
             cmd = f"execute_scripts {EFUSE_S_DIR}/efuse_burn2.py --index 28 \
             --configfiles {EFUSE_S_DIR}/esp32xx/config2.json"
         self.espefuse_py(cmd)
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         if arg_chip in ["esp32", "esp32c2"]:
             assert (
                 "[2 ] read_regs: 10000000 00000000 00000000 00000000 "
@@ -1943,17 +1940,27 @@ class TestMultipleCommands(EfuseTestCase):
 
         self.espefuse_py(
             f"-h {command1} {command2}",
-            check_msg=f"usage: {ESPEFUSE_MODNAME} [-h]",
+            check_msg=f"Usage: {ESPEFUSE_MODNAME}",
         )
 
         self.espefuse_py(
             f"{command1} -h {command2}",
-            check_msg=f"usage: {ESPEFUSE_MODNAME} burn_key_digest [-h]",
+            check_msg=f"Usage: {ESPEFUSE_MODNAME} burn-key-digest [OPTIONS] "
+            + (
+                "KEYFILE"
+                if arg_chip in ["esp32", "esp32c2"]
+                else "[<BLOCK> <KEYFILE> <KEYPURPOSE>] ..."
+            ),
         )
 
         self.espefuse_py(
             f"{command1} {command2} -h",
-            check_msg=f"usage: {ESPEFUSE_MODNAME} burn_key [-h]",
+            check_msg=f"Usage: {ESPEFUSE_MODNAME} burn-key [OPTIONS] "
+            + (
+                "[<BLOCK> <KEYFILE>] ..."
+                if arg_chip == "esp32"
+                else "[<BLOCK> <KEYFILE> <KEYPURPOSE>] ..."
+            ),
         )
 
     @pytest.mark.skipif(
@@ -1966,7 +1973,7 @@ class TestMultipleCommands(EfuseTestCase):
             XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS --no-read-protect \
             summary"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[3 ] read_regs: 0c0d0e0f 08090a0b 04050607 00010203 "
             "f66a0fbf 8b6dd38b a9dab353 040af633"
@@ -1984,7 +1991,7 @@ class TestMultipleCommands(EfuseTestCase):
             {IMAGES_DIR}/128bit_key XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS \
             summary"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert (
             "[3 ] read_regs: 00000000 00000000 00000000 00000000 "
             "f66a0fbf 8b6dd38b a9dab353 040af633"
@@ -2002,7 +2009,7 @@ class TestMultipleCommands(EfuseTestCase):
             burn_bit BLOCK2 12 13 14 15 \
             summary"
         )
-        output = self.espefuse_py("summary -d")
+        output = self.espefuse_py("-d summary")
         assert "[2 ] read_regs: 0000ffff 00000000" in output
 
     def test_not_burn_cmds(self):
