@@ -103,7 +103,9 @@ You will likely have to restart or re-login for the autocompletion to start work
 
          .. code-block:: bash
 
-               eval "$(_ESPTOOL_PY_COMPLETE=bash_source esptool.py espsecure.py espefuse.py)"
+               eval "$(_ESPTOOL_PY_COMPLETE=bash_source esptool.py)"
+               eval "$(_ESPSECURE_PY_COMPLETE=bash_source espsecure.py)"
+               eval "$(_ESPEFUSE_PY_COMPLETE=bash_source espefuse.py)"
 
 
    .. group-tab:: Zsh
@@ -121,14 +123,18 @@ You will likely have to restart or re-login for the autocompletion to start work
 
       .. code-block:: bash
 
-         eval "$(_ESPTOOL_PY_COMPLETE=zsh_source esptool.py espsecure.py espefuse.py)"
+         eval "$(_ESPTOOL_PY_COMPLETE=zsh_source esptool.py)"
+         eval "$(_ESPSECURE_PY_COMPLETE=zsh_source espsecure.py)"
+         eval "$(_ESPEFUSE_PY_COMPLETE=zsh_source espefuse.py)"
 
 
    .. group-tab:: Fish
 
       .. code-block:: bash
 
-         _ESPTOOL_PY_COMPLETE=fish_source esptool.py espsecure.py espefuse.py | source
+         _ESPTOOL_PY_COMPLETE=fish_source esptool.py | source
+         _ESPSECURE_PY_COMPLETE=fish_source espsecure.py | source
+         _ESPEFUSE_PY_COMPLETE=fish_source espefuse.py | source
 
 
 

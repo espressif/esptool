@@ -284,3 +284,26 @@ Choices for the ``--before`` option have been renamed to use ``-`` instead of ``
 **Migration Steps:**
 
 1. Replace all underscores in the ``--before`` option with ``-`` in your scripts.
+
+Command and Option Renaming
+###########################
+
+All the commands and options have been renamed to use ``-`` instead of ``_`` as a separator (e.g., ``burn_custom_mac`` -> ``burn-custom-mac``).
+
+From options only ``--file_name`` has been renamed to ``--file-name``.
+
+Old command and option names are **deprecated**, meaning they will work for now with a warning, but will be removed in the next major release.
+
+**Migration Steps:**
+
+1. Replace all underscores in the command names with ``-`` in your scripts.
+
+
+``--port`` Option is Required
+#############################
+
+The ``--port`` option is now required for all commands (except when using ``--virt``). Previously it was optional and defaulted to ``/dev/ttyUSB0``.
+
+**Migration Steps:**
+
+1. Add the ``--port`` option to all your espefuse commands.
