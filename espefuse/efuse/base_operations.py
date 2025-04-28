@@ -143,13 +143,10 @@ def add_force_write_always(function: Callable):
 
 
 def add_show_sensitive_info_option(function: Callable):
-    # TODO: originally this parameter worked for all commands even if it was
-    # specified for a one of them
     def callback(ctx: click.Context, param: click.Parameter, value: bool):
-        if value or ctx.obj.get("debug"):
+        if value or ctx.obj.get("debug") or ctx.obj.get("show_sensitive_info", False):
             value = True
-        else:
-            print("Sensitive data will be hidden (see --show-sensitive-info)")
+        ctx.obj["show_sensitive_info"] = value
         return value
 
     return click.option(
@@ -158,6 +155,7 @@ def add_show_sensitive_info_option(function: Callable):
         "Enabled if --debug is used.",
         is_flag=True,
         callback=callback,
+        expose_value=True,  # ensure that callback is called even if option is not used
     )(function)
 
 

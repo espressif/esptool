@@ -52,8 +52,12 @@ class ESP32Commands(BaseCommands):
         )
         @add_force_write_always
         @add_show_sensitive_info_option
-        def burn_key_cli(block_keyfile, no_protect_key, show_sensitive_info, **kwargs):
+        @click.pass_context
+        def burn_key_cli(
+            ctx, block_keyfile, no_protect_key, show_sensitive_info, **kwargs
+        ):
             block, keyfile = zip(*block_keyfile)
+            show_sensitive_info = ctx.show_sensitive_info
             self.burn_key(block, keyfile, no_protect_key, show_sensitive_info)
 
         @cli.command(
@@ -74,6 +78,7 @@ class ESP32Commands(BaseCommands):
         def burn_key_digest_cli(
             ctx, keyfile, no_protect_key, show_sensitive_info, **kwargs
         ):
+            kwargs["show_sensitive_info"] = ctx.show_sensitive_info
             self.burn_key_digest(
                 ctx.obj["esp"], keyfile, no_protect_key, show_sensitive_info
             )

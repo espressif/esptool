@@ -128,7 +128,19 @@ class ChainParser(OptionParser):
         state.rargs = []
 
 
+class EfuseContext(click.RichContext):
+    @property
+    def show_sensitive_info(self) -> bool:
+        self.ensure_object(dict)
+        value: bool = self.obj.get("show_sensitive_info", False)
+        if not value:
+            log.print("Sensitive data will be hidden (see --show-sensitive-info)")
+        return value
+
+
 class ChainingCommand(click.RichCommand, click.Command):
+    context_class = EfuseContext
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -190,6 +202,7 @@ class Group(EsptoolGroup):
     }
 
     command_class = ChainingCommand
+    context_class = EfuseContext
 
     @staticmethod
     def _split_to_groups(args: list[str]) -> tuple[list[list[str]], list[str]]:

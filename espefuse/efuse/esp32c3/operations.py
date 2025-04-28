@@ -56,9 +56,11 @@ class ESP32C3Commands(BaseCommands):
         @protect_options
         @add_force_write_always
         @add_show_sensitive_info_option
-        def burn_key_cli(**kwargs):
+        @click.pass_context
+        def burn_key_cli(ctx, **kwargs):
             block, keyfile, keypurpose = zip(*kwargs.pop("block_keyfile_keypurpose"))
             kwargs.pop("force_write_always")
+            kwargs["show_sensitive_info"] = ctx.show_sensitive_info
             self.burn_key(block, keyfile, keypurpose, **kwargs)
 
         @cli.command(
@@ -86,9 +88,11 @@ class ESP32C3Commands(BaseCommands):
         @protect_options
         @add_force_write_always
         @add_show_sensitive_info_option
-        def burn_key_digest_cli(**kwargs):
+        @click.pass_context
+        def burn_key_digest_cli(ctx, **kwargs):
             block, keyfile, keypurpose = zip(*kwargs.pop("block_keyfile_keypurpose"))
             kwargs.pop("force_write_always")
+            kwargs["show_sensitive_info"] = ctx.show_sensitive_info
             self.burn_key_digest(block, keyfile, keypurpose, **kwargs)
 
     ###################################### Commands ######################################
