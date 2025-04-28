@@ -31,23 +31,23 @@ Supported Commands
 
    dump <dump-cmd>
    summary <summary-cmd>
-   burn_efuse <burn-efuse-cmd>
-   burn_block_data <burn-block-data-cmd>
-   burn_bit <burn-bit-cmd>
-   read_protect_efuse and write_protect_efuse <read-write-protections-cmd>
-   burn_key <burn-key-cmd>
-   burn_key_digest <burn-key-digest-cmd>
-   burn_custom_mac <burn-custom-mac-cmd>
-   get_custom_mac <get-custom-mac-cmd>
-   adc_info <adc-info-cmd>
-   set_flash_voltage <set-flash-voltage-cmd>
-   execute_scripts <execute-scripts-cmd>
-   check_error <check-error-cmd>
+   burn-efuse <burn-efuse-cmd>
+   burn-block-data <burn-block-data-cmd>
+   burn-bit <burn-bit-cmd>
+   read-protect-efuse and write-protect-efuse <read-write-protections-cmd>
+   burn-key <burn-key-cmd>
+   burn-key-digest <burn-key-digest-cmd>
+   burn-custom-mac <burn-custom-mac-cmd>
+   get-custom-mac <get-custom-mac-cmd>
+   adc-info <adc-info-cmd>
+   set-flash-voltage <set-flash-voltage-cmd>
+   execute-scripts <execute-scripts-cmd>
+   check-error <check-error-cmd>
 
 Optional General Arguments Of Commands
 --------------------------------------
 
-- ``-h``, ``--help`` - Show help message and exit. Use ``-h`` to see a summary of all available commands and command line options. To see all options for a particular chip and command, add ``-c {IDF_TARGET_NAME}`` and ``-h`` to the command name, i.e. ``espefuse.py -c {IDF_TARGET_NAME} burn_key -h``.
+- ``-h``, ``--help`` - Show help message and exit. Use ``-h`` to see a summary of all available commands and command line options. To see all options for a particular chip and command, add ``-c {IDF_TARGET_NAME}`` and ``-h`` to the command name, i.e. ``espefuse.py -c {IDF_TARGET_NAME} burn-key -h``.
 - ``--chip``, ``-c`` - Target chip type. If this argument is omitted, the tool automatically detects the chip type when connected. But if the command has a help option, the chip is not connected, and the default chip is ``esp32``, please specify the specific type of chip to get the correct help. Example of usage: ``-c esp32``, ``-c esp32c3``, ``-c esp32s2`` and others.
 - ``--baud``, ``-b`` - Serial port baud rate, the same as for esptool.
 - ``--port``, ``-p`` - Serial port device, for example: ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
@@ -106,13 +106,13 @@ Perform Multiple Operations In A Single Espefuse Run
 
 Some eFuse blocks have an encoding scheme (Reed-Solomon or 3/4) that requires encoded data, making these blocks only writable once. If you need to write multiple keys/eFuses to one block using different commands, you can use this feature - multiple commands. This feature burns given data once at the end of all commands. All commands supported by version v3.2 or later are supported to be chained together.
 
-The example below shows how to use the two commands ``burn_key_digest`` and ``burn_key`` to write the Secure Boot key and Flash Encryption key into one BLOCK3 for the ``ESP32-C2`` chip. Using these commands individually will result in only one key being written correctly.
+The example below shows how to use the two commands ``burn-key-digest`` and ``burn-key`` to write the Secure Boot key and Flash Encryption key into one BLOCK3 for the ``ESP32-C2`` chip. Using these commands individually will result in only one key being written correctly.
 
 .. code-block:: none
 
     > espefuse.py -c esp32c2  \
-                            burn_key_digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
-                            burn_key BLOCK_KEY0 images/efuse/128bit_key.bin XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
+                            burn-key-digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
+                            burn-key BLOCK_KEY0 images/efuse/128bit_key.bin XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
 
 Extend eFuse Table
 ------------------

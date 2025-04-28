@@ -1,9 +1,9 @@
 .. _burn-key-digest-cmd:
 
-Burn key Digest
+Burn Key Digest
 ===============
 
-The ``espefuse.py burn_key_digest`` command parses a RSA public key and burns the digest to eFuse block for use with `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html#signature-block-format>`_.
+The ``espefuse.py burn-key-digest`` command parses a RSA public key and burns the digest to eFuse block for use with `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html#signature-block-format>`_.
 
 Positional arguments:
 
@@ -44,9 +44,9 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn_key_digest secure_boot_key_v2_0.pem
+        > espefuse.py burn-key-digest secure_boot_key_v2_0.pem
 
-        === Run "burn_key_digest" command ===
+        === Run "burn-key-digest" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
         - BLOCK2 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
         Disabling write to efuse BLOCK2...
@@ -75,9 +75,9 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn_key_digest secure_boot_v2_ecdsa192.pem
+        > espefuse.py burn-key-digest secure_boot_v2_ecdsa192.pem
 
-        === Run "burn_key_digest" command ===
+        === Run "burn-key-digest" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
         - BLOCK_KEY0_HI_128 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]
@@ -114,12 +114,12 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn_key_digest \
+        > espefuse.py burn-key-digest \
                     BLOCK_KEY0 ~/esp/tests/efuse/secure_boot_key_v2_0.pem  SECURE_BOOT_DIGEST0  \
                     BLOCK_KEY1 ~/esp/tests/efuse/secure_boot_key_v2_1.pem  SECURE_BOOT_DIGEST1  \
                     BLOCK_KEY2 ~/esp/tests/efuse/secure_boot_key_v2_2.pem  SECURE_BOOT_DIGEST2
 
-        === Run "burn_key_digest" command ===
+        === Run "burn-key-digest" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
         Burn keys to blocks:
         - BLOCK_KEY0 -> [?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??]

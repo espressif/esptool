@@ -250,7 +250,7 @@ class ESP32Commands(BaseCommands):
     def burn_key_digest(self, esp, keyfile, no_protect_key, show_sensitive_info):
         if self.efuses.coding_scheme == self.efuses.REGS.CODING_SCHEME_34:
             raise esptool.FatalError(
-                "burn_key_digest only works with 'None' coding scheme"
+                "burn-key-digest only works with 'None' coding scheme"
             )
 
         chip_revision = esp.get_chip_revision()

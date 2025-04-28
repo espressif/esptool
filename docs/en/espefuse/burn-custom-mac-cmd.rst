@@ -3,7 +3,7 @@
 Burn Custom Mac
 ===============
 
-The ``espefuse.py burn_custom_mac`` command burns a 48-bit Custom MAC Address.
+The ``espefuse.py burn-custom-mac`` command burns a 48-bit Custom MAC Address.
 
 Positional arguments:
 
@@ -25,9 +25,9 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
 
     .. code-block:: none
 
-        > espefuse.py  burn_custom_mac 48:63:92:15:72:16
+        > espefuse.py burn-custom-mac 48:63:92:15:72:16
 
-        === Run "burn_custom_mac" command ===
+        === Run "burn-custom-mac" command ===
             - 'MAC_VERSION' (Version of the MAC field) 0x00 -> 0x1
             - 'CUSTOM_MAC' (Custom MAC) 0x000000000000 -> 0x167215926348
             - 'CUSTOM_MAC_CRC' (CRC of custom MAC) 0x00 -> 0x75
@@ -63,9 +63,9 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
 
     .. code-block:: none
 
-        > espefuse.py burn_custom_mac 48:63:92:15:72:16
+        > espefuse.py burn-custom-mac 48:63:92:15:72:16
 
-        === Run "burn_custom_mac" command ===
+        === Run "burn-custom-mac" command ===
             - 'CUSTOM_MAC' (Custom MAC addr) 0x000000000000 -> 0x167215926348
 
         Check all blocks for burn...
@@ -97,9 +97,9 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
 
     .. code-block:: none
 
-        > espefuse.py burn_custom_mac 48:63:92:15:72:16
+        > espefuse.py burn-custom-mac 48:63:92:15:72:16
 
-        === Run "burn_custom_mac" command ===
+        === Run "burn-custom-mac" command ===
             - 'CUSTOM_MAC' (Custom MAC Address) 0x000000000000 -> 0x167215926348
 
         Check all blocks for burn...

@@ -13,13 +13,13 @@ Optional arguments:
 - ``--format`` - Selects the dump format:
     - ``default`` - Usual console eFuse dump;
     - ``joint`` - All eFuse blocks are stored in one file;
-    - ``split`` - Each eFuse block is placed in its own file. The tool will create multiple files based on the given the ``--file_name`` argument. Example: "--file_name /path/blk.bin", blk0.bin, blk1.bin ... blkN.bin. Use the ``burn_block_data`` cmd to write it back to another chip.
-- ``--file_name`` - The path to the file in which to save the dump, if not specified, output to the console.
+    - ``split`` - Each eFuse block is placed in its own file. The tool will create multiple files based on the given the ``--file-name`` argument. Example: "--file-name /path/blk.bin", blk0.bin, blk1.bin ... blkN.bin. Use the ``burn-block-data`` cmd to write it back to another chip.
+- ``--file-name`` - The path to the file in which to save the dump, if not specified, output to the console.
 
-Raw Values Of Efuse Registers
+Raw Values of eFuse Registers
 -----------------------------
 
-The number of blocks depends on the chips and can vary from 4 to 11. A block can have different names, which can be used with ``burn_key`` or ``burn_block_data``.
+The number of blocks depends on the chips and can vary from 4 to 11. A block can have different names, which can be used with ``burn-key`` or ``burn-block-data``.
 
 The order of registers in the dump:
 
@@ -85,14 +85,14 @@ The order of registers in the dump:
 
 In the last lines, which are separated from the main dump, you can see the encoding scheme status for each block. If there are all zeros, then there are no coding scheme errors.
 
-Save Dump To Files
+Save Dump to Files
 ------------------
 
-This command saves dump for each block into a separate file. You need to provide the common path name ``/chip1/blk.bin``, it will create files in the given directory (the directory must exist): /chip1/blk0.bin, /chip1/blk1.bin - /chip1/blkN.bin. Use ``burn_block_data`` command to write them back to another chip. Note that some blocks may be read-protected, in which case the data in the block will be zero.
+This command saves dump for each block into a separate file. You need to provide the common path name ``/chip1/blk.bin``, it will create files in the given directory (the directory must exist): /chip1/blk0.bin, /chip1/blk1.bin - /chip1/blkN.bin. Use ``burn-block-data`` command to write them back to another chip. Note that some blocks may be read-protected, in which case the data in the block will be zero.
 
 .. code-block:: none
 
-    > espefuse.py dump --format split --file_name backup/chip1/blk.bin
+    > espefuse.py dump --format split --file-name backup/chip1/blk.bin
 
     === Run "dump" command ===
     backup/chip1/blk0.bin
@@ -111,7 +111,7 @@ These dump files can be written to another chip:
 
 .. code-block:: none
 
-    > espefuse.py burn_block_data BLOCK0 backup/chip1/blk0.bin \
+    > espefuse.py burn-block-data BLOCK0 backup/chip1/blk0.bin \
     BLOCK1 backup/chip1/blk1.bin \
     BLOCK2 backup/chip1/blk2.bin
 
@@ -119,7 +119,7 @@ To save all eFuse blocks in one file, use the following command:
 
 .. code-block:: none
 
-    > espefuse.py dump --format joint --file_name backup/chip1/efuses.bin
+    > espefuse.py dump --format joint --file-name backup/chip1/efuses.bin
 
     === Run "dump" command ===
     backup/chip1/efuses.bin

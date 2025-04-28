@@ -591,14 +591,14 @@ class EspEfusesBase(object):
                 if postponed_efuses:
                     print("The postponed efuses were not burned due to an error.")
                     print("\t1. Try to fix a coding error by this cmd:")
-                    print("\t   'espefuse.py check_error --recovery'")
+                    print("\t   'espefuse.py check-error --recovery'")
                     command_string = " ".join(
                         f"{key} {value}"
                         for key, value in postponed_efuses.items()
                         if value.any(True)
                     )
                     print("\t2. Then run the cmd to burn all postponed efuses:")
-                    print(f"\t   'espefuse.py burn_efuse {command_string}'")
+                    print(f"\t   'espefuse.py burn-efuse {command_string}'")
 
                 raise esptool.FatalError("Error(s) were detected in eFuses")
 

@@ -3,24 +3,24 @@
 Adc Info
 ========
 
-The ``espefuse.py adc_info`` command displays information about ADC calibration data stored in eFuse.
+The ``espefuse.py adc-info`` command displays information about ADC calibration data stored in eFuse.
 
 .. only:: esp32
 
     .. code-block:: none
 
-        > espefuse.py adc_info
+        > espefuse.py adc-info
 
-        === Run "adc_info" command ===
+        === Run "adc-info" command ===
         ADC VRef calibration: 1121mV
 
 .. only:: esp32c3 or esp32s2 or esp32s3
 
     .. code-block:: none
 
-        > espefuse.py adc_info
+        > espefuse.py adc-info
 
-        === Run "adc_info" command ===
+        === Run "adc-info" command ===
         Temperature Sensor Calibration = -2.1C
 
         ADC1 readings stored in efuse BLOCK2:
@@ -47,9 +47,9 @@ The ``espefuse.py adc_info`` command displays information about ADC calibration 
 
     .. code-block:: none
 
-        > espefuse.py adc_info
+        > espefuse.py adc-info
 
-        === Run "adc_info" command ===
+        === Run "adc-info" command ===
             RF_REF_I_BIAS_CONFIG:        0
             LDO_VOL_BIAS_CONFIG_LOW:     0
             LDO_VOL_BIAS_CONFIG_HIGH:    0

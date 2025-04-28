@@ -3,7 +3,7 @@
 Check Error
 ===========
 
-The ``espefuse.py check_error`` command checks eFuse errors. It triggers several reads to force the eFuse controller to reload eFuses and update status registers. This command can be run after burn operations to make sure that there is not errors.
+The ``espefuse.py check-error`` command checks eFuse errors. It triggers several reads to force the eFuse controller to reload eFuses and update status registers. This command can be run after burn operations to make sure that there is not errors.
 
 Optional argument:
 
@@ -31,7 +31,7 @@ Checks the status registers of eFuse blocks and throws an error if there is an e
 
 .. code-block:: none
 
-    > espefuse.py check_error
+    > espefuse.py check-error
 
     Error(s) in BLOCK1 [ERRORS:0 FAIL:1]
     Error(s) in BLOCK2 [ERRORS:1 FAIL:1]
@@ -41,7 +41,7 @@ Checks the status registers of eFuse blocks and throws an error if there is an e
     EFUSE_RD_RS_ERR0_REG        0x00008990
     EFUSE_RD_RS_ERR1_REG        0x00000000
 
-    === Run "check_error" command ===
+    === Run "check-error" command ===
     Error(s) in BLOCK1 [ERRORS:0 FAIL:1]
     Error(s) in BLOCK2 [ERRORS:1 FAIL:1]
     Error(s) in BLOCK3 [ERRORS:1 FAIL:1]
@@ -56,7 +56,7 @@ Repairs encoding errors in eFuse blocks, if possible.
 
 .. code-block:: none
 
-    > espefuse.py check_error --recovery
+    > espefuse.py check-error --recovery
 
     Error(s) in BLOCK1 [ERRORS:0 FAIL:1]
     Error(s) in BLOCK2 [ERRORS:1 FAIL:1]
@@ -66,7 +66,7 @@ Repairs encoding errors in eFuse blocks, if possible.
     EFUSE_RD_RS_ERR0_REG        0x00008990
     EFUSE_RD_RS_ERR1_REG        0x00000000
 
-    === Run "check_error" command ===
+    === Run "check-error" command ===
     Error(s) in BLOCK1 [ERRORS:0 FAIL:1]
     Error(s) in BLOCK2 [ERRORS:1 FAIL:1]
     Error(s) in BLOCK3 [ERRORS:1 FAIL:1]

@@ -242,7 +242,7 @@ class BaseCommands:
             "burn-block-data",
             help="Burn non-key data to EFUSE blocks. "
             "(Don't use this command to burn key data for Flash Encryption or ESP32 "
-            "Secure Boot V1, as the byte order of keys is swapped (use burn_key)).\n\n"
+            "Secure Boot V1, as the byte order of keys is swapped (use burn-key)).\n\n"
             "Allowed options for BLOCK: "
             f"[{', '.join(self.efuses.BURN_BLOCK_DATA_NAMES)}].",
         )
@@ -944,4 +944,4 @@ class BaseCommands:
         raise esptool.FatalError("set_flash_voltage is not supported for this chip")
 
     def adc_info(self):
-        raise NotImplementedError("adc_info is not implemented for this chip")
+        raise NotImplementedError("adc-info is not implemented for this chip")
