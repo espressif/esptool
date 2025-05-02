@@ -2,74 +2,19 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from collections import namedtuple
-from io import StringIO
 from typing import Any
 
 import rich_click as click
 from click.parser import OptionParser, ParsingState, _unpack_args
-from espefuse.efuse.base_operations import BaseCommands
-import esptool
 from esptool.cli_util import Group as EsptoolGroup
 from esptool.logger import log
 
-import espefuse.efuse.esp32 as esp32_efuse
-import espefuse.efuse.esp32c2 as esp32c2_efuse
-import espefuse.efuse.esp32c3 as esp32c3_efuse
-import espefuse.efuse.esp32c5 as esp32c5_efuse
-import espefuse.efuse.esp32c6 as esp32c6_efuse
-import espefuse.efuse.esp32c61 as esp32c61_efuse
-import espefuse.efuse.esp32h2 as esp32h2_efuse
-import espefuse.efuse.esp32h21 as esp32h21_efuse
-import espefuse.efuse.esp32h4 as esp32h4_efuse
-import espefuse.efuse.esp32p4 as esp32p4_efuse
-import espefuse.efuse.esp32s2 as esp32s2_efuse
-import espefuse.efuse.esp32s3 as esp32s3_efuse
-
-
-DefChip = namedtuple("DefChip", ["chip_name", "efuse_lib", "chip_class"])
-
-SUPPORTED_BURN_COMMANDS = [
-    "read-protect-efuse",
-    "write-protect-efuse",
-    "burn-efuse",
-    "burn-block-data",
-    "burn-bit",
-    "burn-key",
-    "burn-key-digest",
-    "burn-custom-mac",
-    "set-flash-voltage",
-    "execute-scripts",
-]
-
-SUPPORTED_READ_COMMANDS = [
-    "summary",
-    "dump",
-    "get-custom-mac",
-    "adc-info",
-    "check-error",
-]
-
-SUPPORTED_COMMANDS = SUPPORTED_READ_COMMANDS + SUPPORTED_BURN_COMMANDS
-
-SUPPORTED_CHIPS = {
-    "esp32": DefChip("ESP32", esp32_efuse, esptool.targets.ESP32ROM),
-    "esp32c2": DefChip("ESP32-C2", esp32c2_efuse, esptool.targets.ESP32C2ROM),
-    "esp32c3": DefChip("ESP32-C3", esp32c3_efuse, esptool.targets.ESP32C3ROM),
-    "esp32c6": DefChip("ESP32-C6", esp32c6_efuse, esptool.targets.ESP32C6ROM),
-    "esp32c61": DefChip("ESP32-C61", esp32c61_efuse, esptool.targets.ESP32C61ROM),
-    "esp32c5": DefChip("ESP32-C5", esp32c5_efuse, esptool.targets.ESP32C5ROM),
-    "esp32h2": DefChip("ESP32-H2", esp32h2_efuse, esptool.targets.ESP32H2ROM),
-    "esp32h21": DefChip("ESP32-H21", esp32h21_efuse, esptool.targets.ESP32H21ROM),
-    "esp32h4": DefChip("ESP32-H4", esp32h4_efuse, esptool.targets.ESP32H4ROM),
-    "esp32p4": DefChip("ESP32-P4", esp32p4_efuse, esptool.targets.ESP32P4ROM),
-    "esp32s2": DefChip("ESP32-S2", esp32s2_efuse, esptool.targets.ESP32S2ROM),
-    "esp32s3": DefChip("ESP32-S3", esp32s3_efuse, esptool.targets.ESP32S3ROM),
-}
-
-
-def get_command_class(chip_name: str) -> BaseCommands:
-    return SUPPORTED_CHIPS[chip_name].efuse_lib.commands()  # type: ignore
+from espefuse.efuse_interface import (
+    init_commands,
+    SUPPORTED_BURN_COMMANDS,
+    SUPPORTED_READ_COMMANDS,
+    SUPPORTED_COMMANDS,
+)
 
 
 click.rich_click.USE_CLICK_SHORT_HELP = True
@@ -287,10 +232,6 @@ class Group(EsptoolGroup):
                     "Specify the --chip option to get chip-specific help."
                 )
                 chip = "esp32"
-            # TODO: this is a hack to get the full list of commands, we need to find
-            # a better way to do this
-            commands = get_command_class(chip)
-            esp = SUPPORTED_CHIPS[chip].chip_class(port=StringIO(), baud=115200)
-            commands.efuses = SUPPORTED_CHIPS[chip].efuse_lib.EspEfuses(esp, True)  # type: ignore
+            commands = init_commands(port=None, chip=chip, skip_connect=True)
             commands.add_cli_commands(self)
         return super().get_help(ctx)  # type: ignore

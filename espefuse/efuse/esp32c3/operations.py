@@ -4,6 +4,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from io import IOBase
+from typing import BinaryIO
 import click
 
 import espsecure
@@ -24,6 +26,9 @@ from ..base_operations import (
 
 
 class ESP32C3Commands(BaseCommands):
+    CHIP_NAME = "ESP32-C3"
+    efuse_lib = fields.EspEfuses
+
     ################################### CLI definitions ###################################
 
     def add_cli_commands(self, cli: click.Group):
@@ -98,10 +103,10 @@ class ESP32C3Commands(BaseCommands):
     ###################################### Commands ######################################
 
     def adc_info(self):
-        # fmt: off
         print("Block version:", self.efuses.get_block_version())
         if self.efuses.get_block_version() >= 100:
-            print("Temperature Sensor Calibration = {}C".format(self.efuses["TEMP_CALIB"].get()))
+            # fmt: off
+            print(f"Temperature Sensor Calibration = {self.efuses['TEMP_CALIB'].get()}C")
             print("ADC OCode        = ", self.efuses["OCODE"].get())
             print("ADC1:")
             print("INIT_CODE_ATTEN0 = ", self.efuses["ADC1_INIT_CODE_ATTEN0"].get())
@@ -112,29 +117,44 @@ class ESP32C3Commands(BaseCommands):
             print("CAL_VOL_ATTEN1   = ", self.efuses["ADC1_CAL_VOL_ATTEN1"].get())
             print("CAL_VOL_ATTEN2   = ", self.efuses["ADC1_CAL_VOL_ATTEN2"].get())
             print("CAL_VOL_ATTEN3   = ", self.efuses["ADC1_CAL_VOL_ATTEN3"].get())
-        # fmt: on
+            # fmt: on
 
     def burn_key(
         self,
-        block,
-        keyfile,
-        keypurpose,
-        no_write_protect,
-        no_read_protect,
-        show_sensitive_info,
-        digest=None,
+        blocks: list[str],
+        keyfiles: list[BinaryIO],
+        keypurposes: list[str],
+        no_write_protect: bool = False,
+        no_read_protect: bool = False,
+        show_sensitive_info: bool = False,
+        digest: list[bytes] | None = None,
     ):
+        """Burn the key block with the specified name. Arguments are groups of block name,
+        key file (containing 128/256 bits of binary key data) and key purpose.
+
+        Args:
+            blocks: List of eFuse block names to burn keys to.
+            keyfiles: List of open files to read key data from.
+            keypurposes: List of key purposes to burn.
+            no_write_protect: If True, the write protection will NOT be enabled.
+            no_read_protect: If True, the read protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+            digest: List of digests to burn.
+        """
+        datafile_list: list[BinaryIO] | list[bytes]
         if digest is None:
-            datafile_list = keyfile[
-                0 : len([name for name in keyfile if name is not None]) :
+            datafile_list = keyfiles[
+                0 : len([name for name in keyfiles if name is not None]) :
             ]
         else:
             datafile_list = digest[
                 0 : len([name for name in digest if name is not None]) :
             ]
-        block_name_list = block[0 : len([name for name in block if name is not None]) :]
-        keypurpose_list = keypurpose[
-            0 : len([name for name in keypurpose if name is not None]) :
+        block_name_list = blocks[
+            0 : len([name for name in blocks if name is not None]) :
+        ]
+        keypurpose_list = keypurposes[
+            0 : len([name for name in keypurposes if name is not None]) :
         ]
 
         util.check_duplicate_name_in_list(block_name_list)
@@ -152,9 +172,9 @@ class ESP32C3Commands(BaseCommands):
             block_name_list, datafile_list, keypurpose_list
         ):
             efuse = None
-            for block in self.efuses.blocks:
-                if block_name == block.name or block_name in block.alias:
-                    efuse = self.efuses[block.name]
+            for blk in self.efuses.blocks:
+                if block_name == blk.name or block_name in blk.alias:
+                    efuse = self.efuses[blk.name]
             if efuse is None:
                 raise esptool.FatalError("Unknown block name - %s" % (block_name))
             num_bytes = efuse.bit_len // 8
@@ -162,11 +182,11 @@ class ESP32C3Commands(BaseCommands):
             block_num = self.efuses.get_index_block_by_name(block_name)
             block = self.efuses.blocks[block_num]
 
-            if digest is None:
+            if isinstance(datafile, IOBase):
                 data = datafile.read()
                 datafile.close()
             else:
-                data = datafile
+                data = datafile  # type: ignore  # this is safe but mypy still complains
 
             print(" - %s" % (efuse.name), end=" ")
             revers_msg = None
@@ -245,18 +265,28 @@ class ESP32C3Commands(BaseCommands):
 
     def burn_key_digest(
         self,
-        block,
-        keyfile,
-        keypurpose,
-        no_write_protect,
-        no_read_protect,
-        show_sensitive_info,
+        blocks: list[str],
+        keyfiles: list[BinaryIO],
+        keypurposes: list[str],
+        no_write_protect: bool = False,
+        no_read_protect: bool = False,
+        show_sensitive_info: bool = False,
     ):
+        """Parse a RSA public key and burn the digest to key eFuse block.
+
+        Args:
+            blocks: List of eFuse block names to burn keys to.
+            keyfiles: List of open files to read key data from.
+            keypurposes: List of key purposes to burn.
+            no_write_protect: If True, the write protection will NOT be enabled.
+            no_read_protect: If True, the read protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+        """
         digest_list = []
-        datafile_list = keyfile[
-            0 : len([name for name in keyfile if name is not None]) :
+        datafile_list = keyfiles[
+            0 : len([name for name in keyfiles if name is not None]) :
         ]
-        block_list = block[0 : len([block for block in block if block is not None]) :]
+        block_list = blocks[0 : len([block for block in blocks if block is not None]) :]
 
         for block_name, datafile in zip(block_list, datafile_list):
             efuse = None
@@ -277,7 +307,7 @@ class ESP32C3Commands(BaseCommands):
         self.burn_key(
             block_list,
             datafile_list,
-            keypurpose,
+            keypurposes,
             no_write_protect,
             no_read_protect,
             show_sensitive_info,

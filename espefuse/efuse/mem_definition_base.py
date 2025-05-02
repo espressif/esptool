@@ -22,7 +22,7 @@ class EfuseRegistersBase(object):
 
 
 class EfuseBlocksBase(object):
-    BLOCKS: list | None = None
+    BLOCKS: list = []
     NamedtupleBlock = namedtuple(
         "NamedtupleBlock",
         "name alias id rd_addr wr_addr write_disable_bit "

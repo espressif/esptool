@@ -4,11 +4,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from abc import abstractmethod
 import binascii
 import sys
 
-from bitstring import BitArray, BitStream, CreationError
+from bitstring import BitArray, BitStream, Bits, CreationError
 
+from espefuse.efuse.mem_definition_base import EfuseBlocksBase, EfuseRegistersBase
 import esptool
 
 from . import util
@@ -84,6 +86,10 @@ class CheckArgValue(object):
 
 class EfuseProtectBase(object):
     # This class is used by EfuseBlockBase and EfuseFieldBase
+    read_disable_bit: int | list[int] | None
+    write_disable_bit: int | list[int] | None
+    parent: "EspEfusesBase"
+    name: str
 
     def get_read_disable_mask(self, blk_part=None):
         """Returns mask of read protection bits
@@ -107,12 +113,20 @@ class EfuseProtectBase(object):
         # On the C2 chip, BLOCK_KEY0 has two read protection bits [0, 1].
         return bin(self.get_read_disable_mask()).count("1")
 
-    def is_readable(self, blk_part=None):
-        """Return true if the efuse is readable by software"""
+    def is_readable(self, blk_part: int | None = None) -> bool:
+        """Check if the efuse is readable by software
+
+        Args:
+            blk_part: The part of the block to check.
+                If None, check all parts.
+
+        Returns:
+            bool: True if the efuse is readable by software
+        """
         num_bit = self.read_disable_bit
         if num_bit is None:
             return True  # read cannot be disabled
-        return (self.parent["RD_DIS"].get() & self.get_read_disable_mask(blk_part)) == 0
+        return (self.parent["RD_DIS"].get() & self.get_read_disable_mask(blk_part)) == 0  # type: ignore
 
     def disable_read(self):
         num_bit = self.read_disable_bit
@@ -125,11 +139,16 @@ class EfuseProtectBase(object):
             )
         self.parent["RD_DIS"].save(self.get_read_disable_mask())
 
-    def is_writeable(self):
+    def is_writeable(self) -> bool:
+        """Check if the efuse is writeable by software
+
+        Returns:
+            bool: True if the efuse is writeable by software
+        """
         num_bit = self.write_disable_bit
         if num_bit is None:
             return True  # write cannot be disabled
-        return (self.parent["WR_DIS"].get() & (1 << num_bit)) == 0
+        return (self.parent["WR_DIS"].get() & (1 << num_bit)) == 0  # type: ignore
 
     def disable_write(self):
         num_bit = self.write_disable_bit
@@ -154,32 +173,36 @@ class EfuseProtectBase(object):
 
 
 class EfuseBlockBase(EfuseProtectBase):
-    def __init__(self, parent, param, skip_read=False):
-        self.parent = parent
-        self.name = param.name
-        self.alias = param.alias
-        self.id = param.id
-        self.rd_addr = param.rd_addr
-        self.wr_addr = param.wr_addr
-        self.write_disable_bit = param.write_disable_bit
-        self.read_disable_bit = param.read_disable_bit
-        self.len = param.len
-        self.key_purpose_name = param.key_purpose
-        bit_block_len = self.get_block_len() * 8
-        self.bitarray = BitStream(bit_block_len)
+    def __init__(self, parent: "EspEfusesBase", param, skip_read: bool = False) -> None:
+        self.parent: EspEfusesBase = parent
+        self.name: str = param.name
+        self.alias: list[str] = param.alias
+        self.id: int = param.id
+        self.rd_addr: int = param.rd_addr
+        self.wr_addr: int = param.wr_addr
+        self.write_disable_bit: int | None = param.write_disable_bit
+        self.read_disable_bit: int | None = param.read_disable_bit
+        self.len: int = param.len
+        self.key_purpose_name: str | None = param.key_purpose
+        bit_block_len: int = self.get_block_len() * 8
+        self.bitarray: BitStream = BitStream(bit_block_len)
         self.bitarray.set(0)
-        self.wr_bitarray = BitStream(bit_block_len)
+        self.wr_bitarray: BitStream = BitStream(bit_block_len)
         self.wr_bitarray.set(0)
-        self.fail = False
-        self.num_errors = 0
+        self.fail: bool = False
+        self.num_errors: int = 0
         if self.id == 0:
-            self.err_bitarray = BitStream(bit_block_len)
+            self.err_bitarray: BitStream | None = BitStream(bit_block_len)
             self.err_bitarray.set(0)
         else:
             self.err_bitarray = None
 
         if not skip_read:
             self.read()
+
+    @abstractmethod
+    def apply_coding_scheme(self):
+        pass
 
     def get_block_len(self):
         coding_scheme = self.get_coding_scheme()
@@ -206,10 +229,10 @@ class EfuseBlockBase(EfuseProtectBase):
         else:
             return self.wr_bitarray.bytes
 
-    def get(self, from_read=True):
-        self.get_bitstring(from_read=from_read)
+    def get(self, from_read: bool = True) -> BitStream:
+        return self.get_bitstring(from_read=from_read)
 
-    def get_bitstring(self, from_read=True):
+    def get_bitstring(self, from_read: bool = True) -> BitStream:
         if from_read:
             return self.bitarray
         else:
@@ -455,16 +478,35 @@ class EspEfusesBase(object):
     Wrapper object to manage the efuse fields in a connected ESP bootloader
     """
 
-    _esp = None
+    _esp: esptool.ESPLoader
     blocks: list[EfuseBlockBase] = []
     efuses: list = []
     coding_scheme = None
     force_write_always = None
-    batch_mode_cnt = 0
-    postpone = False
+    batch_mode_cnt: int = 0
+    postpone: bool = False
+    BURN_BLOCK_DATA_NAMES: list[str] = []
+    REGS: type[EfuseRegistersBase]
+    Blocks: EfuseBlocksBase
+
+    def __init__(
+        self,
+        esp: esptool.ESPLoader,
+        skip_connect: bool = False,
+        debug: bool = False,
+        do_not_confirm: bool = False,
+        extend_efuse_table: None = None,
+    ) -> None:
+        self._esp = esp
+        self.debug = debug
+        self.do_not_confirm = do_not_confirm
 
     def __iter__(self):
         return self.efuses.__iter__()
+
+    @abstractmethod
+    def __getitem__(self, efuse_name):
+        pass
 
     def get_crystal_freq(self):
         return self._esp.get_crystal_freq()
@@ -485,12 +527,24 @@ class EspEfusesBase(object):
     def efuse_controller_setup(self):
         pass
 
+    @abstractmethod
+    def write_efuses(self, block):
+        pass
+
+    @abstractmethod
+    def efuse_read(self):
+        pass
+
+    @abstractmethod
+    def read_coding_scheme(self):
+        pass
+
     def reconnect_chip(self, esp):
         print("Re-connecting...")
         baudrate = esp._port.baudrate
         port = esp._port.port
         esp._port.close()
-        return esptool.cmds.detect_chip(port, baudrate)
+        return esptool.detect_chip(port, baudrate)
 
     def get_index_block_by_name(self, name):
         for block in self.blocks:
@@ -559,7 +613,7 @@ class EspEfusesBase(object):
             for key_name in postpone_efuses.keys():
                 self[key_name].save(postpone_efuses[key_name])
 
-    def burn_all(self, check_batch_mode=False):
+    def burn_all(self, check_batch_mode: bool = False) -> bool:
         if check_batch_mode:
             if self.batch_mode_cnt != 0:
                 print(
@@ -691,6 +745,14 @@ class EspEfusesBase(object):
         except KeyError:
             return 0
 
+    @abstractmethod
+    def summary(self):
+        pass
+
+    @abstractmethod
+    def get_coding_scheme_warnings(self, silent: bool = False):
+        pass
+
 
 class EfuseFieldBase(EfuseProtectBase):
     def __init__(self, parent, param):
@@ -703,7 +765,7 @@ class EfuseFieldBase(EfuseProtectBase):
         self.read_disable_bit = param.read_disable_bit
         self.name = param.name
         self.efuse_class = param.class_type
-        self.efuse_type = param.type
+        self.efuse_type: str = param.type
         self.description = param.description
         self.dict_value = param.dictionary
         self.bit_len = param.bit_len
@@ -836,49 +898,72 @@ class EfuseFieldBase(EfuseProtectBase):
             self.fail = self.parent.blocks[self.block].fail
             self.num_errors = self.parent.blocks[self.block].num_errors
 
-    def get_raw(self, from_read=True):
-        """Return the raw (unformatted) numeric value of the efuse bits
+    def get_raw(self, from_read: bool = True) -> int | bytearray:
+        """Return the raw (unformatted) numeric value of the eFuse bits
 
         Returns a simple integer or (for some subclasses) a bitstring.
         type: int or bool -> int
         type: bytes -> bytearray
-        """
-        return self.get_bitstring(from_read).read(self.efuse_type)
 
-    def get(self, from_read=True):
-        """Get a formatted version of the efuse value, suitable for display
+        Args:
+            from_read: If True, read the eFuse value from the device.
+                If False, use the cached value.
+
+        Returns:
+            int | bytearray: The raw value of the eFuse
+        """
+        return self.get_bitstring(from_read).read(self.efuse_type)  # type: ignore
+
+    def get(self, from_read: bool = True) -> str | int | bytearray:
+        """Get a formatted version of the eFuse value, suitable for display
+
         type: int or bool -> int
         type: bytes -> string  "01 02 03 04 05 06 07 08 ... ".
         Byte order [0] ... [N]. dump regs: 0x04030201 0x08070605 ...
+
+        Args:
+            from_read: If True, read the eFuse value from the device.
+                If False, use the cached value.
+
+        Returns:
+            str | int | bytearray: The formatted version of the eFuse value
         """
         if self.efuse_type.startswith("bytes"):
-            return util.hexify(self.get_bitstring(from_read).bytes[::-1], " ")
+            return util.hexify(self.get_bitstring(from_read).bytes[::-1], " ")  # type: ignore
         else:
             return self.get_raw(from_read)
 
-    def get_meaning(self, from_read=True):
-        """Get the meaning of efuse from dict if possible, suitable for display"""
+    def get_meaning(self, from_read: bool = True) -> str | int | bytearray:
+        """Get the meaning of eFuse from dict if possible, suitable for display
+
+        Args:
+            from_read: If True, read the eFuse value from the device.
+                If False, use the cached value.
+
+        Returns:
+            str | int | bytearray: The meaning of the eFuse
+        """
         if self.dict_value:
             try:
-                return self.dict_value[self.get_raw(from_read)]
+                return self.dict_value[self.get_raw(from_read)]  # type: ignore
             except KeyError:
                 pass
         return self.get(from_read)
 
-    def get_bitstring(self, from_read=True):
+    def get_bitstring(self, from_read: bool = True) -> BitStream | Bits:
         if from_read:
             self.bitarray.pos = 0
             return self.bitarray
         else:
             field_len = self.bitarray.len
-            block = self.parent.blocks[self.block]
+            block: EfuseBlockBase = self.parent.blocks[self.block]
             block.wr_bitarray.pos = block.wr_bitarray.length - (
                 self.word * 32 + self.pos + field_len
             )
             return block.wr_bitarray.read(self.bitarray.len)
 
     def burn(self, new_value):
-        # Burn a efuse. Added for compatibility reason.
+        """Burn a eFuse. Added for compatibility reason."""
         self.save(new_value)
         self.parent.burn_all()
 
@@ -898,7 +983,7 @@ class EfuseFieldBase(EfuseProtectBase):
         return output
 
     def reset(self):
-        # resets a efuse that is prepared for burning
+        """Resets a eFuse that is prepared for burning"""
         bitarray_field = self.convert_to_bitstring(0)
         block = self.parent.blocks[self.block]
         wr_bitarray_temp = block.wr_bitarray.copy()

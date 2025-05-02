@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import io
+from typing import BinaryIO
 
 import rich_click as click
 
@@ -25,6 +26,9 @@ from ..base_operations import (
 
 
 class ESP32S3Commands(BaseCommands):
+    CHIP_NAME = "ESP32-S3"
+    efuse_lib = fields.EspEfuses
+
     ################################### CLI definitions ###################################
 
     def add_cli_commands(self, cli: click.Group):
@@ -109,7 +113,7 @@ class ESP32S3Commands(BaseCommands):
 
     ###################################### Commands ######################################
 
-    def set_flash_voltage(self, voltage):
+    def set_flash_voltage(self, voltage: str):
         sdio_force = self.efuses["VDD_SPI_FORCE"]
         sdio_tieh = self.efuses["VDD_SPI_TIEH"]
         sdio_reg = self.efuses["VDD_SPI_XPD"]
@@ -160,10 +164,10 @@ class ESP32S3Commands(BaseCommands):
 
     def adc_info(self):
         print("")
-        # fmt: off
         print("Block version:", self.efuses.get_block_version())
         if self.efuses.get_block_version() >= 100:
-            print("Temperature Sensor Calibration = {}C".format(self.efuses["TEMP_CALIB"].get()))
+            # fmt: off
+            print(f"Temperature Sensor Calibration = {self.efuses['TEMP_CALIB'].get()}C")
             print("ADC OCode        = ", self.efuses["OCODE"].get())
             print("ADC1:")
             print("INIT_CODE_ATTEN0 = ", self.efuses["ADC1_INIT_CODE_ATTEN0"].get())
@@ -182,104 +186,53 @@ class ESP32S3Commands(BaseCommands):
             print("CAL_VOL_ATTEN0   = ", self.efuses["ADC2_CAL_VOL_ATTEN0"].get())
             print("CAL_VOL_ATTEN1   = ", self.efuses["ADC2_CAL_VOL_ATTEN1"].get())
             print("CAL_VOL_ATTEN2   = ", self.efuses["ADC2_CAL_VOL_ATTEN2"].get())
-        # fmt: on
-
-    def _key_block_is_unused(self, block, key_purpose_block):
-        """Helper method to check if a key block is available for use"""
-        if not block.is_readable() or not block.is_writeable():
-            return False
-
-        if key_purpose_block.get() != "USER" or not key_purpose_block.is_writeable():
-            return False
-
-        if not block.get_bitstring().all(False):
-            return False
-
-        return True
-
-    def _get_next_key_block(self, current_key_block, block_name_list):
-        """Helper method to get the next available key block"""
-        key_blocks = [b for b in self.efuses.blocks if b.key_purpose_name]
-        start = key_blocks.index(current_key_block)
-
-        # Sort key blocks so that we pick the next free block (and loop around if necessary)
-        key_blocks = key_blocks[start:] + key_blocks[0:start]
-
-        # Exclude any other blocks that will be be burned
-        key_blocks = [b for b in key_blocks if b.name not in block_name_list]
-
-        for block in key_blocks:
-            key_purpose_block = self.efuses[block.key_purpose_name]
-            if self._key_block_is_unused(block, key_purpose_block):
-                return block
-
-        return None
-
-    def _split_512_bit_key(self, block_name_list, datafile_list, keypurpose_list):
-        """Helper method to split 512-bit key into two 256-bit keys"""
-        datafile_list = list(datafile_list)
-        block_name_list = list(block_name_list)
-        keypurpose_list = list(keypurpose_list)
-
-        i = keypurpose_list.index("XTS_AES_256_KEY")
-        block_name = block_name_list[i]
-
-        block_num = self.efuses.get_index_block_by_name(block_name)
-        block = self.efuses.blocks[block_num]
-
-        data = datafile_list[i].read()
-        if len(data) != 64:
-            raise esptool.FatalError(
-                "Incorrect key file size %d, XTS_AES_256_KEY should be 64 bytes"
-                % len(data)
-            )
-
-        key_block_2 = self._get_next_key_block(block, block_name_list)
-        if not key_block_2:
-            raise esptool.FatalError("XTS_AES_256_KEY requires two free keyblocks")
-
-        keypurpose_list.append("XTS_AES_256_KEY_1")
-        datafile_list.append(io.BytesIO(data[:32]))
-        block_name_list.append(block_name)
-
-        keypurpose_list.append("XTS_AES_256_KEY_2")
-        datafile_list.append(io.BytesIO(data[32:]))
-        block_name_list.append(key_block_2.name)
-
-        keypurpose_list.pop(i)
-        datafile_list.pop(i)
-        block_name_list.pop(i)
-
-        return tuple(block_name_list), tuple(datafile_list), tuple(keypurpose_list)
+            # fmt: on
 
     def burn_key(
         self,
-        block,
-        keyfile,
-        keypurpose,
-        no_write_protect,
-        no_read_protect,
-        show_sensitive_info,
-        digest=None,
+        blocks: list[str],
+        keyfiles: list[BinaryIO],
+        keypurposes: list[str],
+        no_write_protect: bool = False,
+        no_read_protect: bool = False,
+        show_sensitive_info: bool = False,
+        digest: list[bytes] | None = None,
     ):
+        """Burn the key block with the specified name. Arguments are groups of block name,
+        key file (containing 256 bits of binary key data) and key purpose.
+
+        Args:
+            blocks: List of eFuse block names to burn keys to.
+            keyfiles: List of open files to read key data from.
+            keypurposes: List of key purposes to burn.
+            no_write_protect: If True, the write protection will NOT be enabled.
+            no_read_protect: If True, the read protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+            digest: List of digests to burn.
+        """
+        datafile_list: list[BinaryIO] | list[bytes]
         if digest is None:
-            datafile_list = keyfile[
-                0 : len([name for name in keyfile if name is not None]) :
+            datafile_list = keyfiles[
+                0 : len([name for name in keyfiles if name is not None]) :
             ]
         else:
             datafile_list = digest[
                 0 : len([name for name in digest if name is not None]) :
             ]
-        block_name_list = block[0 : len([name for name in block if name is not None]) :]
-        keypurpose_list = keypurpose[
-            0 : len([name for name in keypurpose if name is not None]) :
+        block_name_list = blocks[
+            0 : len([name for name in blocks if name is not None]) :
+        ]
+        keypurpose_list = keypurposes[
+            0 : len([name for name in keypurposes if name is not None]) :
         ]
 
         if "XTS_AES_256_KEY" in keypurpose_list:
             # XTS_AES_256_KEY is not an actual HW key purpose, needs to be split into
             # XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
             block_name_list, datafile_list, keypurpose_list = self._split_512_bit_key(
-                block_name_list, datafile_list, keypurpose_list
+                block_name_list,
+                datafile_list,  # type: ignore
+                keypurpose_list,
             )
 
         util.check_duplicate_name_in_list(block_name_list)
@@ -296,9 +249,9 @@ class ESP32S3Commands(BaseCommands):
             block_name_list, datafile_list, keypurpose_list
         ):
             efuse = None
-            for block in self.efuses.blocks:
-                if block_name == block.name or block_name in block.alias:
-                    efuse = self.efuses[block.name]
+            for blk in self.efuses.blocks:
+                if block_name == blk.name or block_name in blk.alias:
+                    efuse = self.efuses[blk.name]
             if efuse is None:
                 raise esptool.FatalError("Unknown block name - %s" % (block_name))
             num_bytes = efuse.bit_len // 8
@@ -306,11 +259,11 @@ class ESP32S3Commands(BaseCommands):
             block_num = self.efuses.get_index_block_by_name(block_name)
             block = self.efuses.blocks[block_num]
 
-            if digest is None:
+            if isinstance(datafile, io.IOBase):
                 data = datafile.read()
                 datafile.close()
             else:
-                data = datafile
+                data = datafile  # type: ignore  # this is safe but mypy still complains
 
             print(" - %s" % (efuse.name), end=" ")
             revers_msg = None
@@ -389,24 +342,34 @@ class ESP32S3Commands(BaseCommands):
 
     def burn_key_digest(
         self,
-        block,
-        keyfile,
-        keypurpose,
-        no_write_protect,
-        no_read_protect,
-        show_sensitive_info,
+        blocks: list[str],
+        keyfiles: list[BinaryIO],
+        keypurposes: list[str],
+        no_write_protect: bool = False,
+        no_read_protect: bool = False,
+        show_sensitive_info: bool = False,
     ):
+        """Parse a RSA public key and burn the digest to key eFuse block.
+
+        Args:
+            blocks: List of eFuse block names to burn keys to.
+            keyfiles: List of open files to read key data from.
+            keypurposes: List of key purposes to burn.
+            no_write_protect: If True, the write protection will NOT be enabled.
+            no_read_protect: If True, the read protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+        """
         digest_list = []
-        datafile_list = keyfile[
-            0 : len([name for name in keyfile if name is not None]) :
+        datafile_list = keyfiles[
+            0 : len([name for name in keyfiles if name is not None]) :
         ]
-        block_list = block[0 : len([block for block in block if block is not None]) :]
+        block_list = blocks[0 : len([block for block in blocks if block is not None]) :]
 
         for block_name, datafile in zip(block_list, datafile_list):
             efuse = None
-            for block in self.efuses.blocks:
-                if block_name == block.name or block_name in block.alias:
-                    efuse = self.efuses[block.name]
+            for blk in self.efuses.blocks:
+                if block_name == blk.name or block_name in blk.alias:
+                    efuse = self.efuses[blk.name]
             if efuse is None:
                 raise esptool.FatalError("Unknown block name - %s" % (block_name))
             num_bytes = efuse.bit_len // 8
@@ -421,7 +384,7 @@ class ESP32S3Commands(BaseCommands):
         self.burn_key(
             block_list,
             datafile_list,
-            keypurpose,
+            keypurposes,
             no_write_protect,
             no_read_protect,
             show_sensitive_info,

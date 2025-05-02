@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import sys
-from io import StringIO
 
 import rich_click as click
 
@@ -11,58 +10,26 @@ import esptool
 from esptool.cli_util import ChipType, ResetModeType
 from esptool.logger import log
 
-from espefuse.cli_util import (
-    SUPPORTED_BURN_COMMANDS,
-    SUPPORTED_CHIPS,
+from espefuse.cli_util import Group
+from espefuse.efuse.base_operations import BaseCommands
+from espefuse.efuse_interface import (
+    get_esp,
+    init_commands,
     SUPPORTED_COMMANDS,
-    Group,
-    get_command_class,
+    SUPPORTED_BURN_COMMANDS,
+    SUPPORTED_READ_COMMANDS,
+    SUPPORTED_CHIPS,
 )
 
-
-def get_esp(
-    port,
-    baud,
-    before="default-reset",
-    chip="auto",
-    skip_connect=False,
-    virt=False,
-    debug=False,
-    virt_efuse_file=None,
-):
-    if chip not in ["auto"] + list(SUPPORTED_CHIPS.keys()):
-        raise esptool.FatalError(f"get_esp: Unsupported chip ({chip})")
-    if virt:
-        efuse = SUPPORTED_CHIPS.get(chip, SUPPORTED_CHIPS["esp32"]).efuse_lib
-        esp = efuse.EmulateEfuseController(virt_efuse_file, debug)
-    else:
-        if chip == "auto" and not skip_connect:
-            esp = esptool.detect_chip(port, baud, before)
-        else:
-            esp = SUPPORTED_CHIPS.get(chip, SUPPORTED_CHIPS["esp32"]).chip_class(
-                port if not skip_connect else StringIO(), baud
-            )
-            if not skip_connect:
-                esp.connect(before)
-                if esp.sync_stub_detected:
-                    esp = esp.STUB_CLASS(esp)
-    return esp
-
-
-def get_efuses(
-    esp,
-    skip_connect=False,
-    debug_mode=False,
-    do_not_confirm=False,
-    extend_efuse_table=None,
-):
-    for name in SUPPORTED_CHIPS:
-        if SUPPORTED_CHIPS[name].chip_name == esp.CHIP_NAME:
-            return SUPPORTED_CHIPS[name].efuse_lib.EspEfuses(
-                esp, skip_connect, debug_mode, do_not_confirm, extend_efuse_table
-            )
-    else:
-        raise esptool.FatalError("get_efuses: Unsupported chip (%s)" % esp.CHIP_NAME)
+__all__ = [
+    "get_esp",
+    "init_commands",
+    "BaseCommands",
+    "SUPPORTED_COMMANDS",
+    "SUPPORTED_CHIPS",
+    "SUPPORTED_BURN_COMMANDS",
+    "SUPPORTED_READ_COMMANDS",
+]
 
 
 @click.group(
@@ -173,9 +140,6 @@ def cli(
 
     ctx.call_on_close(close_port)
 
-    efuses = get_efuses(esp, is_help, debug, do_not_confirm, extend_efuse_table)
-    efuses.postpone = postpone
-
     # handle chip auto
     if chip == "auto":
         if ctx.obj.get("is_help", False):
@@ -185,28 +149,33 @@ def cli(
             )
         chip = esp.CHIP_NAME.lower()
 
-    ctx.obj["commands"] = get_command_class(chip)
-    ctx.obj["commands"].efuses = efuses
-    ctx.obj["commands"].add_cli_commands(cli)
+    commands = init_commands(
+        esp=esp,
+        skip_connect=is_help,
+        debug=debug,
+        do_not_confirm=do_not_confirm,
+        extend_efuse_table=extend_efuse_table,
+    )
+    commands.efuses.postpone = postpone
+    commands.add_cli_commands(cli)
 
     used_cmds = ctx.obj["used_cmds"]
-    there_are_multiple_burn_commands_in_args = (
+    multiple_burn_commands = (
         sum(cmd.replace("_", "-") in SUPPORTED_BURN_COMMANDS for cmd in used_cmds) > 1
     )
-    if there_are_multiple_burn_commands_in_args:
-        efuses.batch_mode_cnt += 1
+    if multiple_burn_commands:
+        commands.use_batch_mode()
 
     # Add the objects to the context
-    ctx.obj["esp"] = esp
     ctx.obj["debug"] = debug
-    ctx.obj["efuses"] = efuses
+    ctx.obj["commands"] = commands
+    ctx.obj["efuses"] = commands.efuses
     ctx.obj["do_not_confirm"] = do_not_confirm
 
     @cli.result_callback()
     def process_result(result, *args, **kwargs):
-        if there_are_multiple_burn_commands_in_args:
-            efuses.batch_mode_cnt -= 1
-            if not efuses.burn_all(check_batch_mode=True):
+        if multiple_burn_commands:
+            if not commands.burn_all(check_batch_mode=True):
                 raise esptool.FatalError("BURN was not done")
             print("Successful")
 
@@ -223,7 +192,8 @@ def main(argv: list[str] | None = None, esp: esptool.ESPLoader | None = None):
     esp - Optional override of the connected device previously
     returned by esptool.get_default_connected_device()
     """
-    cli(args=argv, esp=esp)
+    args = esptool.expand_file_arguments(argv or sys.argv[1:])
+    cli(args=args, esp=esp)
 
 
 def _main():

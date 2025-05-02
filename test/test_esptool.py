@@ -334,8 +334,8 @@ class TestFlashEncryption(EsptoolTestCase):
         try:
             esp = esptool.ESP32ROM(arg_port)
             esp.connect()
-            efuses = espefuse.get_efuses(esp=esp)
-            blk1_rd_en = efuses["BLOCK1"].is_readable()
+            efuse_cls = espefuse.init_commands(esp=esp)
+            blk1_rd_en = efuse_cls.efuses["BLOCK1"].is_readable()
             return not blk1_rd_en
         finally:
             esp._port.close()

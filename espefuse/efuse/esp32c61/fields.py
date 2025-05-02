@@ -55,9 +55,6 @@ class EspEfuses(base_fields.EspEfusesBase):
     Wrapper object to manage the efuse fields in a connected ESP bootloader
     """
 
-    debug = False
-    do_not_confirm = False
-
     def __init__(
         self,
         esp,
@@ -66,14 +63,12 @@ class EspEfuses(base_fields.EspEfusesBase):
         do_not_confirm=False,
         extend_efuse_table=None,
     ):
+        super().__init__(esp, skip_connect, debug, do_not_confirm, extend_efuse_table)
         self.Blocks = EfuseDefineBlocks()
         self.Fields = EfuseDefineFields(extend_efuse_table)
         self.REGS = EfuseDefineRegisters
         self.BURN_BLOCK_DATA_NAMES = self.Blocks.get_burn_block_data_names()
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
-        self._esp = esp
-        self.debug = debug
-        self.do_not_confirm = do_not_confirm
         if esp.CHIP_NAME != "ESP32-C61":
             raise esptool.FatalError(
                 "Expected the 'esp' param for ESP32-C61 chip but got for '%s'."

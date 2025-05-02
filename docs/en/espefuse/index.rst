@@ -13,7 +13,7 @@ For more details about Espressif chips eFuse features, see the `{IDF_TARGET_NAME
 
 ``espefuse.py`` is installed alongside ``esptool.py``, so if ``esptool.py`` (v2.0 or newer) is available on the PATH then ``espefuse.py`` should be as well.
 
-Initial State of Efuses
+Initial State of eFuses
 -----------------------
 
 On relatively new chip, most eFuses are unburned (value 0). Some eFuses are already burned at the factory stage:
@@ -165,6 +165,17 @@ For the current example, you can reference the custom fields with the following 
 For convenience, the espefuse summary command includes the used bit range of the field in a comment, such as ``(150-157)`` len = 8 bits.
 
 For more details on the structure and usage of the CSV file, refer to the `eFuse Manager <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/efuse.html#description-csv-file>`_ chapter in the ESP-IDF documentation.
+
+Scripting
+---------
+
+Espefuse can be used as a Python library. See :ref:`espefuse.py Scripting <espefuse-scripting>` for more details.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   scripting
 
 Recommendations
 ---------------

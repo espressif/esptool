@@ -4,6 +4,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from io import IOBase
+from typing import BinaryIO
 import rich_click as click
 
 import espsecure
@@ -23,6 +25,9 @@ from ..base_operations import (
 
 
 class ESP32C2Commands(BaseCommands):
+    CHIP_NAME = "ESP32-C2"
+    efuse_lib = fields.EspEfuses
+
     ################################### CLI definitions ###################################
 
     def add_cli_commands(self, cli: click.Group):
@@ -81,7 +86,8 @@ class ESP32C2Commands(BaseCommands):
 
     ###################################### Commands ######################################
 
-    def burn_custom_mac(self, mac):
+    def burn_custom_mac(self, mac: str | bytes):
+        mac = self._convert_mac_to_bytes(mac)
         self.efuses["CUSTOM_MAC"].save(mac)
         self.efuses["CUSTOM_MAC_USED"].save(1)
         if not self.efuses.burn_all(check_batch_mode=True):
@@ -92,39 +98,52 @@ class ESP32C2Commands(BaseCommands):
     def adc_info(self):
         print("Block version:", self.efuses.get_block_version())
         if self.efuses.get_block_version() >= 1:
-            print(
-                "Temperature Sensor Calibration = {}C".format(
-                    self.efuses["TEMP_CALIB"].get()
-                )
-            )
+            # fmt: off
+            print(f"Temperature Sensor Calibration = {self.efuses['TEMP_CALIB'].get()}C")
             print("ADC OCode        = ", self.efuses["OCODE"].get())
             print("ADC1:")
             print("INIT_CODE_ATTEN0 = ", self.efuses["ADC1_INIT_CODE_ATTEN0"].get())
             print("INIT_CODE_ATTEN3 = ", self.efuses["ADC1_INIT_CODE_ATTEN3"].get())
             print("CAL_VOL_ATTEN0   = ", self.efuses["ADC1_CAL_VOL_ATTEN0"].get())
             print("CAL_VOL_ATTEN3   = ", self.efuses["ADC1_CAL_VOL_ATTEN3"].get())
+            # fmt: on
 
     def burn_key(
         self,
-        block,
-        keyfile,
-        keypurpose,
-        no_write_protect,
-        no_read_protect,
-        show_sensitive_info,
-        digest=None,
+        blocks: list[str],
+        keyfiles: list[BinaryIO],
+        keypurposes: list[str],
+        no_write_protect: bool = False,
+        no_read_protect: bool = False,
+        show_sensitive_info: bool = False,
+        digest: list[bytes] | None = None,
     ):
+        """Burn the key block with the specified name. Arguments are groups of block name,
+        key file (containing 128/256 bits of binary key data) and key purpose.
+
+        Args:
+            blocks: List of eFuse block names to burn keys to.
+            keyfiles: List of open files to read key data from.
+            keypurposes: List of key purposes to burn.
+            no_write_protect: If True, the write protection will NOT be enabled.
+            no_read_protect: If True, the read protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+            digest: List of digests to burn.
+        """
+        datafile_list: list[BinaryIO] | list[bytes]
         if digest is None:
-            datafile_list = keyfile[
-                0 : len([keyfile for keyfile in keyfile if keyfile is not None]) :
+            datafile_list = keyfiles[
+                0 : len([keyfile for keyfile in keyfiles if keyfile is not None]) :
             ]
         else:
             datafile_list = digest[
                 0 : len([name for name in digest if name is not None]) :
             ]
-        block_name_list = block[0 : len([name for name in block if name is not None]) :]
-        keypurpose_list = keypurpose[
-            0 : len([name for name in keypurpose if name is not None]) :
+        block_name_list = blocks[
+            0 : len([name for name in blocks if name is not None]) :
+        ]
+        keypurpose_list = keypurposes[
+            0 : len([name for name in keypurposes if name is not None]) :
         ]
 
         util.check_duplicate_name_in_list(keypurpose_list)
@@ -156,11 +175,11 @@ class ESP32C2Commands(BaseCommands):
 
         print("Burn keys to blocks:")
         for datafile, keypurpose in zip(datafile_list, keypurpose_list):
-            if isinstance(datafile, bytes):
-                data = datafile
-            else:
+            if isinstance(datafile, IOBase):
                 data = datafile.read()
                 datafile.close()
+            else:
+                data = datafile  # type: ignore  # this is safe but mypy still complains
 
             if keypurpose == "XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS":
                 efuse = self.efuses["BLOCK_KEY0_LOW_128"]
@@ -241,8 +260,20 @@ class ESP32C2Commands(BaseCommands):
         print("Successful")
 
     def burn_key_digest(
-        self, keyfile, no_write_protect, no_read_protect, show_sensitive_info
+        self,
+        keyfile: BinaryIO,
+        no_write_protect: bool = False,
+        no_read_protect: bool = False,
+        show_sensitive_info: bool = False,
     ):
+        """Parse a RSA public key and burn the digest to key eFuse block.
+
+        Args:
+            keyfile: Open file to read key data from.
+            no_write_protect: If True, the write protection will NOT be enabled.
+            no_read_protect: If True, the read protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+        """
         digest = espsecure._digest_sbv2_public_key(keyfile)
         digest = digest[:16]
         num_bytes = self.efuses["BLOCK_KEY0_HI_128"].bit_len // 8
@@ -254,7 +285,7 @@ class ESP32C2Commands(BaseCommands):
             )
         self.burn_key(
             ["BLOCK_KEY0"],
-            keyfile,
+            [keyfile],
             ["SECURE_BOOT_DIGEST"],
             no_write_protect,
             no_read_protect,

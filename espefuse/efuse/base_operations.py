@@ -4,10 +4,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from abc import abstractmethod
+import io
 import os
 import json
 import sys
-from typing import Any, Callable
+from typing import Any, BinaryIO, Callable, TextIO
 
 import rich_click as click
 
@@ -17,6 +19,7 @@ import esptool
 
 from . import base_fields
 from . import util
+from .emulate_efuse_controller_base import EmulateEfuseControllerBase
 
 
 class EfuseValuePairArg(click.Argument):
@@ -178,22 +181,55 @@ def protect_options(function: Callable):
 
 
 class BaseCommands:
-    def __init__(self) -> None:
-        self._efuses: base_fields.EspEfusesBase | None = None
+    CHIP_NAME = "auto"
+    efuse_lib: type[base_fields.EspEfusesBase] | None = None
+    efuses: base_fields.EspEfusesBase
+    esp: esptool.ESPLoader | EmulateEfuseControllerBase
+    external_esp: bool = False
 
-    @property
-    def efuses(self):
-        if self._efuses is None:
-            raise ValueError("Make sure that efuses property is set.")
-        return self._efuses
+    def get_efuses(
+        self,
+        skip_connect=False,
+        debug_mode=False,
+        do_not_confirm=False,
+        extend_efuse_table=None,
+    ):
+        if self.esp is None:
+            raise esptool.FatalError("get_efuses: esp is not set")
+        if self.CHIP_NAME == self.esp.CHIP_NAME:
+            if self.efuse_lib is None:
+                raise esptool.FatalError("get_efuses: efuse_lib is not set")
+            self.efuses = self.efuse_lib(
+                self.esp, skip_connect, debug_mode, do_not_confirm, extend_efuse_table
+            )
+        else:
+            raise esptool.FatalError(
+                "get_efuses: Mismatch chip name "
+                f"({self.CHIP_NAME} != {self.esp.CHIP_NAME})"
+            )
 
-    @efuses.setter
-    def efuses(self, efuses: base_fields.EspEfusesBase):
-        self._efuses = efuses
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if (
+            self.esp is not None
+            and not self.external_esp
+            and isinstance(self.esp, esptool.ESPLoader)
+        ):
+            self.esp._port.close()
 
     ################################# CLI definitions #################################
 
     def add_cli_commands(self, cli: click.Group):
+        """Add the CLI commands to the given click group"""
+
+        if self.efuses is None:
+            # This should never happen, but just in case someone calls it from API
+            raise esptool.FatalError(
+                "To initialize the CLI commands, you need to call get_efuses() first."
+            )
+
         efuses: list[base_fields.EfuseFieldBase] = getattr(self.efuses, "efuses", [])
 
         @cli.command(
@@ -216,7 +252,7 @@ class BaseCommands:
         @click.option("--force", is_flag=True, help="Suppress an error to burn eFuses")
         @click.pass_context
         def burn_efuse_cli(ctx, name_value_pairs, force):
-            self.burn_efuse(ctx.obj["esp"], name_value_pairs, force)
+            self.burn_efuse(name_value_pairs, force)
 
         @cli.command(
             "read-protect-efuse",
@@ -226,7 +262,7 @@ class BaseCommands:
         @click.argument("efuse_name", nargs=-1, required=True)
         @click.pass_context
         def read_protect_efuse_cli(ctx, efuse_name):
-            self.read_protect_efuse(ctx.obj["esp"], efuse_name)
+            self.read_protect_efuse(efuse_name)
 
         @cli.command(
             "write-protect-efuse",
@@ -260,7 +296,6 @@ class BaseCommands:
                 ]
             ),
         )
-        # help="File containing data to burn into the eFuse block"
         @click.option(
             "--offset", "-o", type=int, default=0, help="Byte offset in the eFuse block"
         )
@@ -293,20 +328,17 @@ class BaseCommands:
         )
         @click.option(
             "--file-name",
-            type=click.File("w"),
-            default=sys.stdout,
+            type=click.Path(dir_okay=False, writable=True),
+            default=None,
             help="The path to the file in which to save the dump, if not specified, "
             "output to the console.",
         )
         def dump_cli(format, file_name):
             """Dump raw hex values of all eFuses."""
-            file = file_name.name if file_name != sys.stdout else file_name
-            self.dump(format, file)
+            self.dump(format, file_name)
 
         @cli.command("summary")
-        @click.argument(
-            "efuses_to_show", nargs=-1, required=False
-        )  # help="The efuses to show. If not provided, all efuses will be shown."
+        @click.argument("efuses_to_show", nargs=-1, required=False)
         @click.option(
             "--format",
             type=click.Choice(["summary", "json", "value_only"]),
@@ -324,9 +356,7 @@ class BaseCommands:
             self.summary(efuses_to_show, format, file)
 
         @cli.command("execute-scripts")
-        @click.argument(
-            "scripts", nargs=-1, type=click.File("r"), required=True
-        )  # help="The special format of python scripts."
+        @click.argument("scripts", nargs=-1, type=click.File("r"), required=True)
         @click.option(
             "--index",
             type=int,
@@ -383,10 +413,142 @@ class BaseCommands:
             """Get the 48-bit Custom MAC Address."""
             self.get_custom_mac()
 
+    ################################## Helper methods ##################################
+
+    def use_batch_mode(self):
+        """Enable batch mode for eFuse operations.
+
+        This method increments the batch mode counter, allowing multiple eFuse
+        operations to be queued before burning. All queued operations will be
+        executed together when :func:`burn_all` is called.
+
+        This method can be called multiple times to nest batch operations.
+        Each call should be paired with a corresponding call to :func:`burn_all`.
+        """
+        self.efuses.batch_mode_cnt += 1
+
+    def burn_all(self, check_batch_mode=False):
+        """Execute all queued eFuse operations and decrement batch mode counter.
+
+        This method decrements the batch mode counter, then burns all eFuses
+        that have been queued during batch mode. When the counter reaches zero,
+        batch mode is fully exited.
+
+        This method should be called after :func:`use_batch_mode` to execute
+        the queued operations.
+
+        Args:
+            check_batch_mode: If True, only execute the burn operation if this is the
+                final burn_all call (i.e., when batch_mode_cnt reaches zero in nested
+                operations).
+
+        Returns:
+            bool: True if the burn operation was successful.
+        """
+        self.efuses.batch_mode_cnt -= 1
+        return self.efuses.burn_all(check_batch_mode)
+
+    def _key_block_is_unused(
+        self,
+        block: base_fields.EfuseBlockBase,
+        key_purpose_block: base_fields.EfuseBlockBase,
+    ) -> bool:
+        """Helper method to check if a key block is available for use"""
+        if not block.is_readable() or not block.is_writeable():
+            return False
+
+        if key_purpose_block.get() != "USER" or not key_purpose_block.is_writeable():
+            return False
+
+        if not block.get_bitstring().all(False):
+            return False
+
+        return True
+
+    def _get_next_key_block(
+        self, current_key_block: base_fields.EfuseBlockBase, block_name_list: list[str]
+    ) -> base_fields.EfuseBlockBase | None:
+        """Helper method to get the next available key block"""
+        key_blocks = [b for b in self.efuses.blocks if b.key_purpose_name]
+        start = key_blocks.index(current_key_block)
+
+        # Sort key blocks so that we pick the next free block
+        # (and loop around if necessary)
+        key_blocks = key_blocks[start:] + key_blocks[0:start]
+
+        # Exclude any other blocks that will be be burned
+        key_blocks = [b for b in key_blocks if b.name not in block_name_list]
+
+        for block in key_blocks:
+            key_purpose_block = self.efuses[block.key_purpose_name]
+            if self._key_block_is_unused(block, key_purpose_block):
+                return block
+
+        return None
+
+    def _split_512_bit_key(
+        self,
+        block_names: list[str],
+        datafiles: list[BinaryIO],
+        keypurposes: list[str],
+    ) -> tuple[list[str], list[BinaryIO], list[str]]:
+        """Helper method to split 512-bit key into two 256-bit keys"""
+        keypurpose_list = list(keypurposes)
+        datafile_list = list(datafiles)
+        block_name_list = list(block_names)
+
+        i = keypurpose_list.index("XTS_AES_256_KEY")
+        block_name = block_name_list[i]
+
+        block_num = self.efuses.get_index_block_by_name(block_name)
+        block = self.efuses.blocks[block_num]
+
+        data = datafile_list[i].read()
+        if len(data) != 64:
+            raise esptool.FatalError(
+                "Incorrect key file size %d, XTS_AES_256_KEY should be 64 bytes"
+                % len(data)
+            )
+
+        key_block_2 = self._get_next_key_block(block, block_name_list)
+        if not key_block_2:
+            raise esptool.FatalError("XTS_AES_256_KEY requires two free keyblocks")
+
+        keypurpose_list.append("XTS_AES_256_KEY_1")
+        datafile_list.append(io.BytesIO(data[:32]))
+        block_name_list.append(block_name)
+
+        keypurpose_list.append("XTS_AES_256_KEY_2")
+        datafile_list.append(io.BytesIO(data[32:]))
+        block_name_list.append(key_block_2.name)
+
+        keypurpose_list.pop(i)
+        datafile_list.pop(i)
+        block_name_list.pop(i)
+
+        return block_name_list, datafile_list, keypurpose_list
+
+    def _convert_mac_to_bytes(self, mac: str | bytes) -> bytes:
+        if isinstance(mac, str):
+            return base_fields.CheckArgValue(self.efuses, "CUSTOM_MAC")(mac)  # type: ignore
+        return mac
+
     ##################################### Commands ####################################
 
-    def summary(self, efuses_to_show, format, file):
-        """Print a human-readable or json summary of eFuse contents"""
+    def summary(
+        self,
+        efuses_to_show: list[str] = [],
+        format: str = "summary",
+        file: TextIO = sys.stdout,
+    ):
+        """
+        Print a human-readable or json summary of eFuse contents.
+
+        Args:
+            efuses_to_show: List of eFuse names to show.
+            format: Format to use for the summary.
+            file: File to write the summary to.
+        """
         ROW_FORMAT = "%-50s %-50s%s = %s %s %s"
         human_output = format in ["summary", "value_only"]
         value_only = format == "value_only"
@@ -509,18 +671,30 @@ class BaseCommands:
             json.dump(json_efuse, file, sort_keys=True, indent=4)
             print("")
 
-    def dump(self, format, file_name):
-        """Dump raw eFuse data registers"""
-        dump_file = file_name
-        to_console = file_name == sys.stdout
+    def dump(self, format: str = "default", file_name: str | None = None):
+        """
+        Dump raw eFuse data registers.
 
-        def output_block_to_file(block, f, to_console):
+        Args:
+            format: Format to use for the dump. Available options are:
+                - "default": Print the dump to the console.
+                - "split": Dump each eFuse block to a separate file.
+                - "joint": Dump all eFuse blocks to a single file.
+            file_name: File to write the dump to. If not provided, the dump will
+                be printed to the console.
+        """
+        to_console = file_name is None
+        dump_file: BinaryIO | TextIO = sys.stdout
+
+        def output_block_to_file(
+            block: base_fields.EfuseBlockBase, f: BinaryIO | TextIO, to_console: bool
+        ):
             block_dump = BitStream(block.get_bitstring())
             block_dump.byteswap()
             if to_console:
                 f.write(block_dump.hex + "\n")
             else:
-                block_dump.tofile(f)
+                block_dump.tofile(f)  # type: ignore
 
         if format == "default":
             if to_console:
@@ -537,8 +711,7 @@ class BaseCommands:
             # each eFuse block is placed into its own file
             for block in self.efuses.blocks:
                 if not to_console:
-                    file_dump_name = file_name
-                    fname, fextension = os.path.splitext(file_dump_name)
+                    fname, fextension = os.path.splitext(file_name)  # type: ignore
                     file_dump_name = f"{fname}{block.id}{fextension}"
                     print(f"Dump eFuse block{block.id} -> {file_dump_name}")
                     dump_file = open(file_dump_name, "wb")
@@ -549,14 +722,23 @@ class BaseCommands:
             # all eFuse blocks are stored in one file
             if not to_console:
                 print(f"Dump eFuse blocks -> {file_name}")
-                dump_file = open(file_name, "wb")
+                dump_file = open(file_name, "wb")  # type: ignore
             for block in self.efuses.blocks:
                 output_block_to_file(block, dump_file, to_console)
             if not to_console:
                 dump_file.close()
 
-    def burn_efuse(self, esp, name_value_pairs, force):
-        def print_attention(blocked_efuses_after_burn):
+    def burn_efuse(self, name_value_pairs: dict[str, str], force: bool = False):
+        """
+        Burn eFuses.
+
+        Args:
+            name_value_pairs: Dictionary of eFuse names and values to burn.
+            force: If True, the burn will be performed even if the eFuse settings
+                are incompatible.
+        """
+
+        def print_attention(blocked_efuses_after_burn: list[str]):
             if len(blocked_efuses_after_burn):
                 print(
                     "    ATTENTION! This BLOCK uses NOT the NONE coding scheme "
@@ -632,8 +814,8 @@ class BaseCommands:
             )
 
         if (
-            esp.CHIP_NAME == "ESP32"
-            and esp.get_chip_revision() >= 300
+            self.esp.CHIP_NAME == "ESP32"
+            and self.esp.get_chip_revision() >= 300
             and "UART_DOWNLOAD_DIS" in efuse_name_list
         ):
             print(
@@ -680,7 +862,13 @@ class BaseCommands:
         else:
             print("Successful")
 
-    def read_protect_efuse(self, esp, efuse_names):
+    def read_protect_efuse(self, efuse_names: list[str]):
+        """
+        Disable readback for the eFuse with the specified name.
+
+        Args:
+            efuse_names: List of eFuse names to read-protect.
+        """
         util.check_duplicate_name_in_list(efuse_names)
 
         for efuse_name in efuse_names:
@@ -688,11 +876,11 @@ class BaseCommands:
             if not efuse.is_readable():
                 print("Efuse %s is already read protected" % efuse.name)
             else:
-                if esp.CHIP_NAME == "ESP32":
+                if self.esp.CHIP_NAME == "ESP32":
                     if (
                         efuse_name == "BLOCK2"
                         and not self.efuses["ABS_DONE_0"].get()
-                        and esp.get_chip_revision() >= 300
+                        and self.esp.get_chip_revision() >= 300
                     ):
                         if self.efuses["ABS_DONE_1"].get():
                             raise esptool.FatalError(
@@ -704,7 +892,7 @@ class BaseCommands:
                                 "If Secure Boot V2 is used, BLOCK2 must be readable, "
                                 "please stop this operation!"
                             )
-                elif esp.CHIP_NAME == "ESP32-C2":
+                elif self.esp.CHIP_NAME == "ESP32-C2":
                     error = (
                         not self.efuses["XTS_KEY_LENGTH_256"].get()
                         and efuse_name == "BLOCK_KEY0"
@@ -758,7 +946,13 @@ class BaseCommands:
         else:
             print("Successful")
 
-    def write_protect_efuse(self, efuse_names):
+    def write_protect_efuse(self, efuse_names: list[str]):
+        """
+        Disable writing to the eFuse with the specified name.
+
+        Args:
+            efuse_names: List of eFuse names to write-protect.
+        """
         util.check_duplicate_name_in_list(efuse_names)
         for efuse_name in efuse_names:
             efuse = self.efuses[efuse_name]
@@ -794,7 +988,23 @@ class BaseCommands:
         else:
             print("Successful")
 
-    def burn_block_data(self, block_names, datafiles, offset):
+    def burn_block_data(
+        self,
+        block_names: list[str],
+        datafiles: list[BinaryIO],
+        offset: int = 0,
+    ) -> None:
+        """
+        Burn non-key data to EFUSE blocks.
+
+        Don't use this command to burn key data for Flash Encryption or ESP32
+        Secure Boot V1, as the byte order of keys is swapped (use burn-key).
+
+        Args:
+            block_names: List of eFuse block names to burn data to.
+            datafiles: List of files to read data from.
+            offset: Byte offset in the eFuse block to start writing data at.
+        """
         block_name_list = block_names[
             0 : len([name for name in block_names if name is not None]) :
         ]
@@ -811,7 +1021,7 @@ class BaseCommands:
         else:
             if offset:
                 num_block = self.efuses.get_index_block_by_name(block_name_list[0])
-                block = self.efuses.blocks[num_block]
+                block: base_fields.EfuseBlockBase = self.efuses.blocks[num_block]
                 num_bytes = block.get_block_len()
                 if offset >= num_bytes:
                     raise esptool.FatalError(
@@ -849,10 +1059,17 @@ class BaseCommands:
             return
         print("Successful")
 
-    def burn_bit(self, block, bit_number):
+    def burn_bit(self, block: str, bit_number: list[int]):
+        """
+        Burn a single bit to the eFuse with the specified name.
+
+        Args:
+            block: Name of the eFuse block to burn the bit to.
+            bit_number: List of bit numbers to burn.
+        """
         num_block = self.efuses.get_index_block_by_name(block)
-        block = self.efuses.blocks[num_block]
-        data_block = BitStream(block.get_block_len() * 8)
+        block_obj: base_fields.EfuseBlockBase = self.efuses.blocks[num_block]
+        data_block = BitStream(block_obj.get_block_len() * 8)
         data_block.set(0)
         try:
             data_block.set(True, bit_number)
@@ -866,9 +1083,9 @@ class BaseCommands:
             "[%-03d]........................................................[0]"
             % (data_block.len - 1)
         )
-        print("BLOCK%-2d   :" % block.id, data_block)
-        block.print_block(data_block, "regs_to_write", debug=True)
-        block.save(data_block.bytes[::-1])
+        print("BLOCK%-2d   :" % block_obj.id, data_block)
+        block_obj.print_block(data_block, "regs_to_write", debug=True)
+        block_obj.save(data_block.bytes[::-1])
 
         if not self.efuses.burn_all(check_batch_mode=True):
             return
@@ -906,7 +1123,14 @@ class BaseCommands:
             )
         return True
 
-    def check_error(self, recovery, do_not_confirm):
+    def check_error(self, recovery: bool = False, do_not_confirm: bool = False):
+        """
+        Check for errors in the eFuse blocks.
+
+        Args:
+            recovery: Recovery of BLOCKs after encoding errors.
+            do_not_confirm: If True, the confirmation will be skipped.
+        """
         error_in_blocks = self.get_error_summary()
         if recovery and error_in_blocks:
             confirmed = False
@@ -930,7 +1154,16 @@ class BaseCommands:
     def execute_scripts(self, scripts, debug, configfiles, index):
         raise NotImplementedError("execute_scripts is not implemented")
 
-    def burn_custom_mac(self, mac):
+    def burn_custom_mac(self, mac: str | bytes):
+        """
+        Burn a 48-bit Custom MAC Address.
+
+        Args:
+            mac (str | bytes): Custom MAC Address to burn. e.g. "aa:cd:ef:11:22:33" or
+                b'\xaa\xcd\xef\x11\x22\x33'
+        """
+        mac = self._convert_mac_to_bytes(mac)
+
         self.efuses["CUSTOM_MAC"].save(mac)
         if not self.efuses.burn_all(check_batch_mode=True):
             return
@@ -938,10 +1171,28 @@ class BaseCommands:
         print("Successful")
 
     def get_custom_mac(self):
+        """Get the Custom MAC Address."""
         print(f"Custom MAC Address: {self.efuses['CUSTOM_MAC'].get()}")
 
-    def set_flash_voltage(self, voltage):
+    def set_flash_voltage(self, voltage: str):
+        """
+        Set the Flash Voltage. Available only for selected chips.
+
+        Args:
+            voltage: Voltage to set. Available options are: "1.8V", "3.3V", "OFF"
+        """
         raise esptool.FatalError("set_flash_voltage is not supported for this chip")
 
     def adc_info(self):
+        """Display information about ADC calibration data stored in eFuse."""
         raise NotImplementedError("adc-info is not implemented for this chip")
+
+    @abstractmethod
+    def burn_key(self, *args, **kwargs):
+        """Burn a key to the eFuse. Exact implementation is chip-specific."""
+        pass
+
+    @abstractmethod
+    def burn_key_digest(self, *args, **kwargs):
+        """Burn a key digest to the eFuse. Exact implementation is chip-specific."""
+        pass

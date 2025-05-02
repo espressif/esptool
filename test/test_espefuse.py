@@ -101,18 +101,13 @@ class EfuseTestCase:
         reset_port.rts = False
 
     def get_esptool(self):
-        if reset_port is not None:
-            import esptool
+        import espefuse
 
-            esp = esptool.cmds.detect_chip(port=arg_port)
-            del esptool
-        else:
-            import espefuse
-
-            efuse = espefuse.SUPPORTED_CHIPS[arg_chip].efuse_lib
-            esp = efuse.EmulateEfuseController(self.efuse_file.name)
-            del espefuse
-            del efuse
+        esp = espefuse.get_esp(
+            port=arg_port,
+            virt=reset_port is None,
+            virt_efuse_file=self.efuse_file.name,
+        )
         return esp
 
     def _set_34_coding_scheme(self):
@@ -208,9 +203,15 @@ class TestReadCommands(EfuseTestCase):
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
         self.espefuse_py(f"dump --format joint --file-name {tmp_file.name}")
 
+    def test_dump_format_joint_stdout(self):
+        self.espefuse_py("dump --format joint")
+
     def test_dump_split_default(self):
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
         self.espefuse_py(f"dump --file-name {tmp_file.name}")
+
+    def test_dump_format_split_stdout(self):
+        self.espefuse_py("dump --format split")
 
     def test_dump_split(self):
         tmp_file = tempfile.NamedTemporaryFile(delete=False)

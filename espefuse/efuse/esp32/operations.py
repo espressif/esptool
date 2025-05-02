@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from typing import BinaryIO
 import rich_click as click
 
 import espsecure
@@ -12,6 +13,7 @@ import esptool
 
 from .mem_definition import EfuseDefineBlocks
 from .. import util
+from .fields import EspEfuses
 from ..base_operations import (
     BaseCommands,
     NonCompositeTuple,
@@ -22,6 +24,9 @@ from ..base_operations import (
 
 
 class ESP32Commands(BaseCommands):
+    CHIP_NAME = "ESP32"
+    efuse_lib = EspEfuses
+
     ################################### CLI definitions ###################################
 
     def add_cli_commands(self, cli: click.Group):
@@ -79,9 +84,7 @@ class ESP32Commands(BaseCommands):
             ctx, keyfile, no_protect_key, show_sensitive_info, **kwargs
         ):
             kwargs["show_sensitive_info"] = ctx.show_sensitive_info
-            self.burn_key_digest(
-                ctx.obj["esp"], keyfile, no_protect_key, show_sensitive_info
-            )
+            self.burn_key_digest(keyfile, no_protect_key, show_sensitive_info)
 
         @cli.command(
             "set-flash-voltage",
@@ -104,7 +107,7 @@ class ESP32Commands(BaseCommands):
         else:
             print("Custom MAC Address is not set in the device.")
 
-    def set_flash_voltage(self, voltage):
+    def set_flash_voltage(self, voltage: str):
         sdio_force = self.efuses["XPD_SDIO_FORCE"]
         sdio_tieh = self.efuses["XPD_SDIO_TIEH"]
         sdio_reg = self.efuses["XPD_SDIO_REG"]
@@ -169,7 +172,22 @@ class ESP32Commands(BaseCommands):
             print(f"    ADC2 Low reading  (150mV): {self.efuses['ADC2_TP_LOW'].get()}")
             print(f"    ADC2 High reading (850mV): {self.efuses['ADC2_TP_HIGH'].get()}")
 
-    def burn_key(self, block, keyfile, no_protect_key, show_sensitive_info):
+    def burn_key(
+        self,
+        block: list[str],
+        keyfile: list[BinaryIO],
+        no_protect_key: bool = False,
+        show_sensitive_info: bool = False,
+    ):
+        """Burn a 256-bit key to EFUSE. Arguments are pairs of block name and
+        key file, containing 256 bits of binary key data.
+
+        Args:
+            block: List of eFuse block names to burn keys to.
+            keyfile: List of open files to read key data from.
+            no_protect_key: If True, the write protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+        """
         datafile_list = keyfile[
             0 : len([keyfile for keyfile in keyfile if keyfile is not None]) :
         ]
@@ -187,9 +205,9 @@ class ESP32Commands(BaseCommands):
         print("Burn keys to blocks:")
         for block_name, datafile in zip(block_name_list, datafile_list):
             efuse = None
-            for block in self.efuses.blocks:
-                if block_name == block.name or block_name in block.alias:
-                    efuse = self.efuses[block.name]
+            for blk in self.efuses.blocks:
+                if block_name == blk.name or block_name in blk.alias:
+                    efuse = self.efuses[blk.name]
             if efuse is None:
                 raise esptool.FatalError("Unknown block name - %s" % (block_name))
             num_bytes = efuse.bit_len // 8
@@ -247,13 +265,25 @@ class ESP32Commands(BaseCommands):
             return
         print("Successful")
 
-    def burn_key_digest(self, esp, keyfile, no_protect_key, show_sensitive_info):
+    def burn_key_digest(
+        self,
+        keyfile: BinaryIO,
+        no_protect_key: bool = False,
+        show_sensitive_info: bool = False,
+    ):
+        """Parse a RSA public key and burn the digest to eFuse for use with Secure Boot V2.
+
+        Args:
+            keyfile: Open file to read key data from.
+            no_protect_key: If True, the write protection will NOT be enabled.
+            show_sensitive_info: If True, the sensitive information will be shown.
+        """
         if self.efuses.coding_scheme == self.efuses.REGS.CODING_SCHEME_34:
             raise esptool.FatalError(
                 "burn-key-digest only works with 'None' coding scheme"
             )
 
-        chip_revision = esp.get_chip_revision()
+        chip_revision = self.esp.get_chip_revision()
         if chip_revision < 300:
             raise esptool.FatalError(
                 "Incorrect chip revision for Secure boot v2. "
