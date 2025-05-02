@@ -1024,7 +1024,7 @@ def main(argv=None, esp=None):
                 # Check if stub supports chosen flash size
                 if (
                     esp.IS_STUB
-                    and esp.CHIP_NAME != "ESP32-S3"
+                    and esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4"]
                     and flash_size_bytes(flash_size) > 16 * 1024 * 1024
                 ):
                     print(
@@ -1050,7 +1050,10 @@ def main(argv=None, esp=None):
             args.size = flash_size_bytes(size_str)
 
         if esp.IS_STUB and hasattr(args, "address") and hasattr(args, "size"):
-            if esp.CHIP_NAME != "ESP32-S3" and args.address + args.size > 0x1000000:
+            if (
+                esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4"]
+                and args.address + args.size > 0x1000000
+            ):
                 print(
                     "WARNING: Flasher stub doesn't fully support flash size larger "
                     "than 16MB, in case of failure use --no-stub."
