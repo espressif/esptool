@@ -267,7 +267,10 @@ def add_spi_flash_options(
 
 def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     # Check if we are writing/erasing/reading past 16MB boundary
-    if not (esp.IS_STUB and esp.CHIP_NAME == "ESP32-S3") and address + size > 0x1000000:
+    if (
+        not (esp.IS_STUB and esp.CHIP_NAME in ["ESP32-S3", "ESP32-P4"])
+        and address + size > 0x1000000
+    ):
         raise FatalError(
             f"Can't access flash regions larger than 16MB "
             f"(set size {size:#x} from address {address:#010x} goes past 16MB "

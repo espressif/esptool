@@ -420,6 +420,8 @@ target_esp32p4:
   extends: .target_esptool_test
   tags:
     - esptool_esp32p4_target
+  variables:
+    ESPTOOL_TEST_FLASH_SIZE: "32"
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32P4 --chip esp32p4 --baud 115200
 
