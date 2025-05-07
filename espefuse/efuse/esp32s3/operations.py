@@ -205,22 +205,26 @@ def set_flash_voltage(esp, efuses, args):
         )
 
     if args.voltage == "OFF":
-        msg = "Disable internal flash voltage regulator (VDD_SPI). "
-        "SPI flash will need to be powered from an external source.\n"
-        "The following efuse is burned: VDD_SPI_FORCE.\n"
-        "It is possible to later re-enable the internal regulator (%s) " % (
-            "to 3.3V" if sdio_tieh.get() != 0 else "to 1.8V or 3.3V"
+        print(
+            "Disable internal flash voltage regulator (VDD_SPI). "
+            "SPI flash will need to be powered from an external source.\n"
+            "The following eFuse is burned: VDD_SPI_FORCE.\n"
+            "It is possible to later re-enable the internal regulator"
+            f"{'to 3.3V' if sdio_tieh.get() != 0 else 'to 1.8V or 3.3V'}"
+            "by burning an additional eFuse"
         )
-        "by burning an additional efuse"
     elif args.voltage == "1.8V":
-        msg = "Set internal flash voltage regulator (VDD_SPI) to 1.8V.\n"
-        "The following efuses are burned: VDD_SPI_FORCE, VDD_SPI_XPD.\n"
-        "It is possible to later increase the voltage to 3.3V (permanently) "
-        "by burning additional efuse VDD_SPI_TIEH"
+        print(
+            "Set internal flash voltage regulator (VDD_SPI) to 1.8V.\n"
+            "The following eFuses are burned: VDD_SPI_FORCE, VDD_SPI_XPD.\n"
+            "It is possible to later increase the voltage to 3.3V (permanently) "
+            "by burning additional eFuse VDD_SPI_TIEH"
+        )
     elif args.voltage == "3.3V":
-        msg = "Enable internal flash voltage regulator (VDD_SPI) to 3.3V.\n"
-        "The following efuses are burned: VDD_SPI_FORCE, VDD_SPI_XPD, VDD_SPI_TIEH."
-    print(msg)
+        print(
+            "Enable internal flash voltage regulator (VDD_SPI) to 3.3V.\n"
+            "The following eFuses are burned: VDD_SPI_FORCE, VDD_SPI_XPD, VDD_SPI_TIEH."
+        )
 
     sdio_force.save(1)  # Disable GPIO45
     if args.voltage != "OFF":

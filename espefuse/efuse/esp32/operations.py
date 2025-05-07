@@ -157,22 +157,27 @@ def set_flash_voltage(esp, efuses, args):
         )
 
     if args.voltage == "OFF":
-        msg = "Disable internal flash voltage regulator (VDD_SDIO). "
-        "SPI flash will need to be powered from an external source.\n"
-        "The following efuse is burned: XPD_SDIO_FORCE.\n"
-        "It is possible to later re-enable the internal regulator (%s) " % (
-            "to 3.3V" if sdio_tieh.get() != 0 else "to 1.8V or 3.3V"
+        print(
+            "Disable internal flash voltage regulator (VDD_SDIO). "
+            "SPI flash will need to be powered from an external source.\n"
+            "The following eFuse is burned: XPD_SDIO_FORCE.\n"
+            "It is possible to later re-enable the internal regulator"
+            f"{'to 3.3V' if sdio_tieh.get() != 0 else 'to 1.8V or 3.3V'}"
+            "by burning an additional eFuse"
         )
-        "by burning an additional efuse"
     elif args.voltage == "1.8V":
-        msg = "Set internal flash voltage regulator (VDD_SDIO) to 1.8V.\n"
-        "The following efuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG.\n"
-        "It is possible to later increase the voltage to 3.3V (permanently) "
-        "by burning additional efuse XPD_SDIO_TIEH"
+        print(
+            "Set internal flash voltage regulator (VDD_SDIO) to 1.8V.\n"
+            "The following eFuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG.\n"
+            "It is possible to later increase the voltage to 3.3V (permanently) "
+            "by burning additional eFuse XPD_SDIO_TIEH"
+        )
     elif args.voltage == "3.3V":
-        msg = "Enable internal flash voltage regulator (VDD_SDIO) to 3.3V.\n"
-        "The following efuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG, XPD_SDIO_TIEH."
-    print(msg)
+        print(
+            "Enable internal flash voltage regulator (VDD_SDIO) to 3.3V.\n"
+            "The following eFuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG, XPD_SDIO_TIEH."
+        )
+
     sdio_force.save(1)  # Disable GPIO12
     if args.voltage != "OFF":
         sdio_reg.save(1)  # Enable internal regulator
@@ -272,8 +277,10 @@ def burn_key(esp, efuses, args):
             "The key block will left readable and writeable (due to --no-protect-key)"
         )
     else:
-        msg += "The key block will be read and write protected "
-        "(no further changes or readback)"
+        msg += (
+            "The key block will be read and write protected "
+            "(no further changes or readback)"
+        )
     print(msg, "\n")
     if not efuses.burn_all(check_batch_mode=True):
         return
