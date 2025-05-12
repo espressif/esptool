@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import argparse
+import io
 import os  # noqa: F401. It is used in IDF scripts
 import traceback
 
@@ -199,6 +200,67 @@ def adc_info(esp, efuses, args):
                 print(f"{efuse.name:<30} = ", efuses[efuse.name].get())
 
 
+def key_block_is_unused(block, key_purpose_block):
+    if not block.is_readable() or not block.is_writeable():
+        return False
+
+    if key_purpose_block.get() != "USER" or not key_purpose_block.is_writeable():
+        return False
+
+    if not block.get_bitstring().all(False):
+        return False
+
+    return True
+
+
+def get_next_key_block(efuses, current_key_block, block_name_list):
+    key_blocks = [b for b in efuses.blocks if b.key_purpose_name]
+    start = key_blocks.index(current_key_block)
+
+    # Sort key blocks so that we pick the next free block (and loop around if necessary)
+    key_blocks = key_blocks[start:] + key_blocks[0:start]
+
+    # Exclude any other blocks that will be be burned
+    key_blocks = [b for b in key_blocks if b.name not in block_name_list]
+
+    for block in key_blocks:
+        key_purpose_block = efuses[block.key_purpose_name]
+        if key_block_is_unused(block, key_purpose_block):
+            return block
+
+    return None
+
+
+def split_512_bit_key(efuses, block_name_list, datafile_list, keypurpose_list):
+    i = keypurpose_list.index("XTS_AES_256_KEY")
+    block_name = block_name_list[i]
+
+    block_num = efuses.get_index_block_by_name(block_name)
+    block = efuses.blocks[block_num]
+
+    data = datafile_list[i].read()
+    if len(data) != 64:
+        raise esptool.FatalError(
+            "Incorrect key file size %d, XTS_AES_256_KEY should be 64 bytes" % len(data)
+        )
+
+    key_block_2 = get_next_key_block(efuses, block, block_name_list)
+    if not key_block_2:
+        raise esptool.FatalError("XTS_AES_256_KEY requires two free keyblocks")
+
+    keypurpose_list.append("XTS_AES_256_KEY_1")
+    datafile_list.append(io.BytesIO(data[:32]))
+    block_name_list.append(block_name)
+
+    keypurpose_list.append("XTS_AES_256_KEY_2")
+    datafile_list.append(io.BytesIO(data[32:]))
+    block_name_list.append(key_block_2.name)
+
+    keypurpose_list.pop(i)
+    datafile_list.pop(i)
+    block_name_list.pop(i)
+
+
 def burn_key(esp, efuses, args, digest=None):
     if digest is None:
         datafile_list = args.keyfile[
@@ -213,6 +275,11 @@ def burn_key(esp, efuses, args, digest=None):
     keypurpose_list = args.keypurpose[
         0 : len([name for name in args.keypurpose if name is not None]) :
     ]
+
+    if "XTS_AES_256_KEY" in keypurpose_list:
+        # XTS_AES_256_KEY is not an actual HW key purpose, needs to be split into
+        # XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
+        split_512_bit_key(efuses, block_name_list, datafile_list, keypurpose_list)
 
     util.check_duplicate_name_in_list(block_name_list)
     if len(block_name_list) != len(datafile_list) or len(block_name_list) != len(
@@ -240,7 +307,7 @@ def burn_key(esp, efuses, args, digest=None):
         block = efuses.blocks[block_num]
 
         if digest is None:
-            if keypurpose == "ECDSA_KEY":
+            if keypurpose.startswith("ECDSA_KEY"):
                 sk = espsecure.load_ecdsa_signing_key(datafile)
                 data = espsecure.get_ecdsa_signing_key_raw_bytes(sk)
                 if len(data) == 24:
