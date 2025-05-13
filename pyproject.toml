@@ -101,7 +101,7 @@
     perf = "Performance Improvements"
 
 [tool.codespell]
-    skip = '*.bin,*test/images/efuse/*,*docs/en/espefuse/inc/*'
+    skip = '*.bin,*test/images/efuse/*,*docs/en/espefuse/inc/*,esptool/targets/stub_flasher/*/*.json'
     ignore-words-list = 'bloc,ser,dout,exten'
     write-changes = false
 

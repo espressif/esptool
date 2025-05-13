@@ -171,8 +171,8 @@ def main(argv=None, esp=None):
     # --stub-version can be set with --no-stub so the tests wouldn't fail if this option is implied globally
     parser.add_argument(
         "--stub-version",
-        default=os.environ.get("ESPTOOL_STUB_VERSION", StubFlasher.STUB_SUBDIRS[0]),
-        choices=StubFlasher.STUB_SUBDIRS,
+        default=os.environ.get("ESPTOOL_STUB_VERSION", "1"),
+        choices=["1", "2"],
         # not a public option and is not subject to the semantic versioning policy
         help=argparse.SUPPRESS,
     )
@@ -728,7 +728,7 @@ def main(argv=None, esp=None):
     print("esptool.py v%s" % __version__)
     load_config_file(verbose=True)
 
-    StubFlasher.set_preferred_stub_subdir(args.stub_version)
+    StubFlasher.set_stub_subdir(args.stub_version)
 
     # Parse filter arguments into separate lists
     args.filterVids = []
