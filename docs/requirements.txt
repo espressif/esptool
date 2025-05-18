@@ -1,1 +1,2 @@
 esp-docs~=1.10
+setuptools>=78.1.1 # not directly required, pinned by Snyk to avoid a vulnerability
