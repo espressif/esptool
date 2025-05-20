@@ -667,7 +667,9 @@ def write_flash(
             )
 
     # Verify file sizes fit in the set flash_size, or real flash size if smaller
-    flash_end = min(set_flash_size, flash_end) if set_flash_size else flash_end
+    flash_end = (
+        min(set_flash_size, flash_end) if set_flash_size and flash_end else flash_end
+    )
     if flash_end is not None:
         for address, (data, name) in norm_addr_data:
             if address + len(data) > flash_end:
@@ -1079,7 +1081,7 @@ def attach_flash(
     if not esp.secure_download_mode:
         try:
             flash_id = esp.flash_id()
-            if flash_id in (0xFFFFFF, 0x000000):
+            if flash_id in (0xFFFFFF, 0x000000, 0xFFFF3F):
                 log.warning(
                     "Failed to communicate with the flash chip, "
                     "read/write operations will fail. "
