@@ -501,7 +501,9 @@ def write_flash(esp, args):
             )
 
     # Verify file sizes fit in the set --flash_size, or real flash size if smaller
-    flash_end = min(set_flash_size, flash_end) if set_flash_size else flash_end
+    flash_end = (
+        min(set_flash_size, flash_end) if set_flash_size and flash_end else flash_end
+    )
     if flash_end is not None:
         for address, argfile in args.addr_filename:
             argfile.seek(0, os.SEEK_END)

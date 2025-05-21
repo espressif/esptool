@@ -980,7 +980,7 @@ def main(argv=None, esp=None):
         if not esp.secure_download_mode:
             try:
                 flash_id = esp.flash_id()
-                if flash_id in (0xFFFFFF, 0x000000):
+                if flash_id in (0xFFFFFF, 0x000000, 0xFFFF3F):
                     print(
                         "WARNING: Failed to communicate with the flash chip, "
                         "read/write operations will fail. "
