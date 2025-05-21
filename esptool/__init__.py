@@ -365,6 +365,18 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     help="Enable trace-level output of esptool.py interactions.",
 )
 @click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Print all output, disable collapsing output stages.",
+)
+@click.option(
+    "--silent",
+    "-s",
+    is_flag=True,
+    help="Silence all output except for errors.",
+)
+@click.option(
     "--override-vddsdio",
     type=click.Choice(ESP32ROM.OVERRIDE_VDDSDIO_CHOICES),
     help="Override ESP32 VDDSDIO internal voltage regulator (use with care).",
@@ -383,6 +395,18 @@ def cli(
 ):
     ctx.ensure_object(dict)
     ctx.obj.update(kwargs)
+    if ctx.obj["verbose"] and ctx.obj["silent"]:
+        raise FatalError(
+            "Cannot use both --verbose and --silent options at the same time."
+        )
+    if ctx.obj["trace"] and ctx.obj["silent"]:
+        raise FatalError(
+            "Cannot use both --trace and --silent options at the same time."
+        )
+    if ctx.obj["verbose"]:
+        log.set_verbosity("verbose")
+    elif ctx.obj["silent"]:
+        log.set_verbosity("silent")
     ctx.obj["invoked_subcommand"] = ctx.invoked_subcommand
     ctx.obj["esp"] = getattr(ctx, "esp", None)
     log.print(f"esptool.py v{__version__}")

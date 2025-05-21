@@ -162,3 +162,30 @@ at least one FilterValue for each specified FilterType to be considered. Example
     * ``--port-filter serial=7c98d1065267ee11bcc4c8ab93cd958c`` matches ports where the serial number contains the specified text.
 
 See also the `Espressif USB customer-allocated PID repository <https://github.com/espressif/usb-pids>`_
+
+Output Verbosity
+----------------
+
+Output verbosity can be controlled using the ``--verbose`` and ``--silent`` flags.
+
+Verbose output: ``--verbose``, ``-v``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _verbose:
+
+The ``--verbose``, ``-v`` flag can be used to show all output without any overwriting or collapsing stages into a single line:
+
+.. code-block:: bash
+
+    esptool.py --verbose flash-id
+
+See :ref:`the trace option <tracing-communications>` if you want to dump all serial interactions to the standard output for debugging purposes.
+
+Silent output: ``--silent``, ``-s``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _silent:
+
+The ``--silent``, ``-s`` flag can be used to limit the output to errors only:
+
+.. code-block:: bash
+
+    esptool.py -s write-flash 0x0 image.bin

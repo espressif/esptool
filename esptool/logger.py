@@ -57,6 +57,13 @@ class TemplateLogger(ABC):
         """
         pass
 
+    @abstractmethod
+    def set_verbosity(self, verbosity: str):
+        """
+        Set the verbosity level.
+        """
+        pass
+
 
 class EsptoolLogger(TemplateLogger):
     ansi_red: str = ""
@@ -72,6 +79,8 @@ class EsptoolLogger(TemplateLogger):
     _kept_lines: list[str] = []
 
     _smart_features: bool = False
+    _verbosity: str | None = None
+    _print_anyway: bool = False
 
     def __new__(cls):
         """
@@ -79,7 +88,7 @@ class EsptoolLogger(TemplateLogger):
         """
         if not hasattr(cls, "instance"):
             cls.instance = super(EsptoolLogger, cls).__new__(cls)
-            cls.instance._set_smart_features()
+            cls.instance.set_verbosity("auto")
         return cls.instance
 
     @classmethod
@@ -138,6 +147,8 @@ class EsptoolLogger(TemplateLogger):
         """
         Log a plain message. Count newlines if in a collapsing stage.
         """
+        if self._verbosity == "silent" and not self._print_anyway:
+            return
         if self._stage_active:
             # Count the number of newlines in the message
             message = "".join(map(str, args))
@@ -145,12 +156,12 @@ class EsptoolLogger(TemplateLogger):
             if kwargs.get("end", "\n") == "\n":
                 self._newline_count += 1
         print(*args, **kwargs)
+        self._print_anyway = False
 
     def note(self, message: str):
         """
         Log a Note: message in blue and white.
         """
-
         formatted_message = f"{self.ansi_blue}Note:{self.ansi_normal} {message}"
         if self._stage_active:
             self._kept_lines.append(formatted_message)
@@ -160,7 +171,6 @@ class EsptoolLogger(TemplateLogger):
         """
         Log a Warning: message in yellow and white.
         """
-
         formatted_message = f"{self.ansi_yellow}Warning:{self.ansi_normal} {message}"
         if self._stage_active:
             self._kept_lines.append(formatted_message)
@@ -170,8 +180,8 @@ class EsptoolLogger(TemplateLogger):
         """
         Log an error message in red to stderr.
         """
-
         formatted_message = f"{self.ansi_red}{message}{self.ansi_normal}"
+        self._print_anyway = True
         self.print(formatted_message, file=sys.stderr)
 
     def stage(self, finish: bool = False):
@@ -182,7 +192,6 @@ class EsptoolLogger(TemplateLogger):
         Warnings and notes will be saved and printed at the end of the stage.
         If terminal doesn't support ANSI escape codes, no collapsing happens.
         """
-
         if finish:
             if not self._stage_active:
                 return
@@ -219,7 +228,6 @@ class EsptoolLogger(TemplateLogger):
         Call in a loop to print a progress bar overwriting itself in place.
         If terminal doesn't support ANSI escape codes, no overwriting happens.
         """
-
         filled = int(bar_length * cur_iter // total_iters)
         if filled == bar_length:
             bar = "=" * bar_length
@@ -237,6 +245,29 @@ class EsptoolLogger(TemplateLogger):
 
     def set_logger(self, new_logger):
         self.__class__ = new_logger.__class__
+
+    def set_verbosity(self, verbosity: str):
+        """
+        Set the verbosity level to one of the following:
+        - "auto": Enable smart terminal features and colors if supported by the terminal
+        - "verbose": Enable verbose output (no collapsing output)
+        - "silent": Disable all output except errors
+        - "compact": Enable smart terminal features and colors even if not supported
+        """
+        if verbosity == self._verbosity:
+            return
+
+        self._verbosity = verbosity
+        if verbosity == "auto":
+            self._set_smart_features()
+        elif verbosity == "verbose":
+            self._set_smart_features(override=False)
+        elif verbosity == "silent":
+            pass
+        elif verbosity == "compact":
+            self._set_smart_features(override=True)
+        else:
+            raise ValueError(f"Invalid verbosity level: {verbosity}")
 
 
 log = EsptoolLogger()

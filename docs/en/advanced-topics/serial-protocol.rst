@@ -468,11 +468,11 @@ Here is a sample extract, showing a READ_REG command and response:
 
 ::
 
-    TRACE +0.000 command op=0x0a data len=4 wait_response=1 timeout=3.000 data=1400f43f
-    TRACE +0.000 Write 14 bytes: c0000a0400000000001400f43fc0
-    TRACE +0.005 Read 1 bytes: c0
-    TRACE +0.000 Read 11 bytes: 010a0200620100000000c0
-    TRACE +0.000 Received full packet: 010a0200620100000000
+    TRACE +0.000   --- Cmd READ_REG (0x0a) | data_len 4 | wait_response 1 | timeout 3.000 | data 00100040 ---
+    TRACE +0.000   Write 14 bytes:       c0000a04000000000000100040c0
+    TRACE +0.046   Read 1 bytes:         c0
+    TRACE +0.000   Read 11 bytes:        010a0200090000000000c0
+    TRACE +0.000   Received full packet: 010a0200090000000000
 
 The +X.XXX value is the time delta (in seconds) since the last trace line.
 
@@ -485,18 +485,18 @@ Here is a second example showing part of the initial synchronization sequence (l
 
 ::
 
-    TRACE +0.000 Write 46 bytes:
-        c000082400000000 0007071220555555 | ...$........ UUU
-        5555555555555555 5555555555555555 | UUUUUUUUUUUUUUUU
-        5555555555555555 5555555555c0     | UUUUUUUUUUUUU.
-    TRACE +0.011 Read 1 bytes: c0
-    TRACE +0.000 Read 63 bytes:
-        0108040007122055 00000000c0c00108 | ...... U........
-        0400071220550000 0000c0c001080400 | .... U..........
-        0712205500000000 c0c0010804000712 | .. U............
-        205500000000c0c0 01080400071220   |  U............
-    TRACE +0.000 Received full packet: 010804000712205500000000
-    TRACE +0.000 Received full packet: 010804000712205500000000
+    TRACE +0.000   Write 46 bytes:
+      c000082400000000 0007071220555555 | ...$........ UUU
+      5555555555555555 5555555555555555 | UUUUUUUUUUUUUUUU
+      5555555555555555 5555555555c0     | UUUUUUUUUUUUU.
+    TRACE +0.012   Read 1 bytes:         c0
+    TRACE +0.000   Read 63 bytes:
+      0108040007071220 00000000c0c00108 | ....... ........
+      0400070712200000 0000c0c001080400 | ..... ..........
+      0707122000000000 c0c0010804000707 | ... ............
+      122000000000c0c0 01080400070712   | . .............
+    TRACE +0.000   Received full packet: 010804000707122000000000
+    TRACE +0.000   Received full packet: 010804000707122000000000
 
 .. important::
 

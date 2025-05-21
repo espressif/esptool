@@ -42,6 +42,9 @@ class CustomLogger(TemplateLogger):
     ):
         pass
 
+    def set_verbosity(self, verbosity: str):
+        pass
+
 
 # Custom logger that doesn't implement all methods
 class CustomLoggerIncomplete:
