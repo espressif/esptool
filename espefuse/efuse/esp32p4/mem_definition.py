@@ -12,6 +12,7 @@ from ..mem_definition_base import (
     EfuseBlocksBase,
     EfuseFieldsBase,
     EfuseRegistersBase,
+    Field,
 )
 
 
@@ -146,6 +147,16 @@ class EfuseDefineFields(EfuseFieldsBase):
             elif efuse.category == "calibration":
                 self.BLOCK2_CALIBRATION_EFUSES.append(efuse)
                 self.ALL_EFUSES[i] = None
+
+        f = Field()
+        f.name = "WAFER_VERSION_MAJOR"
+        f.block = 0
+        f.bit_len = 3
+        f.type = f"uint:{f.bit_len}"
+        f.category = "identity"
+        f.class_type = "wafer"
+        f.description = "calc WAFER VERSION MAJOR from (WAFER_VERSION_MAJOR_HI << 2) + WAFER_VERSION_MAJOR_LO (read only)"
+        self.CALC.append(f)
 
         for efuse in self.ALL_EFUSES:
             if efuse is not None:

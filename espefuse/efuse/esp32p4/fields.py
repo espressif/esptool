@@ -291,7 +291,20 @@ class EfuseField(base_fields.EfuseFieldBase):
             "keypurpose": EfuseKeyPurposeField,
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
+            "wafer": EfuseWafer,
         }.get(efuse.class_type, EfuseField)(parent, efuse)
+
+
+class EfuseWafer(EfuseField):
+    def get(self, from_read=True):
+        hi_bits = self.parent["WAFER_VERSION_MAJOR_HI"].get(from_read)
+        assert self.parent["WAFER_VERSION_MAJOR_HI"].bit_len == 1
+        lo_bits = self.parent["WAFER_VERSION_MAJOR_LO"].get(from_read)
+        assert self.parent["WAFER_VERSION_MAJOR_LO"].bit_len == 2
+        return (hi_bits << 2) + lo_bits
+
+    def save(self, new_value):
+        raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
 class EfuseTempSensor(EfuseField):

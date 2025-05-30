@@ -137,7 +137,8 @@ class ESP32P4ROM(ESP32ROM):
 
     def get_major_chip_version(self):
         num_word = 2
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 4) & 0x03
+        word = self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word))
+        return (((word >> 23) & 1) << 2) | ((word >> 4) & 0x03)
 
     def get_chip_description(self):
         chip_name = {
