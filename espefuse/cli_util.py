@@ -235,6 +235,22 @@ class Group(EsptoolGroup):
         groups.append(args_group)
         return groups, used_cmds
 
+    @staticmethod
+    def repeat_read_commands(
+        used_cmds: list[str], groups: list[list[str]]
+    ) -> list[list[str]]:
+        if (
+            sum(cmd in SUPPORTED_BURN_COMMANDS for cmd in used_cmds) > 0
+            and sum(cmd in SUPPORTED_READ_COMMANDS for cmd in used_cmds) > 0
+        ):
+            # append all read commands at the end of group
+            read_commands = []
+            for group in groups:
+                if group[0] in SUPPORTED_READ_COMMANDS:
+                    read_commands.append(group)
+            groups.extend(read_commands)
+        return groups
+
     def parse_args(self, ctx: click.Context, args: list[str]):
         ctx.ensure_object(dict)
         ctx.obj["is_help"] = any(help_arg in args for help_arg in ctx.help_option_names)
@@ -247,11 +263,14 @@ class Group(EsptoolGroup):
         # override the default behavior of EsptoolGroup, because we don't need
         # support for parameters with nargs=-1
         args = self._replace_deprecated_args(args)
-        _, used_cmds = self._split_to_groups(args)
+        cmd_groups, used_cmds = self._split_to_groups(args)
 
         if len(used_cmds) == 0:
             self.get_help(ctx)
             ctx.exit()
+
+        cmd_groups = self.repeat_read_commands(used_cmds, cmd_groups)
+        args = [arg for group in cmd_groups for arg in group]
 
         ctx.obj["used_cmds"] = used_cmds
         ctx.obj["args"] = args
