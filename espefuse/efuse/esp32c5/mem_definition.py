@@ -158,6 +158,26 @@ class EfuseDefineFields(EfuseFieldsBase):
         f.description = "calc MAC_EUI64 = MAC[0]:MAC[1]:MAC[2]:MAC_EXT[0]:MAC_EXT[1]:MAC[3]:MAC[4]:MAC[5]"
         self.CALC.append(f)
 
+        f = Field()
+        f.name = "RECOVERY_BOOTLOADER_FLASH_SECTOR"
+        f.block = 0
+        f.bit_len = 12
+        f.type = f"uint:{f.bit_len}"
+        f.category = "config"
+        f.class_type = "recovery_bootloader"
+        f.description = "calc recovery_bootloader = recovery_bootloader_hi << 9 + recovery_bootloader_lo"
+        self.CALC.append(f)
+
+        f = Field()
+        f.name = "BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION"
+        f.block = 0
+        f.bit_len = 4
+        f.type = f"uint:{f.bit_len}"
+        f.category = "config"
+        f.class_type = "bootloader_anti_rollback"
+        f.description = "calc ANTI_ROLLBACK_SECURE_VERSION = ANTI_ROLLBACK_SECURE_VERSION_HI << 3 + ANTI_ROLLBACK_SECURE_VERSION_LO"
+        self.CALC.append(f)
+
         for efuse in self.ALL_EFUSES:
             if efuse is not None:
                 self.EFUSES.append(efuse)

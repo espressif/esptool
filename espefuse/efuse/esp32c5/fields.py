@@ -301,20 +301,55 @@ class EfuseField(base_fields.EfuseFieldBase):
             "keypurpose": EfuseKeyPurposeField,
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
-            "wafer": EfuseWafer,
+            "recovery_bootloader": EfuseBtldrRecoveryField,
+            "bootloader_anti_rollback": EfuseBtldrAntiRollbackField,
         }.get(efuse.class_type, EfuseField)(parent, efuse)
 
 
-class EfuseWafer(EfuseField):
+class EfuseBtldrRecoveryField(EfuseField):
     def get(self, from_read=True):
-        hi_bits = self.parent["WAFER_VERSION_MINOR_HI"].get(from_read)
-        assert self.parent["WAFER_VERSION_MINOR_HI"].bit_len == 1
-        lo_bits = self.parent["WAFER_VERSION_MINOR_LO"].get(from_read)
-        assert self.parent["WAFER_VERSION_MINOR_LO"].bit_len == 3
+        hi_bits = self.parent["RECOVERY_BOOTLOADER_FLASH_SECTOR_HI"].get(from_read)
+        assert self.parent["RECOVERY_BOOTLOADER_FLASH_SECTOR_HI"].bit_len == 3
+        lo_bits = self.parent["RECOVERY_BOOTLOADER_FLASH_SECTOR_LO"].get(from_read)
+        assert self.parent["RECOVERY_BOOTLOADER_FLASH_SECTOR_LO"].bit_len == 9
+        return (hi_bits << 9) + lo_bits
+
+    def save(self, new_value):
+        efuse = self.parent["RECOVERY_BOOTLOADER_FLASH_SECTOR_HI"]
+        efuse.save((new_value >> 9) & 3)
+        print(
+            f"\t    - '{efuse.name}' {efuse.get_bitstring()} -> {efuse.get_bitstring(from_read=False)}"
+        )
+        efuse = self.parent["RECOVERY_BOOTLOADER_FLASH_SECTOR_LO"]
+        efuse.save(new_value & 0x1FF)
+        print(
+            f"\t    - '{efuse.name}' {efuse.get_bitstring()} -> {efuse.get_bitstring(from_read=False)}"
+        )
+
+
+class EfuseBtldrAntiRollbackField(EfuseField):
+    def get(self, from_read=True):
+        hi_bits = self.parent["BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION_HI"].get(
+            from_read
+        )
+        assert self.parent["BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION_HI"].bit_len == 1
+        lo_bits = self.parent["BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION_LO"].get(
+            from_read
+        )
+        assert self.parent["BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION_LO"].bit_len == 3
         return (hi_bits << 3) + lo_bits
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning %s is not supported" % self.name)
+        efuse = self.parent["BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION_HI"]
+        efuse.save((new_value >> 3) & 1)
+        print(
+            f"\t    - '{efuse.name}' {efuse.get_bitstring()} -> {efuse.get_bitstring(from_read=False)}"
+        )
+        efuse = self.parent["BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION_LO"]
+        efuse.save(new_value & 0x7)
+        print(
+            f"\t    - '{efuse.name}' {efuse.get_bitstring()} -> {efuse.get_bitstring(from_read=False)}"
+        )
 
 
 class EfuseTempSensor(EfuseField):
