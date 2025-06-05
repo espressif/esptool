@@ -10,7 +10,7 @@ jobs:
       matrix:
         platform: [armv7, aarch64]
     env:
-      DISTPATH: esptool-${{ matrix.platform }}
+      DISTPATH: esptool-linux-${{ matrix.platform }}
       STUBS_DIR: ./esptool/targets/stub_flasher/
       EFUSE_DIR: ./espefuse/efuse_defs/
       PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
@@ -83,7 +83,7 @@ jobs:
           SEPARATOR: ':'
           RUN_ON: macos-latest # Versions 14 and higher are ARM-based.
         - platform: windows
-          TARGET: win64
+          TARGET: windows-amd64
           EXTEN: .exe
           SEPARATOR: ';'
           RUN_ON: windows-latest
