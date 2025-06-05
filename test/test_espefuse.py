@@ -154,6 +154,20 @@ class EfuseTestCase:
 
     def _run_command(self, cmd, check_msg, ret_code):
         try:
+            env = os.environ.copy()
+            # Comprehensive color disabling and terminal size control
+            env.update(
+                # NO_COLOR and COLUMNS should be already set from conftest.py;
+                # We set them here for completeness and to avoid any mismatch.
+                # The rest is required only for espefuse tests in some edge cases
+                # (e.g. GH actions, etc.)
+                {
+                    "NO_COLOR": "1",
+                    "COLUMNS": "120",  # Set terminal width for help output
+                    "LINES": "24",  # Some terminal may not apply COLUMNS without LINES
+                    "TERM": "dumb",  # Force terminal to dumb mode
+                }
+            )
             p = subprocess.Popen(
                 cmd.split(),
                 shell=False,
@@ -161,6 +175,7 @@ class EfuseTestCase:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
+                env=env,
             )
             output, _ = p.communicate()
             returncode = p.returncode
