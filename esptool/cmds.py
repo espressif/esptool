@@ -50,6 +50,20 @@ from .util import (
     sanitize_string,
 )
 
+
+# Vendors with different detection logic
+ADESTO_VENDOR_ID = 0x1F
+XMC_VENDOR_ID = 0x20
+
+DETECTED_FLASH_SIZES_ADESTO = {
+    0x04: "512KB",
+    0x05: "1MB",
+    0x06: "2MB",
+    0x07: "4MB",
+    0x08: "8MB",
+    0x09: "16MB",
+}
+
 DETECTED_FLASH_SIZES = {
     0x12: "256KB",
     0x13: "512KB",
@@ -313,6 +327,34 @@ def dump_mem(
         return data.getvalue()
 
 
+def _get_flash_info(esp: ESPLoader, cache: bool = True) -> tuple[int, int, str | None]:
+    """
+    Get the flash memory chip information including vendor ID, device ID, and
+    flash size.
+
+    Args:
+        esp: Initiated esp object connected to a real device.
+        cache: Whether to use cached flash ID (default: True).
+
+    Returns:
+        Tuple containing (vendor_id, device_id, flash_size)
+    """
+    flash_id = esp.flash_id(cache=cache)
+    vendor_id = flash_id & 0xFF
+    # Swap the bytes of the device ID by taking the high byte first, then the low byte
+    device_id = ((flash_id >> 16) & 0xFF) | ((flash_id >> 8) & 0xFF) << 8
+
+    if vendor_id == ADESTO_VENDOR_ID:
+        # Lower 5 bits of second byte of flash_id is size_id
+        size_id = (flash_id >> 8) & 0x1F
+        flash_size = DETECTED_FLASH_SIZES_ADESTO.get(size_id)
+    else:
+        size_id = flash_id >> 16
+        flash_size = DETECTED_FLASH_SIZES.get(size_id)
+
+    return vendor_id, device_id, flash_size
+
+
 def detect_flash_size(esp: ESPLoader) -> str | None:
     """
     Detect the flash size of the connected ESP device.
@@ -328,9 +370,7 @@ def detect_flash_size(esp: ESPLoader) -> str | None:
             "Detecting flash size is not supported in secure download mode. "
             "Need to manually specify flash size."
         )
-    flash_id = esp.flash_id()
-    size_id = flash_id >> 16
-    flash_size = DETECTED_FLASH_SIZES.get(size_id)
+    _, _, flash_size = _get_flash_info(esp)
     return flash_size
 
 
@@ -1018,20 +1058,14 @@ def attach_flash(
                 log.print("Enabling default SPI flash mode...")
             esp.flash_spi_attach(value)
 
-    # XMC chip startup sequence
-    XMC_VENDOR_ID = 0x20
-
     def is_xmc_chip_strict():
         # Read ID without cache, because it should be different after the XMC startup
-        id = esp.flash_id(cache=False)
-        rdid = ((id & 0xFF) << 16) | ((id >> 16) & 0xFF) | (id & 0xFF00)
-
-        vendor_id = (rdid >> 16) & 0xFF
-        mfid = (rdid >> 8) & 0xFF
-        cpid = rdid & 0xFF
-
+        vendor_id, device_id, _ = _get_flash_info(esp, False)
         if vendor_id != XMC_VENDOR_ID:
             return False
+
+        mfid = (device_id >> 8) & 0xFF
+        cpid = device_id & 0xFF
 
         matched = False
         if mfid == 0x40:
@@ -1245,13 +1279,10 @@ def print_flash_id(esp: ESPLoader) -> None:
     Args:
         esp: Initiated esp object connected to a real device.
     """
-    flash_id = esp.flash_id()
-    log.print(f"Manufacturer: {flash_id & 0xFF:02x}")
-    flid_lowbyte = (flash_id >> 16) & 0xFF
-    log.print(f"Device: {(flash_id >> 8) & 0xFF:02x}{flid_lowbyte:02x}")
-    log.print(
-        f"Detected flash size: {DETECTED_FLASH_SIZES.get(flid_lowbyte, 'Unknown')}"
-    )
+    manufacturer_id, device_id, flash_size = _get_flash_info(esp)
+    log.print(f"Manufacturer: {manufacturer_id:02x}")
+    log.print(f"Device: {device_id:04x}")
+    log.print(f"Detected flash size: {flash_size or 'Unknown'}")
 
 
 def flash_id(esp: ESPLoader) -> None:
