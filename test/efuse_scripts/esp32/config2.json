@@ -1,8 +1,0 @@
-{
-    "burn_efuses2": [
-        "burn_bit BLOCK3 11 12 13 14 15 16 17 18 19",
-        "burn_bit BLOCK3 20 21 22 23 24 25 26 27 {index}",
-        "execute_scripts efuse_scripts/efuse_burn1.py --index 10 --configfiles efuse_scripts/esp32/config1.json",
-        "burn_bit BLOCK2 {index}"
-    ]
-}

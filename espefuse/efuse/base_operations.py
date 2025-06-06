@@ -355,25 +355,6 @@ class BaseCommands:
             """Print human-readable summary of eFuse values."""
             self.summary(efuses_to_show, format, file)
 
-        @cli.command("execute-scripts")
-        @click.argument("scripts", nargs=-1, type=click.File("r"), required=True)
-        @click.option(
-            "--index",
-            type=int,
-            help="integer index. It allows to retrieve unique data per chip "
-            "from configfiles and then burn them (ex. CUSTOM_MAC, UNIQUE_ID).",
-        )
-        @click.option(
-            "--configfiles",
-            type=click.File("r"),
-            multiple=True,
-            help="List of configfiles with data",
-        )
-        @click.pass_context
-        def execute_scripts_cli(ctx, scripts, index, configfiles):
-            """Executes scripts to burn at one time."""
-            self.execute_scripts(scripts, ctx.obj["debug"], configfiles, index)
-
         @cli.command("check-error")
         @click.option(
             "--recovery", is_flag=True, help="Recovery of BLOCKs after encoding errors"
@@ -1150,9 +1131,6 @@ class BaseCommands:
         if error_in_blocks:
             raise esptool.FatalError("Error(s) were detected in eFuses")
         print("No errors detected")
-
-    def execute_scripts(self, scripts, debug, configfiles, index):
-        raise NotImplementedError("execute_scripts is not implemented")
 
     def burn_custom_mac(self, mac: str | bytes):
         """

@@ -41,7 +41,6 @@ Supported Commands
    get-custom-mac <get-custom-mac-cmd>
    adc-info <adc-info-cmd>
    set-flash-voltage <set-flash-voltage-cmd>
-   execute-scripts <execute-scripts-cmd>
    check-error <check-error-cmd>
 
 Optional General Arguments Of Commands

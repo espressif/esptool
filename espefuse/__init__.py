@@ -13,6 +13,7 @@ from esptool.logger import log
 from espefuse.cli_util import Group
 from espefuse.efuse.base_operations import BaseCommands
 from espefuse.efuse_interface import (
+    DEPRECATED_COMMANDS,
     get_esp,
     init_commands,
     SUPPORTED_COMMANDS,
@@ -118,6 +119,10 @@ def cli(
     esp = ctx.obj.get("esp", None)
     external_esp = esp is not None
     is_help = ctx.obj.get("is_help", False)
+    used_cmds = ctx.obj.get("used_cmds", [])
+
+    if any(cmd.replace("_", "-") in DEPRECATED_COMMANDS for cmd in used_cmds):
+        return  # do not connect to ESP if any command is deprecated
 
     if not port and not external_esp and not is_help and not virt:
         raise click.BadOptionUsage(
@@ -159,7 +164,6 @@ def cli(
     commands.efuses.postpone = postpone
     commands.add_cli_commands(cli)
 
-    used_cmds = ctx.obj["used_cmds"]
     multiple_burn_commands = (
         sum(cmd.replace("_", "-") in SUPPORTED_BURN_COMMANDS for cmd in used_cmds) > 1
     )
@@ -178,6 +182,20 @@ def cli(
             if not commands.burn_all(check_batch_mode=True):
                 raise esptool.FatalError("BURN was not done")
             print("Successful")
+
+
+@cli.command("execute-scripts", hidden=True)
+@click.argument("scripts", nargs=-1, type=click.UNPROCESSED)
+@click.option("--index", type=click.UNPROCESSED)
+@click.option("--configfiles", type=click.UNPROCESSED)
+def execute_scripts_cli(scripts, index, configfiles):
+    """REMOVED: See Migration guide in documentation for details."""
+    log.error(
+        "REMOVED: `execute_scripts` was replaced with the public API in v5. "
+        "Please see Migration Guide in documentation for details: "
+        "https://docs.espressif.com/projects/esptool/en/latest/migration-guide.html#espefuse-py-v5-migration-guide"
+    )
+    sys.exit(2)
 
 
 def main(argv: list[str] | None = None, esp: esptool.ESPLoader | None = None):

@@ -41,7 +41,6 @@ SUPPORTED_BURN_COMMANDS = [
     "burn-key-digest",
     "burn-custom-mac",
     "set-flash-voltage",
-    "execute-scripts",
 ]
 
 SUPPORTED_READ_COMMANDS = [
@@ -52,7 +51,11 @@ SUPPORTED_READ_COMMANDS = [
     "check-error",
 ]
 
-SUPPORTED_COMMANDS = SUPPORTED_READ_COMMANDS + SUPPORTED_BURN_COMMANDS
+DEPRECATED_COMMANDS = ["execute-scripts"]
+
+SUPPORTED_COMMANDS = (
+    SUPPORTED_READ_COMMANDS + SUPPORTED_BURN_COMMANDS + DEPRECATED_COMMANDS
+)
 
 SUPPORTED_CHIPS = {
     "esp32": DefChip(esp32_efuse, esptool.targets.ESP32ROM),

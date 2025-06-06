@@ -39,7 +39,6 @@ from conftest import arg_chip, arg_port, arg_reset_port, need_to_install_package
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 IMAGES_DIR = os.path.join(TEST_DIR, "images", "efuse")
 S_IMAGES_DIR = os.path.join(TEST_DIR, "secure_images")
-EFUSE_S_DIR = os.path.join(TEST_DIR, "efuse_scripts")
 
 import pytest
 
@@ -66,6 +65,7 @@ print("Running espefuse.py tests...")
 # The default value of the program name for argparse has changed in Python 3.14
 # https://docs.python.org/dev/whatsnew/3.14.html#argparse
 ESPEFUSE_MODNAME = "python -m espefuse"
+EMPTY_BLOCK = " ".join(["00"] * 32)  # "00 00 ... 00"
 
 
 @pytest.mark.host_test
@@ -1851,87 +1851,128 @@ class TestByteOrderBurnKeyCommand(EfuseTestCase):
             )
 
 
-@pytest.mark.skip("This is not supported yet with new click parser")
-class TestExecuteScriptsCommands(EfuseTestCase):
-    @classmethod
-    def setup_class(self):
-        # Save the current working directory to be restored later
-        self.stored_dir = os.getcwd()
+class TestPublicAPI(EfuseTestCase):
+    def _init_commands(self, **kwargs):
+        from espefuse import init_commands
 
-    @classmethod
-    def teardown_class(self):
-        # Restore the stored working directory
-        os.chdir(self.stored_dir)
+        args = {
+            "do_not_confirm": True,
+            "chip": arg_chip,
+            "virt": True,
+            "virt_efuse_file": self.efuse_file.name,
+            "debug": True,
+        }
+        args.update(kwargs)
+        return init_commands(**args)
 
-    @pytest.mark.skipif(
-        arg_chip in ["esp32c2", "esp32p4", "esp32h21", "esp32h4"],
-        reason="These chips do not have eFuses used in this test",
-    )
-    def test_execute_scripts_with_check_that_only_one_burn(self):
-        self.espefuse_py("execute_scripts -h")
-        name = arg_chip if arg_chip in ["esp32", "esp32c2"] else "esp32xx"
-        os.chdir(os.path.join(TEST_DIR, "efuse_scripts", name))
-        self.espefuse_py("execute_scripts execute_efuse_script2.py")
+    @pytest.mark.skipif(arg_chip != "esp32", reason="This test is only for esp32")
+    def test_public_api_batch_mode(self):
+        with self._init_commands(batch_mode=True) as espefuse:
+            espefuse.burn_efuse(
+                {
+                    "JTAG_DISABLE": "1",
+                    "DISABLE_SDIO_HOST": "1",
+                    "CONSOLE_DEBUG_DISABLE": "1",
+                }
+            )
+            assert espefuse.efuses["JTAG_DISABLE"].get() == 0, (
+                "Burn should be at the end"
+            )
 
-    @pytest.mark.skipif(
-        arg_chip in ["esp32c2", "esp32p4", "esp32h21", "esp32h4"],
-        reason="These chips do not have eFuses used in this test",
-    )
-    def test_execute_scripts_with_check(self):
-        self.espefuse_py("execute_scripts -h")
-        name = arg_chip if arg_chip in ["esp32", "esp32c2"] else "esp32xx"
-        os.chdir(os.path.join(TEST_DIR, "efuse_scripts", name))
-        self.espefuse_py("execute_scripts execute_efuse_script.py")
+            with open(IMAGES_DIR + "/256bit", "rb") as f:
+                espefuse.burn_key(["flash_encryption"], [f], no_protect_key=True)
+            assert espefuse.efuses["BLOCK1"].get_meaning() == EMPTY_BLOCK
+            assert (
+                espefuse.efuses["BLOCK1"].is_readable()
+                and espefuse.efuses["BLOCK1"].is_writeable()
+            )
 
-    def test_execute_scripts_with_index_and_config(self):
-        os.chdir(TEST_DIR)
-        if arg_chip in ["esp32", "esp32c2"]:
-            cmd = f"execute_scripts {EFUSE_S_DIR}/efuse_burn1.py --index 10 \
-            --configfiles {EFUSE_S_DIR}/esp32/config1.json"
-        else:
-            cmd = f"execute_scripts {EFUSE_S_DIR}/efuse_burn1.py --index 10 \
-            --configfiles {EFUSE_S_DIR}/esp32xx/config1.json"
-        self.espefuse_py(cmd)
-        output = self.espefuse_py("-d summary")
-        if arg_chip in ["esp32", "esp32c2"]:
+            with open(S_IMAGES_DIR + "/rsa_secure_boot_signing_key.pem", "rb") as f:
+                espefuse.burn_key_digest(f)
+            assert espefuse.efuses["BLOCK2"].get_meaning() == EMPTY_BLOCK
             assert (
-                "[3 ] read_regs: e00007ff 00000000 00000000 00000000 "
-                "00000000 00000000 00000000 00000000"
-            ) in output
-        else:
-            assert (
-                "[8 ] read_regs: e00007ff 00000000 00000000 00000000 "
-                "00000000 00000000 00000000 00000000"
-            ) in output
+                espefuse.efuses["BLOCK2"].is_readable()
+                and espefuse.efuses["BLOCK2"].is_writeable()
+            )
 
-    def test_execute_scripts_nesting(self):
-        os.chdir(TEST_DIR)
-        if arg_chip in ["esp32", "esp32c2"]:
-            cmd = f"execute_scripts {EFUSE_S_DIR}/efuse_burn2.py --index 28 \
-            --configfiles {EFUSE_S_DIR}/esp32/config2.json"
-        else:
-            cmd = f"execute_scripts {EFUSE_S_DIR}/efuse_burn2.py --index 28 \
-            --configfiles {EFUSE_S_DIR}/esp32xx/config2.json"
-        self.espefuse_py(cmd)
-        output = self.espefuse_py("-d summary")
-        if arg_chip in ["esp32", "esp32c2"]:
+            espefuse.burn_bit("BLOCK3", [64, 66, 69, 72, 78, 82, 83, 90])
+            espefuse.burn_custom_mac("aa:cd:ef:11:22:33")
+            assert espefuse.efuses["BLOCK3"].get_meaning() == EMPTY_BLOCK
+
+            espefuse.burn_all()
+            espefuse.summary()
+
+            assert espefuse.efuses["JTAG_DISABLE"].get() == 1
+            assert espefuse.efuses["DISABLE_SDIO_HOST"].get() == 1
+            assert espefuse.efuses["CONSOLE_DEBUG_DISABLE"].get() == 1
+
             assert (
-                "[2 ] read_regs: 10000000 00000000 00000000 00000000 "
-                "00000000 00000000 00000000 00000000"
-            ) in output
+                espefuse.efuses["BLOCK1"].get_meaning()
+                == "bf be bd bc bb ba b9 b8 b7 b6 b5 b4 b3 b2 b1 b0 af "
+                "ae ad ac ab aa a9 a8 a7 a6 a5 a4 a3 a2 a1 a0"
+            )
             assert (
-                "[3 ] read_regs: ffffffff 00000000 00000000 00000000 "
-                "00000000 00000000 00000000 00000000"
-            ) in output
-        else:
+                espefuse.efuses["BLOCK1"].is_readable()
+                and espefuse.efuses["BLOCK1"].is_writeable()
+            )
+
             assert (
-                "[7 ] read_regs: 10000000 00000000 00000000 00000000 "
-                "00000000 00000000 00000000 00000000"
-            ) in output
+                espefuse.efuses["BLOCK2"].get_meaning()
+                == "cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 22 "
+                "4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63"
+            )
+
             assert (
-                "[8 ] read_regs: ffffffff 00000000 00000000 00000000 "
-                "00000000 00000000 00000000 00000000"
-            ) in output
+                espefuse.efuses["CUSTOM_MAC"].get_meaning()
+                == "aa:cd:ef:11:22:33 (CRC 0x63 OK)"
+            )
+            assert (
+                espefuse.efuses["BLOCK3"].get_meaning()
+                == "63 aa cd ef 11 22 33 00 25 41 0c 04 00 00 00 00 "
+                "00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00"
+            )
+
+    def test_public_api_nesting(self):
+        from espefuse import init_commands
+
+        def burn_custom_mac(esp):
+            with init_commands(
+                esp=esp, batch_mode=True, do_not_confirm=True
+            ) as espefuse:
+                espefuse.burn_custom_mac(b"\xaa\xcd\xef\x11\x22\x33")
+                espefuse.burn_all()
+
+        with self._init_commands(batch_mode=True) as espefuse:
+            espefuse.burn_efuse({"WR_DIS": "2", "RD_DIS": "1"})
+            # Burn should be at the end; so the eFuses should be set to 0
+            assert espefuse.efuses["WR_DIS"].get() == 0
+            assert espefuse.efuses["RD_DIS"].get() == 0
+
+            burn_custom_mac(espefuse.esp)
+            espefuse.summary()
+
+            # Make sure that the eFuses are not set; last burn_all is not called yet
+            assert espefuse.efuses["WR_DIS"].get() == 0
+            assert espefuse.efuses["RD_DIS"].get() == 0
+            assert (
+                espefuse.efuses["CUSTOM_MAC"].get_meaning()
+                == "00:00:00:00:00:00 (CRC 0x00 OK)"
+                if arg_chip == "esp32"
+                else "00:00:00:00:00:00 (OK)"
+            )
+
+            # Last burn_all should actually set eFuses
+            espefuse.burn_all()
+            espefuse.summary()
+
+            assert espefuse.efuses["WR_DIS"].get() == 2
+            assert espefuse.efuses["RD_DIS"].get() == 1
+            assert (
+                espefuse.efuses["CUSTOM_MAC"].get_meaning()
+                == "aa:cd:ef:11:22:33 (CRC 0x63 OK)"
+                if arg_chip == "esp32"
+                else "aa:cd:ef:11:22:33 (OK)"
+            )
 
 
 class TestMultipleCommands(EfuseTestCase):

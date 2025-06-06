@@ -10,6 +10,7 @@ from esptool.cli_util import Group as EsptoolGroup
 from esptool.logger import log
 
 from espefuse.efuse_interface import (
+    DEPRECATED_COMMANDS,
     init_commands,
     SUPPORTED_BURN_COMMANDS,
     SUPPORTED_READ_COMMANDS,
@@ -224,7 +225,7 @@ class Group(EsptoolGroup):
     def get_help(self, ctx: click.Context) -> str:
         # help was called without any commands, so we need to add the commands for the
         # default chip
-        if not self.list_commands(ctx):
+        if not (set(self.list_commands(ctx)) - set(DEPRECATED_COMMANDS)):
             chip = ctx.obj["chip"]
             if chip == "auto":
                 log.note(

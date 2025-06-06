@@ -225,7 +225,6 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
 
 1. Replace all underscores in the ``--before`` and ``--after`` options with ``-`` in your scripts.
 
-
 espsecure.py ``v5`` Migration Guide
 ***********************************
 
@@ -268,9 +267,9 @@ The public API of ``espsecure.py`` has been updated to provide a more consistent
 **Migration Steps:**
 
 1. Update function calls to pass individual parameters instead of the ``args`` object. For example:
-   ``sign_data(args)`` -> ``sign_data(data=args.data, key=args.key, ...)``
-   or if you were mocking the args object, now you don't have to do that and you can pass parameters directly to the function like:
-   ``sign_data(data=data, key=key, ...)``.
+``sign_data(args)`` -> ``sign_data(data=args.data, key=args.key, ...)``
+or if you were mocking the args object, now you don't have to do that and you can pass parameters directly to the function like:
+``sign_data(data=data, key=key, ...)``.
 2. Replace the ``custom_commandline`` parameter with ``argv`` in the ``main`` function call.
 
 espefuse.py ``v5`` Migration Guide
@@ -307,3 +306,69 @@ The ``--port`` option is now required for all commands (except when using ``--vi
 **Migration Steps:**
 
 1. Add the ``--port`` option to all your espefuse commands.
+
+
+``execute-scripts`` Command Removal
+###################################
+
+The ``execute-scripts`` command has been **removed in v5**. This command was used to execute custom eFuses scripts. It was deprecated in favor of using ``espefuse.py`` as a Python module (see :ref:`here <espefuse-scripting>`).
+
+**Migration Steps:**
+
+1. Refactor any workflows using the deprecated ``execute-scripts`` to use the public API.
+2. Make sure to use the ``batch_mode`` argument for ``init_commands`` to avoid burning eFuses one by one.
+3. Variables ``idx`` and ``configfiles`` are no longer supported. These can be replaced with simple for loops in Python.
+
+For example, the following commands and script (using ESP32):
+
+.. code-block:: bash
+
+    > espefuse.py --port /dev/ttyUSB0 execute_scripts efuse_script.py --do-not-confirm
+
+.. code-block:: python
+
+    espefuse(esp, efuses, args, "burn_efuse JTAG_DISABLE 1 DISABLE_SDIO_HOST 1 CONSOLE_DEBUG_DISABLE 1")
+    espefuse(esp, efuses, args, "burn_key flash_encryption ../../images/efuse/256bit --no-protect-key")
+    espefuse(esp, efuses, args, "burn_key_digest ../../secure_images/rsa_secure_boot_signing_key.pem")
+    espefuse(esp, efuses, args, "burn_bit BLOCK3 64 66 69 72 78 82 83 90")
+    espefuse(esp, efuses, args, "burn_custom_mac AA:BB:CC:DD:EE:88")
+
+    efuses.burn_all()
+
+    espefuse(esp, efuses, args, "summary")
+    espefuse(esp, efuses, args, "adc_info")
+    espefuse(esp, efuses, args, "get_custom_mac")
+
+    if not efuses["BLOCK1"].is_readable() or not efuses["BLOCK1"].is_writeable():
+        raise Exception("BLOCK1 should be readable and writeable")
+
+Can be replaced with public API:
+
+.. code-block:: python
+
+    from espefuse import init_commands
+
+    with init_commands(port="/dev/ttyUSB0", batch_mode=True, do_not_confirm=True) as espefuse:
+        espefuse.burn_efuse({"JTAG_DISABLE": "1", "DISABLE_SDIO_HOST": "1", "CONSOLE_DEBUG_DISABLE": "1"})
+        with open("../../images/efuse/256bit", "rb") as f:
+            espefuse.burn_key(["flash_encryption"], [f], no_protect_key=True)
+        with open("../../secure_images/rsa_secure_boot_signing_key.pem", "rb") as f:
+            espefuse.burn_key_digest([f])
+        espefuse.burn_bit("BLOCK3", [64, 66, 69, 72, 78, 82, 83, 90])
+        espefuse.burn_custom_mac(b"\xaa\xbb\xcc\xdd\xee\x88")
+
+        espefuse.burn_all()
+
+        espefuse.summary()
+        espefuse.adc_info()
+        espefuse.get_custom_mac()
+
+        if not espefuse.efuses["BLOCK1"].is_readable() or not espefuse.efuses["BLOCK1"].is_writeable():
+            raise Exception("BLOCK1 should be readable and writeable")
+
+.. note::
+
+    Please note that the ``batch_mode`` argument for ``init_commands`` is required to avoid burning eFuses one by one. This was previously
+    the default behavior for ``execute-scripts`` command.
+
+For more details on the public API, see :ref:`espefuse-scripting`.
