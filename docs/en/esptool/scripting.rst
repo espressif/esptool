@@ -1,19 +1,19 @@
 .. _scripting:
 
 Embedding into Custom Scripts
-=============================
+============================
 
-``esptool.py`` can be easily integrated into Python applications or called from other Python scripts.
+``esptool.py`` can be integrated into Python applications or called from other Python scripts.
 
 Using Esptool as a Python Module
 --------------------------------
 
-The esptool module provides a comprehensive Python API for interacting with ESP chips programmatically. By leveraging the API, developers can automate tasks such as flashing firmware, reading device information, managing flash memory, or preparing and analyzing binary images. The API supports both high-level abstractions and low-level control.
+The esptool module provides a comprehensive Python API for interacting with ESP chips programmatically. Developers can automate tasks such as flashing firmware, reading device information, managing flash memory, or preparing and analyzing binary images. The API supports both high-level abstractions and low-level control.
 
 Using the Command-Line Interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The most straightforward and basic integration option is to pass arguments to ``esptool.main()``. This workaround allows you to pass exactly the same arguments as you would on the CLI:
+The simplest integration is to pass arguments to ``esptool.main()``. This allows you to use the same arguments as on the CLI:
 
 .. code-block:: python
 
@@ -26,18 +26,18 @@ The most straightforward and basic integration option is to pass arguments to ``
 Public API Reference
 ^^^^^^^^^^^^^^^^^^^^
 
-For more control and custom integration, esptool exposes a public API - a set of high-level functions that encapsulate common operations and simplify the interaction with the ESP chip. These functions are designed to be user-friendly and provide an intuitive way to work with the chip. The public API is the recommended way to interact with the chip programmatically.
+For more control, esptool exposes a public API—a set of high-level functions that encapsulate common operations and simplify interaction with the ESP chip. These functions are user-friendly and provide an intuitive way to work with the chip. The public API is the recommended way to interact programmatically.
 
 Basic Workflow:
 
-1. **Detect and Connect**: Use ``detect_chip()`` to automatically identify the connected ESP chip and establish a connection, or manually create and instantiate a specific ``ESPLoader`` object (e.g. ``ESP32ROM``) and establish a connection in two steps.
-2. **Run Stub Flasher (Optional)**: Upload and execute the :ref:`stub flasher <stub>` which provides enhanced functionality and speed.
-3. **Perform Operations**: Utilize the chip object's methods or public API command functions to interact with the device.
-4. **Reset and Cleanup**: Ensure proper reset and resource cleanup using context managers.
+1. **Detect and Connect**: Use ``detect_chip()`` to identify the connected ESP chip and establish a connection, or manually instantiate a specific ``ESPLoader`` object (e.g., ``ESP32ROM``) and connect in two steps.
+2. **Run Stub Flasher (Optional)**: Upload and execute the :ref:`stub flasher <stub>` for enhanced functionality and speed.
+3. **Perform Operations**: Use the chip object's methods or public API command functions to interact with the device.
+4. **Reset and Cleanup**: Use context managers to ensure proper reset and resource cleanup.
 
 ------------
 
-This example demonstrates writing two binary files using high-level commands:
+Example: Writing two binary files using high-level commands:
 
 .. code-block:: python
 
@@ -49,85 +49,84 @@ This example demonstrates writing two binary files using high-level commands:
 
     with detect_chip(PORT) as esp:
         esp = run_stub(esp)  # Skip this line to avoid running the stub flasher
-        attach_flash(esp)  # Attach the flash memory chip, required for flash operations
+        attach_flash(esp)  # Attach the flash memory chip
         with open(BOOTLOADER, "rb") as bl_file, open(FIRMWARE, "rb") as fw_file:
-            write_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Write the binary files
+            write_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Write the binaries
         reset_chip(esp, "hard-reset")  # Reset the chip
 
-- The ``esp`` object has to be replaced with the stub flasher object returned by ``run_stub(esp)`` when the stub flasher is activated. This step can be skipped if the stub flasher is not needed.
-- Running ``attach_flash(esp)`` is required for any flash-memory-related operations to work.
-- Using the ``esp`` object in a context manager ensures the port gets closed properly after the block is executed.
+- Replace the ``esp`` object with the stub flasher object returned by ``run_stub(esp)`` if the stub flasher is used. This step can be skipped if not needed.
+- ``attach_flash(esp)`` is required for flash-memory operations.
+- Using the ``esp`` object in a context manager ensures the port is closed properly after execution.
 
 ------------
 
-The following example demonstrates running a series of flash memory operations in one go:
+Example: Running a series of flash memory operations:
 
 .. code-block:: python
 
     from esptool.cmds import (
-    erase_flash,
-    attach_flash,
-    flash_id,
-    read_flash,
-    reset_chip,
-    run_stub,
-    verify_flash,
-    write_flash,
+        erase_flash,
+        attach_flash,
+        flash_id,
+        read_flash,
+        reset_chip,
+        run_stub,
+        verify_flash,
+        write_flash,
     )
-    from esptool.targets import ESP32ROM  # Import the target class, e.g. ESP8266ROM, ESP32S3ROM, etc.
+    from esptool.targets import ESP32ROM
 
     PORT = "/dev/ttyACM0"
     BOOTLOADER = "bootloader.bin"
     FIRMWARE = "firmware.bin"
 
     with ESP32ROM(PORT) as esp:
-        esp.connect()  # Connect to the ESP chip, needed when ESP32ROM is instantiated directly
+        esp.connect()  # Connect to the ESP chip
         esp = run_stub(esp)  # Run the stub loader (optional)
-        attach_flash(esp)  # Attach the flash memory chip, required for flash operations
-        flash_id(esp)  # Print information about the flash chip
-        erase_flash(esp)  # Erase the flash memory first
+        attach_flash(esp)  # Attach the flash memory chip
+        flash_id(esp)  # Print flash chip info
+        erase_flash(esp)  # Erase the flash memory
         with open(BOOTLOADER, "rb") as bl_file, open(FIRMWARE, "rb") as fw_file:
-            write_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Write the binary files
-            verify_flash(esp, [(0, bl_file), (0x1000, fw_file)])  # Verify the written data
-        read_flash(esp, 0x0, 0x2400, "output.bin")  # Read the flash memory into a file
+            write_flash(esp, [(0, bl_file), (0x1000, fw_file)])
+            verify_flash(esp, [(0, bl_file), (0x1000, fw_file)])
+        read_flash(esp, 0x0, 0x2400, "output.bin")  # Read flash memory
         reset_chip(esp, "hard-reset")  # Reset the chip
 
-- This example doesn't use ``detect_chip()``, but instantiates a ``ESP32ROM`` class directly. This is useful when you know the target chip in advance. In this scenario ``esp.connect()`` is required to establish a connection with the device.
-- Multiple operations can be chained together in a single context manager block.
+- This example instantiates a ``ESP32ROM`` class directly. Use ``esp.connect()`` to establish a connection.
+- Multiple operations can be chained in a single context manager block.
 
 ------------
 
-The Public API implements a custom ``ImageSource`` input type, which expands to ``str | bytes | IO[bytes]`` - a path to the firmware image file, an opened file-like object, or the image data as bytes.
+The Public API uses a custom ``ImageSource`` input type, which can be ``str``, ``bytes``, or ``IO[bytes]``—a path to the firmware image file, an opened file-like object, or the image data as bytes.
 
 As output, the API returns a ``bytes`` object representing the binary image or writes the image to a file if the ``output`` parameter is provided.
 
-The following example converts an ELF file to a flashable binary, prints the image information, and flashes the image. The example demonstrates three different ways to achieve the same result, showcasing the flexibility of the API:
+Example: Converting an ELF file to a flashable binary, printing image info, and flashing the image (three approaches):
 
 .. code-block:: python
 
     ELF = "firmware.elf"
 
-    # var 1 - Loading ELF from a file, not writing binary to a file
+    # 1. Load ELF from a file, do not write binary to a file
     bin_file = elf2image(ELF, "esp32c3")
     image_info(bin_file)
     with detect_chip(PORT) as esp:
         attach_flash(esp)
         write_flash(esp, [(0, bin_file)])
 
-    # var 2 - Loading ELF from an opened file object, not writing binary to a file
+    # 2. Load ELF from an opened file object
     with open(ELF, "rb") as elf_file, detect_chip(PORT) as esp:
         bin_file = elf2image(elf_file, "esp32c3")
         image_info(bin_file)
         attach_flash(esp)
         write_flash(esp, [(0, bin_file)])
 
-    # var 3 - Loading ELF from a file, writing binary to a file
+    # 3. Load ELF from a file, write binary to a file
     elf2image(ELF, "esp32c3", "image.bin")
     image_info("image.bin")
     with detect_chip(PORT) as esp:
         attach_flash(esp)
         write_flash(esp, [(0, "image.bin")])
-
 
 ------------
 

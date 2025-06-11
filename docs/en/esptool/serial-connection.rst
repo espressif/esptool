@@ -3,9 +3,9 @@
 Serial Connection
 =================
 
-The ROM serial bootloader of Espressif chips uses a 3.3V UART serial connection. Many development boards make the serial connections for you onboard.
+The ROM serial bootloader of Espressif chips uses a 3.3V UART serial connection. Many development boards provide onboard serial connections.
 
-However, if you are wiring the chip yourself to a USB/Serial adapter or similar then the following connections must be made:
+If you are wiring the chip yourself to a USB/Serial adapter or similar, make the following connections:
 
 +---------------------+-------------------+
 | ESP Chip Pin        | Serial Port Pin   |
@@ -17,16 +17,16 @@ However, if you are wiring the chip yourself to a USB/Serial adapter or similar 
 | Ground              | Ground            |
 +---------------------+-------------------+
 
-Note that TX (transmit) on the ESP chip is connected to RX (receive) on the serial port connection, and vice versa.
+Note: TX (transmit) on the ESP chip connects to RX (receive) on the serial port, and vice versa.
 
-Do not connect the chip to 5V TTL serial adapters, and especially not to "standard" RS-232 adapters! 3.3V serial only!
+**Warning:** Do not connect the chip to 5V TTL serial adapters or standard RS-232 adapters! Use 3.3V serial only.
 
 .. _serial-port-settings:
 
 Serial Port Settings
 --------------------
 
-When communicating with the {IDF_TARGET_NAME} ROM serial bootloader, the following serial port settings are recommended:
+When communicating with the {IDF_TARGET_NAME} ROM serial bootloader, use the following serial port settings:
 
 +---------------------+-------------------+
 | Baud rate           | {IDF_TARGET_BAUD_RATE}            |
@@ -44,10 +44,10 @@ When communicating with the {IDF_TARGET_NAME} ROM serial bootloader, the followi
 
     .. note::
 
-        You might experience issues when using low baud rates on {IDF_TARGET_NAME}. If you encounter any problems when connecting, please use at least 115200 or higher.
+        You might experience issues when using low baud rates on {IDF_TARGET_NAME}. If you encounter problems, use at least 115200 or higher.
 
 .. only:: esp8266
 
-    .. note::
+.. note::
 
-        Baud rate {IDF_TARGET_BAUD_RATE} is what the {IDF_TARGET_NAME} bootloader uses. The apps on top of the Espressif SDK (e.g. Arduino sketch) talk at 115200 if not specified otherwise.
+    The baud rate {IDF_TARGET_BAUD_RATE} is used by the {IDF_TARGET_NAME} bootloader. Applications on top of the Espressif SDK (e.g., Arduino sketches) use 115200 unless specified otherwise.

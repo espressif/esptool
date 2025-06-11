@@ -8,45 +8,45 @@ Basic Commands
 Write Binary Data to Flash: ``write-flash``
 -------------------------------------------
 
-Binary data can be written to the ESP's flash chip via the serial ``write-flash`` command:
+Binary data can be written to the ESP device's flash chip using the ``write-flash`` command:
 
 ::
 
     esptool.py --port COM4 write-flash 0x1000 my_app-0x01000.bin
 
-Multiple flash addresses and file names can be given on the same command line:
+Multiple flash addresses and file names can be specified in a single command:
 
 ::
 
     esptool.py --port COM4 write-flash 0x00000 my_app.elf-0x00000.bin 0x40000 my_app.elf-0x40000.bin
 
-The ``--chip`` argument is optional when writing to flash, esptool will detect the type of chip when it connects to the serial port.
+The ``--chip`` argument is optional for writing to flash; esptool will detect the chip type automatically.
 
 The ``--port`` argument is documented under :ref:`serial-port`.
 
 .. only:: esp8266
 
     The next arguments to ``write-flash`` are one or more pairs of offset (address) and file name. When generating ESP8266 "version 1" images, the file names created by ``elf2image`` include the flash offsets as part of the file name.
-    For other types of images, consult your SDK documentation to determine the files to flash at which offsets.
+    For other image types, consult your SDK documentation for the correct files and offsets.
 
 .. only:: not esp8266
 
-    The next arguments to ``write-flash`` are one or more pairs of offset (address) and file name. Consult your SDK documentation to determine the files to flash at which offsets.
+    The next arguments to ``write-flash`` are one or more pairs of offset (address) and file name. Consult your SDK documentation for the correct files and offsets.
 
-Numeric values passed to write-flash (and other commands) can be specified either in hex (ie 0x1000), or in decimal (ie 4096).
+Numeric values for ``write-flash`` (and other commands) can be specified in hexadecimal (e.g., 0x1000) or decimal (e.g., 4096).
 
-See the :ref:`troubleshooting` section if the ``write-flash`` command is failing, or the flashed module fails to boot.
+See the :ref:`troubleshooting` section if the ``write-flash`` command fails or the flashed device does not boot.
 
 Setting Flash Mode and Size
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You may also need to specify arguments for :ref:`flash mode and flash size <flash-modes>`, if you wish to override the defaults. For example:
+You may need to specify arguments for :ref:`flash mode and flash size <flash-modes>` to override defaults. For example:
 
 ::
 
     esptool.py --port /dev/ttyUSB0 write-flash --flash-mode qio --flash-size 32m 0x0 bootloader.bin 0x1000 my_app.bin
 
-Since esptool v2.0, these options are not often needed as the default is to keep the flash mode and size from the ``.bin`` image file. See the :ref:`flash-modes` section for more details.
+Since esptool v2.0, these options are rarely needed, as the default is to keep the flash mode and size from the ``.bin`` image file. See the :ref:`flash-modes` section for more details.
 
 Compression
 ^^^^^^^^^^^
