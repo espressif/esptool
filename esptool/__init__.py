@@ -82,6 +82,7 @@ from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
     NotImplementedInROMError,
+    check_deprecated_py_suffix,
     flash_size_bytes,
 )
 from itertools import chain, cycle, repeat
@@ -112,7 +113,7 @@ click.rich_click.STYLE_COMMANDS_TABLE_COLUMN_WIDTH_RATIO = (1, 3)
 # Option group definitions, used for grouping options in the help output
 # Similar to 'add_argument_group' from argparse
 click.rich_click.OPTION_GROUPS = {
-    "esptool.py merge-bin": [
+    "* merge-bin": [
         {
             "name": "UF2 options",
             "options": [
@@ -141,7 +142,7 @@ click.rich_click.OPTION_GROUPS = {
     ],
 }
 click.rich_click.COMMAND_GROUPS = {
-    "esptool.py": [
+    "*": [
         {
             "name": "Basic commands",
             "commands": [
@@ -297,7 +298,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     cls=Group,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
-    help=f"esptool.py v{__version__} - serial utility for flashing, provisioning, "
+    help=f"esptool v{__version__} - serial utility for flashing, provisioning, "
     "and interacting with Espressif SoCs.",
 )
 @click.option(
@@ -1172,6 +1173,7 @@ def get_default_connected_device(
 
 
 def _main():
+    check_deprecated_py_suffix(__name__)
     try:
         main()
     except FatalError as e:

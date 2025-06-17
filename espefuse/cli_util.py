@@ -20,7 +20,7 @@ from espefuse.efuse_interface import (
 
 click.rich_click.USE_CLICK_SHORT_HELP = True
 click.rich_click.COMMAND_GROUPS = {
-    "espefuse.py": [
+    "*": [
         {
             "name": "Burn commands",
             "commands": SUPPORTED_BURN_COMMANDS,

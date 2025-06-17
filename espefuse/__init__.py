@@ -21,6 +21,7 @@ from espefuse.efuse_interface import (
     SUPPORTED_READ_COMMANDS,
     SUPPORTED_CHIPS,
 )
+from esptool.util import check_deprecated_py_suffix
 
 __all__ = [
     "get_esp",
@@ -38,7 +39,7 @@ __all__ = [
     chain=True,  # allow using multiple commands in a single run
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
-    help=f"espefuse.py v{esptool.__version__} - ESP32xx eFuse get/set tool",
+    help=f"espefuse v{esptool.__version__} - ESP32xx eFuse get/set tool",
 )
 @click.option(
     "--chip",
@@ -113,7 +114,7 @@ def cli(
     postpone,
     extend_efuse_table,
 ):
-    print(f"espefuse.py v{esptool.__version__}")
+    print(f"espefuse v{esptool.__version__}")
 
     ctx.ensure_object(dict)
     esp = ctx.obj.get("esp", None)
@@ -215,6 +216,7 @@ def main(argv: list[str] | None = None, esp: esptool.ESPLoader | None = None):
 
 
 def _main():
+    check_deprecated_py_suffix(__name__)
     try:
         main()
     except esptool.FatalError as e:

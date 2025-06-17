@@ -83,7 +83,7 @@ class ESPRFC2217Server(object):
         self.port = rfc2217_port or self.get_free_port()
         self.cmd = [
             sys.executable,
-            os.path.join(TEST_DIR, "..", "esp_rfc2217_server.py"),
+            os.path.join(TEST_DIR, "..", "esp_rfc2217_server"),
             "-p",
             str(self.port),
             arg_port,
@@ -1815,3 +1815,30 @@ class TestESPObjectOperations(EsptoolTestCase):
         assert "Checksum: 0x83 (valid)" in output
         assert "Wrote 0x2400 bytes to file 'output.bin'" in output
         assert esptool.__version__ in output
+
+
+@pytest.mark.host_test
+class TestOldScripts:
+    def test_esptool_py(self):
+        output = subprocess.check_output(["esptool.py", "-h"])
+        decoded = output.decode("utf-8")
+        assert "esptool.py" in decoded
+        assert "DEPRECATED" in decoded
+
+    def test_espefuse_py(self):
+        output = subprocess.check_output(["espefuse.py", "-h"])
+        decoded = output.decode("utf-8")
+        assert "espefuse.py" in decoded
+        assert "DEPRECATED" in decoded
+
+    def test_espsecure_py(self):
+        output = subprocess.check_output(["espsecure.py", "-h"])
+        decoded = output.decode("utf-8")
+        assert "espsecure.py" in decoded
+        assert "DEPRECATED" in decoded
+
+    def test_esp_rfc2217_server_py(self):
+        output = subprocess.check_output(["esp_rfc2217_server.py", "-h"])
+        decoded = output.decode("utf-8")
+        assert "esp_rfc2217_server.py" in decoded
+        assert "DEPRECATED" in decoded

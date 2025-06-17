@@ -24,6 +24,7 @@ from cryptography.utils import int_to_bytes
 from esptool.logger import log
 
 import esptool
+from esptool.util import check_deprecated_py_suffix
 
 SIG_BLOCK_MAGIC = 0xE7
 
@@ -1579,11 +1580,11 @@ class Group(esptool.cli_util.Group):
     cls=Group,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
-    help=f"espsecure.py v{esptool.__version__} - ESP32 Secure Boot & Flash Encryption "
+    help=f"espsecure v{esptool.__version__} - ESP32 Secure Boot & Flash Encryption "
     "tool",
 )
 def cli():
-    log.print(f"espsecure.py v{esptool.__version__}")
+    log.print(f"espsecure v{esptool.__version__}")
 
 
 @cli.command("digest-secure-bootloader")
@@ -1960,6 +1961,7 @@ def main(argv: list[str] | None = None):
 
 
 def _main():
+    check_deprecated_py_suffix(__name__)
     try:
         main()
     except esptool.FatalError as e:

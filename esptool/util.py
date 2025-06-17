@@ -128,6 +128,19 @@ def get_key_from_value(dict, val):
     return None
 
 
+def check_deprecated_py_suffix(module_name: str) -> None:
+    """Check if called with deprecated .py suffix"""
+    import sys
+    from esptool import log
+
+    script_name = sys.argv[0] if sys.argv else ""
+    if script_name.endswith(module_name + ".py"):
+        log.warning(
+            f"DEPRECATED: '{module_name}.py' is deprecated. Please use '{module_name}' "
+            "instead. The '.py' suffix will be removed in a future major release."
+        )
+
+
 class PrintOnce:
     """
     Class for printing messages just once. Can be useful when running in a loop

@@ -5,6 +5,46 @@
 
 This document describes the breaking changes made to esptool.py, espsecure.py and espefuse.py in the major release ``v5``. It provides guidance on adapting existing workflows and scripts to ensure compatibility when updating from ``v4.*``.
 
+
+Command-Line Tool Invocation Changes
+************************************
+
+The preferred way to invoke esptool command-line tools has changed. Instead of running the scripts with `.py` suffix, you should now use the console scripts without the `.py` suffix.
+
+**Affected Tools:**
+
+- ``esptool.py`` → ``esptool``
+- ``espefuse.py`` → ``espefuse``
+- ``espsecure.py`` → ``espsecure``
+- ``esp_rfc2217_server.py`` → ``esp_rfc2217_server``
+
+**Migration Steps:**
+
+1. Update your command-line invocations to use the new names without `.py`:
+
+   **Before:**
+
+   .. code-block:: bash
+
+       esptool.py chip_id
+       espefuse.py summary
+       espsecure.py sign_data --keyfile key.pem data.bin
+
+   **After:**
+
+   .. code-block:: bash
+
+       esptool chip_id
+       espefuse summary
+       espsecure sign-data --keyfile key.pem data.bin
+
+2. Update scripts to use the new command names.
+
+.. note::
+
+   Scripts with ``.py`` suffix are still available for backward compatibility, but they will produce deprecation warning and will be removed in the next major release.
+
+
 esptool.py ``v5`` Migration Guide
 *********************************
 
