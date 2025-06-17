@@ -53,7 +53,7 @@ except ImportError:
 try:
     if "serialization" in serial.__doc__ and "deserialization" in serial.__doc__:
         raise ImportError(
-            "esptool.py depends on pySerial, but there is a conflict with a currently "
+            "esptool depends on pySerial, but there is a conflict with a currently "
             "installed package named 'serial'.\n"
             "You may work around this by 'pip uninstall serial; pip install pyserial' "
             "but this may break other installed Python software "
@@ -71,7 +71,7 @@ try:
 except ImportError:
     log.error(
         f"The installed version ({serial.VERSION}) of pySerial appears to be too old "
-        f"for esptool.py (Python interpreter {sys.executable}). "
+        f"for esptool (Python interpreter {sys.executable}). "
         "Check the documentation for installation instructions."
     )
     raise
@@ -1393,7 +1393,7 @@ class ESPLoader(object):
         arg = struct.pack("<I", hspi_arg)
         if not self.IS_STUB:
             # ESP32 ROM loader takes additional 'is legacy' arg, which is not
-            # currently supported in the stub loader or esptool.py
+            # currently supported in the stub loader or esptool
             # (as it's not usually needed.)
             is_legacy = 0
             arg += struct.pack("BBBB", is_legacy, 0, 0, 0)

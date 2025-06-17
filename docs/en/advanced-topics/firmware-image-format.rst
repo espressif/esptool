@@ -14,7 +14,7 @@
 Firmware Image Format
 =====================
 
-This is technical documentation for the firmware image format used by the ROM bootloader. These are the images created by ``esptool.py elf2image``.
+This is technical documentation for the firmware image format used by the ROM bootloader. These are the images created by ``esptool elf2image``.
 
 .. only:: esp8266
 
@@ -140,10 +140,10 @@ The image header is 8 bytes long:
     +--------+------------------------------------------------------------------------------------------------+
 
 
-``esptool.py`` overrides the 2nd and 3rd (counted from 0) bytes according to the SPI flash info provided through the command line options (see :ref:`flash-modes`).
+``esptool`` overrides the 2nd and 3rd (counted from 0) bytes according to the SPI flash info provided through the command line options (see :ref:`flash-modes`).
 These bytes are only overridden if this is a bootloader image (an image written to a correct bootloader offset of {IDF_TARGET_BOOTLOADER_OFFSET}).
 In this case, the appended SHA256 digest, which is a cryptographic hash used to verify the integrity of the image, is also updated to reflect the header changes.
-Generating images without SHA256 digest can be achieved by running ``esptool.py elf2image`` with the ``--dont-append-digest`` argument.
+Generating images without SHA256 digest can be achieved by running ``esptool elf2image`` with the ``--dont-append-digest`` argument.
 
 .. only:: esp8266
 

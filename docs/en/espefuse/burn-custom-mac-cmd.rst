@@ -3,7 +3,7 @@
 Burn Custom Mac
 ===============
 
-The ``espefuse.py burn-custom-mac`` command burns a 48-bit Custom MAC Address.
+The ``espefuse burn-custom-mac`` command burns a 48-bit Custom MAC Address.
 
 Positional arguments:
 
@@ -25,7 +25,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
 
     .. code-block:: none
 
-        > espefuse.py burn-custom-mac 48:63:92:15:72:16
+        > espefuse burn-custom-mac 48:63:92:15:72:16
 
         === Run "burn-custom-mac" command ===
             - 'MAC_VERSION' (Version of the MAC field) 0x00 -> 0x1
@@ -44,7 +44,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
         Custom MAC Address version 1: 48:63:92:15:72:16 (CRC 0x75 OK)
         Successful
 
-        > espefuse.py summary
+        > espefuse summary
         ...
         MAC_VERSION (BLOCK3):                              Version of the MAC field                           = Custom MAC in BLOCK3 R/W (0x01)
         CUSTOM_MAC (BLOCK3):                               Custom MAC
@@ -63,7 +63,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
 
     .. code-block:: none
 
-        > espefuse.py burn-custom-mac 48:63:92:15:72:16
+        > espefuse burn-custom-mac 48:63:92:15:72:16
 
         === Run "burn-custom-mac" command ===
             - 'CUSTOM_MAC' (Custom MAC addr) 0x000000000000 -> 0x167215926348
@@ -85,7 +85,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
         Custom MAC Address: 48:63:92:15:72:16 (OK)
         Successful
 
-        > espefuse.py summary
+        > espefuse summary
         ...
         CUSTOM_MAC_USED (BLOCK0)                           Enable CUSTOM_MAC programming                      = True R/W (0b1)
         CUSTOM_MAC (BLOCK1)                                Custom MAC addr
@@ -97,7 +97,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
 
     .. code-block:: none
 
-        > espefuse.py burn-custom-mac 48:63:92:15:72:16
+        > espefuse burn-custom-mac 48:63:92:15:72:16
 
         === Run "burn-custom-mac" command ===
             - 'CUSTOM_MAC' (Custom MAC Address) 0x000000000000 -> 0x167215926348
@@ -114,7 +114,7 @@ If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already h
         Custom MAC Address: 48:63:92:15:72:16 (OK)
         Successful
 
-        > espefuse.py summary
+        > espefuse summary
         ...
         CUSTOM_MAC (BLOCK3)                                Custom MAC Address
         = 48:63:92:15:72:16 (OK) R/W

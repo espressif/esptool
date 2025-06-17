@@ -3,7 +3,7 @@
 Advanced Options
 ================
 
-The following advanced global configuration options can be used for all esptool commands. They are placed before the command name on the command line. For example, the option ``--before no-reset`` has to be placed before ``flash-id``. The command should look like this: ``esptool.py --before no-reset flash-id``.
+The following advanced global configuration options can be used for all esptool commands. They are placed before the command name on the command line. For example, the option ``--before no-reset`` has to be placed before ``flash-id``. The command should look like this: ``esptool --before no-reset flash-id``.
 
 For basic/fundamental global configuration options, see the :ref:`options` page.
 
@@ -74,7 +74,7 @@ Passing ``--no-stub`` will disable certain options, as not all options are imple
 
     The optional ``--spi-connection`` argument overrides the SPI flash connection configuration on {IDF_TARGET_NAME}. This means that the SPI flash can be connected to other pins, or esptool can be used to communicate with a different SPI flash chip to the default.
 
-    Supply the ``--spi-connection`` argument after the ``esptool.py`` command, ie ``esptool.py flash-id --spi-connection HSPI``.
+    Supply the ``--spi-connection`` argument after the ``esptool`` command, ie ``esptool flash-id --spi-connection HSPI``.
 
     .. note::
 
@@ -176,7 +176,7 @@ The ``--verbose``, ``-v`` flag can be used to show all output without any overwr
 
 .. code-block:: bash
 
-    esptool.py --verbose flash-id
+    esptool --verbose flash-id
 
 See :ref:`the trace option <tracing-communications>` if you want to dump all serial interactions to the standard output for debugging purposes.
 
@@ -188,4 +188,4 @@ The ``--silent``, ``-s`` flag can be used to limit the output to errors only:
 
 .. code-block:: bash
 
-    esptool.py -s write-flash 0x0 image.bin
+    esptool -s write-flash 0x0 image.bin

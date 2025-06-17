@@ -1,5 +1,5 @@
 # Tests for regressions in python modules
-# used by esptool.py, espefuse.py, and espsecure.py
+# used by esptool, espefuse, and espsecure
 
 import pytest
 

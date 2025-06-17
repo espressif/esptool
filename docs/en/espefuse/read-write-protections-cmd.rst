@@ -5,8 +5,8 @@ Read Write Protection
 
 There are two commands (to get the correct list of eFuse fields that can be protected, specify the chip with ``--chip``):
 
-- ``espefuse.py read-protect-efuse``. It sets read protection for given eFuse names.
-- ``espefuse.py write-protect-efuse``. It sets write protection for given eFuse names.
+- ``espefuse read-protect-efuse``. It sets read protection for given eFuse names.
+- ``espefuse write-protect-efuse``. It sets write protection for given eFuse names.
 
 Positional arguments:
 
@@ -40,7 +40,7 @@ Usage
 
 .. code-block:: none
 
-    > espefuse.py read-protect-efuse BLOCK2 BLOCK3 MAC_VERSION
+    > espefuse read-protect-efuse BLOCK2 BLOCK3 MAC_VERSION
 
     === Run "read-protect-efuse" command ===
     If Secure Boot V2 is used, BLOCK2 must be readable, please stop this operation!
@@ -62,7 +62,7 @@ Usage
 
 .. code-block:: none
 
-    > espefuse.py write-protect-efuse WR_DIS FLASH_CRYPT_CNT
+    > espefuse write-protect-efuse WR_DIS FLASH_CRYPT_CNT
 
     === Run "write-protect-efuse" command ===
     Permanently write-disabling efuse WR_DIS

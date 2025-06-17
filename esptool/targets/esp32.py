@@ -367,7 +367,7 @@ class ESP32ROM(ESPLoader):
                 )
             )
         # RTC_CNTL_SDIO_TIEH is not used here, setting TIEH=1 would set 3.3V output,
-        # not safe for esptool.py to do
+        # not safe for esptool to do
 
         reg_val = self.RTC_CNTL_SDIO_FORCE  # override efuse setting
         reg_val |= self.RTC_CNTL_SDIO_PD_EN

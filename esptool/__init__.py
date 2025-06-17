@@ -363,7 +363,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     "--trace",
     "-t",
     is_flag=True,
-    help="Enable trace-level output of esptool.py interactions.",
+    help="Enable trace-level output of esptool interactions.",
 )
 @click.option(
     "--verbose",
@@ -410,7 +410,7 @@ def cli(
         log.set_verbosity("silent")
     ctx.obj["invoked_subcommand"] = ctx.invoked_subcommand
     ctx.obj["esp"] = getattr(ctx, "esp", None)
-    log.print(f"esptool.py v{__version__}")
+    log.print(f"esptool v{__version__}")
     load_config_file(verbose=True)
 
 
@@ -1044,7 +1044,7 @@ def get_port_list(
     if list_ports is None:
         raise FatalError(
             "Listing all serial ports is currently not available. "
-            "Please try to specify the port when running esptool.py or update "
+            "Please try to specify the port when running esptool or update "
             "the pyserial package to the latest version."
         )
     ports = []
@@ -1088,7 +1088,7 @@ def expand_file_arguments(argv: list[str]) -> list[str]:
         else:
             new_args.append(arg)
     if expanded:
-        log.print(f"esptool.py {' '.join(new_args)}")
+        log.print(f"esptool {' '.join(new_args)}")
         return new_args
     return argv
 

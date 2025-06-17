@@ -1,6 +1,6 @@
 .. code-block:: none
 
-    > espefuse.py -p PORT summary
+    > espefuse -p PORT summary
 
     Connecting....
     Detecting chip type... ESP32-S3

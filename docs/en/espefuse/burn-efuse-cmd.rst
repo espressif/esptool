@@ -3,7 +3,7 @@
 Burn eFuse
 ==========
 
-The ``espefuse.py burn-efuse`` command burns eFuses. The arguments to ``burn-efuse`` are eFuse names (as shown in summary output) and new values.
+The ``espefuse burn-efuse`` command burns eFuses. The arguments to ``burn-efuse`` are eFuse names (as shown in summary output) and new values.
 
 Positional arguments:
 
@@ -22,7 +22,7 @@ This command supports simultaneous burning of multiple eFuses, it doesn't matter
 
 .. code-block:: none
 
-    > espefuse.py --port /dev/ttyUSB0 burn-efuse   DIS_USB_JTAG 1   VDD_SPI_AS_GPIO 1
+    > espefuse --port /dev/ttyUSB0 burn-efuse   DIS_USB_JTAG 1   VDD_SPI_AS_GPIO 1
 
     === Run "burn-efuse" command ===
     The efuses to burn:
@@ -42,7 +42,7 @@ This command supports simultaneous burning of multiple eFuses, it doesn't matter
     This is an irreversible operation!
     Type 'BURN' (all capitals) to continue.
 
-By default, ``espefuse.py`` will ask you to type ``BURN`` before it permanently sets eFuses. The ``--do-not-confirm`` option allows you to bypass this.
+By default, ``espefuse`` will ask you to type ``BURN`` before it permanently sets eFuses. The ``--do-not-confirm`` option allows you to bypass this.
 
 .. code-block:: none
 

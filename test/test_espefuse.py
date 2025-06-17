@@ -1,4 +1,4 @@
-# HOST_TEST for espefuse.py using the pytest framework
+# HOST_TEST for espefuse using the pytest framework
 #
 # Supports esp32, esp32s2, esp32s3, esp32c3,
 #          esp32c2, esp32c6, esp32p4, esp32c61,
@@ -17,7 +17,7 @@
 #  - `pytest test_espefuse.py \
 #     --chip esp32 --port /dev/ttyUSB0 --reset-port /dev/ttyUSB1`
 #
-# where  - --port       - a port for espefuse.py operation
+# where  - --port       - a port for espefuse operation
 #        - --reset-port - a port to clear efuses (connect RTS or DTR ->- J14 pin 39)
 #
 # Note: For FPGA with ESP32 image, you need to set an env variable ESPTOOL_ENV_FPGA to 1
@@ -59,8 +59,8 @@ reset_port = (
 
 if arg_chip not in SUPPORTED_CHIPS:
     pytest.exit(f"{arg_chip} is not a supported target, choose from {SUPPORTED_CHIPS}")
-print(f"\nHost tests of espefuse.py for {arg_chip}:")
-print("Running espefuse.py tests...")
+print(f"\nHost tests of espefuse for {arg_chip}:")
+print("Running espefuse tests...")
 
 # The default value of the program name for argparse has changed in Python 3.14
 # https://docs.python.org/dev/whatsnew/3.14.html#argparse
@@ -1519,7 +1519,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
             )
 
     def test_burn_key_from_digest(self):
-        # python espsecure.py digest_rsa_public_key
+        # python espsecure digest_rsa_public_key
         # --keyfile test/{S_IMAGES_DIR}/rsa_secure_boot_signing_key.pem
         # -o {S_IMAGES_DIR}/rsa_public_key_digest.bin
         self.espefuse_py(
@@ -1544,7 +1544,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
 @pytest.mark.skipif(arg_chip != "esp32c2", reason="ESP32-C2-only, supports 1 key block")
 class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
     def test_burn_key_digest1(self):
-        # python espsecure.py generate_signing_key --version 2
+        # python espsecure generate_signing_key --version 2
         # secure_images/ecdsa192_secure_boot_signing_key_v2.pem --scheme ecdsa192
         self.espefuse_py("burn-key-digest -h")
         self.espefuse_py(
@@ -1558,7 +1558,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         ) in output
 
     def test_burn_key_digest2(self):
-        # python espsecure.py generate_signing_key --version 2
+        # python espsecure generate_signing_key --version 2
         # secure_images/ecdsa256_secure_boot_signing_key_v2.pem   --scheme ecdsa256
         self.espefuse_py("burn-key-digest -h")
         self.espefuse_py(
@@ -1572,7 +1572,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         ) in output
 
     def test_burn_key_from_digest1(self):
-        # python espsecure.py digest_sbv2_public_key --keyfile
+        # python espsecure digest_sbv2_public_key --keyfile
         # secure_images/ecdsa192_secure_boot_signing_key_v2.pem
         # -o secure_images/ecdsa192_public_key_digest_v2.bin
         self.espefuse_py(
@@ -1586,7 +1586,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         ) in output
 
     def test_burn_key_from_digest2(self):
-        # python espsecure.py digest_sbv2_public_key --keyfile
+        # python espsecure digest_sbv2_public_key --keyfile
         # secure_images/ecdsa256_secure_boot_signing_key_v2.pem
         # -o secure_images/ecdsa256_public_key_digest_v2.bin
         self.espefuse_py(
@@ -1647,7 +1647,7 @@ class TestBurnKeyDigestCommands(EfuseTestCase):
         )
 
     def test_burn_key_from_digest(self):
-        #  python espsecure.py digest_rsa_public_key
+        #  python espsecure digest_rsa_public_key
         # --keyfile test/secure_images/rsa_secure_boot_signing_key.pem
         # -o secure_images/rsa_public_key_digest.bin
         self.espefuse_py(

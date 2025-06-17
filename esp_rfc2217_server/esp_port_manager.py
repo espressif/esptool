@@ -82,7 +82,7 @@ class EspPortManager(serial.rfc2217.PortManager):
 
     def _reset_thread(self):
         """
-        The reset logic is used from esptool.py because the RTS and DTR signals
+        The reset logic is used from esptool because the RTS and DTR signals
         cannot be retransmitted through RFC 2217 with proper timing.
         """
         if self.logger:

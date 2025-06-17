@@ -3,16 +3,16 @@
 Embedding into Custom Scripts
 =============================
 
-Similar to :ref:`esptool.py <scripting>`, ``espefuse.py`` can be easily integrated into Python applications or called from other Python scripts.
+Similar to :ref:`esptool <scripting>`, ``espefuse`` can be easily integrated into Python applications or called from other Python scripts.
 
-For details on redirecting the output, see :ref:`esptool.py logging section <logging>`.
+For details on redirecting the output, see :ref:`esptool logging section <logging>`.
 
 Using Espefuse as a Python Module
 ---------------------------------
 
 The espefuse module provides a comprehensive Python API for interacting with ESP32 chips programmatically. By leveraging the API, developers can automate tasks such as reading and writing eFuse values, managing secure boot, and more.
 
-The API also provides the benefit of being able to chain commands with ``esptool.py`` commands and create a custom script. With this approach, you can e.g. flash firmware and set eFuse values in one go.
+The API also provides the benefit of being able to chain commands with ``esptool`` commands and create a custom script. With this approach, you can e.g. flash firmware and set eFuse values in one go.
 
 Using the Command-Line Interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ This example demonstrates a basic workflow using the espefuse API to read the cu
 
 ------------
 
-This API can be also used to chain commands with esptool.py commands.
+This API can be also used to chain commands with esptool commands.
 
 .. code-block:: python
 
@@ -78,7 +78,7 @@ This API can be also used to chain commands with esptool.py commands.
 
 ------------
 
-If you would like to have a better control over the ESP object from esptool, you can first get the ESP object from esptool as described in :ref:`esptool.py <scripting>` and then pass it to the espefuse API.
+If you would like to have a better control over the ESP object from esptool, you can first get the ESP object from esptool as described in :ref:`esptool <scripting>` and then pass it to the espefuse API.
 
 .. code-block:: python
 
@@ -152,7 +152,7 @@ Here is an example of how to use a batch mode on ESP32:
     Please note that provided example is written for ESP32. For other chips, the names of eFuses might be different and signature of the :func:`burn_key <espefuse.BaseCommands.burn_key>` function might also be different.
 
 After ``espefuse.burn_all()``, all needed eFuses will be burnt to chip in order ``BLK_MAX`` to ``BLK_0``. This order prevents cases when protection is set before the value goes to a block. Please note this while developing your scripts.
-Upon completion, the new eFuses will be read back, and checks will be performed on the written eFuses by ``espefuse.py``. In production, you might need to check that all written eFuses are set properly.
+Upon completion, the new eFuses will be read back, and checks will be performed on the written eFuses by ``espefuse``. In production, you might need to check that all written eFuses are set properly.
 In the example above, we check that ``FLASH_CRYPT_CNT`` and ``DISABLE_DL_ENCRYPT`` are set properly. Also, we check that ``JTAG_DISABLE`` is read and write protected.
 
 ------------

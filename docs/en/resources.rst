@@ -13,7 +13,7 @@ Useful Links
 
 * Several `books <https://www.espressif.com/en/ecosystem/community-engagement/books>`_ have been written about the ESP8266 or ESP32 series of SoCs and they are listed on `Espressif <https://www.espressif.com/en/ecosystem/community-engagement/books>`__ web site.
 
-* If you're interested in contributing to esptool.py, please check the :ref:`contribute` page.
+* If you're interested in contributing to esptool, please check the :ref:`contribute` page.
 
 * For additional {IDF_TARGET_NAME} product related information, please refer to the `documentation <https://espressif.com/en/support/download/documents>`_ section of `Espressif <https://espressif.com/en/support/download/documents>`__ web site.
 
@@ -23,9 +23,9 @@ Webinars and Trainings
 Mastering the Basics of Espressif Chips: An In-Depth Look at Chip Flashing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The content of this webinar is designed for developers, engineers and hobbyists interested in getting a better understanding of how to use esptool.py or other tools for the development with the ESP8266 or ESP32 series of SoCs.
+The content of this webinar is designed for developers, engineers and hobbyists interested in getting a better understanding of how to use esptool or other tools for the development with the ESP8266 or ESP32 series of SoCs.
 
-It offers an in-depth look at the inner mechanisms of esptool.py, including the :ref:`boot-mode` process.
+It offers an in-depth look at the inner mechanisms of esptool, including the :ref:`boot-mode` process.
 
 .. image:: https://img.youtube.com/vi/zh-Y_s4X6zs/maxresdefault.jpg
     :alt: Mastering the Basics of Espressif Chips: An In-Depth Look at Chip Flashing
@@ -33,7 +33,7 @@ It offers an in-depth look at the inner mechanisms of esptool.py, including the 
 
 DevCon22: esptool.py: Espressif's Swiss Army Knife
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This talk aims to show how simple, yet powerful, esptool.py is, and how to use it to tame your ESP.
+This talk aims to show how simple, yet powerful, esptool is, and how to use it to tame your ESP.
 
 .. image:: https://img.youtube.com/vi/GjWGKzu3XTk/maxresdefault.jpg
     :alt: DevCon22: esptool.py: Espressif's Swiss Army Knife

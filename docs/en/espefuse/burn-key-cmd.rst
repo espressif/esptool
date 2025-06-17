@@ -3,7 +3,7 @@
 Burn Key
 ========
 
-The ``espefuse.py burn-key`` command burns keys to eFuse blocks:
+The ``espefuse burn-key`` command burns keys to eFuse blocks:
 
 .. list::
 
@@ -84,12 +84,12 @@ Optional arguments:
 
     .. code-block:: none
 
-        > espsecure.py generate_signing_key -v 2 -s ecdsa192 ecdsa192.pem
+        > espsecure generate_signing_key -v 2 -s ecdsa192 ecdsa192.pem
         ECDSA NIST192p private key in PEM format written to ecdsa192.pem
 
     .. code-block:: none
 
-        > espsecure.py generate_signing_key -v 2 -s ecdsa256 ecdsa256.pem
+        > espsecure generate_signing_key -v 2 -s ecdsa256 ecdsa256.pem
         ECDSA NIST256p private key in PEM format written to ecdsa256.pem
 
 .. only:: esp32c2
@@ -146,7 +146,7 @@ By default, when an encryption key block is burned it is also read and write pro
 
 .. code-block:: none
 
-    espefuse.py burn-key secure_boot_v1 secure_boot_key_v1.bin
+    espefuse burn-key secure_boot_v1 secure_boot_key_v1.bin
 
 .. only:: esp32
 
@@ -166,7 +166,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn-key flash_encryption  256bit_fe_key.bin
+        > espefuse burn-key flash_encryption  256bit_fe_key.bin
 
         === Run "burn-key" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
@@ -194,7 +194,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py summary
+        > espefuse summary
         ...
         BLOCK1 (BLOCK1):                                   Flash encryption key
         = ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? -/-
@@ -209,7 +209,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn-key flash_encryption  256bit_fe_key.bin --no-protect-key
+        > espefuse burn-key flash_encryption  256bit_fe_key.bin --no-protect-key
 
         === Run "burn-key" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
@@ -234,7 +234,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py summary
+        > espefuse summary
         ...
         BLOCK1 (BLOCK1):                                   Flash encryption key
         = 1f 1e 1d 1c 1b 1a 19 18 17 16 15 14 13 12 11 10 0f 0e 0d 0c 0b 0a 09 08 07 06 05 04 03 02 01 00 R/W
@@ -256,7 +256,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn-key BLOCK_KEY0 ~/esp/tests/efuse/512bits_0.bin  XTS_AES_256_KEY --no-read-protect
+        > espefuse burn-key BLOCK_KEY0 ~/esp/tests/efuse/512bits_0.bin  XTS_AES_256_KEY --no-read-protect
 
         === Run "burn-key" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
@@ -290,7 +290,7 @@ Usage
         Reading updated efuses...
         Successful
 
-        > espefuse.py summary
+        > espefuse summary
         ...
         KEY_PURPOSE_0 (BLOCK0)                             KEY0 purpose                                       = XTS_AES_256_KEY_1 R/- (0x2)
         KEY_PURPOSE_1 (BLOCK0)                             KEY1 purpose                                       = XTS_AES_256_KEY_2 R/- (0x3)
@@ -308,7 +308,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py -c esp32c2  \
+        > espefuse -c esp32c2  \
                                 burn-key-digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
                                 burn-key BLOCK_KEY0 images/efuse/128bit_key.bin XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
 

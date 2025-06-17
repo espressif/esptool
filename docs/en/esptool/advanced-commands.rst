@@ -20,7 +20,7 @@ The ``write-flash`` command always verifies the MD5 hash of data which is writte
 
 ::
 
-    esptool.py verify-flash --diff 0x40000 my_app.elf-0x40000.bin
+    esptool verify-flash --diff 0x40000 my_app.elf-0x40000.bin
 
 
 The ``--diff`` option specifies that if the files are different, the details should be printed to the console.
@@ -41,7 +41,7 @@ The ``dump-mem`` command will dump a region from the chip's memory space to a fi
 
 ::
 
-    esptool.py dump-mem 0x40000000 64k iram0.bin
+    esptool dump-mem 0x40000000 64k iram0.bin
 
 
 .. _load-ram:
@@ -53,12 +53,12 @@ The ``load-ram`` command allows the loading of an executable binary image (creat
 
 ::
 
-    esptool.py --no-stub load-ram ./test/images/helloworld-esp8266.bin
+    esptool --no-stub load-ram ./test/images/helloworld-esp8266.bin
 
 .. note::
 
     * The binary image must only contain IRAM- and DRAM-resident segments. Any SPI flash mapped segments will not load correctly and the image will probably crash. The ``image-info`` command can be used to check the binary image contents.
-    * Because the software loader is resident in IRAM and DRAM, this limits the region where a new program may be loaded. An error will be printed if the new program overlaps with the software loader in RAM. Older esptool versions may hang. Pass ``esptool.py --no-stub`` to avoid this problem.
+    * Because the software loader is resident in IRAM and DRAM, this limits the region where a new program may be loaded. An error will be printed if the new program overlaps with the software loader in RAM. Older esptool versions may hang. Pass ``esptool --no-stub`` to avoid this problem.
     * Due to a limitation in the ROM loader, when using ``--no-stub`` any very early serial output from a program may be lost if the program resets or reconfigures the UART. To avoid this problem, a program can be compiled with ``ets_delay_us(1)`` as the very first statement after the entry point.
 
 .. _read-mem-write-mem:
@@ -70,11 +70,11 @@ The ``read-mem`` & ``write-mem`` commands allow reading and writing single words
 
 ::
 
-    esptool.py write-mem 0x400C0000 0xabad1dea
+    esptool write-mem 0x400C0000 0xabad1dea
 
 ::
 
-    esptool.py read-mem 0x400C0000
+    esptool read-mem 0x400C0000
 
 .. _read-flash-status:
 
@@ -85,7 +85,7 @@ This command is intended for use when debugging hardware flash chip-related prob
 
 ::
 
-    esptool.py read-flash-status --bytes 2
+    esptool read-flash-status --bytes 2
 
 The ``--bytes`` argument determines how many status register bytes are read.
 
@@ -106,7 +106,7 @@ This command is intended for use when debugging hardware flash chip-related prob
 
 ::
 
-    esptool.py write-flash-status --bytes 2 --non-volatile 0
+    esptool write-flash-status --bytes 2 --non-volatile 0
 
 The ``--bytes`` option is similar to the corresponding option for ``read-flash-status`` and causes a mix of ``WRSR`` (01h), ``WRSR2`` (31h), and ``WRSR3`` (11h) commands to be sent to the chip. If ``--bytes 2`` is used then ``WRSR`` is sent first with a 16-bit argument and then with an 8-bit argument, as different flash chips use this command differently.
 Otherwise, each command is accompanied by 8-bits of the new status register value.
@@ -130,7 +130,7 @@ The Serial Flash Discoverable Parameters (SFDP) store essential vendor-specific 
 
 ::
 
-    esptool.py read-flash-sfdp 16 4
+    esptool read-flash-sfdp 16 4
 
 This will read 4 bytes from SFDP address 16.
 
@@ -143,7 +143,7 @@ This will read 4 bytes from SFDP address 16.
 
     ::
 
-        esptool.py get_security_info
+        esptool get_security_info
 
 
 .. only:: esp8266
@@ -159,7 +159,7 @@ This will read 4 bytes from SFDP address 16.
 
     ::
 
-        esptool.py chip-id
+        esptool chip-id
 
     .. _run:
 

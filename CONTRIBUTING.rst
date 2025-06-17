@@ -1,19 +1,19 @@
 Contributions Guide
 ===================
 
-We welcome contributions to the ``esptool.py`` project!
+We welcome contributions to the ``esptool`` project!
 
 How to Contribute
 -----------------
 
-Contributions to ``esptool.py`` - fixing bugs, adding features, adding documentation - are welcome. We accept contributions via `Github Pull Requests <https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests>`_.
+Contributions to ``esptool`` - fixing bugs, adding features, adding documentation - are welcome. We accept contributions via `Github Pull Requests <https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests>`_.
 
 .. _development-setup:
 
 Development Setup
 -----------------
 
-Development mode allows you to run the latest development version from the `esptool.py repository on GitHub <https://github.com/espressif/esptool>`_.
+Development mode allows you to run the latest development version from the `esptool repository on GitHub <https://github.com/espressif/esptool>`_.
 
 .. code-block:: sh
 
@@ -21,11 +21,11 @@ Development mode allows you to run the latest development version from the `espt
    $ cd esptool
    $ pip install --user -e .
 
-This will install ``esptool.py``’s dependencies and create some executable script wrappers in the user’s ``bin`` directory. The wrappers will run the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
+This will install ``esptool``'s dependencies and create some executable script wrappers in the user's ``bin`` directory. The wrappers will run the scripts found in the git working directory directly, so any time the working directory contents change it will pick up the new versions.
 
-It’s also possible to run the scripts directly from the working directory with this Development Mode installation.
+It's also possible to run the scripts directly from the working directory with this Development Mode installation.
 
-To also install additional tools needed for actually developing and testing ``esptool.py``, run this command to install a development copy of ``esptool.py`` *plus* packages useful for development:
+To also install additional tools needed for actually developing and testing ``esptool``, run this command to install a development copy of ``esptool`` *plus* packages useful for development:
 
 ::
 
@@ -36,7 +36,7 @@ To also install additional tools needed for actually developing and testing ``es
 Reporting Issues
 ----------------
 
-Please report bugs in ``esptool.py`` if you find them. However, before reporting a bug please check through the following:
+Please report bugs in ``esptool`` if you find them. However, before reporting a bug please check through the following:
 
 *  `Troubleshooting Guide <https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html>`_ - common problems and known issues.
 
@@ -58,7 +58,7 @@ Before Contributing
 
 Before sending us a Pull Request, please consider this list of points:
 
-* Have you tried running ``esptool.py`` test suite locally?
+* Have you tried running ``esptool`` test suite locally?
 
 * Is the code adequately commented for people to understand how it is structured?
 
@@ -73,7 +73,7 @@ Before sending us a Pull Request, please consider this list of points:
 Code Style & Static Analysis
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Please follow these coding standards when writing code for ``esptool.py``:
+Please follow these coding standards when writing code for ``esptool``:
 
 Pre-Commit Checks
 """""""""""""""""
@@ -92,13 +92,13 @@ On the first commit ``pre-commit`` will install the hooks, subsequent checks wil
 Conventional Commits
 """"""""""""""""""""
 
-``esptool.py`` complies with the `Conventional Commits standard <https://www.conventionalcommits.org/en/v1.0.0/#specification>`_. Every commit message is checked with `Conventional Precommit Linter <https://github.com/espressif/conventional-precommit-linter>`_, ensuring it adheres to the standard.
+``esptool`` complies with the `Conventional Commits standard <https://www.conventionalcommits.org/en/v1.0.0/#specification>`_. Every commit message is checked with `Conventional Precommit Linter <https://github.com/espressif/conventional-precommit-linter>`_, ensuring it adheres to the standard.
 
 
 Ruff
 """"
 
-``esptool.py`` is `PEP8 <https://peps.python.org/pep-0008/>`_ compliant and enforces this style guide. For compliance checking, we use `ruff <https://docs.astral.sh/ruff/>`_.
+``esptool`` is `PEP8 <https://peps.python.org/pep-0008/>`_ compliant and enforces this style guide. For compliance checking, we use `ruff <https://docs.astral.sh/ruff/>`_.
 ``Ruff`` also auto-format files in the same style as previously used ``black``.
 
 
@@ -122,22 +122,22 @@ In the event of false positives, you can adjust the configuration in the `.codes
 Automated Integration Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The test directory contains a `pytest <https://docs.pytest.org/>`_ integration suite with some integration tests for ``esptool.py``, ``espefuse.py``, and ``espsecure.py``.
+The test directory contains a `pytest <https://docs.pytest.org/>`_ integration suite with some integration tests for ``esptool``, ``espefuse``, and ``espsecure``.
 
-It is necessary to have ``esptool.py`` installed (see `Development Setup`_) in your environment in order to run these tests.
+It is necessary to have ``esptool`` installed (see `Development Setup`_) in your environment in order to run these tests.
 
 The following tests run automatically by GitHub Actions for each Pull Request. You can run them locally to check for regressions in the respective functionality:
 
 *  ``test_imagegen.py`` tests the ``elf2image`` command
 *  ``test_image_info.py`` tests the ``image-info`` command
 *  ``test_mergebin.py`` tests the ``merge-bin`` command
-*  ``test_modules.py`` tests the modules used by ``esptool.py`` for regressions
-*  ``test_espsecure.py`` tests ``espsecure.py`` functionality
-*  ``test_espsecure_hsm.py`` tests support of external HSM signing in ``espsecure.py``. These tests require additional prerequisites, see ``SoftHSM2 setup`` in the `tests workflow definition <https://github.com/espressif/esptool/blob/master/.github/workflows/test_esptool.yml>`_ for more information.
+*  ``test_modules.py`` tests the modules used by ``esptool`` for regressions
+*  ``test_espsecure.py`` tests ``espsecure`` functionality
+*  ``test_espsecure_hsm.py`` tests support of external HSM signing in ``espsecure``. These tests require additional prerequisites, see ``SoftHSM2 setup`` in the `tests workflow definition <https://github.com/espressif/esptool/blob/master/.github/workflows/test_esptool.yml>`_ for more information.
 
 The following tests are not run automatically by GitHub Actions, because they need real connected hardware. Therefore, they need to be run locally in a command line:
 
-*  ``test_esptool.py`` contains integration tests for ``esptool.py`` and needs to be run against real Espressif hardware with the following format:
+*  ``test_esptool.py`` contains integration tests for ``esptool`` and needs to be run against real Espressif hardware with the following format:
 
    ``pytest test_esptool.py --port <serial port> --chip <name of chip> --baud <baud rate>``
 
@@ -153,15 +153,15 @@ The following tests are not run automatically by GitHub Actions, because they ne
 
       Some tests might fail at higher baud rates on some hardware.
 
-*  ``test_esptool_sdm.py`` contains integration tests for ``esptool.py`` with chips in secure download mode. It needs to be run against real Espressif hardware (with active SDM). The command line format is the same as for ``test_esptool.py``.
+*  ``test_esptool_sdm.py`` contains integration tests for ``esptool`` with chips in secure download mode. It needs to be run against real Espressif hardware (with active SDM). The command line format is the same as for ``test_esptool.py``.
 
 The following tests are not run automatically by GitHub Actions, but can be run locally in a command line:
 
-*  ``test_espefuse.py`` tests ``espefuse.py`` functionality. To run it:
+*  ``test_espefuse.py`` tests ``espefuse`` functionality. To run it:
 
    ``pytest test_espefuse.py --chip <name of chip>``
 
-   These test use the ``--virt`` virtual mode of ``espefuse.py`` to safely test the functionality without a connection to a chip and without the possibility of affecting the actual eFuses in a real hardware.
+   These test use the ``--virt`` virtual mode of ``espefuse`` to safely test the functionality without a connection to a chip and without the possibility of affecting the actual eFuses in a real hardware.
 
    .. warning::
 

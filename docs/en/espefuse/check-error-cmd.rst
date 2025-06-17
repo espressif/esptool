@@ -3,7 +3,7 @@
 Check Error
 ===========
 
-The ``espefuse.py check-error`` command checks eFuse errors. It triggers several reads to force the eFuse controller to reload eFuses and update status registers. This command can be run after burn operations to make sure that there is not errors.
+The ``espefuse check-error`` command checks eFuse errors. It triggers several reads to force the eFuse controller to reload eFuses and update status registers. This command can be run after burn operations to make sure that there is not errors.
 
 Optional argument:
 
@@ -13,7 +13,7 @@ The summary log below shows an error in BLOCK0.
 
 .. code-block:: none
 
-    > espefuse.py summary
+    > espefuse summary
     ...
     WDT_DELAY_SEL (BLOCK0)[FAIL:1]                     Selects RTC WDT timeout threshold at startup       = False R/W (0b0)
     ...
@@ -31,7 +31,7 @@ Checks the status registers of eFuse blocks and throws an error if there is an e
 
 .. code-block:: none
 
-    > espefuse.py check-error
+    > espefuse check-error
 
     Error(s) in BLOCK1 [ERRORS:0 FAIL:1]
     Error(s) in BLOCK2 [ERRORS:1 FAIL:1]
@@ -56,7 +56,7 @@ Repairs encoding errors in eFuse blocks, if possible.
 
 .. code-block:: none
 
-    > espefuse.py check-error --recovery
+    > espefuse check-error --recovery
 
     Error(s) in BLOCK1 [ERRORS:0 FAIL:1]
     Error(s) in BLOCK2 [ERRORS:1 FAIL:1]

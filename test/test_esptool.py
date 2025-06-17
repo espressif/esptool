@@ -1,4 +1,4 @@
-# Unit tests (really integration tests) for esptool.py using the pytest framework
+# Unit tests (really integration tests) for esptool using the pytest framework
 # Uses a device connected to the serial port.
 #
 # RUNNING THIS WILL MESS UP THE DEVICE'S SPI FLASH CONTENTS
@@ -8,7 +8,7 @@
 # Run with a physical connection to a chip:
 #  - `pytest test_esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 115200`
 #
-# where  - --port       - a serial port for esptool.py operation
+# where  - --port       - a serial port for esptool operation
 #        - --chip       - ESP chip name
 #        - --baud       - baud rate
 #        - --with-trace - trace all interactions (True or False)
@@ -73,7 +73,7 @@ import serial
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 
-print("Running esptool.py tests...")
+print("Running esptool tests...")
 
 
 class ESPRFC2217Server(object):
@@ -164,8 +164,8 @@ class EsptoolTestCase:
         This is needed in USB-JTAG/Serial mode to disable the
         RTC watchdog, which causes the port to periodically disappear.
 
-        Returns output from esptool.py as a string if there is any.
-        Raises an exception if esptool.py fails.
+        Returns output from esptool as a string if there is any.
+        Raises an exception if esptool fails.
         """
 
         def run_esptool_process(cmd):
@@ -242,10 +242,10 @@ class EsptoolTestCase:
 
     def run_esptool_error(self, args, baud=None, chip=None):
         """
-        Run esptool.py similar to run_esptool, but expect an error.
+        Run esptool similar to run_esptool, but expect an error.
 
         Verifies the error is an expected error not an unhandled exception,
-        and returns the output from esptool.py as a string.
+        and returns the output from esptool as a string.
         """
         with pytest.raises(subprocess.CalledProcessError) as fail:
             self.run_esptool(args, baud, chip)

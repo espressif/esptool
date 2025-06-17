@@ -2,8 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: ESP8266 Forum
     url: https://bbs.espressif.com/
-    about: For questions about using esptool.py with ESP8266
+    about: For questions about using esptool with ESP8266
   - name: ESP32 Forum
     url: https://esp32.com
-    about: For questions about using esptool.py with ESP32
-
+    about: For questions about using esptool with ESP32

@@ -3,9 +3,9 @@
 Burn Block Data
 ===============
 
-The ``espefuse.py burn-block-data`` command allows writing arbitrary data (non-key data) from a file into an eFuse block, for software use.
+The ``espefuse burn-block-data`` command allows writing arbitrary data (non-key data) from a file into an eFuse block, for software use.
 
-This command is available in ``espefuse.py`` v2.6 and newer.
+This command is available in ``espefuse`` v2.6 and newer.
 
 Positional arguments:
 
@@ -23,7 +23,7 @@ Optional arguments:
 
 .. code-block:: none
 
-    > espefuse.py -p PORT burn-block-data --offset 6 BLOCK3 device_id.bin
+    > espefuse -p PORT burn-block-data --offset 6 BLOCK3 device_id.bin
 
     === Run "burn-block-data" command ===
     [03] BLOCK3               size=32 bytes, offset=06 - > [00 00 00 00 00 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 00 00 00 00 00 00 00 00 00].
@@ -46,11 +46,11 @@ Peculiarities
 
 .. code-block:: none
 
-    > espefuse.py dump
+    > espefuse dump
     ...
     BLOCK3          (                ) [3 ] read_regs: 00000000 01000000 05040302 09080706 0d0c0b0a 00000f0e 00000000 00000000
 
-    > espefuse.py summary
+    > espefuse summary
     ....
     BLOCK3 (BLOCK3):                                   Variable Block 3
     = 00 00 00 00 00 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 00 00 00 00 00 00 00 00 00 00 R/W

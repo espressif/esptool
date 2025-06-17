@@ -78,7 +78,7 @@ If you split the output, you'll find the ``write-flash`` command with a list of 
 Change ``PORT`` to the name of :ref:`actually used serial port <serial-port>` and run the command. A successful flash looks like this::
 
     $ python -m esptool -p /dev/tty.usbserial-0001 -b 460800 --before default-reset --after hard-reset --chip {IDF_TARGET_PATH_NAME} write-flash --flash-mode dio --flash-size detect --flash-freq 40m {IDF_TARGET_BOOTLOADER_OFFSET} build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello_world.bin
-    esptool.py v4.8.1
+    esptool v5.0
     Serial port /dev/tty.usbserial-0001:
     Connecting.........
     Connected to ESP32 on /dev/tty.usbserial-0001:

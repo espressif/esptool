@@ -3,7 +3,7 @@
 Get Custom Mac
 ==============
 
-The ``espefuse.py get-custom-mac`` command prints the Custom MAC Address (``CUSTOM_MAC``).
+The ``espefuse get-custom-mac`` command prints the Custom MAC Address (``CUSTOM_MAC``).
 
 The chips also have a factory MAC address (eFuse name ``MAC``), which is written at the factory. It can not be changed with this tool.
 
@@ -11,7 +11,7 @@ The chips also have a factory MAC address (eFuse name ``MAC``), which is written
 
     .. code-block:: none
 
-        > espefuse.py get-custom-mac
+        > espefuse get-custom-mac
 
         === Run "get-custom-mac" command ===
         Custom MAC Address version 1: 48:63:92:15:72:16 (CRC 0x75 OK)
@@ -22,7 +22,7 @@ The chips also have a factory MAC address (eFuse name ``MAC``), which is written
 
     .. code-block:: none
 
-        > espefuse.py get-custom-mac
+        > espefuse get-custom-mac
 
         === Run "get-custom-mac" command ===
         Custom MAC Address: 48:63:92:15:72:16 (OK)

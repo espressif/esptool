@@ -1125,7 +1125,7 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
         if any(f for f in fields[4:15] if f != 0):
             log.warning(
                 "Some reserved header fields have non-zero values. "
-                "This image may be from a newer esptool.py?"
+                "This image may be from a newer esptool?"
             )
 
 

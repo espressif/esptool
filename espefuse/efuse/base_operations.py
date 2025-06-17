@@ -679,13 +679,13 @@ class BaseCommands:
 
         if format == "default":
             if to_console:
-                # for "espefuse.py dump" cmd
+                # for "espefuse dump" cmd
                 for block in self.efuses.blocks:
                     block.print_block(block.get_bitstring(), "dump", debug=True)
                 return
             else:
                 # for back compatibility to support
-                # "espefuse.py dump --file_name dump.bin"
+                # "espefuse dump --file_name dump.bin"
                 format = "split"
 
         if format == "split":
