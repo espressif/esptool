@@ -1,3 +1,63 @@
+## v4.9.0 (2025-06-19)
+
+### New Features
+
+- **espefuse**: Add eFuses for ESP32-C61 ECO3
+- **espefuse**: Support efuse for ESP32-C5 ECO2 (v1.0)
+- **stub_flasher**: Support for >16MB flash on P4 and >16MB encrypted writes on S3
+- **espefuse**: Updates esp32h4 efuse table and fixes tests
+- **esp32h4**: add ESP32H4 esptool support
+- **esp32h21**: Add Microsoft UF2 family ID
+- print usb mode when output chip info
+- **watchdog_reset**: Add a new watchdog_reset option working even in USB modes
+- **espsecure**: Improves an error message for encrypt_flash_data and decrypt_flash_data
+- **espefuse**: Clean up efuse code for ESP32H2
+- **espefuse**: Support different efuse table versions for ESP32H2
+- **espefuse**: Adds efuses for esp32h2 eco5
+- **esp32h21**: add ESP32H21 esptool support
+- Add new app description segments
+- **esp32-p4**: add support for flasher stub in USB OTG mode
+- **esp32-c5**: Add ECO1 magic number
+- **esp_rfc2217**: Improved the logger message format
+- **espefuse**: Adds 3 bit for PSRAM_CAP efuse field
+- **espefuse**: Adds API for getting block and wafer versions
+- **espefuse**: Adds ADC calibration data for ESP32-C61
+- **espefuse**: Adds ADC calibration data for ESP32-C5
+- **espefuse**: Adds ADC calibration data for ESP32-P4
+- add filtering based on serial number
+- **erase_region**: Enable erasing in ROM bootloader and SDM
+- **hard_reset**: Support custom hard reset sequence configuration
+- Add support for Python 3.13
+
+### Bug Fixes
+
+- Do not use padding for merged IntelHex files
+- **stub_flasher**: Fix USB-Serial/JTAG mode on C5 ECO2 and C61 ECO3
+- **write_flash**: Detect more cases of unresponsive flash, fix failing flash_size check
+- **stub_flasher**: Fix ESP32-C5 ECO2 flashing
+- **espefuse**: Fix output messages for set_flash_voltage
+- **espefuse**: JTAG_SEL_ENABLE has GPIO34 strapping pin for ESP32P4
+- **esp32c5**: fix bootloader address
+- **elf2image**: fix elf2image for ram app when sha256 offset not specified
+- **esp32h4**: Correct ESP32-H4 chip features
+- **esp32h21**: Fix eFuse base address
+- **elf2image**: support --flash-mmu-page-config for all chips
+- **elf2image**: Try to correct MMU page size if not specified
+- **elf2image**: Print correct MMU page size in error message
+- **test**: Expect the correct module name for Python's 3.14 argparse
+- close port when connect fails
+- **write_flash**: Skip flash_size checks if we can't read flash size
+- Hide missing app info based on IDF version
+- add delay after WDT reset for better stability
+- **save_segment**: Adds segment len check the same as bootloader does
+- **chip_type_verification**: Enable in SDM, do not rely on magic numbers
+- Not reading app description for some SoCs
+- **esp32-c6**: Disable RTC WDT reset to prevent port disappearing
+- **esp_rfc2217**: Fixed keyboard interrupt on Windows and added info for command
+- Fix missing newline in output
+- **detect_chip**: Select correct loader before further operations to avoid silent failures
+- **usb_resets**: Fix resetting in USB-OTG and USB-Serial/JTAG modes
+
 ## v4.8.1 (2024-09-25)
 
 ### Bug Fixes
