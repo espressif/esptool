@@ -13,7 +13,7 @@ import string
 import struct
 import sys
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 
 from .config import load_config_file
@@ -274,7 +274,7 @@ class ESPLoader(object):
     IROM_MAP_END = 0x40300000
 
     # The number of bytes in the UART response that signify command status
-    STATUS_BYTES_LENGTH = 2
+    STATUS_BYTES_LENGTH = 4
 
     # Bootloader flashing offset
     BOOTLOADER_FLASH_OFFSET = 0x0
@@ -294,6 +294,10 @@ class ESPLoader(object):
 
     # Number of attempts to write flash data
     WRITE_FLASH_ATTEMPTS = 2
+
+    FLASH_ENCRYPTED_WRITE_ALIGN = 16
+    KEY_PURPOSES: Dict[int, str] = {}
+    EFUSE_MAX_KEY = 5
 
     # Chip uses magic number for chip type autodetection
     USES_MAGIC_VALUE = True
@@ -319,9 +323,9 @@ class ESPLoader(object):
         # Device-and-runtime-specific cache
         self.cache = {
             "flash_id": None,
-            "chip_id": None,
             "uart_no": None,
             "usb_pid": None,
+            "security_info": None,
         }
 
         if isinstance(port, str):
@@ -485,7 +489,8 @@ class ESPLoader(object):
                 if byte(data, 0) != 0 and byte(data, 1) == self.ROM_INVALID_RECV_MSG:
                     # Unsupported read_reg can result in
                     # more than one error response for some reason
-                    self.flush_input()
+                    time.sleep(0.2)  # Wait for input buffer to fill
+                    self.flush_input()  # Flush input buffer of hanging response
                     raise UnsupportedCommandError(self, op)
 
         finally:
@@ -750,17 +755,26 @@ class ESPLoader(object):
         if not detecting:
             from .targets import ROM_LIST
 
-            # Perform a dummy read_reg to check if the chip is in secure download mode
+            # Check if chip supports reading chip ID from the get-security-info command
             try:
-                chip_magic_value = self.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR)
-            except UnsupportedCommandError:
-                self.secure_download_mode = True
-
-            # Check if chip supports reading chip ID from the get_security_info command
-            try:
+                # get_chip_id() raises FatalError if the chip does not have a chip ID
+                # (ESP32-S2)
                 chip_id = self.get_chip_id()
-            except (UnsupportedCommandError, struct.error, FatalError):
+                si = self.get_security_info()
+                self.secure_download_mode = si["parsed_flags"]["SECURE_DOWNLOAD_ENABLE"]
+            except (UnsupportedCommandError, FatalError):
                 chip_id = None
+                # Try to read the chip magic value to verify the chip type
+                # (ESP8266, ESP32, ESP32-S2)
+                try:
+                    chip_magic_value = self.read_reg(
+                        ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
+                    )
+                except UnsupportedCommandError:
+                    # If the chip does not support reading the chip magic value,
+                    # it is ESP32-S2 in SDM
+                    chip_magic_value = None
+                    self.secure_download_mode = True
 
             detected = None
             chip_arg_wrong = False
@@ -784,18 +798,14 @@ class ESPLoader(object):
                     if cls.USES_MAGIC_VALUE and chip_magic_value == cls.MAGIC_VALUE:
                         detected = cls
                         break
-            # If we can't read chip ID and the chip is in SDM (ESP32 or ESP32-S2),
-            # we can't verify
-            elif not chip_id and self.secure_download_mode:
-                if self.CHIP_NAME not in ["ESP32", "ESP32-S2"]:
-                    chip_arg_wrong = True
-                    detected = "ESP32 or ESP32-S2"
-                else:
-                    print(
-                        f"WARNING: Can't verify this chip is {self.CHIP_NAME} "
-                        "because of active Secure Download Mode. "
-                        "Please check it manually."
-                    )
+            # If we can't read chip ID and the chip is in SDM, it is ESP32-S2
+            elif (
+                not chip_id
+                and self.secure_download_mode
+                and self.CHIP_NAME != "ESP32-S2"
+            ):
+                chip_arg_wrong = True
+                detected = "ESP32-S2"
 
             if chip_arg_wrong:
                 if warnings and detected is None:
@@ -1020,28 +1030,74 @@ class ESPLoader(object):
         """Read flash type bit field from eFuse. Returns 0, 1, None (not present)"""
         return None  # not implemented for all chip targets
 
-    def get_security_info(self):
+    def get_security_info(self, cache=True):
+        """
+        Get security information from the ESP device including flags,
+        flash encryption count,
+        key purposes, chip ID, and API version.
+
+        The security info command response format according to the ESP32-S3
+        documentation:
+        - 32 bits flags
+        - 1 byte flash_crypt_cnt
+        - 7x1 byte key_purposes
+        - 32-bit word chip_id (ESP32-S3 and later)
+        - 32-bit word eco_version/api_version (ESP32-S3 and later)
+
+        Returns a dictionary with parsed security information and individual
+        flag status.
+        """
+        if cache and self.cache["security_info"] is not None:
+            return self.cache["security_info"]
+
+        # The following mapping was taken from the ROM code
+        # This mapping is same across all targets in the ROM
+        SECURITY_INFO_FLAG_MAP = {
+            "SECURE_BOOT_EN": (1 << 0),
+            "SECURE_BOOT_AGGRESSIVE_REVOKE": (1 << 1),
+            "SECURE_DOWNLOAD_ENABLE": (1 << 2),
+            "SECURE_BOOT_KEY_REVOKE0": (1 << 3),
+            "SECURE_BOOT_KEY_REVOKE1": (1 << 4),
+            "SECURE_BOOT_KEY_REVOKE2": (1 << 5),
+            "SOFT_DIS_JTAG": (1 << 6),
+            "HARD_DIS_JTAG": (1 << 7),
+            "DIS_USB": (1 << 8),
+            "DIS_DOWNLOAD_DCACHE": (1 << 9),
+            "DIS_DOWNLOAD_ICACHE": (1 << 10),
+        }
+
+        def parse_security_flags(flags_value):
+            """Parse security flags into individual boolean values"""
+            parsed_flags = {}
+            for flag_name, flag_mask in SECURITY_INFO_FLAG_MAP.items():
+                parsed_flags[flag_name] = (flags_value & flag_mask) != 0
+            return parsed_flags
+
         res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
         esp32s2 = True if len(res) == 12 else False
         res = struct.unpack("<IBBBBBBBB" if esp32s2 else "<IBBBBBBBBII", res)
-        return {
+
+        security_info = {
             "flags": res[0],
             "flash_crypt_cnt": res[1],
             "key_purposes": res[2:9],
             "chip_id": None if esp32s2 else res[9],
             "api_version": None if esp32s2 else res[10],
+            "parsed_flags": parse_security_flags(res[0]),
         }
 
+        self.cache["security_info"] = security_info
+        return security_info
+
     def get_chip_id(self):
-        if self.cache["chip_id"] is None:
-            res = self.check_command(
-                "get security info", self.ESP_GET_SECURITY_INFO, b""
+        chip_id = self.get_security_info()["chip_id"]
+        if chip_id is None:
+            raise FatalError(
+                "Security info command does not contain chip ID. "
+                "This is expected for ESP32-S2 which doesn't support chip ID "
+                "in security info."
             )
-            res = struct.unpack(
-                "<IBBBBBBBBI", res[:16]
-            )  # 4b flags, 1b flash_crypt_cnt, 7*1b key_purposes, 4b chip_id
-            self.cache["chip_id"] = res[9]  # 2/4 status bytes invariant
-        return self.cache["chip_id"]
+        return chip_id
 
     def get_uart_no(self):
         """
