@@ -56,7 +56,7 @@
         "pytest",
         "pytest-rerunfailures",
         "requests",
-        "commitizen",
+        "czespressif",
     ]
     hsm = ["python-pkcs11"]
     docs = [
@@ -77,6 +77,7 @@
     version = {attr = "esptool.__init__.__version__"}
 
 [tool.commitizen]
+    name = "czespressif"
     version = "4.8.1"
     update_changelog_on_bump = true
     tag_format = "v$version"
@@ -87,19 +88,7 @@
     version_files = [
         "esptool/__init__.py:__version__"
     ]
-    change_type_order = [
-        "BREAKING CHANGE",
-        "New Features",
-        "Bug Fixes",
-        "Code Refactoring",
-        "Performance Improvements"
-    ]
 
-[tool.commitizen.change_type_map]
-    feat = "New Features"
-    fix = "Bug Fixes"
-    refactor = "Code Refactoring"
-    perf = "Performance Improvements"
 
 [tool.codespell]
     skip = '*.bin,*test/images/efuse/*,*docs/en/espefuse/inc/*'
