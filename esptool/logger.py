@@ -242,8 +242,8 @@ class EsptoolLogger(TemplateLogger):
         percent = f"{100 * (cur_iter / float(total_iters)):.1f}"
         message = f"\r{self.ansi_clear}{prefix}[{bar}] {percent:>5}%{suffix} "
         end_char = (
-            "\n" 
-            if not self._smart_features or cur_iter == total_iters 
+            "\n"
+            if not self._smart_features or cur_iter == total_iters
             else self.ansi_line_up_pos1
         )
         self.print(message, end=end_char, flush=True)
