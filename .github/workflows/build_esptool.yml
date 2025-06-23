@@ -42,6 +42,14 @@ jobs:
             chmod -R a+rwx /home/runner/work/esptool
             su builder <<EOF
             export PATH=\$PATH:/home/builder/.local/bin
+
+            # Patch version for dev releases
+            if [[ "${{ github.ref_name }}" == *"dev"* ]]; then
+              echo "Patching version for dev release: ${{ github.ref_name }}"
+              python3.11 ci/patch_dev_release.py --version ${{ github.ref_name }} esptool/__init__.py
+              git diff
+            fi
+
             # Install dependencies
             python3.11 -m pip install pyinstaller==6.11.1
             python3.11 -m pip install --user -e .
@@ -108,6 +116,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller==6.11.1
           pip install --user -e .
+      - name: Patch version for dev releases
+        if: contains(github.ref_name, 'dev')
+        run: |
+          echo "Patching version for dev release: ${{ github.ref_name }}"
+          python ci/patch_dev_release.py --version ${{ github.ref_name }} esptool/__init__.py
+          git diff
       - name: Build with PyInstaller
         run: |
           pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.STUBS_DIR }}1/*.json${{ matrix.SEPARATOR }}${{ env.STUBS_DIR }}1/" --add-data="${{ env.STUBS_DIR }}2/*.json${{ matrix.SEPARATOR }}${{ env.STUBS_DIR }}2/" esptool.py
