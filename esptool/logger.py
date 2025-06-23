@@ -240,11 +240,13 @@ class EsptoolLogger(TemplateLogger):
             bar = f"{'=' * (filled - 1)}>{' ' * (bar_length - filled)}"
 
         percent = f"{100 * (cur_iter / float(total_iters)):.1f}"
-        self.print(
-            f"\r{self.ansi_clear}{prefix}[{bar}] {percent:>5}%{suffix} ",
-            end="\n" if not self._smart_features or cur_iter == total_iters
-            else f"{self.ansi_line_up_pos1}", flush=True,
+        message = f"\r{self.ansi_clear}{prefix}[{bar}] {percent:>5}%{suffix} "
+        end_char = (
+            "\n" 
+            if not self._smart_features or cur_iter == total_iters 
+            else self.ansi_line_up_pos1
         )
+        self.print(message, end=end_char, flush=True)
 
     def set_logger(self, new_logger):
         self.__class__ = new_logger.__class__
