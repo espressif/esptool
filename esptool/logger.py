@@ -73,6 +73,7 @@ class EsptoolLogger(TemplateLogger):
     ansi_clear: str = ""
     ansi_line_up: str = ""
     ansi_line_clear: str = ""
+    ansi_line_up_pos1: str = ""
 
     _stage_active: bool = False
     _newline_count: int = 0
@@ -115,7 +116,7 @@ class EsptoolLogger(TemplateLogger):
 
             # Determine if colors should be enabled
             cls.instance._smart_features = (
-                is_tty and term_supports_color and not no_color
+                is_tty or term_supports_color and not no_color
             )
             # Handle Windows specifically
             if sys.platform == "win32" and cls.instance._smart_features:
@@ -134,6 +135,7 @@ class EsptoolLogger(TemplateLogger):
             cls.instance.ansi_clear = "\033[K"
             cls.instance.ansi_line_up = "\033[1A"
             cls.instance.ansi_line_clear = "\x1b[2K"
+            cls.instance.ansi_line_up_pos1 = "\033[F"
         else:
             cls.instance.ansi_red = ""
             cls.instance.ansi_yellow = ""
@@ -142,6 +144,7 @@ class EsptoolLogger(TemplateLogger):
             cls.instance.ansi_clear = ""
             cls.instance.ansi_line_up = ""
             cls.instance.ansi_line_clear = ""
+            cls.instance.ansi_line_up_pos1 = ""
 
     def print(self, *args, **kwargs):
         """
@@ -239,7 +242,7 @@ class EsptoolLogger(TemplateLogger):
         percent = f"{100 * (cur_iter / float(total_iters)):.1f}"
         self.print(
             f"\r{self.ansi_clear}{prefix}[{bar}] {percent:>5}%{suffix} ",
-            end="\n" if not self._smart_features or cur_iter == total_iters else "",
+            end="\n" if not self._smart_features or cur_iter == total_iters else f"{self.ansi_line_up_pos1}",
             flush=True,
         )
 
