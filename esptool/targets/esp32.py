@@ -26,9 +26,6 @@ class ESP32ROM(ESPLoader):
     DROM_MAP_START = 0x3F400000
     DROM_MAP_END = 0x3F800000
 
-    # ESP32 uses a 4 byte status reply
-    STATUS_BYTES_LENGTH = 4
-
     SPI_REG_BASE = 0x3FF42000
     SPI_USR_OFFS = 0x1C
     SPI_USR1_OFFS = 0x20
@@ -400,6 +397,7 @@ class ESP32ROM(ESPLoader):
                     "read flash block",
                     self.ESP_READ_FLASH_SLOW,
                     struct.pack("<II", offset + len(data), block_len),
+                    resp_data_len=BLOCK_LEN,
                 )
             except FatalError:
                 print(
@@ -456,7 +454,6 @@ class ESP32StubLoader(ESP32ROM):
     """Access class for ESP32 stub loader, runs on top of ROM."""
 
     FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
-    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
     IS_STUB = True
 
     def __init__(self, rom_loader):

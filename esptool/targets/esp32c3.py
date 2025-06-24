@@ -281,7 +281,6 @@ class ESP32C3StubLoader(ESP32C3ROM):
     """
 
     FLASH_WRITE_SIZE = 0x4000  # matches MAX_WRITE_BLOCK in stub_loader.c
-    STATUS_BYTES_LENGTH = 2  # same as ESP8266, different to ESP32 ROM
     IS_STUB = True
 
     def __init__(self, rom_loader):

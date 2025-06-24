@@ -1382,7 +1382,7 @@ def write_flash_status(esp, args):
     print(("After flash status:   " + fmt) % esp.read_status(args.bytes))
 
 
-def get_security_info(esp: ESPLoader) -> None:
+def get_security_info(esp, args):
     """
     Read and display security-related information about the ESP device.
 
@@ -1392,6 +1392,7 @@ def get_security_info(esp: ESPLoader) -> None:
     si = esp.get_security_info()
     parsed_flags = si["parsed_flags"]
 
+    print()
     title = "Security Information:"
     print(title)
     print("=" * len(title))

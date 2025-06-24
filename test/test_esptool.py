@@ -1023,19 +1023,14 @@ class TestStubReuse(EsptoolTestCase):
         )  # do sync before (without reset it talks to the flasher stub)
         assert "Manufacturer:" in res
 
-    @pytest.mark.skipif(arg_chip != "esp8266", reason="ESP8266 only")
     def test_stub_reuse_without_synchronization(self):
         """
         Keep the flasher stub running and reuse it the next time
         without synchronization.
-
-        Synchronization is necessary for chips where the ROM bootloader has different
-        status length in comparison to the flasher stub.
-        Therefore, this is ESP8266 only test.
         """
         res = self.run_esptool("--after no_reset_stub flash_id")
         assert "Manufacturer:" in res
-        res = self.run_esptool("--before no_reset_no_sync flash_id")
+        res = self.run_esptool("--before no_reset_no_sync flash_id", preload=False)
         assert "Manufacturer:" in res
 
 

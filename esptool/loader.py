@@ -273,9 +273,6 @@ class ESPLoader(object):
     IROM_MAP_START = 0x40200000
     IROM_MAP_END = 0x40300000
 
-    # The number of bytes in the UART response that signify command status
-    STATUS_BYTES_LENGTH = 4
-
     # Bootloader flashing offset
     BOOTLOADER_FLASH_OFFSET = 0x0
 
@@ -500,7 +497,13 @@ class ESPLoader(object):
         raise FatalError("Response doesn't match request")
 
     def check_command(
-        self, op_description, op=None, data=b"", chk=0, timeout=DEFAULT_TIMEOUT
+        self,
+        op_description,
+        op=None,
+        data=b"",
+        chk=0,
+        resp_data_len=0,
+        timeout=DEFAULT_TIMEOUT,
     ):
         """
         Execute a command with 'command', check the result code and throw an appropriate
@@ -508,28 +511,40 @@ class ESPLoader(object):
 
         Returns the "result" of a successful command.
         """
+
+        # The status bytes are first two bytes after the expected response data,
+        # ROM bootloaders of the chips (except ESP8266) return another 2 bytes,
+        # which are reserved for future use, these are ignored here.
+        STATUS_BYTES_LENGTH = 2
+
+        # Execute the command and get the result
         val, data = self.command(op, data, chk, timeout=timeout)
 
-        # things are a bit weird here, bear with us
+        # Check if we have enough data,
+        # including the expected response data and status bytes
+        if len(data) < resp_data_len + STATUS_BYTES_LENGTH:
+            # If we don't have enough data, check the first 2 bytes as status
+            status_bytes = data[0:2]
+            # Only care if the first byte is non-zero.
+            # If it is, the second byte is a reason.
+            if status_bytes[0] != 0:
+                raise FatalError.WithResult(f"Failed to {op_description}", status_bytes)
+            else:
+                raise FatalError(
+                    f"Failed to {op_description}. "
+                    f"Only got {len(data)} byte status response."
+                )
+        # The status bytes are positioned after the expected response data
+        # (first two bytes after resp_data_len are the status bytes)
+        status_bytes = data[resp_data_len : resp_data_len + STATUS_BYTES_LENGTH]
+        # Only care if the first byte is non-zero.
+        # If it is, the second byte is a reason.
+        if status_bytes[0] != 0:
+            raise FatalError.WithResult(f"Failed to {op_description}", status_bytes)
 
-        # the status bytes are the last 2/4 bytes in the data (depending on chip)
-        if len(data) < self.STATUS_BYTES_LENGTH:
-            raise FatalError(
-                "Failed to %s. Only got %d byte status response."
-                % (op_description, len(data))
-            )
-        status_bytes = data[-self.STATUS_BYTES_LENGTH :]
-        # only care if the first one is non-zero. If it is, the second byte is a reason.
-        if byte(status_bytes, 0) != 0:
-            raise FatalError.WithResult("Failed to %s" % op_description, status_bytes)
-
-        # if we had more data than just the status bytes, return it as the result
-        # (this is used by the md5sum command, maybe other commands?)
-        if len(data) > self.STATUS_BYTES_LENGTH:
-            return data[: -self.STATUS_BYTES_LENGTH]
+        if resp_data_len > 0:
+            return data[:resp_data_len]
         else:
-            # otherwise, just return the 'val' field which comes from the reply header
-            # (this is used by read_reg)
             return val
 
     def flush_input(self):
@@ -838,17 +853,10 @@ class ESPLoader(object):
 
     def read_reg(self, addr, timeout=DEFAULT_TIMEOUT):
         """Read memory address in target"""
-        # we don't call check_command here because read_reg() function is called
-        # when detecting chip type, and the way we check for success
-        # (STATUS_BYTES_LENGTH) is different for different chip types (!)
-        val, data = self.command(
-            self.ESP_READ_REG, struct.pack("<I", addr), timeout=timeout
+        command = struct.pack("<I", addr)
+        return self.check_command(
+            "read target memory", self.ESP_READ_REG, command, timeout=timeout
         )
-        if byte(data, 0) != 0:
-            raise FatalError.WithResult(
-                "Failed to read register address %08x" % addr, data
-            )
-        return val
 
     def write_reg(self, addr, value, mask=0xFFFFFFFF, delay_us=0, delay_after_us=0):
         """Write to memory address in target"""
@@ -1073,9 +1081,25 @@ class ESPLoader(object):
                 parsed_flags[flag_name] = (flags_value & flag_mask) != 0
             return parsed_flags
 
-        res = self.check_command("get security info", self.ESP_GET_SECURITY_INFO, b"")
-        esp32s2 = True if len(res) == 12 else False
-        res = struct.unpack("<IBBBBBBBB" if esp32s2 else "<IBBBBBBBBII", res)
+        # Try with 20 bytes first (most chips), fall back to 12 bytes (ESP32-S2)
+        try:
+            res = self.check_command(
+                "get security info",
+                self.ESP_GET_SECURITY_INFO,
+                b"",
+                resp_data_len=20,
+            )
+            res = struct.unpack("<IBBBBBBBBII", res)
+            esp32s2 = False
+        except FatalError:
+            res = self.check_command(
+                "get security info",
+                self.ESP_GET_SECURITY_INFO,
+                b"",
+                resp_data_len=12,
+            )
+            res = struct.unpack("<IBBBBBBBB", res)
+            esp32s2 = True
 
         security_info = {
             "flags": res[0],
@@ -1271,20 +1295,21 @@ class ESPLoader(object):
     def flash_md5sum(self, addr, size):
         # the MD5 command returns additional bytes in the standard
         # command reply slot
+        RESP_DATA_LEN = 32
+        RESP_DATA_LEN_STUB = 16
         timeout = timeout_per_mb(MD5_TIMEOUT_PER_MB, size)
         res = self.check_command(
             "calculate md5sum",
             self.ESP_SPI_FLASH_MD5,
             struct.pack("<IIII", addr, size, 0, 0),
+            resp_data_len=RESP_DATA_LEN_STUB if self.IS_STUB else RESP_DATA_LEN,
             timeout=timeout,
         )
 
-        if len(res) == 32:
+        if not self.IS_STUB:
             return res.decode("utf-8")  # already hex formatted
-        elif len(res) == 16:
-            return hexify(res).lower()
         else:
-            raise FatalError("MD5Sum command returned unexpected result: %r" % res)
+            return hexify(res).lower()
 
     @stub_and_esp32_function_only
     def change_baud(self, baud):
