@@ -59,3 +59,7 @@ conditional_include_dict = {
 project_slug = "esptool"
 
 versions_url = "./_static/esptool_versions.js"
+
+
+def conf_setup(app, config):
+    config.html_baseurl = f"https://docs.espressif.com/projects/esptool/{config.language}/stable/{config.idf_target}/"

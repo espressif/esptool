@@ -1,6 +1,13 @@
 Esptool Documentation
 =====================
 
+.. important::
+
+    This document describes how to use ``esptool`` with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left corner.
+
+    Please note that this documentation is for the version of ``esptool`` v5. You can find your version in the command output or by running ``esptool version``.
+    For the version of ``esptool`` v4 please refer to the `v4 documentation <https://docs.espressif.com/projects/esptool/en/release-v4/esp32/>`_ or pick from the dropdown in the upper left corner.
+
 This is the documentation for ``esptool`` - a Python-based, open-source, platform-independent utility for flashing, provisioning, and interacting with Espressif SoCs. Esptool communicates with the ROM bootloader (or the flasher stub) in `Espressif SoCs <https://www.espressif.com/en/products/hardware/socs>`_.
 
 The flasher stub is a small program included with esptool that replaces the original ROM bootloader in the chip to fix some of its limitations and bugs. See :ref:`stub` for more details.
@@ -15,7 +22,6 @@ The flasher stub is a small program included with esptool that replaces the orig
 
 ``esptool`` can be used both as a command-line tool and as a Python library. The command-line is the most common way to use the tool, and is the primary focus of this documentation. To use it as a library, see the :ref:`scripting <scripting>` section.
 
-This document describes using ``esptool`` with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left.
 
 Quick Start
 -----------
