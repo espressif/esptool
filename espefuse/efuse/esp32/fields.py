@@ -9,6 +9,7 @@ import struct
 import time
 
 import esptool
+from esptool import log
 
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from .. import base_fields
@@ -169,8 +170,8 @@ class EspEfuses(base_fields.EspEfusesBase):
             self.coding_scheme = coding_scheme
 
     def print_status_regs(self):
-        print("")
-        print(
+        log.print("")
+        log.print(
             "{:27} 0x{:08x}".format(
                 "EFUSE_REG_DEC_STATUS", self.read_reg(self.REGS.EFUSE_REG_DEC_STATUS)
             )
@@ -207,7 +208,7 @@ class EspEfuses(base_fields.EspEfusesBase):
             if self.read_reg(self.REGS.EFUSE_REG_CMD) == 0:
                 return
         raise esptool.FatalError(
-            "Timed out waiting for Efuse controller command to complete"
+            "Timed out waiting for eFuse controller command to complete"
         )
 
     def efuse_read(self):
@@ -229,9 +230,9 @@ class EspEfuses(base_fields.EspEfusesBase):
                 block.num_errors = 0
                 block.fail = err != 0
             if not silent and block.fail:
-                print(
-                    "Error(s) in BLOCK%d [ERRORS:%d FAIL:%d]"
-                    % (block.id, block.num_errors, block.fail)
+                log.print(
+                    f"Error(s) in BLOCK{block.id} "
+                    f"[ERRORS:{block.num_errors} FAIL:{block.fail}]"
                 )
         if (self.debug or err) and not silent:
             self.print_status_regs()
@@ -332,10 +333,8 @@ class EfuseMacField(EfuseField):
 
     def save(self, new_value):
         def print_field(e, new_value):
-            print(
-                "    - '{}' ({}) {} -> {}".format(
-                    e.name, e.description, e.get_bitstring(), new_value
-                )
+            log.print(
+                f"    - '{e.name}' ({e.description}) {e.get_bitstring()} -> {new_value}"
             )
 
         if self.name == "CUSTOM_MAC":
@@ -352,9 +351,7 @@ class EfuseMacField(EfuseField):
                 if mac_version.get() != 1:
                     if not self.parent.force_write_always:
                         raise esptool.FatalError(
-                            "MAC_VERSION = {}, should be 0 or 1.".format(
-                                mac_version.get()
-                            )
+                            f"MAC_VERSION = {mac_version.get()}, should be 0 or 1."
                         )
 
             bitarray_mac = self.convert_to_bitstring(new_value)
@@ -402,7 +399,7 @@ class EfusePkg(EfuseField):
         return (hi_bits << 3) + lo_bits
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning %s is not supported" % self.name)
+        raise esptool.FatalError(f"Burning {self.name} is not supported.")
 
 
 class EfuseSpiPinField(EfuseField):
@@ -424,8 +421,7 @@ class EfuseSpiPinField(EfuseField):
             )
         elif new_value_int > 33:
             raise esptool.FatalError(
-                "IO pin %d cannot be set for SPI flash. 0-29, 32 & 33 only."
-                % new_value_int
+                f"IO pin {new_value_int} cannot be set for SPI flash. 0-29, 32 & 33 only."
             )
         elif new_value_int in [32, 33]:
             return str(new_value_int - 2)

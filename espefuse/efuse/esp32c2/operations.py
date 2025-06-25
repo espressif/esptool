@@ -10,6 +10,7 @@ import rich_click as click
 
 import espsecure
 import esptool
+from esptool.logger import log
 
 from . import fields
 from .mem_definition import EfuseDefineBlocks
@@ -93,19 +94,19 @@ class ESP32C2Commands(BaseCommands):
         if not self.efuses.burn_all(check_batch_mode=True):
             return
         self.get_custom_mac()
-        print("Successful")
+        log.print("Successful.")
 
     def adc_info(self):
-        print("Block version:", self.efuses.get_block_version())
+        log.print("Block version:", self.efuses.get_block_version())
         if self.efuses.get_block_version() >= 1:
             # fmt: off
-            print(f"Temperature Sensor Calibration = {self.efuses['TEMP_CALIB'].get()}C")
-            print("ADC OCode        = ", self.efuses["OCODE"].get())
-            print("ADC1:")
-            print("INIT_CODE_ATTEN0 = ", self.efuses["ADC1_INIT_CODE_ATTEN0"].get())
-            print("INIT_CODE_ATTEN3 = ", self.efuses["ADC1_INIT_CODE_ATTEN3"].get())
-            print("CAL_VOL_ATTEN0   = ", self.efuses["ADC1_CAL_VOL_ATTEN0"].get())
-            print("CAL_VOL_ATTEN3   = ", self.efuses["ADC1_CAL_VOL_ATTEN3"].get())
+            log.print(f"Temperature Sensor Calibration = {self.efuses['TEMP_CALIB'].get()}C")
+            log.print("ADC OCode        = ", self.efuses["OCODE"].get())
+            log.print("ADC1:")
+            log.print("INIT_CODE_ATTEN0 = ", self.efuses["ADC1_INIT_CODE_ATTEN0"].get())
+            log.print("INIT_CODE_ATTEN3 = ", self.efuses["ADC1_INIT_CODE_ATTEN3"].get())
+            log.print("CAL_VOL_ATTEN0   = ", self.efuses["ADC1_CAL_VOL_ATTEN0"].get())
+            log.print("CAL_VOL_ATTEN3   = ", self.efuses["ADC1_CAL_VOL_ATTEN3"].get())
             # fmt: on
 
     def burn_key(
@@ -173,7 +174,7 @@ class ESP32C2Commands(BaseCommands):
                     f"These keypurposes are incompatible {list(keypurpose_list)}"
                 )
 
-        print("Burn keys to blocks:")
+        log.print("Burn keys to blocks:")
         for datafile, keypurpose in zip(datafile_list, keypurpose_list):
             if isinstance(datafile, IOBase):
                 data = datafile.read()
@@ -186,7 +187,7 @@ class ESP32C2Commands(BaseCommands):
             elif keypurpose == "SECURE_BOOT_DIGEST":
                 efuse = self.efuses["BLOCK_KEY0_HI_128"]
                 if len(data) == 32:
-                    print(
+                    log.print(
                         "\tProgramming only left-most 128-bits from SHA256 hash of "
                         "public key to highest 128-bits of BLOCK KEY0"
                     )
@@ -194,8 +195,7 @@ class ESP32C2Commands(BaseCommands):
                 elif len(data) != efuse.bit_len // 8:
                     raise esptool.FatalError(
                         "Wrong length of this file for SECURE_BOOT_DIGEST. "
-                        "Got %d (expected %d or %d)"
-                        % (len(data), 32, efuse.bit_len // 8)
+                        f"Got {len(data)} (expected 32 or {efuse.bit_len // 8})"
                     )
                 assert len(data) == 16, "Only 16 bytes expected"
             else:
@@ -203,12 +203,12 @@ class ESP32C2Commands(BaseCommands):
 
             num_bytes = efuse.bit_len // 8
 
-            print(" - %s" % (efuse.name), end=" ")
+            log.print(f" - {efuse.name}", end=" ")
             revers_msg = None
             if keypurpose.startswith("XTS_AES_"):
-                revers_msg = "\tReversing byte order for AES-XTS hardware peripheral"
+                revers_msg = "\tReversing byte order for AES-XTS hardware peripheral..."
                 data = data[::-1]
-            print(
+            log.print(
                 "-> [{}]".format(
                     util.hexify(data, " ")
                     if show_sensitive_info
@@ -216,14 +216,12 @@ class ESP32C2Commands(BaseCommands):
                 )
             )
             if revers_msg:
-                print(revers_msg)
+                log.print(revers_msg)
             if len(data) != num_bytes:
                 raise esptool.FatalError(
-                    "Incorrect key file size %d. "
-                    "Key file must be %d bytes (%d bits) of raw binary key data."
-                    % (len(data), num_bytes, num_bytes * 8)
+                    f"Incorrect key file size {len(data)}. Key file must be {num_bytes}"
+                    f" bytes ({num_bytes * 8} bits) of raw binary key data."
                 )
-
             if keypurpose.startswith("XTS_AES_"):
                 read_protect = not no_read_protect
             else:
@@ -236,28 +234,28 @@ class ESP32C2Commands(BaseCommands):
 
             if keypurpose == "XTS_AES_128_KEY":
                 if self.efuses["XTS_KEY_LENGTH_256"].get():
-                    print("\t'XTS_KEY_LENGTH_256' is already '1'")
+                    log.print("\t'XTS_KEY_LENGTH_256' is already '1'")
                 else:
-                    print("\tXTS_KEY_LENGTH_256 -> 1")
+                    log.print("\tXTS_KEY_LENGTH_256 -> 1")
                     self.efuses["XTS_KEY_LENGTH_256"].save(1)
 
             if read_protect:
-                print("\tDisabling read to key block")
+                log.print("\tDisabling read to key block...")
                 efuse.disable_read()
 
             if write_protect:
-                print("\tDisabling write to key block")
+                log.print("\tDisabling write to key block...")
                 efuse.disable_write()
-            print("")
+            log.print("")
 
         if not write_protect:
-            print("Keys will remain writeable (due to --no-write-protect)")
+            log.print("Keys will remain writeable (due to --no-write-protect).")
         if no_read_protect:
-            print("Keys will remain readable (due to --no-read-protect)")
+            log.print("Keys will remain readable (due to --no-read-protect).")
 
         if not self.efuses.burn_all(check_batch_mode=True):
             return
-        print("Successful")
+        log.print("Successful.")
 
     def burn_key_digest(
         self,

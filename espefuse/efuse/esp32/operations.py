@@ -10,6 +10,7 @@ import rich_click as click
 import espsecure
 
 import esptool
+from esptool.logger import log
 
 from .mem_definition import EfuseDefineBlocks
 from .. import util
@@ -51,7 +52,7 @@ class ESP32Commands(BaseCommands):
         @click.option(
             "--no-protect-key",
             is_flag=True,
-            help="Disable default read- and write-protecting of the key. "
+            help="Disable the default read- and write-protection of the key. "
             "If this option is not set, once the key is flashed "
             "it cannot be read back or changed.",
         )
@@ -74,7 +75,7 @@ class ESP32Commands(BaseCommands):
         @click.option(
             "--no-protect-key",
             is_flag=True,
-            help="Disable default write-protecting of the key digest. "
+            help="Disable the default write-protection of the key digest. "
             "If this option is not set, once the key is flashed it cannot be changed.",
         )
         @add_force_write_always
@@ -101,11 +102,11 @@ class ESP32Commands(BaseCommands):
     def get_custom_mac(self):
         version = self.efuses["MAC_VERSION"].get()
         if version > 0:
-            print(
+            log.print(
                 f"Custom MAC Address version {version}: {self.efuses['CUSTOM_MAC'].get()}"
             )
         else:
-            print("Custom MAC Address is not set in the device.")
+            log.print("Custom MAC Address is not set in the device.")
 
     def set_flash_voltage(self, voltage: str):
         sdio_force = self.efuses["XPD_SDIO_FORCE"]
@@ -115,32 +116,32 @@ class ESP32Commands(BaseCommands):
         # check efuses aren't burned in a way which makes this impossible
         if voltage == "OFF" and sdio_reg.get() != 0:
             raise esptool.FatalError(
-                "Can't set flash regulator to OFF as XPD_SDIO_REG eFuse is already burned"
+                "Can't set flash regulator to OFF as XPD_SDIO_REG eFuse is already burned."
             )
 
         if voltage == "1.8V" and sdio_tieh.get() != 0:
             raise esptool.FatalError(
-                "Can't set regulator to 1.8V is XPD_SDIO_TIEH eFuse is already burned"
+                "Can't set regulator to 1.8V is XPD_SDIO_TIEH eFuse is already burned."
             )
 
         if voltage == "OFF":
-            print(
+            log.print(
                 "Disable internal flash voltage regulator (VDD_SDIO). "
                 "SPI flash will need to be powered from an external source.\n"
                 "The following eFuse is burned: XPD_SDIO_FORCE.\n"
                 "It is possible to later re-enable the internal regulator"
                 f"{'to 3.3V' if sdio_tieh.get() != 0 else 'to 1.8V or 3.3V'}"
-                "by burning an additional eFuse"
+                "by burning an additional eFuse."
             )
         elif voltage == "1.8V":
-            print(
+            log.print(
                 "Set internal flash voltage regulator (VDD_SDIO) to 1.8V.\n"
                 "The following eFuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG.\n"
                 "It is possible to later increase the voltage to 3.3V (permanently) "
-                "by burning additional eFuse XPD_SDIO_TIEH"
+                "by burning additional eFuse XPD_SDIO_TIEH."
             )
         elif voltage == "3.3V":
-            print(
+            log.print(
                 "Enable internal flash voltage regulator (VDD_SDIO) to 3.3V.\n"
                 "The following eFuses are burned: XPD_SDIO_FORCE, XPD_SDIO_REG, XPD_SDIO_TIEH."
             )
@@ -150,10 +151,10 @@ class ESP32Commands(BaseCommands):
             sdio_reg.save(1)  # Enable internal regulator
         if voltage == "3.3V":
             sdio_tieh.save(1)
-        print("VDD_SDIO setting complete.")
+        log.print("VDD_SDIO setting complete.")
         if not self.efuses.burn_all(check_batch_mode=True):
             return
-        print("Successful")
+        log.print("Successful.")
 
     def adc_info(self):
         adc_vref = self.efuses["ADC_VREF"]
@@ -161,16 +162,24 @@ class ESP32Commands(BaseCommands):
 
         vref_raw = adc_vref.get_raw()
         if vref_raw == 0:
-            print("ADC VRef calibration: None (1100mV nominal)")
+            log.print("ADC VRef calibration: None (1100mV nominal)")
         else:
-            print(f"ADC VRef calibration: {adc_vref.get()}mV")
+            log.print(f"ADC VRef calibration: {adc_vref.get()}mV")
 
         if blk3_reserve.get():
-            print("ADC readings stored in eFuse BLOCK3:")
-            print(f"    ADC1 Low reading  (150mV): {self.efuses['ADC1_TP_LOW'].get()}")
-            print(f"    ADC1 High reading (850mV): {self.efuses['ADC1_TP_HIGH'].get()}")
-            print(f"    ADC2 Low reading  (150mV): {self.efuses['ADC2_TP_LOW'].get()}")
-            print(f"    ADC2 High reading (850mV): {self.efuses['ADC2_TP_HIGH'].get()}")
+            log.print("ADC readings stored in eFuse BLOCK3:")
+            log.print(
+                f"    ADC1 Low reading  (150mV): {self.efuses['ADC1_TP_LOW'].get()}"
+            )
+            log.print(
+                f"    ADC1 High reading (850mV): {self.efuses['ADC1_TP_HIGH'].get()}"
+            )
+            log.print(
+                f"    ADC2 Low reading  (150mV): {self.efuses['ADC2_TP_LOW'].get()}"
+            )
+            log.print(
+                f"    ADC2 High reading (850mV): {self.efuses['ADC2_TP_HIGH'].get()}"
+            )
 
     def burn_key(
         self,
@@ -198,27 +207,27 @@ class ESP32Commands(BaseCommands):
         util.check_duplicate_name_in_list(block_name_list)
         if len(block_name_list) != len(datafile_list):
             raise esptool.FatalError(
-                "The number of blocks (%d) and datafile (%d) should be the same."
-                % (len(block_name_list), len(datafile_list))
+                f"The number of blocks ({len(block_name_list)}) "
+                f"and datafile ({len(datafile_list)}) should be the same."
             )
 
-        print("Burn keys to blocks:")
+        log.print("Burn keys to blocks:")
         for block_name, datafile in zip(block_name_list, datafile_list):
             efuse = None
             for blk in self.efuses.blocks:
                 if block_name == blk.name or block_name in blk.alias:
                     efuse = self.efuses[blk.name]
             if efuse is None:
-                raise esptool.FatalError("Unknown block name - %s" % (block_name))
+                raise esptool.FatalError(f"Unknown block name - {block_name}.")
             num_bytes = efuse.bit_len // 8
             data = datafile.read()
             datafile.close()
             revers_msg = None
             if block_name in ("flash_encryption", "secure_boot_v1"):
-                revers_msg = "\tReversing the byte order"
+                revers_msg = "\tReversing the byte order..."
                 data = data[::-1]
-            print(" - %s" % (efuse.name), end=" ")
-            print(
+            log.print(f" - {efuse.name}", end=" ")
+            log.print(
                 "-> [{}]".format(
                     util.hexify(data, " ")
                     if show_sensitive_info
@@ -226,44 +235,43 @@ class ESP32Commands(BaseCommands):
                 )
             )
             if revers_msg:
-                print(revers_msg)
+                log.print(revers_msg)
             if len(data) != num_bytes:
                 raise esptool.FatalError(
-                    "Incorrect key file size %d. "
-                    "Key file must be %d bytes (%d bits) of raw binary key data."
-                    % (len(data), num_bytes, num_bytes * 8)
+                    f"Incorrect key file size {len(data)}. Key file must be {num_bytes}"
+                    f" bytes ({num_bytes * 8} bits) of raw binary key data."
                 )
 
             efuse.save(data)
 
             if block_name in ("flash_encryption", "secure_boot_v1"):
                 if not no_protect_key:
-                    print("\tDisabling read to key block")
+                    log.print("\tDisabling read to key block...")
                     efuse.disable_read()
 
             if not no_protect_key:
-                print("\tDisabling write to key block")
+                log.print("\tDisabling write to key block...")
                 efuse.disable_write()
-            print("")
+            log.print("")
 
         if no_protect_key:
-            print("Key is left unprotected as per --no-protect-key argument.")
+            log.print("Key is left unprotected as per --no-protect-key argument.")
 
         msg = "Burn keys in eFuse blocks.\n"
         if no_protect_key:
             msg += (
                 "The key block will be left readable and writeable "
-                "(due to --no-protect-key)"
+                "(due to --no-protect-key)."
             )
         else:
             msg += (
                 "The key block will be read and write protected "
-                "(no further changes or readback)"
+                "(no further changes or readback)."
             )
-        print(msg, "\n")
+        log.print(msg, "\n")
         if not self.efuses.burn_all(check_batch_mode=True):
             return
-        print("Successful")
+        log.print("Successful.")
 
     def burn_key_digest(
         self,
@@ -296,12 +304,12 @@ class ESP32Commands(BaseCommands):
         num_bytes = efuse.bit_len // 8
         if len(digest) != num_bytes:
             raise esptool.FatalError(
-                "Incorrect digest size %d. "
-                "Digest must be %d bytes (%d bits) of raw binary key data."
-                % (len(digest), num_bytes, num_bytes * 8)
+                f"Incorrect digest size {len(digest)}. "
+                f"Digest must be {num_bytes} bytes "
+                f"({num_bytes * 8} bits) of raw binary key data."
             )
-        print(" - %s" % (efuse.name), end=" ")
-        print(
+        log.print(f" - {efuse.name}", end=" ")
+        log.print(
             "-> [{}]".format(
                 util.hexify(digest, " ")
                 if show_sensitive_info
@@ -311,9 +319,9 @@ class ESP32Commands(BaseCommands):
 
         efuse.save(digest)
         if not no_protect_key:
-            print("Disabling write to eFuse %s..." % (efuse.name))
+            log.print(f"Disabling write to eFuse {efuse.name}...")
             efuse.disable_write()
 
         if not self.efuses.burn_all(check_batch_mode=True):
             return
-        print("Successful")
+        log.print("Successful.")

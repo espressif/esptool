@@ -6,6 +6,7 @@
 
 from io import IOBase
 from typing import BinaryIO
+from esptool.logger import log
 import rich_click as click
 
 import espsecure
@@ -69,7 +70,7 @@ class ESP32H2Commands(BaseCommands):
         @cli.command(
             "burn-key-digest",
             short_help="Parse a RSA public key and burn the digest.",
-            help="Parse a RSA public key and burn the digest to key eFuse block\n\n"
+            help="Parse a RSA public key and burn the digest to key eFuse block.\n\n"
             f"Block is one of: [{', '.join(blocks_for_keys)}]\n\n"
             f"Key purpose is one of: [{', '.join(fields.EfuseKeyPurposeField.DIGEST_KEY_PURPOSES)}]",
         )
@@ -101,25 +102,25 @@ class ESP32H2Commands(BaseCommands):
     ###################################### Commands ######################################
 
     def adc_info(self):
-        print("Block version:", self.efuses.get_block_version())
+        log.print("Block version:", self.efuses.get_block_version())
         if self.efuses.get_block_version() >= 2:
             # fmt: off
-            print(f"Temperature Sensor Calibration = {self.efuses['TEMP_CALIB'].get()}C")
-            print("")
-            print("ADC1:")
-            print("AVE_INITCODE_ATTEN0      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN0"].get())
-            print("AVE_INITCODE_ATTEN1      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN1"].get())
-            print("AVE_INITCODE_ATTEN2      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN2"].get())
-            print("AVE_INITCODE_ATTEN3      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN3"].get())
-            print("HI_DOUT_ATTEN0           = ", self.efuses["ADC1_HI_DOUT_ATTEN0"].get())
-            print("HI_DOUT_ATTEN1           = ", self.efuses["ADC1_HI_DOUT_ATTEN1"].get())
-            print("HI_DOUT_ATTEN2           = ", self.efuses["ADC1_HI_DOUT_ATTEN2"].get())
-            print("HI_DOUT_ATTEN3           = ", self.efuses["ADC1_HI_DOUT_ATTEN3"].get())
-            print("CH0_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH0_ATTEN0_INITCODE_DIFF"].get())
-            print("CH1_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH1_ATTEN0_INITCODE_DIFF"].get())
-            print("CH2_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH2_ATTEN0_INITCODE_DIFF"].get())
-            print("CH3_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH3_ATTEN0_INITCODE_DIFF"].get())
-            print("CH4_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH4_ATTEN0_INITCODE_DIFF"].get())
+            log.print(f"Temperature Sensor Calibration = {self.efuses['TEMP_CALIB'].get()}C")
+            log.print("")
+            log.print("ADC1:")
+            log.print("AVE_INITCODE_ATTEN0      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN0"].get())
+            log.print("AVE_INITCODE_ATTEN1      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN1"].get())
+            log.print("AVE_INITCODE_ATTEN2      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN2"].get())
+            log.print("AVE_INITCODE_ATTEN3      = ", self.efuses["ADC1_AVE_INITCODE_ATTEN3"].get())
+            log.print("HI_DOUT_ATTEN0           = ", self.efuses["ADC1_HI_DOUT_ATTEN0"].get())
+            log.print("HI_DOUT_ATTEN1           = ", self.efuses["ADC1_HI_DOUT_ATTEN1"].get())
+            log.print("HI_DOUT_ATTEN2           = ", self.efuses["ADC1_HI_DOUT_ATTEN2"].get())
+            log.print("HI_DOUT_ATTEN3           = ", self.efuses["ADC1_HI_DOUT_ATTEN3"].get())
+            log.print("CH0_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH0_ATTEN0_INITCODE_DIFF"].get())
+            log.print("CH1_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH1_ATTEN0_INITCODE_DIFF"].get())
+            log.print("CH2_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH2_ATTEN0_INITCODE_DIFF"].get())
+            log.print("CH3_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH3_ATTEN0_INITCODE_DIFF"].get())
+            log.print("CH4_ATTEN0_INITCODE_DIFF = ", self.efuses["ADC1_CH4_ATTEN0_INITCODE_DIFF"].get())
             # fmt: on
 
     def burn_key(
@@ -165,11 +166,12 @@ class ESP32H2Commands(BaseCommands):
             keypurpose_list
         ):
             raise esptool.FatalError(
-                "The number of blocks (%d), datafile (%d) and keypurpose (%d) should be the same."
-                % (len(block_name_list), len(datafile_list), len(keypurpose_list))
+                f"The number of blocks ({len(block_name_list)}), "
+                f"datafile ({len(datafile_list)}) and keypurpose ({len(keypurpose_list)}) "
+                "should be the same."
             )
 
-        print("Burn keys to blocks:")
+        log.print("Burn keys to blocks:")
         for block_name, datafile, keypurpose in zip(
             block_name_list, datafile_list, keypurpose_list
         ):
@@ -178,7 +180,7 @@ class ESP32H2Commands(BaseCommands):
                 if block_name == block.name or block_name in block.alias:
                     efuse = self.efuses[block.name]
             if efuse is None:
-                raise esptool.FatalError("Unknown block name - %s" % (block_name))
+                raise esptool.FatalError(f"Unknown block name - {block_name}.")
             num_bytes = efuse.bit_len // 8
 
             block_num = self.efuses.get_index_block_by_name(block_name)
@@ -197,14 +199,14 @@ class ESP32H2Commands(BaseCommands):
             else:
                 data = datafile
 
-            print(" - %s" % (efuse.name), end=" ")
+            log.print(f" - {efuse.name}", end=" ")
             revers_msg = None
             if self.efuses[block.key_purpose_name].need_reverse(keypurpose):
                 revers_msg = (
-                    f"\tReversing byte order for {keypurpose} hardware peripheral"
+                    f"\tReversing byte order for {keypurpose} hardware peripheral..."
                 )
                 data = data[::-1]
-            print(
+            log.print(
                 "-> [{}]".format(
                     util.hexify(data, " ")
                     if show_sensitive_info
@@ -212,7 +214,7 @@ class ESP32H2Commands(BaseCommands):
                 )
             )
             if revers_msg:
-                print(revers_msg)
+                log.print(revers_msg)
             if len(data) != num_bytes:
                 raise esptool.FatalError(
                     "Incorrect key file size %d. Key file must be %d bytes (%d bits) "
@@ -231,24 +233,19 @@ class ESP32H2Commands(BaseCommands):
             disable_wr_protect_key_purpose = False
             if self.efuses[block.key_purpose_name].get() != keypurpose:
                 if self.efuses[block.key_purpose_name].is_writeable():
-                    print(
-                        "\t'%s': '%s' -> '%s'."
-                        % (
-                            block.key_purpose_name,
-                            self.efuses[block.key_purpose_name].get(),
-                            keypurpose,
-                        )
+                    log.print(
+                        f"\t'{block.key_purpose_name}': "
+                        f"'{self.efuses[block.key_purpose_name].get()}' -> '{keypurpose}'."
                     )
                     self.efuses[block.key_purpose_name].save(keypurpose)
                     disable_wr_protect_key_purpose = True
                 else:
                     raise esptool.FatalError(
-                        "It is not possible to change '%s' to '%s' "
-                        "because write protection bit is set."
-                        % (block.key_purpose_name, keypurpose)
+                        f"It is not possible to change '{block.key_purpose_name}' "
+                        f"to '{keypurpose}' because write protection bit is set."
                     )
             else:
-                print("\t'%s' is already '%s'." % (block.key_purpose_name, keypurpose))
+                log.print(f"\t'{block.key_purpose_name}' is already '{keypurpose}'.")
                 if self.efuses[block.key_purpose_name].is_writeable():
                     disable_wr_protect_key_purpose = True
 
@@ -258,32 +255,32 @@ class ESP32H2Commands(BaseCommands):
                     if self.efuses["ECDSA_FORCE_USE_HARDWARE_K"].get() == 0:
                         # For ECDSA key purpose block permanently enable
                         # the hardware TRNG supplied k mode (most secure mode)
-                        print("\tECDSA_FORCE_USE_HARDWARE_K: 0 -> 1")
+                        log.print("\tECDSA_FORCE_USE_HARDWARE_K: 0 -> 1")
                         self.efuses["ECDSA_FORCE_USE_HARDWARE_K"].save(1)
                     else:
-                        print("\tECDSA_FORCE_USE_HARDWARE_K is already '1'")
+                        log.print("\tECDSA_FORCE_USE_HARDWARE_K is already '1'")
 
             if disable_wr_protect_key_purpose:
-                print("\tDisabling write to '%s'." % block.key_purpose_name)
+                log.print(f"\tDisabling write to '{block.key_purpose_name}'...")
                 self.efuses[block.key_purpose_name].disable_write()
 
             if read_protect:
-                print("\tDisabling read to key block")
+                log.print("\tDisabling read to key block...")
                 efuse.disable_read()
 
             if write_protect:
-                print("\tDisabling write to key block")
+                log.print("\tDisabling write to key block...")
                 efuse.disable_write()
-            print("")
+            log.print("")
 
         if not write_protect:
-            print("Keys will remain writeable (due to --no-write-protect)")
+            log.print("Keys will remain writeable (due to --no-write-protect).")
         if no_read_protect:
-            print("Keys will remain readable (due to --no-read-protect)")
+            log.print("Keys will remain readable (due to --no-read-protect).")
 
         if not self.efuses.burn_all(check_batch_mode=True):
             return
-        print("Successful")
+        log.print("Successful.")
 
     def burn_key_digest(
         self,
@@ -316,13 +313,13 @@ class ESP32H2Commands(BaseCommands):
                 if block_name == block.name or block_name in block.alias:
                     efuse = self.efuses[block.name]
             if efuse is None:
-                raise esptool.FatalError("Unknown block name - %s" % (block_name))
+                raise esptool.FatalError(f"Unknown block name - {block_name}.")
             num_bytes = efuse.bit_len // 8
             digest = espsecure._digest_sbv2_public_key(datafile)
             if len(digest) != num_bytes:
                 raise esptool.FatalError(
-                    "Incorrect digest size %d. Digest must be %d bytes (%d bits) "
-                    "of raw binary key data." % (len(digest), num_bytes, num_bytes * 8)
+                    f"Incorrect digest size {len(digest)}. Digest must be {num_bytes} "
+                    f"bytes ({num_bytes * 8} bits) of raw binary key data."
                 )
             digest_list.append(digest)
 

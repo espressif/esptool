@@ -8,6 +8,7 @@ import time
 
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalError
+from esptool.logger import log
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):
@@ -49,7 +50,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 if self.read_reg(self.REGS.EFUSE_REG_CMD) == 0:
                     return
             raise FatalError(
-                "Timed out waiting for Efuse controller command to complete"
+                "Timed out waiting for eFuse controller command to complete"
             )
 
         self.write_reg(self.REGS.EFUSE_REG_CMD, self.REGS.EFUSE_CMD_WRITE)
@@ -89,7 +90,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             raise FatalError(
                 "Error during a burning process to set the new coding scheme"
             )
-        print("Set coding scheme = %d" % self.read_raw_coding_scheme())
+        log.print(f"Set coding scheme = {self.read_raw_coding_scheme()}")
 
     def get_bitlen_of_block(self, blk, wr=False):
         if blk.id == 0:
@@ -104,9 +105,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 else:
                     return 32 * blk.len * 3 // 4
             else:
-                raise FatalError(
-                    "The {} coding scheme is not supported".format(coding_scheme)
-                )
+                raise FatalError(f"The {coding_scheme} coding scheme is not supported")
 
     def handle_coding_scheme(self, blk, data):
         # it verifies the coding scheme part of data and returns just data
@@ -125,7 +124,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                     xor_res ^= byte_data
                     mul_res += (i + 1) * bin(byte_data).count("1")
                 if xor_res != chunk_data[6] or mul_res != chunk_data[7]:
-                    print(
+                    log.print(
                         "xor_res ",
                         xor_res,
                         chunk_data[6],
