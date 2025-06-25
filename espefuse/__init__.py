@@ -62,6 +62,7 @@ __all__ = [
     "--port",
     "-p",
     envvar="ESPTOOL_PORT",
+    type=click.Path(),
     help="Serial port device.",
 )
 @click.option(

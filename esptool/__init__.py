@@ -311,6 +311,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
 @click.option(
     "--port",
     "-p",
+    type=click.Path(),
     default=os.environ.get("ESPTOOL_PORT", None),
     help="Serial port device.",
 )
