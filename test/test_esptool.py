@@ -1397,6 +1397,82 @@ class TestAutoDetect(EsptoolTestCase):
         self._check_output(output)
 
 
+class TestChipDetectionValidation(EsptoolTestCase):
+    """Test the chip detection validation logic in ESPLoader.connect() method.
+
+    This tests the section that validates if the connected chip matches the
+    specified chip argument, covering scenarios with:
+    - Chips that use chip ID detection (ESP32-S3 and later)
+    - Chips that use magic value detection (ESP8266, ESP32, ESP32-S2)
+    - ESP32-S2 in Secure Download Mode (SDM)
+    - Correct chip argument vs wrong chip argument detection
+    """
+
+    def _find_different_chip(self, chip_name, detection_method):
+        """Find a different chip from the specified chip name
+        based on the detection method, except ESP32-S2.
+
+        Args:
+            chip_name: The name of the chip to find a different chip for.
+            detection_method: The detection method to use.
+
+        Returns:
+            The name of the different chip.
+        """
+        for chip in esptool.CHIP_DEFS:
+            if chip != chip_name and chip != "esp32s2":
+                if (
+                    detection_method == "chip_id"
+                    and not esptool.CHIP_DEFS[chip].USES_MAGIC_VALUE
+                ):
+                    if (
+                        esptool.CHIP_DEFS[chip].IMAGE_CHIP_ID
+                        != esptool.CHIP_DEFS[chip_name].IMAGE_CHIP_ID
+                    ):
+                        return chip
+                elif (
+                    detection_method == "magic_value"
+                    and esptool.CHIP_DEFS[chip].USES_MAGIC_VALUE
+                ):
+                    if (
+                        esptool.CHIP_DEFS[chip].MAGIC_VALUE
+                        != esptool.CHIP_DEFS[chip_name].MAGIC_VALUE
+                    ):
+                        return chip
+
+    @pytest.mark.quick_test
+    def test_chips_with_chip_id_detection(self):
+        # First verify the correct chip works
+        output = self.run_esptool(f"--chip {arg_chip} flash-id")
+        assert "Stub flasher running." in output
+
+        # Find a different chip with different chip ID to test mismatch detection
+        different_chip_id = self._find_different_chip(arg_chip, "chip_id")
+        error_output = self.run_esptool_error(f"--chip {different_chip_id} flash-id")
+        assert (
+            f"This chip is {arg_chip.upper()}, not {different_chip_id.upper()}."
+            in error_output
+            or "Wrong chip argument?" in error_output
+        )
+
+        # Find a different chip with different magic value to test mismatch detection
+        different_chip_magic = self._find_different_chip(arg_chip, "magic_value")
+        error_output = self.run_esptool_error(f"--chip {different_chip_magic} flash-id")
+        assert (
+            f"This chip is {arg_chip.upper()}, not {different_chip_magic.upper()}."
+            in error_output
+            or "Wrong chip argument?" in error_output
+        )
+
+        if arg_chip != "esp32s2":
+            # ESP32-S2 is special case that has security info, but not chip ID
+            error_output = self.run_esptool_error("--chip esp32s2 flash-id")
+            assert (
+                f"This chip is {arg_chip.upper()}, not ESP32-S2." in error_output
+                or "Wrong chip argument?" in error_output
+            )
+
+
 class TestUSBMode(EsptoolTestCase):
     @pytest.mark.quick_test
     def test_usb_mode(self):
