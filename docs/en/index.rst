@@ -1,6 +1,13 @@
 Esptool.py Documentation
 ========================
 
+.. important::
+
+    This document describes how to use ``esptool`` with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left corner.
+
+    Please note that this documentation is for the version of ``esptool`` v4. You can find your version in the command output or by running ``esptool.py version``.
+    For the version of ``esptool`` v5 please refer to the `latest documentation <https://docs.espressif.com/projects/esptool/en/latest/esp32/>`_ or pick from the dropdown in the upper left corner.
+
 This is the documentation for ``esptool.py`` - a Python-based, open source, platform independent utility to communicate with the ROM bootloader in `Espressif SoCs <https://www.espressif.com/en/products/hardware/socs>`_.
 
 ``esptool.py``, ``espefuse.py`` and ``espsecure.py`` are a complete toolset for working with Espressif chips. They can do a number of things, for example:
@@ -10,8 +17,6 @@ This is the documentation for ``esptool.py`` - a Python-based, open source, plat
 * Read and write the one-time-programmable efuses.
 * Prepare binary executable images ready for flashing.
 * Analyze, assemble, and merge binary images.
-
-This document describes using ``esptool.py`` with the {IDF_TARGET_NAME} SoC. To switch to a different SoC target, choose target from the dropdown in the upper left.
 
 Quick Start
 -----------
