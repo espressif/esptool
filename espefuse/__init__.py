@@ -21,6 +21,7 @@ from espefuse.efuse_interface import (
     SUPPORTED_READ_COMMANDS,
     SUPPORTED_CHIPS,
 )
+from esptool.util import check_deprecated_py_suffix
 
 __all__ = [
     "get_esp",
@@ -38,7 +39,8 @@ __all__ = [
     chain=True,  # allow using multiple commands in a single run
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
-    help=f"espefuse.py v{esptool.__version__} - ESP32xx eFuse get/set tool",
+    help=f"espefuse v{esptool.__version__} - "
+    "Utility for eFuse configuration in Espressif SoCs.",
 )
 @click.option(
     "--chip",
@@ -46,7 +48,7 @@ __all__ = [
     type=ChipType(choices=["auto"] + list(SUPPORTED_CHIPS.keys())),
     default="auto",
     envvar="ESPTOOL_CHIP",
-    help="Target chip type",
+    help="Target chip type.",
 )
 @click.option(
     "--baud",
@@ -54,13 +56,14 @@ __all__ = [
     type=int,
     default=esptool.ESPLoader.ESP_ROM_BAUD,
     envvar="ESPTOOL_BAUD",
-    help="Serial port baud rate used when flashing/reading",
+    help="Serial port baud rate used when flashing/reading.",
 )
 @click.option(
     "--port",
     "-p",
     envvar="ESPTOOL_PORT",
-    help="Serial port device",
+    type=click.Path(),
+    help="Serial port device.",
 )
 @click.option(
     "--before",
@@ -68,36 +71,36 @@ __all__ = [
         choices=["default-reset", "usb-reset", "no-reset", "no-reset-no-sync"]
     ),
     default="default-reset",
-    help="What to do before connecting to the chip",
+    help="Which reset to perform before connecting to the chip.",
 )
 @click.option(
-    "--debug", "-d", is_flag=True, help="Show debugging information (loglevel=DEBUG)"
+    "--debug", "-d", is_flag=True, help="Show debugging information (loglevel=DEBUG)."
 )
 @click.option(
     "--virt",
     is_flag=True,
-    help="For host tests, work in virtual mode (no chip connection)",
+    help="For host tests, work in virtual mode (no chip connection).",
 )
 @click.option(
     "--path-efuse-file",
     type=click.Path(),
-    help="For host tests, saves efuse memory to file",
+    help="For host tests, save eFuse memory to file.",
 )
 @click.option(
     "--do-not-confirm",
     is_flag=True,
-    help="Do not pause for confirmation before permanently writing efuses. "
-    "Use with caution.",
+    help="Do not pause for confirmation before permanently writing eFuses. "
+    "Use with caution!",
 )
 @click.option(
     "--postpone",
     is_flag=True,
-    help="Postpone burning some efuses from BLOCK0 at the end",
+    help="Postpone burning some eFuses from BLOCK0 at the end.",
 )
 @click.option(
     "--extend-efuse-table",
     type=click.File("r"),
-    help="CSV file from ESP-IDF (esp_efuse_custom_table.csv)",
+    help="CSV file from ESP-IDF (esp_efuse_custom_table.csv).",
 )
 @click.pass_context
 def cli(
@@ -113,7 +116,7 @@ def cli(
     postpone,
     extend_efuse_table,
 ):
-    print(f"espefuse.py v{esptool.__version__}")
+    log.print(f"espefuse v{esptool.__version__}")
 
     ctx.ensure_object(dict)
     esp = ctx.obj.get("esp", None)
@@ -126,7 +129,7 @@ def cli(
 
     if not port and not external_esp and not is_help and not virt:
         raise click.BadOptionUsage(
-            "--port", "Missing required argument. Please specify the --port option"
+            "--port", "Missing required argument. Please specify the --port option."
         )
 
     if not esp:
@@ -136,7 +139,7 @@ def cli(
             )
         except esptool.FatalError as e:
             raise esptool.FatalError(
-                f"{e}\nPlease make sure you specified the right port with --port"
+                f"{e}\nPlease make sure you specified the right port with --port."
             )
 
     def close_port():
@@ -180,8 +183,8 @@ def cli(
     def process_result(result, *args, **kwargs):
         if multiple_burn_commands:
             if not commands.burn_all(check_batch_mode=True):
-                raise esptool.FatalError("BURN was not done")
-            print("Successful")
+                raise esptool.FatalError("BURN was not done.")
+            log.print("Successful.")
 
 
 @cli.command("execute-scripts", hidden=True)
@@ -215,6 +218,7 @@ def main(argv: list[str] | None = None, esp: esptool.ESPLoader | None = None):
 
 
 def _main():
+    check_deprecated_py_suffix(__name__)
     try:
         main()
     except esptool.FatalError as e:

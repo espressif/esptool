@@ -1,9 +1,9 @@
 .. _espefuse:
 
-espefuse.py
-===========
+espefuse
+========
 
-``espefuse.py`` is a tool for communicating with Espressif chips for the purpose of reading/writing ("burning") the one-time-programmable eFuses. Burning occurs only in one direction from 0 to 1 (never cleared 1->0).
+``espefuse`` is a tool for communicating with Espressif chips for the purpose of reading/writing ("burning") the one-time-programmable eFuses. Burning occurs only in one direction from 0 to 1 (never cleared 1->0).
 
 .. warning::
 
@@ -11,7 +11,7 @@ espefuse.py
 
 For more details about Espressif chips eFuse features, see the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`__.
 
-``espefuse.py`` is installed alongside ``esptool.py``, so if ``esptool.py`` (v2.0 or newer) is available on the PATH then ``espefuse.py`` should be as well.
+``espefuse`` is installed alongside ``esptool``, so if ``esptool`` (v2.0 or newer) is available on the PATH then ``espefuse`` should be as well.
 
 Initial State of eFuses
 -----------------------
@@ -46,7 +46,7 @@ Supported Commands
 Optional General Arguments Of Commands
 --------------------------------------
 
-- ``-h``, ``--help`` - Show help message and exit. Use ``-h`` to see a summary of all available commands and command line options. To see all options for a particular chip and command, add ``-c {IDF_TARGET_NAME}`` and ``-h`` to the command name, i.e. ``espefuse.py -c {IDF_TARGET_NAME} burn-key -h``.
+- ``-h``, ``--help`` - Show help message and exit. Use ``-h`` to see a summary of all available commands and command line options. To see all options for a particular chip and command, add ``-c {IDF_TARGET_NAME}`` and ``-h`` to the command name, i.e. ``espefuse -c {IDF_TARGET_NAME} burn-key -h``.
 - ``--chip``, ``-c`` - Target chip type. If this argument is omitted, the tool automatically detects the chip type when connected. But if the command has a help option, the chip is not connected, and the default chip is ``esp32``, please specify the specific type of chip to get the correct help. Example of usage: ``-c esp32``, ``-c esp32c3``, ``-c esp32s2`` and others.
 - ``--baud``, ``-b`` - Serial port baud rate, the same as for esptool.
 - ``--port``, ``-p`` - Serial port device, for example: ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
@@ -109,7 +109,7 @@ The example below shows how to use the two commands ``burn-key-digest`` and ``bu
 
 .. code-block:: none
 
-    > espefuse.py -c esp32c2  \
+    > espefuse -c esp32c2  \
                             burn-key-digest secure_images/ecdsa256_secure_boot_signing_key_v2.pem \
                             burn-key BLOCK_KEY0 images/efuse/128bit_key.bin XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS
 
@@ -120,7 +120,7 @@ This tool supports the use of `CSV files <https://docs.espressif.com/projects/es
 
 .. code-block:: none
 
-    > espefuse.py -c esp32 --extend-efuse-table path/esp_efuse_custom_table.csv summary
+    > espefuse -c esp32 --extend-efuse-table path/esp_efuse_custom_table.csv summary
 
 Below is an example of an ``esp_efuse_custom_table.csv`` file. This example demonstrates how to define single eFuse fields, ``structured eFuse fields`` and ``non-sequential bit fields``:
 
@@ -168,7 +168,7 @@ For more details on the structure and usage of the CSV file, refer to the `eFuse
 Scripting
 ---------
 
-Espefuse can be used as a Python library. See :ref:`espefuse.py Scripting <espefuse-scripting>` for more details.
+Espefuse can be used as a Python library. See :ref:`espefuse Scripting <espefuse-scripting>` for more details.
 
 .. toctree::
    :maxdepth: 1

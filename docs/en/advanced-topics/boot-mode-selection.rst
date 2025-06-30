@@ -55,7 +55,7 @@ This guide explains how to select the boot mode correctly and describes the boot
 
    Information about {IDF_TARGET_NAME} strapping pins can also be found in the `{IDF_TARGET_NAME} Datasheet <{IDF_TARGET_DATASHEET_EN_URL}>`__, section "Strapping Pins".
 
-   On many development boards with built-in USB/Serial, ``esptool.py`` can automatically reset the board into bootloader mode. For other configurations or custom hardware, you will need to check the orientation of some "strapping pins" to get the correct boot mode:
+   On many development boards with built-in USB/Serial, ``esptool`` can automatically reset the board into bootloader mode. For other configurations or custom hardware, you will need to check the orientation of some "strapping pins" to get the correct boot mode:
 
    Select Bootloader Mode
    ----------------------
@@ -120,16 +120,16 @@ This guide explains how to select the boot mode correctly and describes the boot
 Automatic Bootloader
 --------------------
 
-``esptool.py`` resets {IDF_TARGET_NAME} automatically by asserting ``DTR`` and ``RTS`` control lines of the USB to serial converter chip, i.e., FTDI, CP210x, or CH340x. The ``DTR`` and ``RTS`` control lines are in turn connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` (``CHIP_PU``) pins of {IDF_TARGET_NAME}, thus changes in the voltage levels of ``DTR`` and ``RTS`` will boot the {IDF_TARGET_NAME} into Firmware Download mode.
+``esptool`` resets {IDF_TARGET_NAME} automatically by asserting ``DTR`` and ``RTS`` control lines of the USB to serial converter chip, i.e., FTDI, CP210x, or CH340x. The ``DTR`` and ``RTS`` control lines are in turn connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` (``CHIP_PU``) pins of {IDF_TARGET_NAME}, thus changes in the voltage levels of ``DTR`` and ``RTS`` will boot the {IDF_TARGET_NAME} into Firmware Download mode.
 
 .. note::
 
-      When developing ``esptool.py``, keep in mind ``DTR`` and ``RTS`` are active low signals, i.e., ``True`` = pin @ 0V, ``False`` = pin @ VCC.
+      When developing ``esptool``, keep in mind ``DTR`` and ``RTS`` are active low signals, i.e., ``True`` = pin @ 0V, ``False`` = pin @ VCC.
 
 As an example of auto-reset curcuitry implementation, check the `schematic <https://dl.espressif.com/dl/schematics/esp32_devkitc_v4-sch-20180607a.pdf>`_ of the ESP32 DevKitC development board:
 
 -  The **Micro USB 5V & USB-UART** section shows the ``DTR`` and ``RTS`` control lines of the USB to serial converter chip connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` pins of the ESP module.
--  Some OS and/or drivers may activate ``RTS`` and or ``DTR`` automatically when opening the serial port (true only for some serial terminal programs, not ``esptool.py``), pulling them low together and holding the ESP in reset. If ``RTS`` is wired directly to ``EN`` then RTS/CTS "hardware flow control" needs to be disabled in the serial program to avoid this.
+-  Some OS and/or drivers may activate ``RTS`` and or ``DTR`` automatically when opening the serial port (true only for some serial terminal programs, not ``esptool``), pulling them low together and holding the ESP in reset. If ``RTS`` is wired directly to ``EN`` then RTS/CTS "hardware flow control" needs to be disabled in the serial program to avoid this.
    An additional circuitry is implemented in order to avoid this problem - if both ``RTS`` and ``DTR`` are asserted together, this doesn't reset the chip. The schematic shows this specific circuit with two transistors and its truth table.
 -  If this circuitry is implemented (all Espressif boards have it), adding a capacitor between the ``EN`` pin and ``GND`` (in the 1uF-10uF range) is necessary for the reset circuitry to work reliably. This is shown in the **ESP32 Module** section of the schematic.
 -  The **Switch Button** section shows buttons needed for :ref:`manually switching to bootloader <manual-bootloader>`.
@@ -150,7 +150,7 @@ In Linux serial ports by default will assert RTS when nothing is attached to the
 
 (Some third party {IDF_TARGET_NAME} development boards use an automatic reset circuit for ``EN`` & ``{IDF_TARGET_STRAP_BOOT_GPIO}`` pins, but don't add a capacitor on the ``EN`` pin. This results in unreliable automatic reset, especially on Windows. Adding a 1uF (or higher) value capacitor between ``EN`` pin and ``GND`` may make automatic reset more reliable.)
 
-In general, you should have no problems with the official Espressif development boards. However, ``esptool.py`` is not able to reset your hardware automatically in the following cases:
+In general, you should have no problems with the official Espressif development boards. However, ``esptool`` is not able to reset your hardware automatically in the following cases:
 
 - Your hardware does not have the ``DTR`` and ``RTS`` lines connected to ``{IDF_TARGET_STRAP_BOOT_GPIO}`` and ``EN`` (``CHIP_PU``)
 - The ``DTR`` and ``RTS`` lines are configured differently
@@ -347,7 +347,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
       -  ``SPIWP:0xNN`` indicates a custom ``WP`` pin value, which is stored in the bootloader header. This pin value is only used if SPI flash pins have been remapped via eFuse (as shown in the ``configsip`` value).
          All custom pin values but WP are encoded in the configsip byte loaded from eFuse, and WP is supplied in the bootloader header.
       :esp32: -  ``clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00`` Custom GPIO drive strength values for SPI flash pins. These are read from the bootloader header in flash. Not currently supported.
-      -  ``mode: AAA, clock div: N``. SPI flash access mode. Read from the bootloader header, correspond to the ``--flash-mode`` and ``--flash-freq`` arguments supplied to ``esptool.py write-flash`` or ``esptool.py elf2image``.
+      -  ``mode: AAA, clock div: N``. SPI flash access mode. Read from the bootloader header, correspond to the ``--flash-mode`` and ``--flash-freq`` arguments supplied to ``esptool write-flash`` or ``esptool elf2image``.
       -  ``mode`` can be DIO, DOUT, QIO, or QOUT. *QIO and QOUT are not supported here*, to boot in a Quad I/O mode the ROM bootloader should load the software bootloader in a Dual I/O mode and then the ESP-IDF software bootloader enables Quad I/O based on the detected flash chip mode.
       -  ``clock div: N`` is the SPI flash clock frequency divider. This is an integer clock divider value from an 80MHz APB clock, based on the supplied ``--flash-freq`` argument (ie 80MHz=1, 40MHz=2, etc).
          The ROM bootloader actually loads the software bootloader at a lower frequency than the ``--flash-freq`` value. The initial APB clock frequency is equal to the crystal frequency, so with a 40MHz crystal the SPI clock used to load the software bootloader will be half the configured value (40MHz/2=20MHz).
@@ -366,7 +366,7 @@ Depending on the kind of hardware you have, it may also be possible to manually 
 
    These entries are printed as the ROM bootloader loads each segment in the software bootloader image. The load address and length of each segment is printed.
 
-   You can compare these values to the software bootloader image by running ``esptool.py --chip {IDF_TARGET_PATH_NAME} image-info /path/to/bootloader.bin`` to dump image info including a summary of each segment. Corresponding details will also be found in the bootloader ELF file headers.
+   You can compare these values to the software bootloader image by running ``esptool --chip {IDF_TARGET_PATH_NAME} image-info /path/to/bootloader.bin`` to dump image info including a summary of each segment. Corresponding details will also be found in the bootloader ELF file headers.
 
    If there is a problem with the SPI flash chip addressing mode, the values printed by the bootloader here may be corrupted.
 

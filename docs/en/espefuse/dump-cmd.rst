@@ -3,7 +3,7 @@
 Dump
 ====
 
-The ``espefuse.py dump`` command allows:
+The ``espefuse dump`` command allows:
 
 - display raw values of eFuse registers, grouped by block. Output corresponds directly to eFuse register values in the `register space <https://github.com/espressif/esp-idf/blob/master/components/soc/{IDF_TARGET_NAME}/include/soc/efuse_reg.h>`__.
 - save dump into files.
@@ -32,7 +32,7 @@ The order of registers in the dump:
 
     .. code-block:: none
 
-        > espefuse.py  dump
+        > espefuse  dump
 
         Connecting.........
         Detecting chip type... ESP32
@@ -47,7 +47,7 @@ The order of registers in the dump:
 
     .. code-block:: none
 
-        > espefuse.py dump
+        > espefuse dump
 
         Connecting.........
         Detecting chip type... ESP32-C2
@@ -63,7 +63,7 @@ The order of registers in the dump:
 
     .. code-block:: none
 
-        > espefuse.py dump
+        > espefuse dump
 
         Connecting....
         Detecting chip type... ESP32-C3
@@ -92,7 +92,7 @@ This command saves dump for each block into a separate file. You need to provide
 
 .. code-block:: none
 
-    > espefuse.py dump --format split --file-name backup/chip1/blk.bin
+    > espefuse dump --format split --file-name backup/chip1/blk.bin
 
     === Run "dump" command ===
     backup/chip1/blk0.bin
@@ -111,7 +111,7 @@ These dump files can be written to another chip:
 
 .. code-block:: none
 
-    > espefuse.py burn-block-data BLOCK0 backup/chip1/blk0.bin \
+    > espefuse burn-block-data BLOCK0 backup/chip1/blk0.bin \
     BLOCK1 backup/chip1/blk1.bin \
     BLOCK2 backup/chip1/blk2.bin
 
@@ -119,7 +119,7 @@ To save all eFuse blocks in one file, use the following command:
 
 .. code-block:: none
 
-    > espefuse.py dump --format joint --file-name backup/chip1/efuses.bin
+    > espefuse dump --format joint --file-name backup/chip1/efuses.bin
 
     === Run "dump" command ===
     backup/chip1/efuses.bin

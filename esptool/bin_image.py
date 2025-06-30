@@ -140,10 +140,12 @@ class ImageSegment(object):
     """Wrapper class for a segment in an ESP image
     (very similar to a section in an ELFImage also)"""
 
-    def __init__(self, addr, data, file_offs=None):
+    def __init__(self, addr, data, file_offs=None, flags=0, align=4):
         self.addr = addr
         self.data = data
         self.file_offs = file_offs
+        self.flags = flags
+        self.align = align
         self.include_in_checksum = True
         if self.addr != 0:
             self.pad_to_alignment(
@@ -187,13 +189,33 @@ class ImageSegment(object):
     def pad_to_alignment(self, alignment):
         self.data = pad_to(self.data, alignment, b"\x00")
 
+    def end_addr_if_aligned(self, alignment):
+        """
+        Return the segment end address as it would be if
+        aligned as requested by the argument.
+        """
+        end_addr = self.addr + len(self.data)
+        addr_mod = end_addr % alignment
+        if addr_mod != 0:
+            end_addr += alignment - addr_mod
+        return end_addr
+
+    def pad_until_addr(self, addr):
+        """
+        Pad the segment with `0x00` starting with segment address
+        until the address given by the argument.
+        """
+        pad = addr - (self.addr + len(self.data))
+        if pad > 0:
+            self.data += b"\x00" * pad
+
 
 class ELFSection(ImageSegment):
     """Wrapper class for a section in an ELF image, has a section
     name as well as the common properties of an ImageSegment."""
 
-    def __init__(self, name, addr, data):
-        super(ELFSection, self).__init__(addr, data)
+    def __init__(self, name, addr, data, flags, align=4):
+        super(ELFSection, self).__init__(addr, data, flags=flags, align=align)
         self.name = name.decode("utf-8")
 
     def __repr__(self):
@@ -409,6 +431,26 @@ class BaseFirmwareImage(object):
             # merged in
             elem = self.segments[i - 1]
             next_elem = self.segments[i]
+
+            # When creating the images from 3rd-party frameworks ELFs, the merging
+            # could bring together segments with incompatible alignment requirements.
+            # At this point, we add padding so the resulting placement respects the
+            # original alignment requirements of those segments.
+            if self.ROM_LOADER != ESP8266ROM and self.ram_only_header:
+                elem_pad_addr = elem.end_addr_if_aligned(next_elem.align)
+
+                if (
+                    elem_pad_addr != elem.addr + len(elem.data)
+                    and elem_pad_addr == next_elem.addr
+                ):
+                    log.info(
+                        "Inserting {} bytes padding between {} and {}".format(
+                            next_elem.addr - (elem.addr + len(elem.data)),
+                            elem.name,
+                            next_elem.name,
+                        )
+                    )
+                    elem.pad_until_addr(elem_pad_addr)
             if all(
                 (
                     elem.get_memory_type(self) == next_elem.get_memory_type(self),
@@ -832,10 +874,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                     # Some chips have a non-zero load offset (eg. 0x1000)
                     # therefore we shift the ROM segments "-load_offset"
                     # so it will be aligned properly after it is flashed
-                    align_min = (
-                        self.ROM_LOADER.BOOTLOADER_FLASH_OFFSET - self.SEG_HEADER_LEN
-                    )
-                    if pad_len < align_min:
+                    if pad_len < self.ROM_LOADER.BOOTLOADER_FLASH_OFFSET:
                         # in case pad_len does not fit minimum alignment,
                         # pad it to next aligned boundary
                         pad_len += self.IROM_ALIGN
@@ -1125,7 +1164,7 @@ class ESP8266V3FirmwareImage(ESP32FirmwareImage):
         if any(f for f in fields[4:15] if f != 0):
             log.warning(
                 "Some reserved header fields have non-zero values. "
-                "This image may be from a newer esptool.py?"
+                "This image may be from a newer esptool?"
             )
 
 
@@ -1326,10 +1365,18 @@ class ELFFile(object):
         section_header_offsets = range(0, len(section_header), self.LEN_SEC_HEADER)
 
         def read_section_header(offs):
-            name_offs, sec_type, _flags, lma, sec_offs, size = struct.unpack_from(
-                "<LLLLLL", section_header[offs:]
-            )
-            return (name_offs, sec_type, lma, size, sec_offs)
+            (
+                name_offs,
+                sec_type,
+                _flags,
+                lma,
+                sec_offs,
+                size,
+                _,
+                _,
+                align,
+            ) = struct.unpack_from("<LLLLLLLLL", section_header[offs:])
+            return (name_offs, sec_type, lma, size, sec_offs, _flags, align)
 
         all_sections = [read_section_header(offs) for offs in section_header_offsets]
         prog_sections = [s for s in all_sections if s[1] in ELFFile.PROG_SEC_TYPES]
@@ -1338,7 +1385,7 @@ class ELFFile(object):
         # search for the string table section
         if (shstrndx * self.LEN_SEC_HEADER) not in section_header_offsets:
             raise FatalError(f"ELF file has no STRTAB section at shstrndx {shstrndx}")
-        _, sec_type, _, sec_size, sec_offs = read_section_header(
+        _, sec_type, _, sec_size, sec_offs, _flags, align = read_section_header(
             shstrndx * self.LEN_SEC_HEADER
         )
         if sec_type != ELFFile.SEC_TYPE_STRTAB:
@@ -1358,14 +1405,20 @@ class ELFFile(object):
             return f.read(size)
 
         prog_sections = [
-            ELFSection(lookup_string(n_offs), lma, read_data(offs, size))
-            for (n_offs, _type, lma, size, offs) in prog_sections
+            ELFSection(
+                lookup_string(n_offs),
+                lma,
+                read_data(offs, size),
+                flags=_flags,
+                align=align,
+            )
+            for (n_offs, _type, lma, size, offs, _flags, align) in prog_sections
             if lma != 0 and size > 0
         ]
         self.sections = prog_sections
         self.nobits_sections = [
-            ELFSection(lookup_string(n_offs), lma, b"")
-            for (n_offs, _type, lma, size, offs) in nobits_secitons
+            ELFSection(lookup_string(n_offs), lma, b"", flags=_flags, align=align)
+            for (n_offs, _type, lma, size, offs, _flags, align) in nobits_secitons
             if lma != 0 and size > 0
         ]
 
@@ -1398,7 +1451,7 @@ class ELFFile(object):
                 _flags,
                 _align,
             ) = struct.unpack_from("<LLLLLLLL", segment_header[offs:])
-            return (seg_type, lma, size, seg_offs)
+            return (seg_type, lma, size, seg_offs, _flags, _align)
 
         all_segments = [read_segment_header(offs) for offs in segment_header_offsets]
         prog_segments = [s for s in all_segments if s[0] == ELFFile.SEG_TYPE_LOAD]
@@ -1408,8 +1461,8 @@ class ELFFile(object):
             return f.read(size)
 
         prog_segments = [
-            ELFSection(b"PHDR", lma, read_data(offs, size))
-            for (_type, lma, size, offs) in prog_segments
+            ELFSection(b"PHDR", lma, read_data(offs, size), flags=_flags, align=_align)
+            for (_type, lma, size, offs, _flags, _align) in prog_segments
             if lma != 0 and size > 0
         ]
         self.segments = prog_segments

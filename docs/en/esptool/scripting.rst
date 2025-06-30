@@ -3,7 +3,7 @@
 Embedding into Custom Scripts
 =============================
 
-``esptool.py`` can be easily integrated into Python applications or called from other Python scripts.
+``esptool`` can be easily integrated into Python applications or called from other Python scripts.
 
 Using Esptool as a Python Module
 --------------------------------
@@ -233,7 +233,7 @@ For granular control and more configuration freedom, you can directly access the
 
 .. note::
 
-    This example code is a very basic implementation of ``esptool.py -p /dev/ttyACM0 write-flash 0x10000 firmware.bin``
+    This example code is a very basic implementation of ``esptool -p /dev/ttyACM0 write-flash 0x10000 firmware.bin``
 
 .. code-block:: python
 

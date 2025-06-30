@@ -8,6 +8,8 @@ import os
 import re
 import sys
 
+from esptool.logger import log
+
 
 class CSVFuseTable(list):
     @classmethod
@@ -94,7 +96,7 @@ class CSVFuseTable(list):
                 field_name = p.field_name + p.group
                 if field_name != "" and len(duplicates.intersection([field_name])) != 0:
                     fl_error = True
-                    print(
+                    log.print(
                         f"Field at {p.field_name}, {p.efuse_block}, "
                         f"{p.bit_start}, {p.bit_count} have duplicate field_name"
                     )

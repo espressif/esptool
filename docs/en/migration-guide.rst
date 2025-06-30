@@ -5,8 +5,48 @@
 
 This document describes the breaking changes made to esptool.py, espsecure.py and espefuse.py in the major release ``v5``. It provides guidance on adapting existing workflows and scripts to ensure compatibility when updating from ``v4.*``.
 
-esptool.py ``v5`` Migration Guide
-*********************************
+
+Command-Line Tool Invocation Changes
+************************************
+
+The preferred way to invoke esptool command-line tools has changed. Instead of running the scripts with `.py` suffix, you should now use the console scripts without the `.py` suffix.
+
+**Affected Tools:**
+
+- ``esptool.py`` → ``esptool``
+- ``espefuse.py`` → ``espefuse``
+- ``espsecure.py`` → ``espsecure``
+- ``esp_rfc2217_server.py`` → ``esp_rfc2217_server``
+
+**Migration Steps:**
+
+1. Update your command-line invocations to use the new names without `.py`:
+
+   **Before:**
+
+   .. code-block:: bash
+
+       esptool.py chip_id
+       espefuse.py summary
+       espsecure.py sign_data --keyfile key.pem data.bin
+
+   **After:**
+
+   .. code-block:: bash
+
+       esptool chip_id
+       espefuse summary
+       espsecure sign-data --keyfile key.pem data.bin
+
+2. Update scripts to use the new command names.
+
+.. note::
+
+   Scripts with ``.py`` suffix are still available for backward compatibility, but they will produce deprecation warning and will be removed in the next major release.
+
+
+esptool ``v5`` Migration Guide
+******************************
 
 ``image-info`` Output Format Change
 ###################################
@@ -186,7 +226,7 @@ The ``make_image`` command for the ESP8266 has been **removed in v5**. This comm
 Using Binary from GitHub Releases on Linux
 ##########################################
 
-The ``esptool.py`` binary from GitHub Releases on Linux is now using Ubuntu 22.04 as the base image. That means the image is using ``glibc`` 2.35, which is not fully compatible with the ``glibc`` 2.28 from Ubuntu 20.04 (the base image for ``v4.*``).
+The ``esptool`` binary from GitHub Releases on Linux is now using Ubuntu 22.04 as the base image. That means the image is using ``glibc`` 2.35, which is not fully compatible with the ``glibc`` 2.28 from Ubuntu 20.04 (the base image for ``v4.*``).
 
 **Migration Steps:**
 
@@ -227,8 +267,8 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
 
 .. only:: not esp8266
 
-    espsecure.py ``v5`` Migration Guide
-    ***********************************
+    espsecure ``v5`` Migration Guide
+    ********************************
 
     Command and Option Renaming
     ###########################
@@ -246,7 +286,7 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
     Public API Changes
     ##################
 
-    The public API of ``espsecure.py`` has been updated to provide a more consistent and user-friendly interface for programmatic use in custom scripts and applications.
+    The public API of ``espsecure`` has been updated to provide a more consistent and user-friendly interface for programmatic use in custom scripts and applications.
 
     **Key Changes:**
 
@@ -274,8 +314,8 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
     ``sign_data(data=data, key=key, ...)``.
     2. Replace the ``custom_commandline`` parameter with ``argv`` in the ``main`` function call.
 
-    espefuse.py ``v5`` Migration Guide
-    ***********************************
+    espefuse ``v5`` Migration Guide
+    *******************************
 
     Reset Mode Renaming
     ###################
@@ -313,7 +353,7 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
     ``execute-scripts`` Command Removal
     ###################################
 
-    The ``execute-scripts`` command has been **removed in v5**. This command was used to execute custom eFuses scripts. It was deprecated in favor of using ``espefuse.py`` as a Python module (see :ref:`here <espefuse-scripting>`).
+    The ``execute-scripts`` command has been **removed in v5**. This command was used to execute custom eFuses scripts. It was deprecated in favor of using ``espefuse`` as a Python module (see :ref:`here <espefuse-scripting>`).
 
     **Migration Steps:**
 
@@ -325,7 +365,7 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
 
     .. code-block:: bash
 
-        > espefuse.py --port /dev/ttyUSB0 execute_scripts efuse_script.py --do-not-confirm
+        > espefuse --port /dev/ttyUSB0 execute_scripts efuse_script.py --do-not-confirm
 
     .. code-block:: python
 

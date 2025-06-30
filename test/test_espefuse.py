@@ -1,4 +1,4 @@
-# HOST_TEST for espefuse.py using the pytest framework
+# HOST_TEST for espefuse using the pytest framework
 #
 # Supports esp32, esp32s2, esp32s3, esp32c3,
 #          esp32c2, esp32c6, esp32p4, esp32c61,
@@ -17,7 +17,7 @@
 #  - `pytest test_espefuse.py \
 #     --chip esp32 --port /dev/ttyUSB0 --reset-port /dev/ttyUSB1`
 #
-# where  - --port       - a port for espefuse.py operation
+# where  - --port       - a port for espefuse operation
 #        - --reset-port - a port to clear efuses (connect RTS or DTR ->- J14 pin 39)
 #
 # Note: For FPGA with ESP32 image, you need to set an env variable ESPTOOL_ENV_FPGA to 1
@@ -59,8 +59,8 @@ reset_port = (
 
 if arg_chip not in SUPPORTED_CHIPS:
     pytest.exit(f"{arg_chip} is not a supported target, choose from {SUPPORTED_CHIPS}")
-print(f"\nHost tests of espefuse.py for {arg_chip}:")
-print("Running espefuse.py tests...")
+print(f"\nHost tests of espefuse for {arg_chip}:")
+print("Running espefuse tests...")
 
 # The default value of the program name for argparse has changed in Python 3.14
 # https://docs.python.org/dev/whatsnew/3.14.html#argparse
@@ -312,8 +312,8 @@ class TestReadProtectionCommands(EfuseTestCase):
             efuse_name = "BLOCK_SYS_DATA2"
         self.espefuse_py(
             f"read-protect-efuse {efuse_name}",
-            check_msg="A fatal error occurred: This efuse cannot be read-disabled "
-            "due the to RD_DIS field is already write-disabled",
+            check_msg="A fatal error occurred: This eFuse cannot be read-disabled "
+            "due to the RD_DIS field being already write-disabled",
             ret_code=2,
         )
 
@@ -391,7 +391,7 @@ class TestReadProtectionCommands(EfuseTestCase):
 
     @pytest.mark.skipif(
         arg_chip != "esp32",
-        reason="system parameters efuse read-protection is supported only by esp32, "
+        reason="system parameters eFuse read-protection is supported only by esp32, "
         "other chips protect whole blocks",
     )
     def test_burn_and_read_protect_efuse(self):
@@ -455,8 +455,8 @@ class TestWriteProtectionCommands(EfuseTestCase):
             self.espefuse_py("write-protect-efuse WR_DIS")
             self.espefuse_py(
                 "write-protect-efuse CODING_SCHEME",
-                check_msg="A fatal error occurred: This efuse cannot be write-disabled "
-                "due to the WR_DIS field is already write-disabled",
+                check_msg="A fatal error occurred: This eFuse cannot be write-disabled "
+                "due to the WR_DIS field being already write-disabled",
                 ret_code=2,
             )
 
@@ -530,10 +530,10 @@ class TestSetFlashVoltageCommands(EfuseTestCase):
         )
         if arg_chip == "esp32":
             error_msg = "A fatal error occurred: "
-            "Can't set flash regulator to OFF as XPD_SDIO_REG efuse is already burned"
+            "Can't set flash regulator to OFF as XPD_SDIO_REG eFuse is already burned"
         else:
             error_msg = "A fatal error occurred: "
-            "Can't set flash regulator to OFF as VDD_SPI_XPD efuse is already burned"
+            "Can't set flash regulator to OFF as VDD_SPI_XPD eFuse is already burned"
         self.espefuse_py(
             "set-flash-voltage 3.3V",
             check_msg=f"Enable internal flash voltage regulator ({vdd}) to 3.3V.",
@@ -548,18 +548,18 @@ class TestSetFlashVoltageCommands(EfuseTestCase):
         )
         if arg_chip == "esp32":
             error_msg = "A fatal error occurred: "
-            "Can't set regulator to 1.8V is XPD_SDIO_TIEH efuse is already burned"
+            "Can't set regulator to 1.8V is XPD_SDIO_TIEH eFuse is already burned"
         else:
             error_msg = "A fatal error occurred: "
-            "Can't set regulator to 1.8V is VDD_SPI_TIEH efuse is already burned"
+            "Can't set regulator to 1.8V is VDD_SPI_TIEH eFuse is already burned"
         self.espefuse_py("set-flash-voltage 1.8V", check_msg=error_msg, ret_code=2)
 
         if arg_chip == "esp32":
             error_msg = "A fatal error occurred: "
-            "Can't set flash regulator to OFF as XPD_SDIO_REG efuse is already burned"
+            "Can't set flash regulator to OFF as XPD_SDIO_REG eFuse is already burned"
         else:
             error_msg = "A fatal error occurred: "
-            "Can't set flash regulator to OFF as VDD_SPI_XPD efuse is already burned"
+            "Can't set flash regulator to OFF as VDD_SPI_XPD eFuse is already burned"
         self.espefuse_py("set-flash-voltage OFF", check_msg=error_msg, ret_code=2)
 
     def test_set_flash_voltage_off(self):
@@ -594,7 +594,7 @@ class TestValueArgForBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py(
             "burn-efuse SECURE_BOOT_KEY_REVOKE0 0",
             check_msg="A fatal error occurred: "
-            "New value is not accepted for efuse 'SECURE_BOOT_KEY_REVOKE0' "
+            "New value is not accepted for eFuse 'SECURE_BOOT_KEY_REVOKE0' "
             "(will always burn 0->1), given value=0",
             ret_code=2,
         )
@@ -603,7 +603,7 @@ class TestValueArgForBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py(
             "burn-efuse SECURE_BOOT_KEY_REVOKE0 2",
             check_msg="A fatal error occurred: "
-            "New value is not accepted for efuse 'SECURE_BOOT_KEY_REVOKE0' "
+            "New value is not accepted for eFuse 'SECURE_BOOT_KEY_REVOKE0' "
             "(will always burn 0->1), given value=2",
             ret_code=2,
         )
@@ -617,7 +617,7 @@ class TestValueArgForBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py(
             "burn-efuse OPTIONAL_UNIQUE_ID 0x1234567812345678",
             check_msg="A fatal error occurred: "
-            "The length of efuse 'OPTIONAL_UNIQUE_ID' (128 bits) "
+            "The length of eFuse 'OPTIONAL_UNIQUE_ID' (128 bits) "
             "(given len of the new value= 64 bits)",
             ret_code=2,
         )
@@ -626,7 +626,7 @@ class TestValueArgForBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py(
             "burn-efuse OPTIONAL_UNIQUE_ID",
             check_msg="A fatal error occurred: "
-            "New value required for efuse 'OPTIONAL_UNIQUE_ID' (given None)",
+            "New value required for eFuse 'OPTIONAL_UNIQUE_ID' (given None)",
             ret_code=2,
         )
 
@@ -646,7 +646,7 @@ class TestValueArgForBurnEfuseCommands(EfuseTestCase):
         self.espefuse_py(
             "burn-efuse SPI_PAD_CONFIG_D",
             check_msg="A fatal error occurred: "
-            "New value required for efuse 'SPI_PAD_CONFIG_D' (given None)",
+            "New value required for eFuse 'SPI_PAD_CONFIG_D' (given None)",
             ret_code=2,
         )
 
@@ -839,7 +839,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
 
     @pytest.mark.skipif(
         arg_chip != "esp32s3",
-        reason="Currently S3 only has this efuse incompatibility check",
+        reason="Currently S3 only has this eFuse incompatibility check",
     )
     def test_burn_efuse_incompatibility_check(self):
         self.espefuse_py(
@@ -1519,7 +1519,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
             )
 
     def test_burn_key_from_digest(self):
-        # python espsecure.py digest_rsa_public_key
+        # python espsecure digest_rsa_public_key
         # --keyfile test/{S_IMAGES_DIR}/rsa_secure_boot_signing_key.pem
         # -o {S_IMAGES_DIR}/rsa_public_key_digest.bin
         self.espefuse_py(
@@ -1544,7 +1544,7 @@ class TestBurnKeyDigestCommandsEsp32(EfuseTestCase):
 @pytest.mark.skipif(arg_chip != "esp32c2", reason="ESP32-C2-only, supports 1 key block")
 class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
     def test_burn_key_digest1(self):
-        # python espsecure.py generate_signing_key --version 2
+        # python espsecure generate_signing_key --version 2
         # secure_images/ecdsa192_secure_boot_signing_key_v2.pem --scheme ecdsa192
         self.espefuse_py("burn-key-digest -h")
         self.espefuse_py(
@@ -1558,7 +1558,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         ) in output
 
     def test_burn_key_digest2(self):
-        # python espsecure.py generate_signing_key --version 2
+        # python espsecure generate_signing_key --version 2
         # secure_images/ecdsa256_secure_boot_signing_key_v2.pem   --scheme ecdsa256
         self.espefuse_py("burn-key-digest -h")
         self.espefuse_py(
@@ -1572,7 +1572,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         ) in output
 
     def test_burn_key_from_digest1(self):
-        # python espsecure.py digest_sbv2_public_key --keyfile
+        # python espsecure digest_sbv2_public_key --keyfile
         # secure_images/ecdsa192_secure_boot_signing_key_v2.pem
         # -o secure_images/ecdsa192_public_key_digest_v2.bin
         self.espefuse_py(
@@ -1586,7 +1586,7 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
         ) in output
 
     def test_burn_key_from_digest2(self):
-        # python espsecure.py digest_sbv2_public_key --keyfile
+        # python espsecure digest_sbv2_public_key --keyfile
         # secure_images/ecdsa256_secure_boot_signing_key_v2.pem
         # -o secure_images/ecdsa256_public_key_digest_v2.bin
         self.espefuse_py(
@@ -1647,7 +1647,7 @@ class TestBurnKeyDigestCommands(EfuseTestCase):
         )
 
     def test_burn_key_from_digest(self):
-        #  python espsecure.py digest_rsa_public_key
+        #  python espsecure digest_rsa_public_key
         # --keyfile test/secure_images/rsa_secure_boot_signing_key.pem
         # -o secure_images/rsa_public_key_digest.bin
         self.espefuse_py(
@@ -2173,7 +2173,7 @@ class TestPostponedEfuses(EfuseTestCase):
         output = self.espefuse_py(cmd)
         assert f"BURN BLOCK{num}  - OK" in output
         assert "BURN BLOCK0  - OK" in output
-        assert "Burn postponed efuses from BLOCK0" in output
+        assert "Burn postponed eFuses from BLOCK0" in output
         assert "BURN BLOCK0  - OK" in output
         assert "Successful" in output
 

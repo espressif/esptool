@@ -25,9 +25,6 @@ class ESP32ROM(ESPLoader):
     DROM_MAP_START = 0x3F400000
     DROM_MAP_END = 0x3F800000
 
-    # ESP32 uses a 4 byte status reply
-    STATUS_BYTES_LENGTH = 4
-
     SPI_REG_BASE = 0x3FF42000
     SPI_USR_OFFS = 0x1C
     SPI_USR1_OFFS = 0x20
@@ -367,7 +364,7 @@ class ESP32ROM(ESPLoader):
                 )
             )
         # RTC_CNTL_SDIO_TIEH is not used here, setting TIEH=1 would set 3.3V output,
-        # not safe for esptool.py to do
+        # not safe for esptool to do
 
         reg_val = self.RTC_CNTL_SDIO_FORCE  # override efuse setting
         reg_val |= self.RTC_CNTL_SDIO_PD_EN
@@ -393,6 +390,7 @@ class ESP32ROM(ESPLoader):
                     "read flash block",
                     self.ESP_CMDS["READ_FLASH_SLOW"],
                     struct.pack("<II", offset + len(data), block_len),
+                    resp_data_len=BLOCK_LEN,
                 )
             except FatalError:
                 log.note("Consider specifying the flash size argument.")

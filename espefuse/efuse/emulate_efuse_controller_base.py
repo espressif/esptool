@@ -7,6 +7,7 @@
 import re
 
 from bitstring import BitStream
+from esptool.logger import log
 
 
 class EmulateEfuseControllerBase(object):
@@ -96,7 +97,7 @@ class EmulateEfuseControllerBase(object):
                     continue
             data = self.read_block(blk.id, wr_regs=True)
             if self.debug:
-                print(blk.name, data.hex)
+                log.print(blk.name, data.hex)
             plain_data = self.handle_coding_scheme(blk, data)
             plain_data = self.check_wr_protection_area(blk.id, plain_data)
             self.update_block(blk, plain_data)

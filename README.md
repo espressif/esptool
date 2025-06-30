@@ -1,4 +1,4 @@
-# esptool.py
+# esptool
 
 A Python-based, open-source, platform-independent serial utility for flashing, provisioning, and interacting with Espressif SoCs.
 
@@ -6,15 +6,15 @@ A Python-based, open-source, platform-independent serial utility for flashing, p
 
 ## Documentation
 
-Visit the [documentation](https://docs.espressif.com/projects/esptool/) or run `esptool.py -h`.
+Visit the [documentation](https://docs.espressif.com/projects/esptool/) or run `esptool -h`.
 
 ## Contribute
 
-If you're interested in contributing to esptool.py, please check the [contributions guide](https://docs.espressif.com/projects/esptool/en/latest/contributing.html).
+If you're interested in contributing to esptool, please check the [contributions guide](https://docs.espressif.com/projects/esptool/en/latest/contributing.html).
 
 ## About
 
-esptool.py was initially created by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/)), and later maintained by Angus Gratton (@[projectgus](https://github.com/projectgus/)). It is now supported by Espressif Systems. It has also received improvements from many members of the community.
+esptool was initially created by Fredrik Ahlberg (@[themadinventor](https://github.com/themadinventor/)), and later maintained by Angus Gratton (@[projectgus](https://github.com/projectgus/)). It is now supported by Espressif Systems. It has also received improvements from many members of the community.
 
 ## License
 

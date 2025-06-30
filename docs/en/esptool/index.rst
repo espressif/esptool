@@ -1,11 +1,11 @@
 .. _esptool:
 
-esptool.py
+esptool
 ==========
 
-Use ``esptool.py -h`` to see a summary of all available commands and command line options.
+Use ``esptool -h`` to see a summary of all available commands and command line options.
 
-To see all options for a particular command, append ``-h`` to the command name. ie ``esptool.py write-flash -h``.
+To see all options for a particular command, append ``-h`` to the command name. ie ``esptool write-flash -h``.
 
 .. toctree::
    :maxdepth: 1
@@ -28,4 +28,4 @@ To see all options for a particular command, append ``-h`` to the command name. 
 
    * :ref:`espefuse`
    * :ref:`espsecure`
-   * :ref:`esp_rfc2217_server.py <rfc2217_server>`
+   * :ref:`esp_rfc2217_server <rfc2217_server>`

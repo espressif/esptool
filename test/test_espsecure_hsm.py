@@ -1,4 +1,4 @@
-# Tests for espsecure.py (esp_hsm_sign.py) using the pytest framework
+# Tests for espsecure (esp_hsm_sign.py) using the pytest framework
 #
 # Assumes openssl binary is in the PATH
 

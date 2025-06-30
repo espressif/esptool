@@ -6,6 +6,7 @@
 
 from collections import Counter, namedtuple
 import esptool
+from esptool.logger import log
 
 from .csv_table_parser import CSVFuseTable
 
@@ -198,7 +199,7 @@ class EfuseFieldsBase(object):
         name_counts = Counter(names)
         duplicates = {name for name, count in name_counts.items() if count > 1}
         if duplicates:
-            print("Names that are not unique: " + ", ".join(duplicates))
+            log.print("Names that are not unique: " + ", ".join(duplicates))
             raise esptool.FatalError("Duplicate names found in eFuses")
 
     def extend_efuses(self, extend_efuse_table_file):

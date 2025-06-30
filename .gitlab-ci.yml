@@ -51,7 +51,7 @@ version_check:
   rules:
     - if: '$CI_COMMIT_TAG != null'
   script:
-    - VERSION=$(esptool.py version | head -n 1)
+    - VERSION=$(esptool version | head -n 1)
     - |
       if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]]
       then
@@ -171,6 +171,11 @@ run_pre_commit_hooks:
   esptool.py --help
   espefuse.py --help
   espsecure.py --help
+  esp_rfc2217_server.py --help
+  esptool --help
+  espefuse --help
+  espsecure --help
+  esp_rfc2217_server --help
   python esptool.py --help
   python espefuse.py --help
   python espsecure.py --help

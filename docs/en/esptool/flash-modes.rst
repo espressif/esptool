@@ -19,7 +19,7 @@ To override these values, the options ``--flash-mode``, ``--flash-size`` and/or 
 
 ::
 
-    esptool.py --port /dev/ttyUSB1 write-flash --flash-mode dio --flash-size 4MB 0x0 bootloader.bin
+    esptool --port /dev/ttyUSB1 write-flash --flash-mode dio --flash-size 4MB 0x0 bootloader.bin
 
 These options are only consulted when flashing a bootable image to an {IDF_TARGET_NAME} at offset {IDF_TARGET_BOOTLOADER_OFFSET}. These are addresses used by the ROM bootloader to load from flash. When flashing at all other offsets, these arguments are not used.
 
@@ -74,7 +74,7 @@ Size of the SPI flash, given in megabytes.
 
 The default ``--flash-size`` parameter is ``keep``. This means that if no ``--flash-size`` argument is passed when flashing a bootloader, the value in the bootloader .bin file header is kept instead of detecting the actual flash size and updating the header.
 
-To enable automatic flash size detection based on SPI flash ID, add the argument ``esptool.py [...] write-flash [...] -fs detect``. If detection fails, a warning is printed and a default value of of ``4MB`` (4 megabytes) is used.
+To enable automatic flash size detection based on SPI flash ID, add the argument ``esptool [...] write-flash [...] -fs detect``. If detection fails, a warning is printed and a default value of of ``4MB`` (4 megabytes) is used.
 
 If flash size is not successfully detected, you can find the flash size by using the ``flash-id`` command and then looking up the ID from the output (see :ref:`Read SPI flash id <read-spi-flash-id>`).
 Alternatively, read off the silkscreen labelling of the flash chip and search for its datasheet.

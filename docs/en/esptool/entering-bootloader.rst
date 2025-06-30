@@ -3,7 +3,7 @@
 Entering the Bootloader
 =======================
 
-Espressif chips have to be reset in a certain way in order to launch the serial bootloader, only then can ``esptool.py`` communicate with the ESP chip.
+Espressif chips have to be reset in a certain way in order to launch the serial bootloader, only then can ``esptool`` communicate with the ESP chip.
 
 On some development boards (including NodeMCU, WeMOS, HUZZAH Feather, Core Board, ESP32-WROVER-KIT), esptool can :ref:`automatically trigger a reset into the serial bootloader <automatic-bootloader>` - in which case you don't need to read this section.
 

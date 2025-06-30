@@ -12,8 +12,8 @@ Please include the issue URL or the # issue number here. -->
 
 If you did not perform any testing, write "NO TESTING" in this section. -->
 
-# I have run the esptool.py automated integration tests with this change and the above hardware:
-<!-- In this section, post the results of running the automatic integration tests of esptool.py with this change and the above hardware.
+# I have run the esptool automated integration tests with this change and the above hardware:
+<!-- In this section, post the results of running the automatic integration tests of esptool with this change and the above hardware.
 
 Details here: https://docs.espressif.com/projects/esptool/en/latest/contributing.html#automated-integration-tests
 

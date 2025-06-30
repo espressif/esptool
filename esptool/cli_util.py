@@ -265,9 +265,11 @@ class Group(click.RichGroup):
 
     def resolve_command(
         self, ctx: click.Context, args: list[str]
-    ) -> tuple[str, click.Command, list[str]]:
+    ) -> tuple[str | None, click.Command | None, list[str]]:
         # always return the full command name
         _, cmd, args = super().resolve_command(ctx, args)
+        if cmd is None:
+            return None, None, args
         return cmd.name, cmd, args
 
 

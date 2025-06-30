@@ -20,7 +20,7 @@ from espefuse.efuse_interface import (
 
 click.rich_click.USE_CLICK_SHORT_HELP = True
 click.rich_click.COMMAND_GROUPS = {
-    "espefuse.py": [
+    "*": [
         {
             "name": "Burn commands",
             "commands": SUPPORTED_BURN_COMMANDS,
@@ -120,7 +120,11 @@ class ChainingCommand(click.RichCommand, click.Command):
                     # so we need to account for BLOCK2 being processed separately
                     param.nargs = args.index(arg) - arguments_count + 1
                     param_changed = param
-                    if param.nargs == 0 and param.required:
+                    if (
+                        param.nargs == 0
+                        and param.required
+                        and not ctx.resilient_parsing
+                    ):
                         raise click.UsageError(
                             f"Command `{self.name}` requires the `{param.name}` "
                             "argument."
@@ -211,7 +215,11 @@ class Group(EsptoolGroup):
         args = self._replace_deprecated_args(args)
         cmd_groups, used_cmds = self._split_to_groups(args)
 
-        if len(used_cmds) == 0:
+        # Add commands for shell completion
+        if ctx.resilient_parsing:
+            commands = init_commands(port=None, chip=ctx.obj["chip"], skip_connect=True)
+            commands.add_cli_commands(self)
+        elif len(used_cmds) == 0:
             self.get_help(ctx)
             ctx.exit()
 

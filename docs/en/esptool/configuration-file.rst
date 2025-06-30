@@ -3,22 +3,22 @@
 Configuration File
 ==================
 
-``esptool.py`` relies on serial communication when connecting to, reading from, or writing to an ESP chip.
-To ensure this two-way serial connection works properly, ``esptool.py`` is tuned with several pre-defined
+``esptool`` relies on serial communication when connecting to, reading from, or writing to an ESP chip.
+To ensure this two-way serial connection works properly, ``esptool`` is tuned with several pre-defined
 variables describing the timings and other nuances when sending or receiving data.
 These variables have been finely tuned to work in absolute majority of environments.
 However, it is impossible to cover all of the existing combinations of hardware, OS, and drivers.
 Sometimes little tweaking is necessary to cover even the most extreme edge cases.
 
 These options can be specified in a configuration file. This makes it easy to run
-``esptool.py`` with custom settings, and also allows for specification of options
+``esptool`` with custom settings, and also allows for specification of options
 that are otherwise not available to a user without having to tamper with the source code.
 
 File Location
 -------------
 
 The default name for a configuration file is ``esptool.cfg``. First, the same
-directory ``esptool.py`` is being run in is inspected.
+directory ``esptool`` is being run in is inspected.
 
 If a configuration file is not found here, the current user's OS configuration directory is inspected next:
 
@@ -39,7 +39,7 @@ A different location for the configuration file can be specified with the ``ESPT
 environment variable, e.g. ``ESPTOOL_CFGFILE = ~/custom_config.cfg``.
 This overrides the search priorities described above.
 
-``esptool.py`` will read settings from other usual configuration files if no other
+``esptool`` will read settings from other usual configuration files if no other
 configuration file is used. It will automatically read from ``setup.cfg`` or
 ``tox.ini`` if they exist.
 
@@ -53,7 +53,7 @@ As a result, the order of priority of inspected configuration files is:
 Syntax
 ------
 
-An ``esptool.py`` configuration file is in .ini file format: it must be
+An ``esptool`` configuration file is in .ini file format: it must be
 introduced by an ``[esptool]`` header to be recognized as valid.
 This section then contains ``name = value`` entries.
 Lines beginning with ``#`` or ``;`` are ignored as comments.

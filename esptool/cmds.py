@@ -150,31 +150,31 @@ def detect_chip(
                 continue
             if chip_id == cls.IMAGE_CHIP_ID:
                 inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
-                try:
-                    inst.read_reg(
-                        ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
-                    )  # Dummy read to check Secure Download mode
-                except UnsupportedCommandError:
-                    inst.secure_download_mode = True
+                si = inst.get_security_info()
+                inst.secure_download_mode = si["parsed_flags"]["SECURE_DOWNLOAD_ENABLE"]
                 inst = check_if_stub(inst)
                 inst._post_connect()
                 break
         else:
             err_msg = f"Unexpected chip ID value {chip_id}."
-    except (UnsupportedCommandError, struct.error, FatalError):
+    except (UnsupportedCommandError, FatalError):
         # UnsupportedCommandError: ESP8266/ESP32 ROM
-        # struct.error: ESP32-S2
-        # FatalError: ESP8266/ESP32 STUB
+        # FatalError: ESP8266/ESP32 STUB or ESP32-S2
         try:
             chip_magic_value = detect_port.read_reg(
                 ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
             )
         except UnsupportedCommandError:
-            raise FatalError(
-                "Unsupported Command Error received. "
-                "Probably this means Secure Download Mode is enabled, "
-                "autodetection will not work. Need to manually specify the chip."
+            # Only ESP32-S2 does not support chip id detection
+            # and supports secure download mode
+            inst = CHIP_DEFS["esp32s2"](
+                detect_port._port, baud, trace_enabled=trace_enabled
             )
+            si = inst.get_security_info()
+            inst.secure_download_mode = si["parsed_flags"]["SECURE_DOWNLOAD_ENABLE"]
+            inst = check_if_stub(inst)
+            inst._post_connect()
+            return inst
         except FatalError:
             log.print(" Autodetection failed, trying again...")
             detect_port.connect(
@@ -1495,30 +1495,9 @@ def get_security_info(esp: ESPLoader) -> None:
     Args:
         esp: Initiated esp object connected to a real device.
     """
-    # The following mapping was taken from the ROM code
-    # This mapping is same across all targets in the ROM
-    SECURITY_INFO_FLAG_MAP = {
-        "SECURE_BOOT_EN": (1 << 0),
-        "SECURE_BOOT_AGGRESSIVE_REVOKE": (1 << 1),
-        "SECURE_DOWNLOAD_ENABLE": (1 << 2),
-        "SECURE_BOOT_KEY_REVOKE0": (1 << 3),
-        "SECURE_BOOT_KEY_REVOKE1": (1 << 4),
-        "SECURE_BOOT_KEY_REVOKE2": (1 << 5),
-        "SOFT_DIS_JTAG": (1 << 6),
-        "HARD_DIS_JTAG": (1 << 7),
-        "DIS_USB": (1 << 8),
-        "DIS_DOWNLOAD_DCACHE": (1 << 9),
-        "DIS_DOWNLOAD_ICACHE": (1 << 10),
-    }
-
-    # Get the status of respective security flag
-    def get_security_flag_status(flag_name, flags_value):
-        try:
-            return (flags_value & SECURITY_INFO_FLAG_MAP[flag_name]) != 0
-        except KeyError:
-            raise ValueError(f"Invalid flag name: {flag_name}")
-
     si = esp.get_security_info()
+    parsed_flags = si["parsed_flags"]
+
     title = "Security Information:"
     log.print(title)
     log.print("=" * len(title))
@@ -1537,11 +1516,9 @@ def get_security_info(esp: ESPLoader) -> None:
         log.print("Chip ID: {}".format(si["chip_id"]))
         log.print("API Version: {}".format(si["api_version"]))
 
-    flags = si["flags"]
-
-    if get_security_flag_status("SECURE_BOOT_EN", flags):
+    if parsed_flags["SECURE_BOOT_EN"]:
         log.print("Secure Boot: Enabled")
-        if get_security_flag_status("SECURE_BOOT_AGGRESSIVE_REVOKE", flags):
+        if parsed_flags["SECURE_BOOT_AGGRESSIVE_REVOKE"]:
             log.print("Secure Boot Aggressive key revocation: Enabled")
 
         revoked_keys = []
@@ -1552,7 +1529,7 @@ def get_security_info(esp: ESPLoader) -> None:
                 "SECURE_BOOT_KEY_REVOKE2",
             ]
         ):
-            if get_security_flag_status(key, flags):
+            if parsed_flags[key]:
                 revoked_keys.append(i)
 
         if len(revoked_keys) > 0:
@@ -1575,19 +1552,19 @@ def get_security_info(esp: ESPLoader) -> None:
 
     log.print(f"{CRYPT_CNT_STRING}: {si['flash_crypt_cnt']:#x}")
 
-    if get_security_flag_status("DIS_DOWNLOAD_DCACHE", flags):
+    if parsed_flags["DIS_DOWNLOAD_DCACHE"]:
         log.print("Dcache in UART download mode: Disabled")
 
-    if get_security_flag_status("DIS_DOWNLOAD_ICACHE", flags):
+    if parsed_flags["DIS_DOWNLOAD_ICACHE"]:
         log.print("Icache in UART download mode: Disabled")
 
-    hard_dis_jtag = get_security_flag_status("HARD_DIS_JTAG", flags)
-    soft_dis_jtag = get_security_flag_status("SOFT_DIS_JTAG", flags)
+    hard_dis_jtag = parsed_flags["HARD_DIS_JTAG"]
+    soft_dis_jtag = parsed_flags["SOFT_DIS_JTAG"]
     if hard_dis_jtag:
         log.print("JTAG: Permanently Disabled")
     elif soft_dis_jtag:
         log.print("JTAG: Software Access Disabled")
-    if get_security_flag_status("DIS_USB", flags):
+    if parsed_flags["DIS_USB"]:
         log.print("USB Access: Disabled")
 
 

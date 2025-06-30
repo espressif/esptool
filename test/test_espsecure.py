@@ -1,4 +1,4 @@
-# Tests for espsecure.py using the pytest framework
+# Tests for espsecure using the pytest framework
 #
 # Assumes openssl binary is in the PATH
 
@@ -27,10 +27,10 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 class EspSecureTestCase:
     def run_espsecure(self, args):
         """
-        Run espsecure.py with the specified arguments
+        Run espsecure with the specified arguments
 
         Returns output as a string if there is any,
-        raises an exception if espsecure.py fails
+        raises an exception if espsecure fails
         """
         cmd = [sys.executable, "-m", "espsecure"] + args.split(" ")
         print("\nExecuting {}...".format(" ".join(cmd)))

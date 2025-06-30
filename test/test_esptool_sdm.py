@@ -1,4 +1,4 @@
-# Unit tests (really integration tests) for esptool.py using the pytest framework
+# Unit tests (really integration tests) for esptool using the pytest framework
 # Uses a device in the Secure Download Mode connected to the serial port.
 #
 # RUNNING THIS WILL MESS UP THE DEVICE'S SPI FLASH CONTENTS
@@ -8,7 +8,7 @@
 # Run with a physical connection to a chip:
 #  - `pytest test_esptool_sdm.py --chip esp32 --port /dev/ttyUSB0 --baud 115200`
 #
-# where  - --port       - a serial port for esptool.py operation
+# where  - --port       - a serial port for esptool operation
 #        - --chip       - ESP chip name
 #        - --baud       - baud rate
 #        - --with-trace - trace all interactions (True or False)

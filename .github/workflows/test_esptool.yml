@@ -40,6 +40,11 @@ jobs:
         esptool.py --help
         espefuse.py --help
         espsecure.py --help
+        esp_rfc2217_server.py --help
+        esptool --help
+        espefuse --help
+        espsecure --help
+        esp_rfc2217_server --help
 
     - name: Test esptool and components
       run: |

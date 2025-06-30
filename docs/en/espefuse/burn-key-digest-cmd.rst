@@ -3,7 +3,7 @@
 Burn Key Digest
 ===============
 
-The ``espefuse.py burn-key-digest`` command parses a RSA public key and burns the digest to eFuse block for use with `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html#signature-block-format>`_.
+The ``espefuse burn-key-digest`` command parses a RSA public key and burns the digest to eFuse block for use with `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html#signature-block-format>`_.
 
 Positional arguments:
 
@@ -44,7 +44,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn-key-digest secure_boot_key_v2_0.pem
+        > espefuse burn-key-digest secure_boot_key_v2_0.pem
 
         === Run "burn-key-digest" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
@@ -64,7 +64,7 @@ Usage
         Reading updated efuses...
         Successful
 
-        > espefuse.py summary
+        > espefuse summary
         ...
         BLOCK2 (BLOCK2):                                   Secure boot key
         = a2 cd 39 85 df 00 d7 95 07 0f f6 7c 8b ab e1 7d 39 11 95 c4 5b 37 6e 7b f0 ec 04 5e 36 30 02 5d R/-
@@ -75,7 +75,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn-key-digest secure_boot_v2_ecdsa192.pem
+        > espefuse burn-key-digest secure_boot_v2_ecdsa192.pem
 
         === Run "burn-key-digest" command ===
         Sensitive data will be hidden (see --show-sensitive-info)
@@ -96,7 +96,7 @@ Usage
         Reading updated efuses...
         Successful
 
-        > espefuse.py  summary
+        > espefuse  summary
         ...
         XTS_KEY_LENGTH_256 (BLOCK0)                        Flash encryption key length                        = 128 bits key R/W (0b0)
         ...
@@ -114,7 +114,7 @@ Usage
 
     .. code-block:: none
 
-        > espefuse.py burn-key-digest \
+        > espefuse burn-key-digest \
                     BLOCK_KEY0 ~/esp/tests/efuse/secure_boot_key_v2_0.pem  SECURE_BOOT_DIGEST0  \
                     BLOCK_KEY1 ~/esp/tests/efuse/secure_boot_key_v2_1.pem  SECURE_BOOT_DIGEST1  \
                     BLOCK_KEY2 ~/esp/tests/efuse/secure_boot_key_v2_2.pem  SECURE_BOOT_DIGEST2
@@ -154,7 +154,7 @@ Usage
         Reading updated efuses...
         Successful
 
-        > espefuse.py summary
+        > espefuse summary
 
         KEY_PURPOSE_0 (BLOCK0)                             KEY0 purpose                                       = SECURE_BOOT_DIGEST0 R/- (0x9)
         KEY_PURPOSE_1 (BLOCK0)                             KEY1 purpose                                       = SECURE_BOOT_DIGEST1 R/- (0xa)

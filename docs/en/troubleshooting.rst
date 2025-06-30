@@ -131,14 +131,14 @@ For exact serial port configuration values, see :ref:`serial-port-settings`.
 Tracing Esptool Interactions
 ----------------------------
 
-Running ``esptool.py --trace`` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
+Running ``esptool --trace`` will dump all serial interactions to the standard output (this is *a lot* of output). This can be helpful when debugging issues with the serial connection, or when providing information for bug reports.
 
 See :ref:`the related Advanced Topics page <tracing-communications>` for more information.
 
 Configuration File
 ------------------
 
-Although ``esptool.py`` has been tuned to work in the widest possible range of environments, an incompatible combination of hardware, OS, and drivers might cause it to fail. If you suspect this is the case, a custom configuration of internal variables might be necessary.
+Although ``esptool`` has been tuned to work in the widest possible range of environments, an incompatible combination of hardware, OS, and drivers might cause it to fail. If you suspect this is the case, a custom configuration of internal variables might be necessary.
 
 These variables and options can be specified in a configuration file. See :ref:`the related Configuration File page <config>` for more information.
 
@@ -190,16 +190,16 @@ Other things to try:
 
 .. list::
 
-   * Try to sync and communicate at a much lower baud rate, e.g. ``esptool.py --baud 9600 ...``.
-   * Try `tracing the interactions <Tracing Esptool Interactions>`_ running ``esptool.py --trace ...`` and see if anything is received back at all.
-   * Try skipping chip autodetection by specifying the chip type, run ``esptool.py --chip {IDF_TARGET_NAME} ...``.
+   * Try to sync and communicate at a much lower baud rate, e.g. ``esptool --baud 9600 ...``.
+   * Try `tracing the interactions <Tracing Esptool Interactions>`_ running ``esptool --trace ...`` and see if anything is received back at all.
+   * Try skipping chip autodetection by specifying the chip type, run ``esptool --chip {IDF_TARGET_NAME} ...``.
 
 If none of the above mentioned fixes help and your problem persists, please `open a new issue <https://github.com/espressif/esptool/issues/new/choose>`_.
 
 A serial exception error occurred
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``esptool.py`` uses the `pySerial <https://pyserial.readthedocs.io/en/latest/>`_ Python module for accessing the serial port.
+``esptool`` uses the `pySerial <https://pyserial.readthedocs.io/en/latest/>`_ Python module for accessing the serial port.
 If pySerial cannot operate normally, it raises an error and terminates.
 
 An example of a pySerial error:
@@ -208,7 +208,7 @@ An example of a pySerial error:
 
    A serial exception error occurred: read failed: [Errno 6] Device not configured
 
-Errors originating from pySerial are, therefore, not a problem with ``esptool.py``, but are usually caused by a problem with hardware or drivers.
+Errors originating from pySerial are, therefore, not a problem with ``esptool``, but are usually caused by a problem with hardware or drivers.
 
 Some of the most common pySerial error causes are:
 

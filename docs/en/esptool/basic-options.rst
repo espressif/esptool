@@ -5,7 +5,7 @@ Basic Options
 
 These are the basic/fundamental esptool options needed to define the communication with an ESP target. For advanced configuration options, see the :ref:`advanced-options` page.
 
-Esptool has global and command-specific options. Global options have to be specified after ``esptool.py``. They are used to configure the serial port, baud rate, and chip type.
+Esptool has global and command-specific options. Global options have to be specified after ``esptool``. They are used to configure the serial port, baud rate, and chip type.
 Command-specific options are specified after the command and are used to configure the command itself. For more information about commands and their options, see :ref:`commands` or see help in the command line.
 
 .. _chip-type:
@@ -13,9 +13,9 @@ Command-specific options are specified after the command and are used to configu
 Chip Type: ``--chip``, ``-c``
 -----------------------------
 
-* The target chip type can be selected using the ``--chip``/ ``-c`` option, e.g. ``esptool.py --chip {IDF_TARGET_PATH_NAME} <command>``.
+* The target chip type can be selected using the ``--chip``/ ``-c`` option, e.g. ``esptool --chip {IDF_TARGET_PATH_NAME} <command>``.
 * A default chip type can be specified by setting the ``ESPTOOL_CHIP`` environment variable.
-* If no ``-c`` option or ``ESPTOOL_CHIP`` value is specified, ``esptool.py`` automatically detects the chip type when connecting.
+* If no ``-c`` option or ``ESPTOOL_CHIP`` value is specified, ``esptool`` automatically detects the chip type when connecting.
 * Binary image generation commands, such as :ref:`elf2image <elf-2-image>` or :ref:`merge-bin <merge-bin>`, require the chip type to be specified.
 
 .. _serial-port:
@@ -25,7 +25,7 @@ Serial Port: ``--port``, ``-p``
 
 *  The serial port is selected using the ``-p`` option, like ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
 *  A default serial port can be specified by setting the ``ESPTOOL_PORT`` environment variable.
-*  If no ``-p`` option or ``ESPTOOL_PORT`` value is specified, ``esptool.py`` will enumerate all connected serial ports and try each one until it finds an Espressif device connected.
+*  If no ``-p`` option or ``ESPTOOL_PORT`` value is specified, ``esptool`` will enumerate all connected serial ports and try each one until it finds an Espressif device connected.
 
 .. note::
 

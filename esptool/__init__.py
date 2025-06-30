@@ -82,6 +82,7 @@ from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
     NotImplementedInROMError,
+    check_deprecated_py_suffix,
     flash_size_bytes,
 )
 from itertools import chain, cycle, repeat
@@ -112,7 +113,7 @@ click.rich_click.STYLE_COMMANDS_TABLE_COLUMN_WIDTH_RATIO = (1, 3)
 # Option group definitions, used for grouping options in the help output
 # Similar to 'add_argument_group' from argparse
 click.rich_click.OPTION_GROUPS = {
-    "esptool.py merge-bin": [
+    "* merge-bin": [
         {
             "name": "UF2 options",
             "options": [
@@ -141,7 +142,7 @@ click.rich_click.OPTION_GROUPS = {
     ],
 }
 click.rich_click.COMMAND_GROUPS = {
-    "esptool.py": [
+    "*": [
         {
             "name": "Basic commands",
             "commands": [
@@ -297,7 +298,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     cls=Group,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
-    help=f"esptool.py v{__version__} - serial utility for flashing, provisioning, "
+    help=f"esptool v{__version__} - serial utility for flashing, provisioning, "
     "and interacting with Espressif SoCs.",
 )
 @click.option(
@@ -310,6 +311,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
 @click.option(
     "--port",
     "-p",
+    type=click.Path(),
     default=os.environ.get("ESPTOOL_PORT", None),
     help="Serial port device.",
 )
@@ -362,7 +364,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     "--trace",
     "-t",
     is_flag=True,
-    help="Enable trace-level output of esptool.py interactions.",
+    help="Enable trace-level output of esptool interactions.",
 )
 @click.option(
     "--verbose",
@@ -409,7 +411,7 @@ def cli(
         log.set_verbosity("silent")
     ctx.obj["invoked_subcommand"] = ctx.invoked_subcommand
     ctx.obj["esp"] = getattr(ctx, "esp", None)
-    log.print(f"esptool.py v{__version__}")
+    log.print(f"esptool v{__version__}")
     load_config_file(verbose=True)
 
 
@@ -1043,7 +1045,7 @@ def get_port_list(
     if list_ports is None:
         raise FatalError(
             "Listing all serial ports is currently not available. "
-            "Please try to specify the port when running esptool.py or update "
+            "Please try to specify the port when running esptool or update "
             "the pyserial package to the latest version."
         )
     ports = []
@@ -1087,7 +1089,7 @@ def expand_file_arguments(argv: list[str]) -> list[str]:
         else:
             new_args.append(arg)
     if expanded:
-        log.print(f"esptool.py {' '.join(new_args)}")
+        log.print(f"esptool {' '.join(new_args)}")
         return new_args
     return argv
 
@@ -1172,6 +1174,7 @@ def get_default_connected_device(
 
 
 def _main():
+    check_deprecated_py_suffix(__name__)
     try:
         main()
     except FatalError as e:

@@ -26,7 +26,7 @@
 # Esptool can connect to the ESP device through that server as it is
 # demonstrated in the following example:
 #
-#   esptool.py --port rfc2217://localhost:4000?ign_set_control flash-id
+#   esptool --port rfc2217://localhost:4000?ign_set_control flash-id
 #
 
 import contextlib
