@@ -73,7 +73,6 @@ class EsptoolLogger(TemplateLogger):
     ansi_clear: str = ""
     ansi_line_up: str = ""
     ansi_line_clear: str = ""
-    ansi_line_up_pos1: str = ""
 
     _stage_active: bool = False
     _newline_count: int = 0
@@ -135,7 +134,6 @@ class EsptoolLogger(TemplateLogger):
             cls.instance.ansi_clear = "\033[K"
             cls.instance.ansi_line_up = "\033[1A"
             cls.instance.ansi_line_clear = "\x1b[2K"
-            cls.instance.ansi_line_up_pos1 = "\033[F"
         else:
             cls.instance.ansi_red = ""
             cls.instance.ansi_yellow = ""
@@ -144,7 +142,6 @@ class EsptoolLogger(TemplateLogger):
             cls.instance.ansi_clear = ""
             cls.instance.ansi_line_up = ""
             cls.instance.ansi_line_clear = ""
-            cls.instance.ansi_line_up_pos1 = ""
 
     def print(self, *args, **kwargs):
         """
@@ -240,13 +237,11 @@ class EsptoolLogger(TemplateLogger):
             bar = f"{'=' * (filled - 1)}>{' ' * (bar_length - filled)}"
 
         percent = f"{100 * (cur_iter / float(total_iters)):.1f}"
-        message = f"\r{self.ansi_clear}{prefix}[{bar}] {percent:>5}%{suffix} "
-        end_char = (
-            "\n"
-            if not self._smart_features or cur_iter == total_iters
-            else self.ansi_line_up_pos1
+        self.print(
+            f"\r{self.ansi_clear}{prefix}[{bar}] {percent:>5}%{suffix} ",
+            end="\n" if not self._smart_features or cur_iter == total_iters else "",
+            flush=True,
         )
-        self.print(message, end=end_char, flush=True)
 
     def set_logger(self, new_logger):
         self.__class__ = new_logger.__class__
