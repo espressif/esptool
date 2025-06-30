@@ -165,11 +165,16 @@ def detect_chip(
                 ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
             )
         except UnsupportedCommandError:
-            raise FatalError(
-                "Unsupported Command Error received. "
-                "Probably this means Secure Download Mode is enabled, "
-                "autodetection will not work. Need to manually specify the chip."
+            # Only ESP32-S2 does not support chip id detection
+            # and supports secure download mode
+            inst = CHIP_DEFS["esp32s2"](
+                detect_port._port, baud, trace_enabled=trace_enabled
             )
+            si = inst.get_security_info()
+            inst.secure_download_mode = si["parsed_flags"]["SECURE_DOWNLOAD_ENABLE"]
+            inst = check_if_stub(inst)
+            inst._post_connect()
+            return inst
         except FatalError:
             log.print(" Autodetection failed, trying again...")
             detect_port.connect(
