@@ -3,140 +3,73 @@ name: Build esptool
 on: [push, pull_request]
 
 jobs:
-  build-esptool-binaries-arm:
-    name: Build esptool binaries for ${{ matrix.platform }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        platform: [armv7, aarch64]
-    env:
-      DISTPATH: esptool-linux-${{ matrix.platform }}
-      STUBS_DIR: ./esptool/targets/stub_flasher/
-      EFUSE_DIR: ./espefuse/efuse_defs/
-      PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@master
-      - uses: uraimo/run-on-arch-action@v2
-        name: Build and test in ${{ matrix.platform }}
-        with:
-          arch: ${{ matrix.platform }}
-          distro: ubuntu22.04
-          shell: /bin/bash
-          # Not required, but speeds up builds by storing container images in
-          # a GitHub package registry.
-          githubToken: ${{ github.token }}
-          # Create an artifacts directory
-          setup: mkdir -p "${PWD}/${{ env.DISTPATH }}"
-          dockerRunArgs: --volume "${PWD}/${{ env.DISTPATH }}:/${{ env.DISTPATH }}"
-          install: |
-            apt-get update -y
-            apt-get install -y software-properties-common
-            add-apt-repository -y ppa:deadsnakes/ppa
-            apt-get update -y
-            apt-get install --ignore-missing -y python3.11 python3.11-dev python3-pip pkg-config openssl libffi-dev libssl-dev cargo rustc
-            python3.11 -m pip install --upgrade pip setuptools wheel
-          run: |
-            python3.11 -m pip install --upgrade cffi
-            adduser --disabled-password --gecos "" builder
-            chmod -R a+rwx /home/runner/work/esptool
-            su builder <<EOF
-            export PATH=\$PATH:/home/builder/.local/bin
-            # Install dependencies
-            python3.11 -m pip install pyinstaller==6.11.1
-            python3.11 -m pip install --user -e .
-
-            # Build with PyInstaller
-            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.STUBS_DIR }}1/*.json:${{ env.STUBS_DIR }}1/" --add-data="${{ env.STUBS_DIR }}2/*.json:${{ env.STUBS_DIR }}2/" esptool.py
-            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.EFUSE_DIR }}*.yaml:${{ env.EFUSE_DIR }}" espefuse.py
-            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
-            pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
-
-            # Test binaries
-            ./${{ env.DISTPATH }}/esptool -h || exit 1
-            ./${{ env.DISTPATH }}/espefuse -h || exit 1
-            ./${{ env.DISTPATH }}/espsecure -h || exit 1
-            ./${{ env.DISTPATH }}/esp_rfc2217_server -h || exit 1
-
-            # Add license and readme
-            mv LICENSE README.md ./${{ env.DISTPATH }}
-
-      - name: Archive artifact
-        uses: actions/upload-artifact@master
-        with:
-          name: ${{ env.DISTPATH }}
-          path: ${{ env.DISTPATH }}
-
   build-esptool-binaries:
     name: Build esptool binaries for ${{ matrix.platform }}
-    runs-on: ${{ matrix.RUN_ON }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        platform: [macos-amd64, macos-arm64, windows, linux-amd64]
+        platform: [windows-amd64, linux-amd64, macos-amd64, macos-arm64, linux-armv7, linux-aarch64]
         include:
-        - platform: macos-amd64
-          TARGET: macos-amd64
-          SEPARATOR: ':'
-          RUN_ON: macos-13 # Versions 13 and lower are Intel-based.
-        - platform: macos-arm64
-          TARGET: macos-arm64
-          SEPARATOR: ':'
-          RUN_ON: macos-latest # Versions 14 and higher are ARM-based.
-        - platform: windows
-          TARGET: windows-amd64
-          EXTEN: .exe
-          SEPARATOR: ';'
-          RUN_ON: windows-latest
-        - platform: linux-amd64
-          TARGET: linux-amd64
-          SEPARATOR: ':'
-          RUN_ON: ubuntu-22.04
+          - platform: windows-amd64
+            runner: windows-latest
+          - platform: linux-amd64
+            runner: ubuntu-latest
+          - platform: macos-amd64
+            runner: macos-13
+          - platform: macos-arm64
+            runner: macos-latest
+          - platform: linux-armv7
+            runner: ubuntu-latest
+          - platform: linux-aarch64
+            runner: ubuntu-24.04-arm
     env:
-      DISTPATH: esptool-${{ matrix.TARGET }}
+      DISTPATH: esptool-${{ matrix.platform }}
       STUBS_DIR: ./esptool/targets/stub_flasher/
       EFUSE_DIR: ./espefuse/efuse_defs/
-      PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
     steps:
       - name: Checkout repository
-        uses: actions/checkout@master
-      - name: Set up Python 3.11
-        uses: actions/setup-python@master
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        if: (matrix.platform != 'linux-armv7') || contains(github.ref_name, 'dev')
         with:
-          python-version: "3.11"
-      - name: Install dependencies
+          python-version: "3.13"
+          # Python is used only to apply dev-release patch on Linux runners and no packages are installed as the build happens in the container
+          cache: ${{ matrix.platform != 'linux-armv7' && matrix.platform != 'linux-aarch64' && matrix.platform != 'linux-amd64' && 'pip' || '' }}
+      - name: Patch version for dev releases
+        if: contains(github.ref_name, 'dev')
         run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller==6.11.1
-          pip install --user -e .
+          echo "Patching version for dev release: ${{ github.ref_name }}"
+          python ci/patch_dev_release.py --version ${{ github.ref_name }} esptool/__init__.py
+          git diff
       - name: Build with PyInstaller
-        run: |
-          pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.STUBS_DIR }}1/*.json${{ matrix.SEPARATOR }}${{ env.STUBS_DIR }}1/" --add-data="${{ env.STUBS_DIR }}2/*.json${{ matrix.SEPARATOR }}${{ env.STUBS_DIR }}2/" esptool.py
-          pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico --add-data="${{ env.EFUSE_DIR }}*.yaml${{ matrix.SEPARATOR }}${{ env.EFUSE_DIR }}" espefuse.py
-          pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico espsecure.py
-          pyinstaller --distpath ./${{ env.DISTPATH }} -F --icon=ci/espressif.ico esp_rfc2217_server.py
-      - name: Sign binaries
-        if: matrix.platform == 'windows' && github.event_name != 'pull_request' && github.repository == 'espressif/esptool'
-        env:
-          CERTIFICATE: ${{ secrets.CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-        shell: pwsh
-        run: |
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esptool.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espefuse.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/espsecure.exe
-          ./ci/Sign-File.ps1 -Path ./${{ env.DISTPATH }}/esp_rfc2217_server.exe
-      - name: Test binaries
-        shell: bash
-        run: |
-          ./${{ env.DISTPATH }}/esptool${{ matrix.EXTEN }} -h
-          ./${{ env.DISTPATH }}/espefuse${{ matrix.EXTEN }} -h
-          ./${{ env.DISTPATH }}/espsecure${{ matrix.EXTEN }} -h
-          ./${{ env.DISTPATH }}/esp_rfc2217_server${{ matrix.EXTEN }} -h
+        uses: espressif/python-binary-action@master
+        with:
+          scripts: 'esptool.py espefuse.py espsecure.py esp_rfc2217_server.py'
+          output-dir: ./${{ env.DISTPATH }}
+          include-data-dirs: |
+            {
+              "esptool.py": [
+                "${{ env.STUBS_DIR }}1",
+                "${{ env.STUBS_DIR }}2"
+              ],
+              "espefuse.py": [
+                "${{ env.EFUSE_DIR }}"
+              ]
+            }
+          icon-file: ${{ matrix.platform == 'windows-amd64' && 'ci/espressif.ico' || '' }}
+          target-platform: ${{ matrix.platform }}
+          additional-arm-packages: 'openssl libffi-dev libssl-dev libffi7'
+          certificate: ${{ secrets.CERTIFICATE }}
+          certificate-password: ${{ secrets.CERTIFICATE_PASSWORD }}
+
       - name: Add license and readme
         shell: bash
         run: mv LICENSE README.md ./${{ env.DISTPATH }}
+
       - name: Archive artifact
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
@@ -144,7 +77,7 @@ jobs:
   create_release:
     name: Create GitHub release
     if: startsWith(github.ref, 'refs/tags/') && !(contains(github.ref_name, 'dev'))
-    needs: [build-esptool-binaries, build-esptool-binaries-arm]
+    needs: [build-esptool-binaries]
     runs-on: ubuntu-latest
     env:
       PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi"
@@ -161,7 +94,6 @@ jobs:
           fetch-depth: 0
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install --user -e ".[dev]"
       - name: Generate changelog
         run: |
