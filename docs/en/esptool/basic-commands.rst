@@ -221,6 +221,7 @@ By default, ``elf2image`` uses the sections in the ELF file to generate each seg
     In the above example, the output image file would be called ``my_esp_app.bin``.
 
     The ``--ram-only-header`` configuration is mainly applicable for use within the Espressif's SIMPLE_BOOT option from 3rd party OSes such as ZephyrOS and NuttX OS.
+    For a detailed explanation of Simple Boot and how it works, see `Simple Boot explained <https://developer.espressif.com/blog/2025/06/simple-boot-explained/>`_.
     This option makes only the RAM segments visible to the ROM bootloader placing them at the beginning of the file and altering the segment count from the image header with the quantity of these segments, and also writing only their checksum. This segment placement may result in a more fragmented binary because of flash alignment constraints.
     It is strongly recommended to use this configuration with care, because the image built must then handle the basic hardware initialization and the flash mapping for code execution after ROM bootloader boot it.
 
