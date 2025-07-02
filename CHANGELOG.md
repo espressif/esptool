@@ -20,6 +20,114 @@
 </div>
 <hr>
 
+## v5.0.0 (2025-07-02)
+
+### 🚨 Breaking changes
+
+- - The .py suffix is deprecated for the following scripts:
+  - esptool
+  - espefuse
+  - espsecure
+  - esp_rfc2217_server *(Peter Dragun - 635cde1)*
+- - execute-scripts command is removed *(Peter Dragun - ff72b26)*
+
+### ✨ New Features
+
+- **espefuse**: Use the esptool logger, more concise messages *(Radim Karniš - 983338f)*
+- **espefuse**: Replace execute-scripts with public API *(Peter Dragun - ff72b26)*
+- **espefuse**: Add public API for espefuse *(Peter Dragun - d7da0f8)*
+- **espefuse**: Rename all commands to use dashes and add tests for deprecated commands *(Peter Dragun - ade3088)*
+- **espefuse**: Add support for chaining commands with click parser *(Peter Dragun - 0a2ea69)*
+- **espefuse**: Refactor CLI and use click for parsing arguments *(Peter Dragun - aa80001)*
+- **espefuse**: Adds efuse calculation fields for ESP32-C5 *(Konstantin Kondrashov - 9104038)*
+- **espefuse**: Adds 3-bit field for wafer major version in ESP32-P4 *(Konstantin Kondrashov - c102510)*
+- **verbosity**: Allow setting silent or verbose output levels *(Radim Karniš - 90e3770)*
+- **efuse**: Adds efuses for ESP32-C61 ECO3 *(Konstantin Kondrashov - 6146410)*
+- **espefuse**: Support efuse for ESP32-C5 ECO2 (v1.0) *(Konstantin Kondrashov - 3726726)*
+- **espsecure**: Use esptool logger, unify output format of messages *(Radim Karniš - 905249c)*
+- **stub_flasher**: Support for >16MB flash on P4 and >16MB encrypted writes on S3 *(Radim Karniš - 4e6803e)*
+- **espsecure**: Drop ecdsa module, use cryptography instead *(Radim Karniš - e132f6f)*
+- **espsecure**: Unify all commands and options to use dash instead of underscore *(Peter Dragun - 36325fd)*
+- **espsecure**: Use rich click for CLI parsing *(Peter Dragun - 9c7ddc1)*
+- **targets**: Update chip features lists with more info *(Radim Karniš - 3c776aa)*
+- **logging**: Add collapsible output stages and ASCII progress bars *(Radim Karniš - f3cf107)*
+- **trace**: Update --trace with more info and more readable formatting *(Radim Karniš - 0beee77)*
+- **cli**: Commands and options use dashes instead of underscores for uniformity *(Peter Dragun - 3cecd6d)*
+- **cmds**: Expand input of all functions to file paths, bytes, or file-like objects *(Radim Karniš - 46a9e31)*
+- **cmds**: Allow all functions to both return bytes and write to files *(Radim Karniš - 03b84a1)*
+- **cmds**: Polish the public API, unify arg names, pack some args *(Radim Karniš - 37a13a9)*
+- **cmds**: Encapsulate logic for running the stub flasher in run_stub *(Radim Karniš - 063d9d5)*
+- **cli**: Add click-based CLI interface *(Peter Dragun - d40fefa)*
+- **cmds**: Allow commands to output bytes, as well as write to a file *(Radim Karniš - 0153b79)*
+- **cmds**: Rework the public API to work as a Python module *(Radim Karniš - ba36933)*
+- **flash_attach**: Encapsulate logic for flash attaching and configuration *(Radim Karniš - 6e959ef)*
+- **esp32h4**: update the ESP32H4StubLoader *(Chen Jichang - f7c78f8)*
+- **espefuse**: Updates esp32h4 efuse table and fixes tests *(Konstantin Kondrashov - 3da8c57)*
+- **esp32h4**: add ESP32H4 esptool support *(Chen Jichang - bcf5c6e)*
+- **esp32h21**: Add Microsoft UF2 family ID *(Radim Karniš - cb0d334)*
+- **errors**: Print errors to STDERR, catch KeyboardInterrupt *(Radim Karniš - 0864e17)*
+- **write_flash**: Remove the superfluous --verify option *(Radim Karniš - dbf3d1c)*
+- **logger**: Add a custom logger, allow output redirection *(Radim Karniš - 1ce02db)*
+- **image_info**: Deprecate the --version 1 output format *(Radim Karniš - 3f625c3)*
+- Remove .py suffix from scripts *(Peter Dragun - 635cde1)*
+- detect flash size of Adesto flash chips *(Jaroslav Burian - 0b56f85)*
+- Add support for k, M suffix for flash size *(Peter Dragun - 6f0d779)*
+- Rename reset modes to use dash instead of underscore *(Peter Dragun - 851919f)*
+
+### 🐛 Bug Fixes
+
+- **logger**: Turn on smart features in more cases *(Jason2866 - 5d5eafb)*
+- **elf2image**: Multiple fixes from 3rd party frameworks *(Sylvio Alves - cbd4e9b)*
+- **stub_flasher**: Fix USB-Serial/JTAG mode on C5 ECO2 and C61 ECO3 *(Radim Karniš - 1decf86)*
+- **write_flash**: Detect more cases of unresponsive flash, fix failing flash_size check *(Radim Karniš - e6bfc3b)*
+- **stub_flasher**: Fix ESP32-C5 ECO2 flashing *(Radim Karniš - 3a4c15c)*
+- **espefuse**: Fix output messages for set_flash_voltage *(Peter Dragun - daaedf8)*
+- **espefuse**: JTAG_SEL_ENABLE has GPIO34 strapping pin for ESP32P4 *(Jan Beran - 78535e4)*
+- **esp32c5**: fix bootloader address *(Jaroslav Burian - ec12073)*
+- **autodetection**: Remove the Unsupported detection protocol stage *(Radim Karniš - 05553a4)*
+- **logging**: Unify output messages, notes, and warning formatting *(Radim Karniš - 07879eb)*
+- **elf2image**: fix elf2image for ram app when sha256 offset not specified *(Jaroslav Burian - 6f8ff39)*
+- **esp32h4**: fix h4 chip feature *(Chen Jichang - 955943a)*
+- **image_info**: Sanitize app and bootloader info of null bytes *(Radim Karniš - 8016455)*
+- **lint**: Correct type annotations issues reported by mypy *(Radim Karniš - 0bca550)*
+- **esptool**: Fix efuse base address for esp32h21 *(Konstantin Kondrashov - c3d28ee)*
+- **elf2image**: support --flash-mmu-page-config for all chips *(Jaroslav Burian - 8be617c)*
+- **elf2image**: Try to correct MMU page size if not specified *(Jaroslav Burian - f4fabc5)*
+- **elf2image**: Print correct MMU page size in error message *(Jaroslav Burian - 9da4948)*
+- **logging**: Avoid crashes when flushing if sys.stdout is not available *(Radim Karniš - 5176b67)*
+- enable auto-detection of ESP32-S2 in secure download mode *(Jaroslav Burian - c2f5d21)*
+- enable ESP32-P4 ECO5 chip detection *(Jaroslav Burian - 0b3460f)*
+- Do not use padding for merged IntelHex files *(Peter Dragun - 08c170b)*
+- lock upper version of click to <8.2.0 *(Peter Dragun - 5241cba)*
+- Add timeout to read_flash to avoid infinite loops *(Peter Dragun - f26a7bb)*
+- Close the data file after reading the data *(Stevan Stevic - 807d02b)*
+
+### 📖 Documentation
+
+- **elf2image**: Link an article with Simple Boot explanation *(Radim Karniš - 202dfad)*
+- **logger**: Fix custom logger example code *(Radim Karniš - 26e86e9)*
+- **logger**: Fix custom logger example code *(Radim Karniš - eaaa6b3)*
+- Clarify versions in documentation *(Peter Dragun - 4586e4b)*
+- Remove .py suffix from tool names *(Peter Dragun - e9f03ae)*
+- Remove espefuse and espsecure migration guide for esp8266 *(Peter Dragun - b6e08a3)*
+- Update migration guide for espefuse with click parser *(Peter Dragun - faf3e22)*
+- Add missing esp32-p4 target to supported targets *(Peter Dragun - 8b5a5d9)*
+- fix targets dropdown in production *(Peter Dragun - 2643101)*
+- Update autocomplete docs for click-based CLI *(Peter Dragun - 89cfa52)*
+- fix minor issues and improve vague statements *(Peter Dragun - 6d04155)*
+
+### 🔧 Code Refactoring
+
+- **cli_mode**: Improve CLI mode workflow code *(Radim Karniš - 0671d35)*
+- **stub_class**: Make into a mixin to avoid code repetition *(Radim Karniš - 83613c8)*
+
+### 🗑️ Removals
+
+- **make_image**: Remove the make_image command in favor of other workflows *(Radim Karniš - 955a7c8)*
+- **beta_targets**: Removed support for beta chip targets *(Radim Karniš - 8f1c206)*
+- Deprecate Python versions 3.7, 3.8 and 3.9 *(Peter Dragun - 19f1bee)*
+
+
 ## v4.9.0 (2025-06-19)
 
 ### ✨ New Features
