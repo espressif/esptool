@@ -20,6 +20,81 @@
 </div>
 <hr>
 
+## v4.9.0 (2025-06-19)
+
+### ✨ New Features
+
+- **espefuse**: Add eFuses for ESP32-C61 ECO3 *(Radim Karniš - 98688ab)*
+- **espefuse**: Support efuse for ESP32-C5 ECO2 (v1.0) *(Konstantin Kondrashov - ce16054)*
+- **stub_flasher**: Support for >16MB flash on P4 and >16MB encrypted writes on S3 *(Radim Karniš - 0110514)*
+- **espefuse**: Updates esp32h4 efuse table and fixes tests *(Konstantin Kondrashov - 777c505)*
+- **esp32h4**: add ESP32H4 esptool support *(Chen Jichang - edb99bd)*
+- **esp32h21**: Add Microsoft UF2 family ID *(Radim Karniš - 74d27ae)*
+- **watchdog_reset**: Add a new watchdog_reset option working even in USB modes *(Radim Karniš - d37c38a)*
+- **espsecure**: Improves an error message for encrypt_flash_data and decrypt_flash_data *(Konstantin Kondrashov - ef407ed)*
+- **espefuse**: Clean up efuse code for ESP32H2 *(Konstantin Kondrashov - 4e922fe)*
+- **espefuse**: Support different efuse table versions for ESP32H2 *(Konstantin Kondrashov - d51ecbe)*
+- **espefuse**: Adds efuses for esp32h2 eco5 *(Konstantin Kondrashov - 9b74df6)*
+- **esp32h21**: add ESP32H21 esptool support *(gaoxu - 92ceff2)*
+- **esp32-p4**: add support for flasher stub in USB OTG mode *(Peter Dragun - 804f2db)*
+- **esp32-c5**: Add ECO1 magic number *(Radim Karniš - 6cc002c)*
+- **esp_rfc2217**: Improved the logger message format *(Jakub Kocka - 39a12a4)*
+- **espefuse**: Adds 3 bit for PSRAM_CAP efuse field *(Konstantin Kondrashov - ab2e0bf)*
+- **espefuse**: Adds API for getting block and wafer versions *(Konstantin Kondrashov - 111c6c0)*
+- **espefuse**: Adds ADC calibration data for ESP32-C61 *(Konstantin Kondrashov - 36d9735)*
+- **espefuse**: Adds ADC calibration data for ESP32-C5 *(Konstantin Kondrashov - a903812)*
+- **espefuse**: Adds ADC calibration data for ESP32-P4 *(Konstantin Kondrashov - 215e4b8)*
+- **erase_region**: Enable erasing in ROM bootloader and SDM *(Radim Karniš - e0deeac)*
+- **hard_reset**: Support custom hard reset sequence configuration *(Radim Karniš - 1b15738)*
+- print usb mode when output chip info *(Jan Beran - 749d1ad)*
+- Add new app description segments *(Jaroslav Burian - b23e60f)*
+- add filtering based on serial number *(Jaroslav Burian - 88319db)*
+- Add support for Python 3.13 *(Radim Karniš - 6abd05d)*
+
+### 🐛 Bug Fixes
+
+- **stub_flasher**: Fix USB-Serial/JTAG mode on C5 ECO2 and C61 ECO3 *(Radim Karniš - 4382f14)*
+- **write_flash**: Detect more cases of unresponsive flash, fix failing flash_size check *(Radim Karniš - f83d598)*
+- **stub_flasher**: Fix ESP32-C5 ECO2 flashing *(Radim Karniš - bb237bc)*
+- **espefuse**: Fix output messages for set_flash_voltage *(Peter Dragun - 759bcc6)*
+- **espefuse**: JTAG_SEL_ENABLE has GPIO34 strapping pin for ESP32P4 *(Jan Beran - f6d1833)*
+- **esp32c5**: fix bootloader address *(Jaroslav Burian - 83e0973)*
+- **elf2image**: fix elf2image for ram app when sha256 offset not specified *(Radim Karniš - 9fd7b7a)*
+- **esp32h4**: Correct ESP32-H4 chip features *(Radim Karniš - 5520963)*
+- **esp32h21**: Fix eFuse base address *(Radim Karniš - dc05792)*
+- **elf2image**: support --flash-mmu-page-config for all chips *(Jaroslav Burian - 54fdc75)*
+- **elf2image**: Try to correct MMU page size if not specified *(Jaroslav Burian - d9afa9c)*
+- **elf2image**: Print correct MMU page size in error message *(Jaroslav Burian - 447de60)*
+- **test**: Expect the correct module name for Python's 3.14 argparse *(Karolina Surma - 98001b7)*
+- **write_flash**: Skip flash_size checks if we can't read flash size *(Radim Karniš - 12095b2)*
+- **save_segment**: Adds segment len check the same as bootloader does *(Konstantin Kondrashov - a6bceb7)*
+- **chip_type_verification**: Enable in SDM, do not rely on magic numbers *(Radim Karniš - 598e07b)*
+- **esp32-c6**: Disable RTC WDT reset to prevent port disappearing *(Radim Karniš - d47004e)*
+- **esp_rfc2217**: Fixed keyboard interrupt on Windows and added info for command *(Jakub Kocka - 5569aa5)*
+- **detect_chip**: Select correct loader before further operations to avoid silent failures *(Jan Beran - 8897ff8)*
+- **usb_resets**: Fix resetting in USB-OTG and USB-Serial/JTAG modes *(Radim Karniš - 8298cdc)*
+- Do not use padding for merged IntelHex files *(Peter Dragun - 739669f)*
+- close port when connect fails *(Jaroslav Burian - d99c972)*
+- Hide missing app info based on IDF version *(Jaroslav Burian - d2bca1e)*
+- add delay after WDT reset for better stability *(Peter Dragun - 188c162)*
+- Not reading app description for some SoCs *(Jaroslav Burian - 3555fe1)*
+- Fix missing newline in output *(Jan Beran - 26b676b)*
+
+### 📖 Documentation
+
+- **esptool**: Fix reset sequences in documentation *(Jan Beran - 92160eb)*
+- **flash_modes**: Correct QIO GPIO pins for all chips *(Radim Karniš - 23f11f0)*
+- **espefuse**: Fixed JTAG strapping pin for ESP32-S3 in the help and documentation *(Roland Dobai - de1d1ce)*
+- **scripting**: Add example of usage as a Python module *(Radim Karniš - d54e59f)*
+- **esp8266**: change boot select pin to IO0 *(ChromaLock - c06ce1e)*
+- **read_flash_sfdp**: Fix command formatting *(Radim Karniš - ec309bb)*
+- **spi_connection**: Explain which flash chips are supported *(Radim Karniš - 6d37e30)*
+- fix targets dropdown in production *(Peter Dragun - 9201ccd)*
+- Point directly to the datasheet for given target *(Jan Beran - a32988e)*
+- Add ESP32-C5 and ESP32-C61 docs *(Radim Karniš - f52c723)*
+
+---
+
 ## v4.8.1 (2024-09-25)
 
 ### ✨ New Features
