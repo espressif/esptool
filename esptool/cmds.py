@@ -81,16 +81,21 @@ def detect_chip(
     trace_enabled=False,
     connect_attempts=DEFAULT_CONNECT_ATTEMPTS,
 ):
-    """Use serial access to detect the chip type.
+    """
+    Detect the type of ESP device connected via serial,
+    connect to it, and return an active ESPLoader object.
 
-    First, get_security_info command is sent to detect the ID of the chip
-    (supported only by ESP32-C3 and later, works even in the Secure Download Mode).
-    If this fails, we reconnect and fall-back to reading the magic number.
-    It's mapped at a specific ROM address and has a different value on each chip model.
-    This way we use one memory read and compare it to the magic number for each chip.
+    Args:
+        port: The serial port to use for communication.
+        baud: The baud rate for serial communication.
+        connect_mode: The chip reset method to perform when connecting to the ESP device
+            (``"default_reset"``, ``"usb_reset"``,
+            ``"no_reset"``, ``"no_reset_no_sync"``)
+        trace_enabled: Enables or disables tracing for debugging purposes.
+        connect_attempts: Number of connection attempts before failing.
 
-    This routine automatically performs ESPLoader.connect() (passing
-    connect_mode parameter) as part of querying the chip.
+    Returns:
+        An initialized instance of the detected chip class ready for use.
     """
     inst = None
     detect_port = ESPLoader(port, baud, trace_enabled=trace_enabled)
@@ -99,14 +104,21 @@ def detect_chip(
     detect_port.connect(connect_mode, connect_attempts, detecting=True)
 
     def check_if_stub(instance):
-        print(f" {instance.CHIP_NAME}")
-        if detect_port.sync_stub_detected:
+        print(f" {instance.CHIP_NAME}", flush=True)
+        if detect_port.sync_stub_detected and instance.STUB_CLASS is not None:
             instance = instance.STUB_CLASS(instance)
             instance.sync_stub_detected = True
         return instance
 
+    """
+    First, get_security_info command is sent to detect the ID of the chip
+    (supported only by ESP32-C3 and later, works even in the Secure Download Mode).
+    If this fails, we reconnect and fall-back to reading the magic number.
+    It's mapped at a specific ROM address and has a different value on each chip model.
+    This way we use one memory read and compare it to the magic number for each chip.
+    """
     try:
-        print("Detecting chip type...", end="")
+        print("Detecting chip type...", end="", flush=True)
         chip_id = detect_port.get_chip_id()
         for cls in ROM_LIST:
             # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip_id
@@ -121,42 +133,45 @@ def detect_chip(
                 break
         else:
             err_msg = f"Unexpected chip ID value {chip_id}."
-
-    except (UnsupportedCommandError, struct.error, FatalError) as e:
+    except (UnsupportedCommandError, FatalError):
         # UnsupportedCommandError: ESP8266/ESP32 ROM
-        # struct.error: ESP32-S2
-        # FatalError: ESP8266/ESP32 STUB
-        print(" Unsupported detection protocol, switching and trying again...")
+        # FatalError: ESP8266/ESP32 STUB or ESP32-S2
         try:
-            # ESP32/ESP8266 are reset after an unsupported command, need to reconnect
-            # (not needed on ESP32-S2)
-            if not isinstance(e, struct.error):
-                detect_port.connect(
-                    connect_mode, connect_attempts, detecting=True, warnings=False
-                )
-            print("Detecting chip type...", end="")
-            sys.stdout.flush()
-
+            chip_magic_value = detect_port.read_reg(
+                ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
+            )
+        except UnsupportedCommandError:
+            # Only ESP32-S2 does not support chip id detection
+            # and supports secure download mode
+            inst = CHIP_DEFS["esp32s2"](
+                detect_port._port, baud, trace_enabled=trace_enabled
+            )
+            si = inst.get_security_info()
+            inst.secure_download_mode = si["parsed_flags"]["SECURE_DOWNLOAD_ENABLE"]
+            inst = check_if_stub(inst)
+            inst._post_connect()
+            return inst
+        except FatalError:
+            print(" Autodetection failed, trying again...")
+            detect_port.connect(
+                connect_mode, connect_attempts, detecting=True, warnings=False
+            )
+            print("Detecting chip type...", end="", flush=True)
             chip_magic_value = detect_port.read_reg(
                 ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
             )
 
-            for cls in ROM_LIST:
-                if not cls.USES_MAGIC_VALUE:
-                    continue
-                if chip_magic_value == cls.MAGIC_VALUE:
-                    inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
-                    inst = check_if_stub(inst)
-                    inst._post_connect()
-                    break
-            else:
-                err_msg = f"Unexpected chip magic value {chip_magic_value:#010x}."
-        except UnsupportedCommandError:
-            raise FatalError(
-                "Unsupported Command Error received. "
-                "Probably this means Secure Download Mode is enabled, "
-                "autodetection will not work. Need to manually specify the chip."
-            )
+        for cls in ROM_LIST:
+            if not cls.USES_MAGIC_VALUE:
+                continue
+            if chip_magic_value == cls.MAGIC_VALUE:
+                inst = cls(detect_port._port, baud, trace_enabled=trace_enabled)
+                inst = check_if_stub(inst)
+                inst._post_connect()
+                break
+        else:
+            err_msg = f"Unexpected chip magic value {chip_magic_value:#010x}."
+
     if inst is not None:
         return inst
 

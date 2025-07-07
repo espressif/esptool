@@ -5,8 +5,10 @@
 #
 # How to use:
 #
-# Run with a physical connection to a chip:
-#  - `pytest test_esptool_sdm.py --chip esp32 --port /dev/ttyUSB0 --baud 115200`
+# Run with a physical connection to a chip (ESP8266 and ESP32 do not support
+# secure download mode):
+#  - `pytest test_esptool_sdm.py --chip esp32s2 --port /dev/ttyUSB0 --baud 115200`
+
 #
 # where  - --port       - a serial port for esptool.py operation
 #        - --chip       - ESP chip name
@@ -17,7 +19,8 @@ from test_esptool import EsptoolTestCase, arg_chip, esptool, pytest
 
 
 @pytest.mark.skipif(
-    arg_chip == "esp8266", reason="ESP8266 does not support Secure Download Mode"
+    arg_chip in ("esp8266", "esp32"),
+    reason="ESP8266 and ESP32 do not support secure download mode",
 )
 class TestSecureDownloadMode(EsptoolTestCase):
     expected_chip_name = esptool.util.expand_chip_name(arg_chip)
@@ -25,16 +28,9 @@ class TestSecureDownloadMode(EsptoolTestCase):
     def test_auto_detect(self):
         output = self.run_esptool_error("flash_id", chip="auto")
 
-        if arg_chip in ["esp32", "esp32s2"]:  # no autodetection with get_security_info
-            assert "Secure Download Mode is enabled" in output
-            assert "Unsupported detection protocol" in output
-        else:
-            assert "Unsupported detection protocol" not in output
-            assert f"Detecting chip type... {self.expected_chip_name}" in output
-            assert "Stub loader is not supported in Secure Download Mode" in output
-            assert (
-                f"Chip is {self.expected_chip_name} in Secure Download Mode" in output
-            )
+        assert f"Detecting chip type... {self.expected_chip_name}" in output
+        assert "Stub loader is not supported in Secure Download Mode" in output
+        assert f"Chip is {self.expected_chip_name} in Secure Download Mode" in output
 
     # Commands not supported in SDM
     def test_sdm_incompatible_commands(self):
@@ -64,6 +60,5 @@ class TestSecureDownloadMode(EsptoolTestCase):
             "Detecting flash size is not supported in secure download mode." in output
         )
 
-        if arg_chip != "esp32":  # esp32 does not support get_security_info
-            output = self.run_esptool("get_security_info")  # get_security_info
-            assert "Security Information:" in output
+        output = self.run_esptool("get_security_info")  # get_security_info
+        assert "Security Information:" in output
