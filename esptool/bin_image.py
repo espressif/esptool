@@ -443,7 +443,7 @@ class BaseFirmwareImage(object):
                     elem_pad_addr != elem.addr + len(elem.data)
                     and elem_pad_addr == next_elem.addr
                 ):
-                    log.info(
+                    log.note(
                         "Inserting {} bytes padding between {} and {}".format(
                             next_elem.addr - (elem.addr + len(elem.data)),
                             elem.name,

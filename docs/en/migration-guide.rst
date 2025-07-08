@@ -77,7 +77,7 @@ The esptool ``v5`` release introduces a centralized logging mechanism to improve
 
 **Migration Steps:**
 
-1. If your scripts rely on direct ``print()`` statements, update them to use the centralized logger for consistent output. Calls to the logger should be made using ``log.print()`` (or the respective method, such as ``log.info()``, ``log.warning()``, or ``log.error()``).
+1. If your scripts rely on direct ``print()`` statements, update them to use the centralized logger for consistent output. Calls to the logger should be made using ``log.print()`` (or the respective method, such as ``log.note()``, ``log.warning()``, or ``log.error()``).
 2. Refer to the provided documentation to implement custom loggers as needed.
 3. Update GUIs or tools to leverage the progress tracking API for better user feedback during lengthy operations.
 
