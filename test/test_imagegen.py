@@ -539,6 +539,68 @@ class TestHashAppend(BaseTestCase):
         assert bytes(expected_bin_without_hash) == bin_without_hash
 
 
+class TestELFSectionHandling(BaseTestCase):
+    """Test ELF section type handling and related functionality."""
+
+    @staticmethod
+    def _modify_section_type(elf_path, section_name, new_type):
+        """
+        Modify the type of a specific section in the ELF file.
+        """
+        with open(elf_path, "rb+") as f:
+            elf = ELFFile(f)
+            section = elf.get_section_by_name(section_name)
+
+            index = elf.get_section_index(section_name)
+            # Calculate the section header's position in the file (using section index,
+            # the section header table's offset and section header entry size)
+            sh_entry_offset = elf.header["e_shoff"] + index * elf.header["e_shentsize"]
+
+            # Modify the section type in the header
+            section.header.sh_type = new_type
+
+            f.seek(sh_entry_offset)
+            f.write(elf.structs.Elf_Shdr.build(section.header))
+
+    @staticmethod
+    def _get_section_type(elf_path, section_name):
+        """
+        Get the current type of a specific section in the ELF file.
+        """
+        with open(elf_path, "rb") as f:
+            elf = ELFFile(f)
+            section = elf.get_section_by_name(section_name)
+            return section.header.sh_type
+
+    def test_unknown_section_type_warning(self, capsys):
+        """Test that unknown section types generate the expected warning message."""
+        ELF = "esp32c6-appdesc.elf"
+        BIN = "esp32c6-appdesc.bin"
+        SECTION_NAME = ".flash.appdesc"
+        UNKNOWN_TYPE = 0x99
+
+        original_sec_type = self._get_section_type(ELF, SECTION_NAME)
+
+        # Modify the section to have an unknown type
+        self._modify_section_type(ELF, SECTION_NAME, UNKNOWN_TYPE)
+
+        # Verify the section was actually modified
+        modified_type = self._get_section_type(ELF, SECTION_NAME)
+        assert modified_type == UNKNOWN_TYPE
+
+        try:
+            self.run_elf2image("esp32c6", ELF, allow_warnings=True)
+            output = capsys.readouterr().out
+            print(output)
+
+            expected_warning = f"Unknown section type {UNKNOWN_TYPE:#04x} in ELF file"
+            assert expected_warning in output
+
+        finally:
+            self._modify_section_type(ELF, SECTION_NAME, original_sec_type)
+            try_delete(BIN)
+
+
 class TestMMUPageSize(BaseTestCase):
     def test_appdesc_aligned(self, capsys):
         ELF = "esp32c6-appdesc.elf"

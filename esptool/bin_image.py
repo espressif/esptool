@@ -1281,20 +1281,6 @@ ESP32H21ROM.BOOTLOADER_IMAGE = ESP32H21FirmwareImage
 
 
 class ELFFile(object):
-    SEC_TYPE_PROGBITS = 0x01
-    SEC_TYPE_STRTAB = 0x03
-    SEC_TYPE_NOBITS = 0x08  # e.g. .bss section
-    SEC_TYPE_INITARRAY = 0x0E
-    SEC_TYPE_FINIARRAY = 0x0F
-    SEC_TYPE_PREINITARRAY = 0x10
-
-    PROG_SEC_TYPES = (
-        SEC_TYPE_PROGBITS,
-        SEC_TYPE_INITARRAY,
-        SEC_TYPE_FINIARRAY,
-        SEC_TYPE_PREINITARRAY,
-    )
-
     LEN_SEC_HEADER = 0x28
 
     SEG_TYPE_LOAD = 0x01
@@ -1353,6 +1339,22 @@ class ELFFile(object):
         self._read_segments(f, _phoff, _phnum, shstrndx)
 
     def _read_sections(self, f, section_header_offs, section_header_count, shstrndx):
+        SEC_TYPE_PROGBITS = 0x01
+        SEC_TYPE_STRTAB = 0x03
+        SEC_TYPE_NOBITS = 0x08  # e.g. .bss section
+        SEC_TYPE_INITARRAY = 0x0E
+        SEC_TYPE_FINIARRAY = 0x0F
+        SEC_TYPE_PREINITARRAY = 0x10
+
+        PROG_SEC_TYPES = (
+            SEC_TYPE_PROGBITS,
+            SEC_TYPE_INITARRAY,
+            SEC_TYPE_FINIARRAY,
+            SEC_TYPE_PREINITARRAY,
+        )
+
+        KNOWN_SEC_TYPES = PROG_SEC_TYPES + (SEC_TYPE_NOBITS, SEC_TYPE_STRTAB)
+
         f.seek(section_header_offs)
         len_bytes = section_header_count * self.LEN_SEC_HEADER
         section_header = f.read(len_bytes)
@@ -1384,17 +1386,13 @@ class ELFFile(object):
             ) = struct.unpack_from("<LLLLLLLLL", section_header[offs:])
             return (name_offs, sec_type, lma, size, sec_offs, _flags, align)
 
-        all_sections = [read_section_header(offs) for offs in section_header_offsets]
-        prog_sections = [s for s in all_sections if s[1] in ELFFile.PROG_SEC_TYPES]
-        nobits_secitons = [s for s in all_sections if s[1] == ELFFile.SEC_TYPE_NOBITS]
-
         # search for the string table section
         if (shstrndx * self.LEN_SEC_HEADER) not in section_header_offsets:
             raise FatalError(f"ELF file has no STRTAB section at shstrndx {shstrndx}")
         _, sec_type, _, sec_size, sec_offs, _flags, align = read_section_header(
             shstrndx * self.LEN_SEC_HEADER
         )
-        if sec_type != ELFFile.SEC_TYPE_STRTAB:
+        if sec_type != SEC_TYPE_STRTAB:
             log.warning(f"ELF file has incorrect STRTAB section type {sec_type:#04x}")
         f.seek(sec_offs)
         string_table = f.read(sec_size)
@@ -1410,23 +1408,42 @@ class ELFFile(object):
             f.seek(offs)
             return f.read(size)
 
-        prog_sections = [
-            ELFSection(
-                lookup_string(n_offs),
-                lma,
-                read_data(offs, size),
-                flags=_flags,
-                align=align,
-            )
-            for (n_offs, _type, lma, size, offs, _flags, align) in prog_sections
-            if lma != 0 and size > 0
-        ]
-        self.sections = prog_sections
-        self.nobits_sections = [
-            ELFSection(lookup_string(n_offs), lma, b"", flags=_flags, align=align)
-            for (n_offs, _type, lma, size, offs, _flags, align) in nobits_secitons
-            if lma != 0 and size > 0
-        ]
+        all_sections = [read_section_header(offs) for offs in section_header_offsets]
+
+        self.sections = []
+        self.nobits_sections = []
+        # Process all sections and raise an error if an unknown section type is found
+        for section in all_sections:
+            n_offs, sec_type, lma, size, offs, _flags, align = section
+
+            # Skip sections with lma == 0 or size == 0
+            if lma == 0 or size == 0:
+                continue
+
+            if sec_type not in KNOWN_SEC_TYPES:
+                log.warning(f"Unknown section type {sec_type:#04x} in ELF file")
+                continue
+
+            if sec_type in PROG_SEC_TYPES:
+                self.sections.append(
+                    ELFSection(
+                        lookup_string(n_offs),
+                        lma,
+                        read_data(offs, size),
+                        flags=_flags,
+                        align=align,
+                    )
+                )
+            elif sec_type == SEC_TYPE_NOBITS:
+                self.nobits_sections.append(
+                    ELFSection(
+                        lookup_string(n_offs),
+                        lma,
+                        b"",
+                        flags=_flags,
+                        align=align,
+                    )
+                )
 
     def _read_segments(self, f, segment_header_offs, segment_header_count, shstrndx):
         f.seek(segment_header_offs)
