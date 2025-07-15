@@ -20,6 +20,15 @@
 </div>
 <hr>
 
+## v5.0.1 (2025-07-15)
+
+### 🐛 Bug Fixes
+
+- **elf2image**: validate ELF section types and addresses before processing *(Jaroslav Burian - 97a1546)*
+- **elf2image**: handle PREINIT_ARRAY section type in ESP32-P4 elf file properly *(Jaroslav Burian - ec84a75)*
+- **elf2image**: Fix incorrect logger call *(Marek Matej - 637f0e6)*
+
+
 ## v5.0.0 (2025-07-02)
 
 ### 🚨 Breaking changes

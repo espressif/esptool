@@ -31,7 +31,7 @@ __all__ = [
     "write_mem",
 ]
 
-__version__ = "5.0.0"
+__version__ = "5.0.1"
 
 import os
 import shlex
