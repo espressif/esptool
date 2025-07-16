@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import argparse
+import io
 import os
 import json
 import sys
@@ -802,3 +803,80 @@ def check_error(esp, efuses, args):
     if error_in_blocks:
         raise esptool.FatalError("Error(s) were detected in eFuses")
     print("No errors detected")
+
+
+def _key_block_is_unused(block, key_purpose_block):
+    """Helper method to check if a key block is available for use"""
+    if not block.is_readable() or not block.is_writeable():
+        return False
+
+    if key_purpose_block.get() != "USER" or not key_purpose_block.is_writeable():
+        return False
+
+    if not block.get_bitstring().all(False):
+        return False
+
+    return True
+
+
+def _get_next_key_block(efuses, current_key_block, block_name_list):
+    """Helper method to get the next available key block"""
+    key_blocks = [b for b in efuses.blocks if b.key_purpose_name]
+    start = key_blocks.index(current_key_block)
+
+    # Sort key blocks so that we pick the next free block
+    # (and loop around if necessary)
+    key_blocks = key_blocks[start:] + key_blocks[0:start]
+
+    # Exclude any other blocks that will be be burned
+    key_blocks = [b for b in key_blocks if b.name not in block_name_list]
+
+    for block in key_blocks:
+        key_purpose_block = efuses[block.key_purpose_name]
+        if _key_block_is_unused(block, key_purpose_block):
+            return block
+
+    return None
+
+
+def split_512_bit_key(
+    efuses, block_names, datafiles, keypurposes, base_keypurpose="XTS_AES_256_KEY"
+):
+    """Helper method to split 512-bit key into two 256-bit keys"""
+    if base_keypurpose not in keypurposes:
+        return block_names, datafiles, keypurposes
+
+    keypurpose_list = list(keypurposes)
+    datafile_list = list(datafiles)
+    block_name_list = list(block_names)
+
+    i = keypurpose_list.index(base_keypurpose)
+    block_name = block_name_list[i]
+
+    block_num = efuses.get_index_block_by_name(block_name)
+    block = efuses.blocks[block_num]
+
+    data = datafile_list[i].read()
+    if len(data) != 64:
+        raise esptool.FatalError(
+            f"Incorrect key file size {len(data)}, {base_keypurpose} "
+            "should be 64 bytes"
+        )
+
+    key_block_2 = _get_next_key_block(efuses, block, block_name_list)
+    if not key_block_2:
+        raise esptool.FatalError(f"{base_keypurpose} requires two free keyblocks")
+
+    keypurpose_list.append(f"{base_keypurpose}_1")
+    datafile_list.append(io.BytesIO(data[:32]))
+    block_name_list.append(block_name)
+
+    keypurpose_list.append(f"{base_keypurpose}_2")
+    datafile_list.append(io.BytesIO(data[32:]))
+    block_name_list.append(key_block_2.name)
+
+    keypurpose_list.pop(i)
+    datafile_list.pop(i)
+    block_name_list.pop(i)
+
+    return block_name_list, datafile_list, keypurpose_list
