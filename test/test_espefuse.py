@@ -68,6 +68,35 @@ ESPEFUSE_MODNAME = "python -m espefuse"
 EMPTY_BLOCK = " ".join(["00"] * 32)  # "00 00 ... 00"
 
 
+class Command:
+    def __init__(self, chip: str, cmd: str):
+        self.chip = chip
+        self.cmd = cmd
+
+    def supports(self, search_item: str) -> bool:
+        """Check if the command output contains the given key."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "espefuse",
+                "--virt",
+                "--chip",
+                self.chip,
+                self.cmd,
+                "--help",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+        return search_item in result.stdout
+
+    def does_not_support(self, search_item: str) -> bool:
+        """Check if the command output does not contain the given key."""
+        return not self.supports(search_item)
+
+
 @pytest.mark.host_test
 class EfuseTestCase:
     def setup_method(self):
@@ -955,17 +984,7 @@ class TestBurnKeyCommands(EfuseTestCase):
         assert "= 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f R/-" in output
 
     @pytest.mark.skipif(
-        arg_chip
-        not in [
-            "esp32s2",
-            "esp32s3",
-            "esp32c3",
-            "esp32c6",
-            "esp32h2",
-            "esp32p4",
-            "esp32c5",
-            "esp32c61",
-        ],
+        Command(arg_chip, "burn-key").does_not_support("BLOCK_KEY5"),
         reason="Only chips with 6 keys",
     )
     def test_burn_key_with_6_keys(self):
@@ -973,12 +992,7 @@ class TestBurnKeyCommands(EfuseTestCase):
                BLOCK_KEY0 {IMAGES_DIR}/256bit   XTS_AES_256_KEY_1 \
                BLOCK_KEY1 {IMAGES_DIR}/256bit_1 XTS_AES_256_KEY_2 \
                BLOCK_KEY2 {IMAGES_DIR}/256bit_2 XTS_AES_128_KEY"
-        if arg_chip in [
-            "esp32c3",
-            "esp32c6",
-            "esp32h2",
-            "esp32c5",
-        ]:
+        if Command(arg_chip, "burn-key").does_not_support("XTS_AES_256_KEY"):
             cmd = cmd.replace("XTS_AES_256_KEY_1", "XTS_AES_128_KEY")
             cmd = cmd.replace("XTS_AES_256_KEY_2", "XTS_AES_128_KEY")
         self.espefuse_py(cmd + " --no-read-protect --no-write-protect")
@@ -1051,8 +1065,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/192bit_2")
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3", "esp32p4", "esp32c61"],
-        reason="512 bit keys are only supported on ESP32-S2, S3, P4, C61",
+        Command(arg_chip, "burn-key").does_not_support("XTS_AES_256_KEY"),
+        reason="512 bit keys not supported on this chip",
     )
     def test_burn_key_512bit(self):
         self.espefuse_py(
@@ -1069,8 +1083,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         )
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3", "esp32p4", "esp32c61"],
-        reason="512 bit keys are only supported on ESP32-S2, S3, P4, C61",
+        Command(arg_chip, "burn-key").does_not_support("XTS_AES_256_KEY"),
+        reason="512 bit keys not supported on this chip",
     )
     def test_burn_key_512bit_non_consecutive_blocks(self):
         # Burn efuses separately to test different kinds
@@ -1112,8 +1126,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32s2", "esp32s3", "esp32p4", "esp32c61"],
-        reason="512 bit keys are only supported on ESP32-S2, S3, P4, C61",
+        Command(arg_chip, "burn-key").does_not_support("XTS_AES_256_KEY"),
+        reason="512 bit keys not supported on this chip",
     )
     def test_burn_key_512bit_non_consecutive_blocks_loop_around(self):
         self.espefuse_py(
@@ -1145,8 +1159,39 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32h2", "esp32c5", "esp32c61", "esp32p4"],
-        reason="These chips support ECDSA_KEY",
+        Command(arg_chip, "burn-key").does_not_support("XTS_AES_256_PSRAM_KEY"),
+        reason="512 bit keys not supported on this chip",
+    )
+    def test_burn_key_512bit_for_flash_and_psram(self):
+        self.espefuse_py(
+            f"burn-key \
+            BLOCK_KEY0 {IMAGES_DIR}/256bit_1_256bit_2_combined \
+            XTS_AES_256_KEY \
+            BLOCK_KEY2 {IMAGES_DIR}/256bit_1_256bit_2_combined \
+            XTS_AES_256_PSRAM_KEY --no-read-protect --no-write-protect"
+        )
+        output = self.espefuse_py("-d summary")
+        assert (
+            "[4 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 b0b1b2b3 "
+            "acadaeaf a8a9aaab a4a5a6a7 11a1a2a3"
+        ) in output
+        assert (
+            "[5 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 "
+            "acadaeaf a8a9aaab a4a5a6a7 22a1a2a3"
+        ) in output
+
+        assert (
+            "[6 ] read_regs: bcbd11bf b8b9babb b4b5b6b7 b0b1b2b3 "
+            "acadaeaf a8a9aaab a4a5a6a7 11a1a2a3"
+        ) in output
+        assert (
+            "[7 ] read_regs: bcbd22bf b8b9babb b4b5b6b7 b0b1b2b3 "
+            "acadaeaf a8a9aaab a4a5a6a7 22a1a2a3"
+        ) in output
+
+    @pytest.mark.skipif(
+        Command(arg_chip, "burn-key").does_not_support("ECDSA_KEY"),
+        reason="ECDSA_KEY not supported on this chip",
     )
     def test_burn_key_ecdsa_key(self):
         self.espefuse_py(
@@ -1171,8 +1216,8 @@ class TestBurnKeyCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip not in ["esp32h2", "esp32c5", "esp32c61", "esp32p4"],
-        reason="These chips support ECDSA_KEY",
+        Command(arg_chip, "burn-key").does_not_support("ECDSA_KEY"),
+        reason="ECDSA_KEY not supported on this chip",
     )
     def test_burn_key_ecdsa_key_check_byte_order(self):
         self.espefuse_py(
@@ -1265,18 +1310,8 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         ) in output
 
     @pytest.mark.skipif(
-        arg_chip
-        not in [
-            "esp32s2",
-            "esp32s3",
-            "esp32c3",
-            "esp32c6",
-            "esp32h2",
-            "esp32p4",
-            "esp32c5",
-            "esp32c61",
-        ],
-        reason="Only chip with 6 keys",
+        Command(arg_chip, "burn-key").does_not_support("BLOCK_KEY5"),
+        reason="Only chips with 6 keys",
     )
     def test_burn_block_data_with_6_keys(self):
         self.espefuse_py(
@@ -1405,17 +1440,7 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         )
 
     @pytest.mark.skipif(
-        arg_chip
-        not in [
-            "esp32s2",
-            "esp32s3",
-            "esp32c3",
-            "esp32c6",
-            "esp32h2",
-            "esp32p4",
-            "esp32c5",
-            "esp32c61",
-        ],
+        Command(arg_chip, "burn-key").does_not_support("BLOCK_KEY5"),
         reason="Only chips with 6 keys",
     )
     def test_burn_block_data_with_offset_6_keys(self):
@@ -1601,18 +1626,8 @@ class TestBurnKeyDigestCommandsEsp32C2(EfuseTestCase):
 
 
 @pytest.mark.skipif(
-    arg_chip
-    not in [
-        "esp32s2",
-        "esp32s3",
-        "esp32c3",
-        "esp32c6",
-        "esp32h2",
-        "esp32p4",
-        "esp32c5",
-        "esp32c61",
-    ],
-    reason="Supports 6 key blocks",
+    Command(arg_chip, "burn-key").does_not_support("BLOCK_KEY5"),
+    reason="Only chips with 6 keys",
 )
 class TestBurnKeyDigestCommands(EfuseTestCase):
     def test_burn_key_digest(self):
@@ -1712,18 +1727,8 @@ class TestBurnBitCommands(EfuseTestCase):
         self.espefuse_py("summary", check_msg="[0 ] read_regs: 00000007 00000000")
 
     @pytest.mark.skipif(
-        arg_chip
-        not in [
-            "esp32s2",
-            "esp32s3",
-            "esp32c3",
-            "esp32c6",
-            "esp32h2",
-            "esp32p4",
-            "esp32c5",
-            "esp32c61",
-        ],
-        reason="Only chip with 6 keys",
+        Command(arg_chip, "burn-key").does_not_support("BLOCK_KEY5"),
+        reason="Only chips with 6 keys",
     )
     def test_burn_bit_for_chips_with_6_key_blocks(self):
         self.espefuse_py("burn-bit -h")
@@ -2021,7 +2026,10 @@ class TestMultipleCommands(EfuseTestCase):
         )
 
     @pytest.mark.skipif(
-        arg_chip != "esp32c2", reason="For this chip, FE and SB keys go into one BLOCK"
+        Command(arg_chip, "burn-key").does_not_support(
+            "XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS"
+        ),
+        reason="This chip does not support both FE and SB keys going into one BLOCK",
     )
     def test_1_esp32c2(self):
         self.espefuse_py(
@@ -2039,7 +2047,10 @@ class TestMultipleCommands(EfuseTestCase):
         assert " = bf 0f 6a f6 8b d3 6d 8b 53 b3 da a9 33 f6 0a 04 R/-" in output
 
     @pytest.mark.skipif(
-        arg_chip != "esp32c2", reason="For this chip, FE and SB keys go into one BLOCK"
+        Command(arg_chip, "burn-key").does_not_support(
+            "XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS"
+        ),
+        reason="This chip does not support both FE and SB keys going into one BLOCK",
     )
     def test_2_esp32c2(self):
         self.espefuse_py(
@@ -2102,8 +2113,9 @@ class TestMultipleCommands(EfuseTestCase):
 
 
 @pytest.mark.skipif(
-    arg_chip not in ["esp32c3", "esp32c6", "esp32h2", "esp32s3"],
-    reason="These chips have a hardware bug that limits the use of the KEY5",
+    Command(arg_chip, "burn-key").does_not_support("BLOCK_KEY5"),
+    reason="This test is only relevant for chips affected by "
+    "the BLOCK_KEY5 hardware bug",
 )
 class TestKeyPurposes(EfuseTestCase):
     def test_burn_xts_aes_key_purpose(self):

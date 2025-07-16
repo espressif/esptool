@@ -491,13 +491,17 @@ class BaseCommands:
         block_names: list[str],
         datafiles: list[BinaryIO],
         keypurposes: list[str],
+        base_keypurpose: str = "XTS_AES_256_KEY",
     ) -> tuple[list[str], list[BinaryIO], list[str]]:
         """Helper method to split 512-bit key into two 256-bit keys"""
+        if base_keypurpose not in keypurposes:
+            return block_names, datafiles, keypurposes
+
         keypurpose_list = list(keypurposes)
         datafile_list = list(datafiles)
         block_name_list = list(block_names)
 
-        i = keypurpose_list.index("XTS_AES_256_KEY")
+        i = keypurpose_list.index(base_keypurpose)
         block_name = block_name_list[i]
 
         block_num = self.efuses.get_index_block_by_name(block_name)
@@ -506,19 +510,19 @@ class BaseCommands:
         data = datafile_list[i].read()
         if len(data) != 64:
             raise esptool.FatalError(
-                "Incorrect key file size %d, XTS_AES_256_KEY should be 64 bytes"
-                % len(data)
+                f"Incorrect key file size {len(data)}, {base_keypurpose} "
+                "should be 64 bytes"
             )
 
         key_block_2 = self._get_next_key_block(block, block_name_list)
         if not key_block_2:
-            raise esptool.FatalError("XTS_AES_256_KEY requires two free keyblocks")
+            raise esptool.FatalError(f"{base_keypurpose} requires two free keyblocks")
 
-        keypurpose_list.append("XTS_AES_256_KEY_1")
+        keypurpose_list.append(f"{base_keypurpose}_1")
         datafile_list.append(io.BytesIO(data[:32]))
         block_name_list.append(block_name)
 
-        keypurpose_list.append("XTS_AES_256_KEY_2")
+        keypurpose_list.append(f"{base_keypurpose}_2")
         datafile_list.append(io.BytesIO(data[32:]))
         block_name_list.append(key_block_2.name)
 

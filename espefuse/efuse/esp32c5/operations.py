@@ -155,6 +155,15 @@ class ESP32C5Commands(BaseCommands):
                 keypurpose_list,
             )
 
+        if "XTS_AES_256_PSRAM_KEY" in keypurpose_list:
+            # XTS_AES_256_PSRAM_KEY -> XTS_AES_256_PSRAM_KEY_1 and XTS_AES_256_PSRAM_KEY_2
+            block_name_list, datafile_list, keypurpose_list = self._split_512_bit_key(
+                block_name_list,
+                datafile_list,  # type: ignore
+                keypurpose_list,
+                "XTS_AES_256_PSRAM_KEY",
+            )
+
         util.check_duplicate_name_in_list(block_name_list)
         if len(block_name_list) != len(datafile_list) or len(block_name_list) != len(
             keypurpose_list

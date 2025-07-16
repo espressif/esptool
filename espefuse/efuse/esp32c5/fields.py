@@ -451,7 +451,7 @@ class EfuseKeyPurposeField(EfuseField):
         ("KM_INIT_KEY",                  12, None,       None,      "need_rd_protect"),      # init key that is used for the generation of AES/ECDSA key
         ("XTS_AES_256_PSRAM_KEY_1",      13, None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_PSRAM_KEY_1 (PSRAM encryption)
         ("XTS_AES_256_PSRAM_KEY_2",      14, None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_PSRAM_KEY_1 (PSRAM encryption)
-        # ("XTS_AES_256_PSRAM_KEY",        -2, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_PSRAM_KEY_1 and XTS_AES_256_PSRAM_KEY_1
+        ("XTS_AES_256_PSRAM_KEY",        -2, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_PSRAM_KEY_1 and XTS_AES_256_PSRAM_KEY_1
         ("XTS_AES_128_PSRAM_KEY",        15, None,       "Reverse", "need_rd_protect"),      # XTS_AES_128_PSRAM_KEY (PSRAM encryption)
         ("ECDSA_KEY_P192",               16, None,       "Reverse", "need_rd_protect"),      # ECDSA key P192
         ("ECDSA_KEY_P384_L",             17, None,       "Reverse", "need_rd_protect"),      # ECDSA key P384 low
