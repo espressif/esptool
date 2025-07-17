@@ -2035,55 +2035,64 @@ class TestMultipleCommands(EfuseTestCase):
         )
 
 
-@pytest.mark.skipif(
-    Command(arg_chip, "burn_key").does_not_support("BLOCK_KEY5"),
-    reason="This test is only relevant for chips affected by "
-    "the BLOCK_KEY5 hardware bug",
-)
 class TestKeyPurposes(EfuseTestCase):
+    CHIPS_WITH_BUG_FOR_XTS_AES_IN_BLOCK_KEY5 = [
+        "esp32c3",
+        "esp32c6",
+        "esp32h2",
+        "esp32h4",
+        "esp32s3",
+    ]
+    CHIPS_WITH_BUG_FOR_ECDSA_IN_BLOCK_KEY5 = ["esp32h2"]
+    error_check_msg = "a hardware bug (please see TRM for more details)"
+
     def test_burn_xts_aes_key_purpose(self):
+        ret_code = 0
+        check_msg = None
+        if arg_chip in self.CHIPS_WITH_BUG_FOR_XTS_AES_IN_BLOCK_KEY5:
+            ret_code = 2
+            check_msg = self.error_check_msg
         self.espefuse_py(
-            "burn_efuse KEY_PURPOSE_5 XTS_AES_128_KEY",
-            check_msg="A fatal error occurred: "
-            "KEY_PURPOSE_5 can not have XTS_AES_128_KEY "
-            "key due to a hardware bug (please see TRM for more details)",
-            ret_code=2,
+            "burn-efuse KEY_PURPOSE_5 XTS_AES_128_KEY",
+            check_msg=check_msg,
+            ret_code=ret_code,
         )
 
-    @pytest.mark.skipif(
-        arg_chip != "esp32h2", reason="esp32h2 can not have ECDSA key in KEY5"
-    )
     def test_burn_ecdsa_key_purpose(self):
+        ret_code = 0
+        check_msg = None
+        if arg_chip in self.CHIPS_WITH_BUG_FOR_ECDSA_IN_BLOCK_KEY5:
+            ret_code = 2
+            check_msg = self.error_check_msg
         self.espefuse_py(
-            "burn_efuse KEY_PURPOSE_5 ECDSA_KEY",
-            check_msg="A fatal error occurred: "
-            "KEY_PURPOSE_5 can not have ECDSA_KEY "
-            "key due to a hardware bug (please see TRM for more details)",
-            ret_code=2,
+            "burn-efuse KEY_PURPOSE_5 ECDSA_KEY", check_msg=check_msg, ret_code=ret_code
         )
 
     def test_burn_xts_aes_key(self):
+        ret_code = 0
+        check_msg = None
+        if arg_chip in self.CHIPS_WITH_BUG_FOR_XTS_AES_IN_BLOCK_KEY5:
+            ret_code = 2
+            check_msg = self.error_check_msg
         self.espefuse_py(
             f"burn_key \
             BLOCK_KEY5 {IMAGES_DIR}/256bit XTS_AES_128_KEY",
-            check_msg="A fatal error occurred: "
-            "KEY_PURPOSE_5 can not have XTS_AES_128_KEY "
-            "key due to a hardware bug (please see TRM for more details)",
-            ret_code=2,
+            check_msg=check_msg,
+            ret_code=ret_code,
         )
 
-    @pytest.mark.skipif(
-        arg_chip != "esp32h2", reason="esp32h2 can not have ECDSA key in KEY5"
-    )
     def test_burn_ecdsa_key(self):
+        ret_code = 0
+        check_msg = None
+        if arg_chip in self.CHIPS_WITH_BUG_FOR_ECDSA_IN_BLOCK_KEY5:
+            ret_code = 2
+            check_msg = self.error_check_msg
         self.espefuse_py(
             f"burn_key \
             BLOCK_KEY5 {S_IMAGES_DIR}/ecdsa192_secure_boot_signing_key_v2.pem \
             ECDSA_KEY",
-            check_msg="A fatal error occurred: "
-            "KEY_PURPOSE_5 can not have ECDSA_KEY "
-            "key due to a hardware bug (please see TRM for more details)",
-            ret_code=2,
+            check_msg=check_msg,
+            ret_code=ret_code,
         )
 
 
