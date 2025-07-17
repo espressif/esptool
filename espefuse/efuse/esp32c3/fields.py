@@ -444,5 +444,6 @@ class EfuseKeyPurposeField(EfuseField):
         raw_val = int(self.check_format(str(new_value)))
         str_new_value = self.get_name(raw_val)
         if self.name == "KEY_PURPOSE_5" and str_new_value.startswith("XTS_AES"):
+            # see SOC_EFUSE_BLOCK9_KEY_PURPOSE_QUIRK in esp-idf
             raise esptool.FatalError(f"{self.name} can not have {str_new_value} key due to a hardware bug (please see TRM for more details)")
         return super(EfuseKeyPurposeField, self).save(raw_val)
