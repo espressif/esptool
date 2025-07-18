@@ -382,16 +382,18 @@ def parse_port_filters(
     value: Union[list[str], tuple[str, ...]],
 ) -> tuple[list[int], list[int], list[str], list[str]]:
     """Parse port filter arguments into separate lists for each filter type"""
-    # Handle malformed input from OptionEatAll which can pass tuple with string representation
+    # Handle malformed input from OptionEatAll which can pass tuple with string
+    # representation
     if isinstance(value, tuple) and len(value) == 1 and isinstance(value[0], str):
         # Convert string representation back to list
         import ast
+
         try:
             value = ast.literal_eval(value[0])
         except (ValueError, SyntaxError):
-            # If it's not a valid list representation, treat the single string as the value
+            # If it's not a valid list representation, treat the single string
+            # as the value
             value = [value[0]]
-    
     filterVids = []
     filterPids = []
     filterNames = []
