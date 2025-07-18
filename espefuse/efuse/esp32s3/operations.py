@@ -227,23 +227,13 @@ class ESP32S3Commands(BaseCommands):
             0 : len([name for name in keypurposes if name is not None]) :
         ]
 
-        if "XTS_AES_256_KEY" in keypurpose_list:
-            # XTS_AES_256_KEY is not an actual HW key purpose, needs to be split into
-            # XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
-            block_name_list, datafile_list, keypurpose_list = self._split_512_bit_key(
+        block_name_list, datafile_list, keypurpose_list = (
+            self._adjust_key_data_for_blocks(
                 block_name_list,
                 datafile_list,  # type: ignore
                 keypurpose_list,
             )
-
-        util.check_duplicate_name_in_list(block_name_list)
-        if len(block_name_list) != len(datafile_list) or len(block_name_list) != len(
-            keypurpose_list
-        ):
-            raise esptool.FatalError(
-                "The number of blocks (%d), datafile (%d) and keypurpose (%d) should be the same."
-                % (len(block_name_list), len(datafile_list), len(keypurpose_list))
-            )
+        )
 
         log.print("Burn keys to blocks:")
         for block_name, datafile, keypurpose in zip(

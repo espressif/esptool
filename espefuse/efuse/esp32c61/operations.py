@@ -146,23 +146,13 @@ class ESP32C61Commands(BaseCommands):
             0 : len([name for name in keypurposes if name is not None]) :
         ]
 
-        if "XTS_AES_256_KEY" in keypurpose_list:
-            # XTS_AES_256_KEY is not an actual HW key purpose, needs to be split into
-            # XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
-            block_name_list, datafile_list, keypurpose_list = self._split_512_bit_key(
+        block_name_list, datafile_list, keypurpose_list = (
+            self._adjust_key_data_for_blocks(
                 block_name_list,
                 datafile_list,  # type: ignore
                 keypurpose_list,
             )
-
-        util.check_duplicate_name_in_list(block_name_list)
-        if len(block_name_list) != len(datafile_list) or len(block_name_list) != len(
-            keypurpose_list
-        ):
-            raise esptool.FatalError(
-                "The number of blocks (%d), datafile (%d) and keypurpose (%d) should be the same."
-                % (len(block_name_list), len(datafile_list), len(keypurpose_list))
-            )
+        )
 
         log.print("Burn keys to blocks:")
         for block_name, datafile, keypurpose in zip(
@@ -180,15 +170,8 @@ class ESP32C61Commands(BaseCommands):
             block = self.efuses.blocks[block_num]
 
             if isinstance(datafile, io.IOBase):
-                if keypurpose == "ECDSA_KEY":
-                    sk = espsecure.load_ecdsa_signing_key(datafile)  # type: ignore
-                    data = espsecure.get_ecdsa_signing_key_raw_bytes(sk)
-                    if len(data) == 24:
-                        # the private key is 24 bytes long for NIST192p, and 8 bytes of padding
-                        data = b"\x00" * 8 + data
-                else:
-                    data = datafile.read()
-                    datafile.close()
+                data = datafile.read()
+                datafile.close()
             else:
                 data = datafile
 
