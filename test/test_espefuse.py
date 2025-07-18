@@ -1241,6 +1241,53 @@ class TestBurnKeyCommands(EfuseTestCase):
             "8450c238 c39d087a 90066a66 b4548b23"
         ) in output
 
+    @pytest.mark.skipif(
+        Command(arg_chip, "burn-key").does_not_support("ECDSA_KEY_P384"),
+        reason="This chip does not support ECDSA key for two blocks",
+    )
+    def test_burn_key_ecdsa_384_key(self):
+        self.espefuse_py(
+            f"burn-key \
+            BLOCK_KEY0 {S_IMAGES_DIR}/ecdsa192_secure_boot_signing_key_v2.pem \
+            ECDSA_KEY_P192 \
+            BLOCK_KEY1 {S_IMAGES_DIR}/ecdsa256_secure_boot_signing_key_v2.pem \
+            ECDSA_KEY_P256 \
+            BLOCK_KEY2 {S_IMAGES_DIR}/ecdsa384_secure_boot_signing_key.pem \
+            ECDSA_KEY_P384 \
+            --no-read-protect"
+        )
+        output = self.espefuse_py("-d summary")
+        # Check the summary output in exact order
+        expected_blocks = [
+            # fmt: off
+            "BLOCK_KEY0 (BLOCK4)",
+            "Purpose: ECDSA_KEY_P192",
+            "c8 c4 5d 62 9e 05 05 bd cb 04 a4 7c 06 f5 86 14 cb 23 81 23 95 b7 71 4f 00 00 00 00 00 00 00 00 R/-",  # noqa: E501
+            "BLOCK_KEY1 (BLOCK5)",
+            "Purpose: ECDSA_KEY_P256",
+            "fc 6b ec 75 64 37 7d 3b 88 8d 34 05 ed 91 06 1b 38 c2 50 84 7a 08 9d c3 66 6a 06 90 23 8b 54 b4 R/-",  # noqa: E501
+            "BLOCK_KEY2 (BLOCK6)",
+            "Purpose: ECDSA_KEY_P384_H",
+            "0e d2 8e c6 86 f0 f6 af 50 51 c3 5c 41 2b c7 48 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/-",  # noqa: E501
+            "BLOCK_KEY3 (BLOCK7)",
+            "Purpose: ECDSA_KEY_P384_L",
+            "65 ca a4 5b 5f 67 5c fe 34 89 f3 4a 57 d1 5a 41 d6 1c 7d ea 7a 3f cd 34 79 f2 94 c2 ad cb 94 7d R/-",  # noqa: E501
+            # fmt: on
+        ]
+        last_index = 0
+        for expected in expected_blocks:
+            idx = output.find(expected, last_index)
+            assert idx != -1, f"Expected block '{expected}' not found in order"
+            last_index = idx + len(expected)
+
+        # Check the dump output
+        # fmt: off
+        assert ("[4 ] read_regs: 625dc4c8 bd05059e 7ca404cb 1486f506 238123cb 4f71b795 00000000 00000000") in output  # noqa: E501
+        assert ("[5 ] read_regs: 75ec6bfc 3b7d3764 05348d88 1b0691ed 8450c238 c39d087a 90066a66 b4548b23") in output  # noqa: E501
+        assert ("[6 ] read_regs: c68ed20e aff6f086 5cc35150 48c72b41 00000000 00000000 00000000 00000000") in output  # noqa: E501
+        assert ("[7 ] read_regs: 5ba4ca65 fe5c675f 4af38934 415ad157 ea7d1cd6 34cd3f7a c294f279 7d94cbad") in output  # noqa: E501
+        # fmt: on
+
 
 class TestBurnBlockDataCommands(EfuseTestCase):
     def test_burn_block_data_check_args(self):
@@ -2035,6 +2082,10 @@ class TestMultipleCommands(EfuseTestCase):
         )
 
 
+@pytest.mark.skipif(
+    Command(arg_chip, "burn-key").does_not_support("BLOCK_KEY5"),
+    reason="Only chips with 6 keys",
+)
 class TestKeyPurposes(EfuseTestCase):
     CHIPS_WITH_BUG_FOR_XTS_AES_IN_BLOCK_KEY5 = [
         "esp32c3",
@@ -2058,6 +2109,10 @@ class TestKeyPurposes(EfuseTestCase):
             ret_code=ret_code,
         )
 
+    @pytest.mark.skipif(
+        Command(arg_chip, "burn-key").does_not_support("ECDSA_KEY"),
+        reason="This chip does not support ECDSA_KEY",
+    )
     def test_burn_ecdsa_key_purpose(self):
         ret_code = 0
         check_msg = None
@@ -2081,6 +2136,10 @@ class TestKeyPurposes(EfuseTestCase):
             ret_code=ret_code,
         )
 
+    @pytest.mark.skipif(
+        Command(arg_chip, "burn-key").does_not_support("ECDSA_KEY"),
+        reason="This chip does not support ECDSA_KEY",
+    )
     def test_burn_ecdsa_key(self):
         ret_code = 0
         check_msg = None

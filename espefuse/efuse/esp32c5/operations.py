@@ -26,7 +26,7 @@ from ..base_operations import (
     read_protect_efuse,
     summary,
     write_protect_efuse,
-    split_512_bit_key,
+    adjust_key_data_for_blocks,
 )
 
 
@@ -215,36 +215,12 @@ def burn_key(esp, efuses, args, digest=None):
         0 : len([name for name in args.keypurpose if name is not None]) :
     ]
 
-    if "XTS_AES_256_KEY" in keypurpose_list:
-        # XTS_AES_256_KEY is not an actual HW key purpose, needs to be split into
-        # XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
-        block_name_list, datafile_list, keypurpose_list = split_512_bit_key(
-            efuses,
-            block_name_list,
-            datafile_list,
-            keypurpose_list,
-            "XTS_AES_256_KEY",
-        )
-
-    if "XTS_AES_256_PSRAM_KEY" in keypurpose_list:
-        # XTS_AES_256_PSRAM_KEY -> XTS_AES_256_PSRAM_KEY_1 and XTS_AES_256_PSRAM_KEY_2
-        block_name_list, datafile_list, keypurpose_list = split_512_bit_key(
-            efuses,
-            block_name_list,
-            datafile_list,
-            keypurpose_list,
-            "XTS_AES_256_PSRAM_KEY",
-        )
-
-    util.check_duplicate_name_in_list(block_name_list)
-    if len(block_name_list) != len(datafile_list) or len(block_name_list) != len(
-        keypurpose_list
-    ):
-        raise esptool.FatalError(
-            "The number of blocks (%d), datafile (%d) and keypurpose (%d) "
-            "should be the same."
-            % (len(block_name_list), len(datafile_list), len(keypurpose_list))
-        )
+    block_name_list, datafile_list, keypurpose_list = adjust_key_data_for_blocks(
+        efuses,
+        block_name_list,
+        datafile_list,
+        keypurpose_list,
+    )
 
     print("Burn keys to blocks:")
     for block_name, datafile, keypurpose in zip(
@@ -262,14 +238,7 @@ def burn_key(esp, efuses, args, digest=None):
         block = efuses.blocks[block_num]
 
         if digest is None:
-            if keypurpose.startswith("ECDSA_KEY"):
-                sk = espsecure.load_ecdsa_signing_key(datafile)
-                data = sk.to_string()
-                if len(data) == 24:
-                    # the private key is 24 bytes long for NIST192p, and 8 bytes of padding
-                    data = b"\x00" * 8 + data
-            else:
-                data = datafile.read()
+            data = datafile.read()
         else:
             data = datafile
 

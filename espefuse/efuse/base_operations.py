@@ -12,6 +12,7 @@ import sys
 
 from bitstring import BitStream
 
+import espsecure
 import esptool
 
 from . import base_fields
@@ -839,12 +840,95 @@ def _get_next_key_block(efuses, current_key_block, block_name_list):
     return None
 
 
-def split_512_bit_key(
+def adjust_key_data_for_blocks(efuses, block_names, datafiles, keypurposes):
+    """Split a key that takes more than one efuse block into two blocks.
+    It handles all key purposes that require splitting into two blocks.
+
+    This method checks if key purposes require splitting into two blocks,
+    such as "XTS_AES_256_KEY", "XTS_AES_256_PSRAM_KEY", and "ECDSA_KEY_P384".
+
+    Args:
+        block_names: List of block names.
+        datafiles: List of BinaryIO objects containing key data.
+        keypurposes: List of key purposes.
+
+    Returns:
+        A tuple containing updated block names, datafiles, and keypurposes.
+    """
+    keypurposes = list(keypurposes)
+    datafiles = list(datafiles)
+    block_names = list(block_names)
+
+    if "XTS_AES_256_KEY" in keypurposes:
+        # XTS_AES_256_KEY is not an actual HW key purpose, needs to be split into
+        # XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
+        block_names, datafiles, keypurposes = _split_multiblock_key(
+            efuses,
+            block_names,
+            datafiles,  # type: ignore
+            keypurposes,
+            "XTS_AES_256_KEY",
+        )
+
+    if "XTS_AES_256_PSRAM_KEY" in keypurposes:
+        # XTS_AES_256_PSRAM_KEY -> XTS_AES_256_PSRAM_KEY_1 and ..._KEY_2
+        block_names, datafiles, keypurposes = _split_multiblock_key(
+            efuses,
+            block_names,
+            datafiles,  # type: ignore
+            keypurposes,
+            "XTS_AES_256_PSRAM_KEY",
+        )
+
+    # ECDSA keys can be present in a command multiple times
+    i = 0
+    while i < len(keypurposes):
+        if "ECDSA_KEY" in keypurposes[i]:
+            if keypurposes[i] not in ["ECDSA_KEY_P384_L", "ECDSA_KEY_P384_H"]:
+                sk = espsecure.load_ecdsa_signing_key(datafiles[i])  # type: ignore
+                data = sk.to_string()
+                if "ECDSA_KEY_P384" == keypurposes[i]:
+                    assert (
+                        len(data) == 48
+                    ), "NIST384p private key should be 48 bytes long"
+                    datafiles[i] = io.BytesIO(b"\x00" * 16 + data)
+                    # ECDSA_KEY_P384 -> ECDSA_KEY_P384_L and ECDSA_KEY_P384_H
+                    block_names, datafiles, keypurposes = _split_multiblock_key(
+                        efuses,
+                        block_names,
+                        datafiles,  # type: ignore
+                        keypurposes,
+                        "ECDSA_KEY_P384",
+                    )
+                else:
+                    # the private key is 24 bytes long for NIST192p,
+                    # and 8 bytes of padding
+                    datafiles[i] = (
+                        io.BytesIO(b"\x00" * 8 + data)
+                        if len(data) == 24
+                        else io.BytesIO(data)
+                    )
+
+        i += 1
+
+    # Check that all block names are unique
+    util.check_duplicate_name_in_list(block_names)
+
+    # Check that the number of blocks, datafiles, and keypurposes is equal
+    if len(block_names) != len(datafiles) or len(block_names) != len(keypurposes):
+        raise esptool.FatalError(
+            f"The number of blocks ({len(block_names)}), "
+            f"datafile ({len(datafiles)}) and keypurpose ({len(keypurposes)}) "
+            "should be the same."
+        )
+
+    return block_names, datafiles, keypurposes
+
+
+def _split_multiblock_key(
     efuses, block_names, datafiles, keypurposes, base_keypurpose="XTS_AES_256_KEY"
 ):
     """Helper method to split 512-bit key into two 256-bit keys"""
-    if base_keypurpose not in keypurposes:
-        return block_names, datafiles, keypurposes
 
     keypurpose_list = list(keypurposes)
     datafile_list = list(datafiles)
@@ -867,16 +951,15 @@ def split_512_bit_key(
     if not key_block_2:
         raise esptool.FatalError(f"{base_keypurpose} requires two free keyblocks")
 
-    keypurpose_list.append(f"{base_keypurpose}_1")
-    datafile_list.append(io.BytesIO(data[:32]))
-    block_name_list.append(block_name)
+    postfix = (
+        ["_1", "_2"] if base_keypurpose.startswith("XTS_AES_256") else ["_H", "_L"]
+    )
+    keypurpose_list[i] = f"{base_keypurpose}{postfix[0]}"
+    datafile_list[i] = io.BytesIO(data[:32])
+    block_name_list[i] = block_name
 
-    keypurpose_list.append(f"{base_keypurpose}_2")
-    datafile_list.append(io.BytesIO(data[32:]))
-    block_name_list.append(key_block_2.name)
-
-    keypurpose_list.pop(i)
-    datafile_list.pop(i)
-    block_name_list.pop(i)
+    keypurpose_list.insert(i + 1, f"{base_keypurpose}{postfix[1]}")
+    datafile_list.insert(i + 1, io.BytesIO(data[32:]))
+    block_name_list.insert(i + 1, key_block_2.name)
 
     return block_name_list, datafile_list, keypurpose_list

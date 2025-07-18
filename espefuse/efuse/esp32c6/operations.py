@@ -26,6 +26,7 @@ from ..base_operations import (
     read_protect_efuse,
     summary,
     write_protect_efuse,
+    adjust_key_data_for_blocks,
 )
 
 
@@ -231,15 +232,12 @@ def burn_key(esp, efuses, args, digest=None):
         0 : len([name for name in args.keypurpose if name is not None]) :
     ]
 
-    util.check_duplicate_name_in_list(block_name_list)
-    if len(block_name_list) != len(datafile_list) or len(block_name_list) != len(
-        keypurpose_list
-    ):
-        raise esptool.FatalError(
-            "The number of blocks (%d), datafile (%d) and keypurpose (%d) "
-            "should be the same."
-            % (len(block_name_list), len(datafile_list), len(keypurpose_list))
-        )
+    block_name_list, datafile_list, keypurpose_list = adjust_key_data_for_blocks(
+        efuses,
+        block_name_list,
+        datafile_list,
+        keypurpose_list,
+    )
 
     print("Burn keys to blocks:")
     for block_name, datafile, keypurpose in zip(

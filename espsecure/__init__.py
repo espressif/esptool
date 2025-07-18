@@ -224,8 +224,8 @@ def load_ecdsa_signing_key(keyfile):
             "Incorrect ECDSA private key specified. "
             "Please check algorithm and/or format."
         )
-    if sk.curve not in [ecdsa.NIST192p, ecdsa.NIST256p]:
-        raise esptool.FatalError("Supports NIST192p and NIST256p keys only")
+    if sk.curve not in [ecdsa.NIST192p, ecdsa.NIST256p, ecdsa.NIST384p]:
+        raise esptool.FatalError("Supports NIST192p, NIST256p and NIST384p keys only.")
     return sk
 
 
