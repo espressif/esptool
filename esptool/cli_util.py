@@ -9,7 +9,7 @@ from esptool.bin_image import ESPLoader, intel_hex_to_bin
 from esptool.cmds import detect_flash_size
 from esptool.util import FatalError, flash_size_bytes, strip_chip_name
 from esptool.logger import log
-from typing import IO, Any
+from typing import IO, Any, Union
 
 ################################ Custom types #################################
 
@@ -379,9 +379,21 @@ def arg_auto_int(x: str) -> int:
 
 
 def parse_port_filters(
-    value: list[str],
+    value: Union[list[str], tuple[str, ...]],
 ) -> tuple[list[int], list[int], list[str], list[str]]:
     """Parse port filter arguments into separate lists for each filter type"""
+    # Handle malformed input from OptionEatAll which can pass tuple with string
+    # representation
+    if isinstance(value, tuple) and len(value) == 1 and isinstance(value[0], str):
+        # Convert string representation back to list
+        import ast
+
+        try:
+            value = ast.literal_eval(value[0])
+        except (ValueError, SyntaxError):
+            # If it's not a valid list representation, treat the single string
+            # as the value
+            value = [value[0]]
     filterVids = []
     filterPids = []
     filterNames = []
@@ -389,7 +401,7 @@ def parse_port_filters(
     for f in value:
         kvp = f.split("=")
         if len(kvp) != 2:
-            FatalError("Option --port-filter argument must consist of key=value.")
+            raise FatalError("Option --port-filter argument must consist of key=value.")
         if kvp[0] == "vid":
             filterVids.append(arg_auto_int(kvp[1]))
         elif kvp[0] == "pid":
