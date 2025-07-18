@@ -9,7 +9,7 @@ from esptool.bin_image import ESPLoader, intel_hex_to_bin
 from esptool.cmds import detect_flash_size
 from esptool.util import FatalError, flash_size_bytes, strip_chip_name
 from esptool.logger import log
-from typing import IO, Any
+from typing import IO, Any, Union
 
 ################################ Custom types #################################
 
@@ -379,7 +379,7 @@ def arg_auto_int(x: str) -> int:
 
 
 def parse_port_filters(
-    value: list[str],
+    value: Union[list[str], tuple[str, ...]],
 ) -> tuple[list[int], list[int], list[str], list[str]]:
     """Parse port filter arguments into separate lists for each filter type"""
     # Handle malformed input from OptionEatAll which can pass tuple with string representation
