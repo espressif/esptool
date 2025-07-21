@@ -1915,6 +1915,7 @@ class TestOldScripts:
         assert "DEPRECATED" in decoded
 
 
+@pytest.mark.host_test
 class TestPortFilter:
     def test_parse_port_filters_basic(self):
         """Test basic port filter parsing"""
@@ -1951,30 +1952,6 @@ class TestPortFilter:
 
         vids, pids, names, serials = parse_port_filters(["pid=0x1234"])
         assert pids == [0x1234]
-
-    def test_parse_port_filters_malformed_input_from_optioneatall(self):
-        """Test parsing malformed input from OptionEatAll class"""
-        from esptool.cli_util import parse_port_filters
-
-        # This simulates the bug where OptionEatAll passes tuple with string
-        # representation
-        vids, pids, names, serials = parse_port_filters(("['vid=0x303a']",))
-        assert vids == [0x303A]
-        assert pids == []
-        assert names == []
-        assert serials == []
-
-    def test_parse_port_filters_malformed_multiple(self):
-        """Test parsing malformed input with multiple filters"""
-        from esptool.cli_util import parse_port_filters
-
-        vids, pids, names, serials = parse_port_filters(
-            ("['vid=0x303a', 'name=ESP32']",)
-        )
-        assert vids == [0x303A]
-        assert pids == []
-        assert names == ["ESP32"]
-        assert serials == []
 
     def test_parse_port_filters_invalid_key(self):
         """Test error handling for invalid filter keys"""

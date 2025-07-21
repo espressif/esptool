@@ -9,7 +9,7 @@ from esptool.bin_image import ESPLoader, intel_hex_to_bin
 from esptool.cmds import detect_flash_size
 from esptool.util import FatalError, flash_size_bytes, strip_chip_name
 from esptool.logger import log
-from typing import IO, Any, Union
+from typing import IO, Any
 
 ################################ Custom types #################################
 
@@ -300,7 +300,7 @@ class OptionEatAll(click.Option):
         def parser_process(value, state):
             # Method to hook into the parser.process
             done = False
-            value = [value]
+            values = [value]
             # Grab everything up to the next option/command
             while state.rargs and not done:
                 for prefix in self._eat_all_parser.prefixes:
@@ -310,10 +310,11 @@ class OptionEatAll(click.Option):
                 if state.rargs[0] in self._commands_list:
                     done = True
                 if not done:
-                    value.append(state.rargs.pop(0))
+                    values.append(state.rargs.pop(0))
 
-            # Call the original parser process method on the rest of the arguments
-            self._previous_parser_process(value, state)
+            # Call the original parser process method for each value individually
+            for val in values:
+                self._previous_parser_process(val, state)
 
         retval = super(OptionEatAll, self).add_to_parser(parser, ctx)
         for name in self.opts:
@@ -379,21 +380,9 @@ def arg_auto_int(x: str) -> int:
 
 
 def parse_port_filters(
-    value: Union[list[str], tuple[str, ...]],
+    value: list[str],
 ) -> tuple[list[int], list[int], list[str], list[str]]:
     """Parse port filter arguments into separate lists for each filter type"""
-    # Handle malformed input from OptionEatAll which can pass tuple with string
-    # representation
-    if isinstance(value, tuple) and len(value) == 1 and isinstance(value[0], str):
-        # Convert string representation back to list
-        import ast
-
-        try:
-            value = ast.literal_eval(value[0])
-        except (ValueError, SyntaxError):
-            # If it's not a valid list representation, treat the single string
-            # as the value
-            value = [value[0]]
     filterVids = []
     filterPids = []
     filterNames = []
