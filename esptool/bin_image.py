@@ -710,7 +710,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     can be placed in the normal image (just @ MMU page size padded offsets).
     """
 
-    ROM_LOADER = ESP32ROM
+    ROM_LOADER: type[ESPLoader] = ESP32ROM
 
     # ROM bootloader will read the wp_pin field if SPI flash
     # pins are remapped via flash. IDF actually enables QIO only
@@ -1211,7 +1211,7 @@ ESP32C2ROM.BOOTLOADER_IMAGE = ESP32C2FirmwareImage
 class ESP32C6FirmwareImage(ESP32FirmwareImage):
     """ESP32C6 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 
-    ROM_LOADER = ESP32C6ROM
+    ROM_LOADER: type[ESPLoader] = ESP32C6ROM
     MMU_PAGE_SIZE_CONF = (8192, 16384, 32768, 65536)
 
 
@@ -1236,18 +1236,10 @@ class ESP32C5FirmwareImage(ESP32FirmwareImage):
 ESP32C5ROM.BOOTLOADER_IMAGE = ESP32C5FirmwareImage
 
 
-class ESP32H4FirmwareImage(ESP32FirmwareImage):
-    """ESP32H4 Firmware Image almost exactly the same as ESP32FirmwareImage"""
+class ESP32H4FirmwareImage(ESP32C6FirmwareImage):
+    """ESP32H4 Firmware Image almost exactly the same as ESP32C6FirmwareImage"""
 
     ROM_LOADER = ESP32H4ROM
-
-    def set_mmu_page_size(self, size):
-        if size not in [8192, 16384, 32768, 65536]:
-            raise FatalError(
-                "{} bytes is not a valid ESP32-H4 page size, "
-                "select from 64KB, 32KB, 16KB, 8KB.".format(size)
-            )
-        self.IROM_ALIGN = size
 
 
 ESP32H4ROM.BOOTLOADER_IMAGE = ESP32H4FirmwareImage
