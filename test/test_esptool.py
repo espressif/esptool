@@ -1916,7 +1916,7 @@ class TestOldScripts:
 
 
 @pytest.mark.host_test
-class TestPortFilter:
+class TestPortFilter(EsptoolTestCase):
     def test_parse_port_filters_basic(self):
         """Test basic port filter parsing"""
         from esptool.cli_util import parse_port_filters
@@ -1993,3 +1993,50 @@ class TestPortFilter:
         assert pids == []
         assert names == []
         assert serials == []
+
+    # CLI integration tests that would have caught the original OptionEatAll issue
+    def test_cli_port_filter_vid(self):
+        """Test CLI with --port-filter vid option (would catch OptionEatAll bug)"""
+        # This test would have failed with the original OptionEatAll bug
+        # because it passed malformed tuples instead of lists to parse_port_filters
+        output = self.run_esptool_error("--port-filter vid=0x303a read-mac")
+        # The command should fail due to no device found, not due to parsing error
+        assert "Option --port-filter argument key not recognized" not in output
+        # Should fail with device connection error instead
+        assert ("No serial ports found" in output or 
+                "could not open port" in output or 
+                "Failed to connect" in output)
+
+    def test_cli_port_filter_multiple(self):
+        """Test CLI with multiple --port-filter options (would catch OptionEatAll bug)"""
+        output = self.run_esptool_error("--port-filter vid=0x303a pid=0x1001 read-mac")
+        # Should not fail with parsing error
+        assert "Option --port-filter argument key not recognized" not in output
+        assert "Option --port-filter argument must consist of key=value" not in output
+        
+    def test_cli_port_filter_name(self):
+        """Test CLI with --port-filter name option (would catch OptionEatAll bug)"""
+        output = self.run_esptool_error("--port-filter name=ESP32 read-mac")
+        assert "Option --port-filter argument key not recognized" not in output
+        
+    def test_cli_port_filter_serial(self):
+        """Test CLI with --port-filter serial option (would catch OptionEatAll bug)"""
+        output = self.run_esptool_error("--port-filter serial=ABC123 read-mac")
+        assert "Option --port-filter argument key not recognized" not in output
+
+    def test_cli_port_filter_invalid_key_error(self):
+        """Test CLI with invalid --port-filter key still shows correct error"""
+        # Test the CLI directly without specifying a port
+        import subprocess
+        import sys
+        
+        cmd = [sys.executable, "-m", "esptool", "--port-filter", "invalidkey=123", "read-mac"]
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
+        except subprocess.CalledProcessError as e:
+            assert e.returncode in [1, 2]  # UnsupportedCmdError and FatalError codes
+            output = e.output
+            # Should show the correct error message for invalid keys
+            assert "Option --port-filter argument key not recognized" in output
+        else:
+            pytest.fail("Expected command to fail but it succeeded")
