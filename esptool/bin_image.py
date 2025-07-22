@@ -11,7 +11,7 @@ import os
 import re
 import struct
 import tempfile
-from typing import IO, List, Optional, Tuple
+from typing import IO, List, Optional, Tuple, Type
 
 from intelhex import HexRecordError, IntelHex
 
@@ -657,7 +657,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     can be placed in the normal image (just @ MMU page size padded offsets).
     """
 
-    ROM_LOADER = ESP32ROM
+    ROM_LOADER: Type[ESPLoader] = ESP32ROM
 
     # ROM bootloader will read the wp_pin field if SPI flash
     # pins are remapped via flash. IDF actually enables QIO only
@@ -1185,7 +1185,7 @@ ESP32C2ROM.BOOTLOADER_IMAGE = ESP32C2FirmwareImage
 class ESP32C6FirmwareImage(ESP32FirmwareImage):
     """ESP32C6 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 
-    ROM_LOADER = ESP32C6ROM
+    ROM_LOADER: Type[ESPLoader] = ESP32C6ROM
     MMU_PAGE_SIZE_CONF = (8192, 16384, 32768, 65536)
 
 
@@ -1219,7 +1219,7 @@ class ESP32C5BETA3FirmwareImage(ESP32C6FirmwareImage):
 ESP32C5BETA3ROM.BOOTLOADER_IMAGE = ESP32C5BETA3FirmwareImage
 
 
-class ESP32H4FirmwareImage(ESP32FirmwareImage):
+class ESP32H4FirmwareImage(ESP32C6FirmwareImage):
     """ESP32H4 Firmware Image almost exactly the same as ESP32FirmwareImage"""
 
     ROM_LOADER = ESP32H4ROM
