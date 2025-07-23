@@ -152,7 +152,9 @@ class EsptoolTestCase:
             print(e.output)
             raise e
 
-    def run_esptool(self, args, baud=None, chip=None, port=None, preload=True):
+    def run_esptool(
+        self, args, baud=arg_baud, chip=arg_chip, port=arg_port, preload=True
+    ):
         """
         Run esptool with the specified arguments. --chip, --port and --baud
         are filled in automatically from the command line.
@@ -189,12 +191,12 @@ class EsptoolTestCase:
             esptool = ["-m", "esptool"]
         trace_arg = ["--trace"] if arg_trace else []
         base_cmd = [sys.executable] + esptool + trace_arg
-        if chip or arg_chip is not None and chip != "auto":
-            base_cmd += ["--chip", chip or arg_chip]
-        if port or arg_port is not None:
-            base_cmd += ["--port", port or arg_port]
-        if baud or arg_baud is not None:
-            base_cmd += ["--baud", str(baud or arg_baud)]
+        if chip and chip != "auto":
+            base_cmd += ["--chip", chip]
+        if port:
+            base_cmd += ["--port", port]
+        if baud:
+            base_cmd += ["--baud", str(baud)]
         usb_jtag_serial_reset = ["--before", "usb-reset"] if arg_preload_port else []
         usb_otg_dont_reset = (
             ["--after", "no-reset-stub"] if "ESPTOOL_TEST_USB_OTG" in os.environ else []
@@ -206,6 +208,7 @@ class EsptoolTestCase:
         # Preload a dummy binary to disable the RTC watchdog, needed in USB-JTAG/Serial
         if (
             preload
+            and port
             and arg_preload_port
             and arg_chip
             in [
@@ -240,7 +243,7 @@ class EsptoolTestCase:
 
         return output
 
-    def run_esptool_error(self, args, baud=None, chip=None):
+    def run_esptool_error(self, args, baud=arg_baud, chip=arg_chip, port=arg_port):
         """
         Run esptool similar to run_esptool, but expect an error.
 
@@ -248,7 +251,7 @@ class EsptoolTestCase:
         and returns the output from esptool as a string.
         """
         with pytest.raises(subprocess.CalledProcessError) as fail:
-            self.run_esptool(args, baud, chip)
+            self.run_esptool(args, baud, chip, port)
         failure = fail.value
         assert failure.returncode in [1, 2]  # UnsupportedCmdError and FatalError codes
         return failure.output.decode("utf-8")
@@ -1913,3 +1916,28 @@ class TestOldScripts:
         decoded = output.decode("utf-8")
         assert "esp_rfc2217_server.py" in decoded
         assert "DEPRECATED" in decoded
+
+
+@pytest.mark.host_test
+class TestPortFilter(EsptoolTestCase):
+    def test_port_filter_name(self):
+        """Test CLI with --port-filter non-existent name option"""
+        output = self.run_esptool_error(
+            "--port-filter name=NonExistentChip flash-id", port=None
+        )
+        # The command should fail due to no device found, not due to parsing error
+        assert "Option --port-filter argument key not recognized" not in output
+        # Should fail with device connection error instead
+        assert "Found 0 serial ports..." in output
+
+    def test_port_filter_invalid_key_error(self):
+        """Test CLI with invalid --port-filter key still shows correct error"""
+        output = self.run_esptool_error(
+            "--port-filter invalidkey=123 flash-id", port=None
+        )
+        assert "Option --port-filter argument key not recognized" in output
+
+    def test_port_filter_missing_equal_sign(self):
+        """Test CLI with missing equal sign in --port-filter option"""
+        output = self.run_esptool_error("--port-filter name123 flash-id", port=None)
+        assert "Option --port-filter argument must consist of key=value." in output
