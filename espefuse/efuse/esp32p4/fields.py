@@ -387,7 +387,9 @@ class EfuseMacField(EfuseField):
 
 # fmt: off
 class EfuseKeyPurposeField(EfuseField):
-    KEY_PURPOSES = [
+    key_purpose_len = 4  # bits for key purpose
+    KeyPurposeType = tuple[str, int, str | None, str | None, str]
+    KEY_PURPOSES: list[KeyPurposeType] = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
         ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key
         ("XTS_AES_256_KEY_1",            2,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_1 (flash/PSRAM encryption)
@@ -403,6 +405,14 @@ class EfuseKeyPurposeField(EfuseField):
         ("KM_INIT_KEY",                  12, None,       None,      "need_rd_protect"),      # init key that is used for the generation of AES/ECDSA key
         ("XTS_AES_256_KEY",              -1, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
     ]
+    CUSTOM_KEY_PURPOSES: list[KeyPurposeType] = []
+    for id in range(0, 1 << key_purpose_len):
+        if id not in [p[1] for p in KEY_PURPOSES]:
+            CUSTOM_KEY_PURPOSES.append((f"CUSTOM_{id}", id, None, None, "no_need_rd_protect"))
+            CUSTOM_KEY_PURPOSES.append((f"CUSTOM_DIGEST_{id}", id, "DIGEST", None, "no_need_rd_protect"))
+    CUSTOM_KEY_PURPOSES.append(("CUSTOM_MAX", (1 << key_purpose_len) - 1, None, None, "no_need_rd_protect"))
+    CUSTOM_KEY_PURPOSES.append(("CUSTOM_DIGEST_MAX", (1 << key_purpose_len) - 1, "DIGEST", None, "no_need_rd_protect"))
+    KEY_PURPOSES += CUSTOM_KEY_PURPOSES
 # fmt: on
     KEY_PURPOSES_NAME = [name[0] for name in KEY_PURPOSES]
     DIGEST_KEY_PURPOSES = [name[0] for name in KEY_PURPOSES if name[2] == "DIGEST"]
