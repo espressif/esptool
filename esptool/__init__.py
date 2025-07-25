@@ -930,11 +930,6 @@ def erase_flash_cli(ctx, force, **kwargs):
 )
 @click.argument("address", type=AnyIntType())
 @click.argument("size", type=AutoSizeType())
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Erase region even if security features are enabled. Use with caution!",
-)
 @add_spi_connection_arg
 @click.pass_context
 def erase_region_cli(ctx, address, size, force, **kwargs):

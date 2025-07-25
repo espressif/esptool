@@ -23,12 +23,22 @@ from . import util
 from .emulate_efuse_controller_base import EmulateEfuseControllerBase
 
 
-class EfuseValuePairArg(click.Argument):
+class EfuseArgument(click.Argument):
+    def make_metavar(self, ctx: click.Context | None = None) -> str:
+        """Compatibility layer for Click 8.2.0+; which now requires a ctx parameter."""
+        try:
+            return super().make_metavar(ctx)  # type: ignore
+        except TypeError:
+            # Fall back to the old signature (pre-Click 8.2.0)
+            return super().make_metavar()  # type: ignore
+
+
+class EfuseValuePairArg(EfuseArgument):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def make_metavar(self) -> str:
-        return f"[{super().make_metavar()}] ..."
+    def make_metavar(self, ctx=None) -> str:
+        return f"[{super().make_metavar(ctx)}] ..."
 
     def type_cast_value(self, ctx: click.Context, value: list[str]):
         return self.type.convert(value, None, ctx)
@@ -84,17 +94,17 @@ class CustomMACType(click.ParamType):
         return base_fields.CheckArgValue(ctx.obj["efuses"], "CUSTOM_MAC")(value)
 
 
-class TupleParameter(click.Argument):
+class TupleParameter(EfuseArgument):
     def __init__(self, *args, **kwargs):
         self.max_arity = kwargs.pop("max_arity", None)
         super().__init__(*args, **kwargs)
 
-    def make_metavar(self) -> str:
+    def make_metavar(self, ctx=None) -> str:
         if self.nargs == 1:
-            return super().make_metavar()  # type: ignore
+            return super().make_metavar(ctx)  # type: ignore
         if self.max_arity is None:
-            return f"[{super().make_metavar()}] ..."
-        return f"[{super().make_metavar()}] ... (max {self.max_arity} groups)"
+            return f"[{super().make_metavar(ctx)}] ..."
+        return f"[{super().make_metavar(ctx)}] ... (max {self.max_arity} groups)"
 
     def type_cast_value(self, ctx: click.Context, value: list[str]) -> tuple[Any, ...]:
         # This is by default eating all options, so we need to check for help option
