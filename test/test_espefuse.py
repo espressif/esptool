@@ -2208,3 +2208,26 @@ class TestCSVEfuseTable(EfuseTestCase):
                          MY_ID_NUMK_1 1 \
                          MY_DATA_FIELD1 1"
         )
+
+
+@pytest.mark.skipif(
+    Command(arg_chip, "burn-key").does_not_support("CUSTOM_MAX"),
+    reason="Does not provides support for custom key purposes",
+)
+class TestCustomKeyPurposes(EfuseTestCase):
+    def test_custom_key_purposes(self):
+        self.espefuse_py(f"burn-key BLOCK_KEY0 {IMAGES_DIR}/256bit CUSTOM_MAX")
+        output = self.espefuse_py("-d summary")
+        self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
+
+    def test_custom_digest_key_purposes(self):
+        self.espefuse_py(
+            f"burn-key-digest BLOCK_KEY0 \
+            {S_IMAGES_DIR}/rsa_secure_boot_signing_key.pem \
+            CUSTOM_DIGEST_MAX"
+        )
+        output = self.espefuse_py("-d summary")
+        assert (
+            " = cb 27 91 a3 71 b0 c0 32 2b f7 37 04 78 ba 09 62 "
+            "22 4c ab 1c f2 28 78 79 e4 29 67 3e 7d a8 44 63 R/-"
+        ) in output
