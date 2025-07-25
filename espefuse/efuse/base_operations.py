@@ -52,7 +52,9 @@ class EfuseValuePairType(click.ParamType):
 
         # Handle single value case (eFuse name only)
         efuse_value_pairs = {}
-        if len(value) > 1:
+        if len(value) == 0:
+            raise click.BadParameter("Missing eFuse name and value pair.")
+        elif len(value) > 1:
             if len(value) % 2:
                 raise click.BadParameter(
                     f"The list does not have a valid pair (name value) {value}"
