@@ -1284,6 +1284,10 @@ class ESPLoader(object):
             log.print("Stub flasher is already running. No upload is necessary.")
             return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
 
+        secure_boot_workflow = (
+            self.CHIP_NAME == "ESP32-S3" and self.get_secure_boot_enabled()
+        )
+
         # Upload
         log.print("Uploading stub flasher...")
         for field in [stub.text, stub.data]:
@@ -1296,8 +1300,24 @@ class ESPLoader(object):
                     from_offs = seq * self.ESP_RAM_BLOCK
                     to_offs = from_offs + self.ESP_RAM_BLOCK
                     self.mem_block(field[from_offs:to_offs], seq)
+
         log.print("Running stub flasher...")
-        self.mem_finish(stub.entry)
+        if not secure_boot_workflow:
+            self.mem_finish(stub.entry)
+        else:
+            # Bug in ESP32-S3 ROM prevents stub execution if secure boot is enabled
+            # Hijack the `read` function in ROM to point to the stub entrypoint
+            # got with GDB - p &rom_spiflash_legacy_funcs.read
+            rom_spiflash_legacy_funcs_read_ptr = 0x3FCEF688
+            self.mem_finish(0)  # Finish uploading to RAM but don't run the stub yet
+            stored_read_pointer = self.read_reg(rom_spiflash_legacy_funcs_read_ptr)
+            self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stub.entry)
+            self.command(  # Trigger the `read` in ROM to jump to the stub entrypoint
+                self.ESP_CMDS["READ_FLASH_SLOW"],
+                struct.pack("<II", 0, 0),
+                wait_response=False,
+            )
+
         try:
             p = self.read()
         except StopIteration:
@@ -1309,6 +1329,9 @@ class ESPLoader(object):
 
         if p != b"OHAI":
             raise FatalError(f"Failed to start stub flasher. Unexpected response: {p}")
+        if secure_boot_workflow:
+            # Restore the original `read` function pointer
+            self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stored_read_pointer)
         log.stage(finish=True)
         log.print("Stub flasher running.")
         return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
