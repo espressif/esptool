@@ -484,10 +484,35 @@ class ESPLoader(object):
                 if op is None or op_ret == op:
                     return val, data
                 if byte(data, 0) != 0 and byte(data, 1) == self.ROM_INVALID_RECV_MSG:
-                    # Unsupported read_reg can result in
+
+                    def drain_input_buffer(buffering_time=0.2):
+                        """
+                        Actively drain the input buffer by reading data
+                        for a specified time. Simple approach for some
+                        drivers that have issues with the buffer flushing.
+
+                        Args:
+                            buffering_time: Time in seconds to wait for
+                            the buffer to fill.
+                        """
+                        time.sleep(buffering_time)
+                        original_timeout = self._port.timeout
+                        # Set a very short timeout for draining
+                        self._port.timeout = 0.001
+
+                        # Unsupported command response is sent 8 times and has
+                        # 14 bytes length including delimiter 0xC0 bytes.
+                        # At least part of it is read as a command response,
+                        # but to be safe, read it all.
+                        self._port.read(14 * 8)
+
+                        # Restore original timeout
+                        self._port.timeout = original_timeout
+                        self.flush_input()
+
+                    # Unsupported command can result in
                     # more than one error response for some reason
-                    time.sleep(0.2)  # Wait for input buffer to fill
-                    self.flush_input()  # Flush input buffer of hanging response
+                    drain_input_buffer(0.2)
                     raise UnsupportedCommandError(self, op)
 
         finally:
