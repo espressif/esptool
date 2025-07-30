@@ -846,6 +846,12 @@ def main(argv=None, esp=None):
                     "setting --no-stub"
                 )
                 args.no_stub = True
+            elif esp.CHIP_NAME == "ESP32-C3" and esp.get_secure_boot_enabled():
+                print(
+                    "WARNING: Stub flasher is not supported on ESP32-C3 "
+                    "with Secure Boot, setting --no-stub"
+                )
+                args.no_stub = True
             elif not esp.IS_STUB and esp.stub_is_disabled:
                 print(
                     "WARNING: Stub loader has been disabled for compatibility, "
