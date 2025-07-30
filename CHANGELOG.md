@@ -1,3 +1,16 @@
+## v4.9.1 (2025-07-30)
+
+### Bug Fixes
+
+- **esp32-c3**: Disable flasher stub when Secure Boot is active
+- **esp32-s3**: Allow stub flasher execution with active Secure Boot
+- Fix buffering issues with CP2102 converter causing connection failures
+- **elf2image**: Add support for ESP32-H4 MMU page size configuration
+- **elf2image**: validate ELF section types and addresses before processing
+- **elf2image**: handle PREINIT_ARRAY section type in ESP32-P4 elf file properly
+- enable auto-detection of ESP32-S2 in secure download mode
+- enable ESP32-P4 ECO5 chip detection
+
 ## v4.9.0 (2025-06-19)
 
 ### New Features
