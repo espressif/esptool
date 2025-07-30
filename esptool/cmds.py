@@ -1626,6 +1626,11 @@ def run_stub(esp: ESPLoader) -> ESPLoader:
             "Stub flasher is not supported in Secure Download Mode, "
             "it has been disabled. Set --no-stub to suppress this warning."
         )
+    elif esp.CHIP_NAME == "ESP32-C3" and esp.get_secure_boot_enabled():
+        log.warning(
+            "Stub flasher is not supported on ESP32-C3 with Secure Boot, "
+            "it has been disabled. Set --no-stub to suppress this warning."
+        )
     elif not esp.IS_STUB and esp.stub_is_disabled:
         log.warning(
             "Stub flasher has been disabled for compatibility, "
