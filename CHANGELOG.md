@@ -20,6 +20,22 @@
 </div>
 <hr>
 
+## v5.0.2 (2025-07-30)
+
+### 🐛 Bug Fixes
+
+- **esp32-c3**: Disable flasher stub when Secure Boot is active *(Radim Karniš - 1f1ea9a)*
+- **esp32-s3**: Allow stub flasher execution with active Secure Boot *(Radim Karniš - 7ba285b)*
+- **espefuse**: Handle error in burn-efuse command when no arguments are provided *(Peter Dragun - 0f32306)*
+- Fix buffering issues with CP2102 converter causing connection failures *(Jaroslav Burian - 5338ea0)*
+- Fix compatibility with Click 8.2.0+ *(Peter Dragun - 524825e)*
+- Fix --port-filter argument parsing *(Peter Dragun - b53a16c)*
+
+### 🔧 Code Refactoring
+
+- **elf2image**: Use common MMU page size configuration function for ESP32-H4 *(Jaroslav Burian - 977ff44)*
+
+
 ## v5.0.1 (2025-07-15)
 
 ### 🐛 Bug Fixes
