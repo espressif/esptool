@@ -1030,7 +1030,7 @@ def main(argv=None, esp=None):
                 # Check if stub supports chosen flash size
                 if (
                     esp.IS_STUB
-                    and esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4"]
+                    and esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4", "ESP32-C5"]
                     and flash_size_bytes(flash_size) > 16 * 1024 * 1024
                 ):
                     print(
@@ -1057,7 +1057,7 @@ def main(argv=None, esp=None):
 
         if esp.IS_STUB and hasattr(args, "address") and hasattr(args, "size"):
             if (
-                esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4"]
+                esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4", "ESP32-C5"]
                 and args.address + args.size > 0x1000000
             ):
                 print(
