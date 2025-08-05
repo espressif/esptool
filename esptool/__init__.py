@@ -1028,7 +1028,11 @@ def main(argv: list[str] | None = None, esp: ESPLoader | None = None):
     returned by get_default_connected_device()
     """
     args = expand_file_arguments(argv or sys.argv[1:])
-    cli(args=args, esp=esp)
+    try:
+        cli(args=args, esp=esp)
+    except SystemExit as e:
+        if e.code != 0:
+            raise
 
 
 def get_port_list(

@@ -214,7 +214,11 @@ def main(argv: list[str] | None = None, esp: esptool.ESPLoader | None = None):
     returned by esptool.get_default_connected_device()
     """
     args = esptool.expand_file_arguments(argv or sys.argv[1:])
-    cli(args=args, esp=esp)
+    try:
+        cli(args=args, esp=esp)
+    except SystemExit as e:
+        if e.code != 0:
+            raise
 
 
 def _main():

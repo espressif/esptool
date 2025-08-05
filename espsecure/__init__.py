@@ -1957,7 +1957,11 @@ def main(argv: list[str] | None = None):
     Arguments and their values need to be added as individual items to the list
     e.g. "--port /dev/ttyUSB1" thus becomes ['--port', '/dev/ttyUSB1'].
     """
-    cli(args=argv)
+    try:
+        cli(args=argv)
+    except SystemExit as e:
+        if e.code != 0:
+            raise
 
 
 def _main():
