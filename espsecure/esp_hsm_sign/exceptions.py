@@ -5,7 +5,6 @@
 from esptool.logger import log
 
 from pkcs11.exceptions import (
-    AlreadyInitialized,
     AnotherUserAlreadyLoggedIn,
     ArgumentsBad,
     DeviceRemoved,
@@ -17,6 +16,14 @@ from pkcs11.exceptions import (
     OperationNotInitialized,
     SessionClosed,
 )
+
+
+try:
+    # AlreadyInitialized is not available since python-pkcs11 9.0, as multiple
+    # initializations are now supported.
+    from pkcs11.exceptions import AlreadyInitialized
+except ImportError:
+    AlreadyInitialized = None
 
 
 def handle_exceptions(e, info=""):
