@@ -548,6 +548,37 @@ class TestFlashing(EsptoolTestCase):
         self.run_esptool("write-flash {} images/one_kb_all_ef.bin".format(hex(offset2)))
         self.verify_readback(offset, 1 * 1024 * 1024, "images/one_mb.bin")
 
+    @pytest.mark.skipif(
+        int(os.getenv("ESPTOOL_TEST_FLASH_SIZE", "0")) < 32, reason="needs 32MB flash"
+    )
+    def test_verify_erase_between_32M_flash(self):
+        """
+        Test writing two 1KB binaries with random data after 16MB boundary and
+        verify hashes.
+        """
+        BASE_OFFSET = 16 * 1024 * 1024  # 16MB boundary
+        FILE_SIZE = 1 * 1024  # 1KB
+
+        binary1 = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        binary2 = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+
+        try:
+            for _ in range(FILE_SIZE):
+                binary1.write(struct.pack("B", random.randrange(0, 256)))
+                binary2.write(struct.pack("B", random.randrange(0, 256)))
+            binary1.close()
+            binary2.close()
+
+            output1 = self.run_esptool(f"write-flash {BASE_OFFSET} {binary1.name}")
+            assert "Hash of data verified" in output1
+
+            output2 = self.run_esptool(f"write-flash {BASE_OFFSET} {binary2.name}")
+            assert "Hash of data verified" in output2
+
+        finally:
+            os.unlink(binary1.name)
+            os.unlink(binary2.name)
+
     def test_correct_offset(self):
         """Verify writing at an offset actually writes to that offset."""
         self.run_esptool("write-flash 0x2000 images/sector.bin")
