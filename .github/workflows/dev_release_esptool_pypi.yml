@@ -14,6 +14,13 @@ jobs:
 
     if: startsWith(github.ref, 'refs/tags/') && contains(github.ref_name, 'dev')
 
+    environment:
+      name: pypi
+      url: https://pypi.org/p/esptool
+
+    permissions:
+      id-token: write
+
     steps:
     - uses: actions/checkout@master
     - name: Set up Python 3.13
@@ -23,18 +30,15 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install twine build
+        python -m pip install build
 
     - name: Create development release ${{ github.ref_name }}
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        TWINE_NON_INTERACTIVE: true
       run: |
         python ci/patch_dev_release.py --version ${{ github.ref_name }} esptool/__init__.py
         git diff
-        python -m pip download esptool==$(python setup.py -V) && echo "Version ${{ github.ref_name }} already published, skipping..." && exit 1
-
-        echo "Packaging and publishing new esptool development release: ${{ github.ref_name }}"
+        echo "Packaging esptool development release: ${{ github.ref_name }}"
         python -m build --sdist
-        twine upload dist/*
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: true
