@@ -242,7 +242,7 @@ class ESP32ROM(ESPLoader):
 
         chip_ver_dis_bt = word3 & (1 << 1)
         if chip_ver_dis_bt == 0:
-            features += ["BT"]
+            features += ["BT (v4.2 BR/EDR) + BLE"]
 
         chip_ver_dis_app_cpu = word3 & (1 << 0)
         if chip_ver_dis_app_cpu:
