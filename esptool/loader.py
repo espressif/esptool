@@ -1270,7 +1270,9 @@ class ESPLoader:
         except KeyError:
             raise FatalError(
                 "Flash frequency '{}' is not supported by this chip type. "
-                "Supported frequencies: {}".format(arg, ", ".join(cls.FLASH_FREQUENCY.keys()))
+                "Supported frequencies: {}".format(
+                    arg, ", ".join(cls.FLASH_FREQUENCY.keys())
+                )
             )
 
     def run_stub(self, stub: StubFlasher | None = None) -> "ESPLoader":

@@ -264,7 +264,9 @@ class EfuseBlockBase(EfuseProtectBase):
         if self.parent.debug or debug:
             bit_string.pos = 0
             log.print(
-                "{:<15s} ({:<16s}) [{:>2d}] {}:".format(self.name, " ".join(self.alias)[:16], self.id, comment),
+                "{:<15s} ({:<16s}) [{:>2d}] {}:".format(
+                    self.name, " ".join(self.alias)[:16], self.id, comment
+                ),
                 " ".join(
                     [
                         "{:08x}".format(word)
@@ -284,7 +286,9 @@ class EfuseBlockBase(EfuseProtectBase):
             return False
         if len(wr_data.bytes) != len(self.bitarray.bytes):
             raise esptool.FatalError(
-                "Data does not fit: the block{} size is {} bytes, data is {} bytes".format(self.id, len(self.bitarray.bytes), len(wr_data.bytes))
+                "Data does not fit: block{} size {} bytes, data {} bytes".format(
+                    self.id, len(self.bitarray.bytes), len(wr_data.bytes)
+                )
             )
         self.check_wr_rd_protect()
 
@@ -672,7 +676,9 @@ class EspEfusesBase:
     @staticmethod
     def confirm(action, do_not_confirm):
         log.print(
-            "{}{}\nThis is an irreversible operation!".format(action, "" if action.endswith("\n") else ". ")
+            "{}{}\nThis is an irreversible operation!".format(
+                action, "" if action.endswith("\n") else ". "
+            )
         )
         if not do_not_confirm:
             log.print("Type 'BURN' (all capitals) to continue.", flush=True)

@@ -284,7 +284,9 @@ class ESP32C61Commands(BaseCommands):
             if len(digest) != num_bytes:
                 raise esptool.FatalError(
                     "Incorrect digest size {}. Digest must be {} bytes ({} bits) "
-                    "of raw binary key data.".format(len(digest), num_bytes, num_bytes * 8)
+                    "of raw binary key data.".format(
+                        len(digest), num_bytes, num_bytes * 8
+                    )
                 )
             digest_list.append(digest)
 

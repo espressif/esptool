@@ -82,7 +82,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32 chip but got for '{}'.".format(esp.CHIP_NAME)
+                "Expected the 'esp' param for ESP32 chip but got for '{}'.".format(
+                    esp.CHIP_NAME
+                )
             )
         self.blocks = [
             EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect)
@@ -114,7 +116,9 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
             else:
                 raise esptool.FatalError(
-                    "The coding scheme ({}) - is not supported".format(self.coding_scheme)
+                    "The coding scheme ({}) - is not supported".format(
+                        self.coding_scheme
+                    )
                 )
             if self["MAC_VERSION"].get() == 1:
                 self.efuses += [

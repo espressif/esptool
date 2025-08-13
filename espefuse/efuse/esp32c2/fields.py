@@ -72,7 +72,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-C2":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-C2 chip but got for '{}'.".format(esp.CHIP_NAME)
+                "Expected the 'esp' param for ESP32-C2 chip but got for '{}'.".format(
+                    esp.CHIP_NAME
+                )
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -224,7 +226,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         xtal_freq = self.get_crystal_freq()
         if xtal_freq not in [26, 40]:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=26M and 40M (xtal was {})".format(xtal_freq)
+                "The eFuse supports only xtal=26M and 40M (xtal was {})".format(
+                    xtal_freq
+                )
             )
 
         self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_NUM_M, 0xFF)

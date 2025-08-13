@@ -72,7 +72,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-S2":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-S2 chip but got for '{}'.".format(esp.CHIP_NAME)
+                "Expected the 'esp' param for ESP32-S2 chip but got for '{}'.".format(
+                    esp.CHIP_NAME
+                )
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -298,7 +300,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    block.err_bitarray.overwrite(BitArray("uint:32=%d" % word))
+                    block.err_bitarray.overwrite(BitArray("uint:32={}".format(word)))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:

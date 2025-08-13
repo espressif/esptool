@@ -72,7 +72,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-C3":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-C3 chip but got for '{}'.".format(esp.CHIP_NAME)
+                "Expected the 'esp' param for ESP32-C3 chip but got for '{}'.".format(
+                    esp.CHIP_NAME
+                )
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]

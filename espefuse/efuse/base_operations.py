@@ -991,7 +991,9 @@ class BaseCommands:
                     ]
                     if error:
                         raise esptool.FatalError(
-                            "{} must be readable, stop this operation!".format(efuse_name)
+                            "{} must be readable, stop this operation!".format(
+                                efuse_name
+                            )
                         )
                 else:
                     for block in self.efuses.Blocks.BLOCKS:
@@ -1001,7 +1003,9 @@ class BaseCommands:
                                 self.efuses[block.key_purpose].get()
                             ):
                                 raise esptool.FatalError(
-                                    "{} must be readable, stop this operation!".format(efuse_name)
+                                    "{} must be readable, stop this operation!".format(
+                                        efuse_name
+                                    )
                                 )
                             break
                 # make full list of which efuses will be disabled
@@ -1013,7 +1017,9 @@ class BaseCommands:
                 ]
                 names = ", ".join(e.name for e in all_disabling)
                 log.print(
-                    "Permanently read-disabling eFuse{} {}".format("s" if len(all_disabling) > 1 else "", names)
+                    "Permanently read-disabling eFuse{} {}".format(
+                        "s" if len(all_disabling) > 1 else "", names
+                    )
                 )
                 efuse.disable_read()
 
@@ -1054,7 +1060,9 @@ class BaseCommands:
                 ]
                 names = ", ".join(e.name for e in all_disabling)
                 log.print(
-                    "Permanently write-disabling eFuse{} {}".format("s" if len(all_disabling) > 1 else "", names)
+                    "Permanently write-disabling eFuse{} {}".format(
+                        "s" if len(all_disabling) > 1 else "", names
+                    )
                 )
                 efuse.disable_write()
 
@@ -1165,7 +1173,9 @@ class BaseCommands:
         data_block.reverse()
         log.print(
             "bit_number:   "
-            "[{:03d}]........................................................[0]".format(data_block.len - 1)
+            "[{:03d}]........................................................[0]".format(
+                data_block.len - 1
+            )
         )
         log.print("BLOCK{:>2d}   :".format(block_obj.id), data_block)
         block_obj.print_block(data_block, "regs_to_write", debug=True)

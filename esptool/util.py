@@ -221,7 +221,9 @@ class NotImplementedInROMError(FatalError):
     def __init__(self, bootloader, func):
         FatalError.__init__(
             self,
-            "{} ROM does not support function {}.".format(bootloader.CHIP_NAME, func.__name__),
+            "{} ROM does not support function {}.".format(
+                bootloader.CHIP_NAME, func.__name__
+            ),
         )
 
 
@@ -242,7 +244,11 @@ class UnsupportedCommandError(RuntimeError):
 
     def __init__(self, esp, op):
         if esp.secure_download_mode:
-            msg = "This command (0x{:x}) is not supported in Secure Download Mode".format(op)
+            msg = (
+                "This command (0x{:x}) is not supported in Secure Download Mode".format(
+                    op
+                )
+            )
         else:
             msg = "Invalid (unsupported) command 0x{:x}".format(op)
         RuntimeError.__init__(self, msg)

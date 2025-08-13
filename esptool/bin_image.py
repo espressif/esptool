@@ -254,7 +254,9 @@ class BaseFirmwareImage:
         if len(self.segments) > 16:
             raise FatalError(
                 "Invalid segment count {} (max 16). "
-                "Usually this indicates a linker script problem.".format(len(self.segments))
+                "Usually this indicates a linker script problem.".format(
+                    len(self.segments)
+                )
             )
 
     def load_segment(self, f, is_irom_segment=False):
@@ -265,7 +267,9 @@ class BaseFirmwareImage:
         segment_data = f.read(size)
         if len(segment_data) < size:
             raise FatalError(
-                "End of file reading segment 0x{:x}, length {} (actual length {})".format(offset, size, len(segment_data))
+                "End of file reading segment 0x{:x}, length {} (actual {})".format(
+                    offset, size, len(segment_data)
+                )
             )
         segment = ImageSegment(offset, segment_data, file_offs)
         self.segments.append(segment)
@@ -297,7 +301,9 @@ class BaseFirmwareImage:
             ):
                 raise FatalError(
                     "Cannot place SHA256 digest on segment boundary"
-                    "(elf_sha256_offset={}, file_pos={}, segment_size={})".format(self.elf_sha256_offset, file_pos, segment_len)
+                    "(elf_sha256_offset={}, file_pos={}, segment_size={})".format(
+                        self.elf_sha256_offset, file_pos, segment_len
+                    )
                 )
             # offset relative to the data part
             patch_offset -= self.SEG_HEADER_LEN
@@ -306,8 +312,8 @@ class BaseFirmwareImage:
                 != b"\x00" * self.SHA256_DIGEST_LEN
             ):
                 raise FatalError(
-                    "Contents of segment at SHA256 digest offset 0x{:x} are not all zero."
-                    " Refusing to overwrite.".format(self.elf_sha256_offset)
+                    "Contents of segment at SHA256 digest offset 0x{:x} are not zero. "
+                    "Refusing to overwrite.".format(self.elf_sha256_offset)
                 )
             assert len(self.elf_sha256) == self.SHA256_DIGEST_LEN
             segment_data = (
@@ -403,7 +409,9 @@ class BaseFirmwareImage:
         if len(irom_segments) > 0:
             if len(irom_segments) != 1:
                 raise FatalError(
-                    "Found {} segments that could be irom0. Bad ELF file?".format(len(irom_segments))
+                    "Found {} segments that could be irom0. Bad ELF file?".format(
+                        len(irom_segments)
+                    )
                 )
             return irom_segments[0]
         return None

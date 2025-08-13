@@ -72,7 +72,9 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-P4":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-P4 chip but got for '{}'.".format(esp.CHIP_NAME)
+                "Expected the 'esp' param for ESP32-P4 chip but got for '{}'.".format(
+                    esp.CHIP_NAME
+                )
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -232,7 +234,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         apb_freq = self.get_crystal_freq()
         if apb_freq != 40:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=40M (xtal was %d)" % apb_freq
+                "The eFuse supports only xtal=40M (xtal was {}".format(apb_freq)
             )
         # keep default timing settings
 
@@ -249,7 +251,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    block.err_bitarray.overwrite(BitArray("uint:32=%d" % word))
+                    block.err_bitarray.overwrite(BitArray("uint:32={}".format(word)))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:

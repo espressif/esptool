@@ -266,6 +266,4 @@ class InputError(RuntimeError):
 
 class ValidationError(InputError):
     def __init__(self, p, message):
-        super().__init__(
-            f"Entry {p.field_name} invalid: {message}"
-        )
+        super().__init__(f"Entry {p.field_name} invalid: {message}")
