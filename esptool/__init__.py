@@ -785,10 +785,10 @@ def image_info_cli(ctx, filename: list[tuple[int | None, t.IO[bytes]]]):
 )
 @click.option(
     "--pad-to-size",
-    type=int,
+    type=str,
     default=None,
     help="The block size to pad the final binary image to. "
-    "Value 0xFF is used for padding.",
+    "Value 0xFF is used for padding. Supports MB, KB suffixes.",
 )
 @click.option(
     "--ram-only-header",

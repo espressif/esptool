@@ -160,6 +160,13 @@ class BaseTestCase:
             print(e.output)
             raise
 
+    @staticmethod
+    def assertAllFF(some_bytes):
+        """Assert that the given bytes are all 0xFF (erased flash state)"""
+        assert b"\xff" * len(some_bytes) == some_bytes, (
+            "Expected all 0xFF bytes, but found different values"
+        )
+
 
 class TestESP8266V1Image(BaseTestCase):
     ELF = "esp8266-nonosssdk20-iotdemo.elf"
@@ -343,6 +350,84 @@ class TestESP32Image(BaseTestCase):
         # --ram-only-header produces just 2 visible segments in the bin
         image = self._test_elf2image(ELF, BIN, ["--ram-only-header"])
         assert len(image.segments) == 2
+
+    @pytest.fixture(scope="class")
+    def reference_bin(self):
+        BASE_NAME = "esp32-bootloader"
+        BIN = f"{BASE_NAME}-reference.bin"
+        self.run_elf2image("esp32", f"{BASE_NAME}.elf")
+        os.rename(f"{BASE_NAME}.bin", BIN)
+        yield BIN
+        # Cleanup the reference binary after the test
+        try_delete(BIN)
+
+    def test_pad_to_size(self, reference_bin: str):
+        """Test that --pad-to-size correctly pads output binary to specified size"""
+        ELF = "esp32-bootloader.elf"
+        BIN = "esp32-bootloader.bin"
+
+        try:
+            # Generate the padded binary with 1MB size
+            self.run_elf2image("esp32", ELF, extra_args=["--pad-to-size", "1MB"])
+
+            # Get the size of the reference binary
+            normal_size = os.path.getsize(reference_bin)
+
+            # Check that the padded binary is exactly 1MB
+            padded_size = os.path.getsize(BIN)
+            expected_size = 0x100000  # 1MB in bytes
+            assert padded_size == expected_size, (
+                f"Expected {expected_size} bytes (1MB), got {padded_size} bytes"
+            )
+
+            # Check that the original content is preserved at the beginning
+            with open(reference_bin, "rb") as f:
+                original_content = f.read()
+            with open(BIN, "rb") as f:
+                padded_content = f.read()
+
+            assert padded_content[:normal_size] == original_content, (
+                "Original content should be preserved at the beginning of padded file"
+            )
+
+            # Check that the padding is filled with 0xFF bytes (erased flash state)
+            padding = padded_content[normal_size:]
+            expected_padding_size = expected_size - normal_size
+            assert len(padding) == expected_padding_size, (
+                f"Padding should be {expected_padding_size} bytes, got {len(padding)}"
+            )
+            self.assertAllFF(padding)
+
+        finally:
+            try_delete(BIN)
+
+    @pytest.mark.parametrize("size", ["512KB", "2MB", "4MB"])
+    def test_pad_to_size_different_sizes(self, size: str, reference_bin: str):
+        """Test --pad-to-size with different size values"""
+        ELF = "esp32-bootloader.elf"
+        BIN = "esp32-bootloader.bin"
+
+        expected_bytes = esptool.util.flash_size_bytes(size)
+        try:
+            # Generate the padded binary
+            self.run_elf2image("esp32", ELF, extra_args=["--pad-to-size", size])
+
+            # Check the file size
+            padded_size = os.path.getsize(BIN)
+            assert padded_size == expected_bytes, (
+                f"Expected {expected_bytes} bytes for {size}, got {padded_size}"
+            )
+
+            # Check that padding is 0xFF
+            with open(BIN, "rb") as f:
+                padded_content = f.read()
+
+            # Get original size from the normal binary and check that padding
+            normal_size = os.path.getsize(reference_bin)
+            self.assertAllFF(padded_content[normal_size:])
+
+        finally:
+            try_delete(BIN)
 
 
 class TestESP8266FlashHeader(BaseTestCase):
