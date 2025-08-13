@@ -21,6 +21,7 @@ from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, utils
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.utils import int_to_bytes
 
+from esptool.cli_util import OptionEatAll
 from esptool.logger import log
 
 import esptool
@@ -1645,6 +1646,8 @@ def generate_signing_key_cli(version, scheme, keyfile):
     "--keyfile",
     "-k",
     type=click.File("rb"),
+    cls=OptionEatAll,
+    required=True,
     multiple=True,
     help="Private key file for signing. Key is in PEM format.",
 )
@@ -1677,6 +1680,7 @@ def generate_signing_key_cli(version, scheme, keyfile):
 @click.option(
     "--pub-key",
     type=click.File("rb"),
+    cls=OptionEatAll,
     multiple=True,
     help="Public key files corresponding to the private key used to generate the "
     "pre-calculated signatures. Keys should be in PEM format.",
@@ -1684,6 +1688,7 @@ def generate_signing_key_cli(version, scheme, keyfile):
 @click.option(
     "--signature",
     type=click.File("rb"),
+    cls=OptionEatAll,
     multiple=True,
     default=None,
     help="Pre-calculated signatures. Signatures generated using external private keys "

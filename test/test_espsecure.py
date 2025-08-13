@@ -197,6 +197,33 @@ class TestSigning(EspSecureTestCase):
             output_file.close()
             os.unlink(output_file.name)
 
+    def test_sign_v2_multiple_keys_cli(self):
+        keydir = os.path.join(TEST_DIR, "secure_images")
+        with tempfile.NamedTemporaryFile(delete=False) as output_file:
+            self.run_espsecure(
+                "sign-data --version 2 --keyfile "
+                f"{keydir}/rsa_secure_boot_signing_key.pem "
+                f"{keydir}/rsa_secure_boot_signing_key2.pem "
+                f"{keydir}/rsa_secure_boot_signing_key3.pem "
+                f"--output {output_file.name} "
+                f"{keydir}/bootloader_unsigned_v2.bin"
+            )
+            self.run_espsecure(
+                "verify-signature --version 2 --keyfile "
+                f"{keydir}/rsa_secure_boot_signing_key.pem "
+                f"{output_file.name}"
+            )
+            self.run_espsecure(
+                "verify-signature --version 2 --keyfile "
+                f"{keydir}/rsa_secure_boot_signing_key2.pem "
+                f"{output_file.name}"
+            )
+            self.run_espsecure(
+                "verify-signature --version 2 --keyfile "
+                f"{keydir}/rsa_secure_boot_signing_key3.pem "
+                f"{output_file.name}"
+            )
+
     def test_sign_v2_multiple_keys(self):
         # 3 keys + Verify with 3rd key
         try:
