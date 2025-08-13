@@ -214,9 +214,7 @@ class EfuseBlockBase(EfuseProtectBase):
         elif coding_scheme == self.parent.REGS.CODING_SCHEME_RS:
             return self.len * 4
         else:
-            raise esptool.FatalError(
-                f"Coding scheme ({coding_scheme}) not supported"
-            )
+            raise esptool.FatalError(f"Coding scheme ({coding_scheme}) not supported")
 
     def get_coding_scheme(self):
         if self.id == 0:
@@ -264,7 +262,8 @@ class EfuseBlockBase(EfuseProtectBase):
         if self.parent.debug or debug:
             bit_string.pos = 0
             log.print(
-                f"{self.name:<15s} ({' '.join(self.alias)[:16]:<16s}) [{self.id:>2d}] {comment}:",
+                f"{self.name:<15s} ({' '.join(self.alias)[:16]:<16s}) "
+                f"[{self.id:>2d}] {comment}:",
                 " ".join(
                     [
                         f"{word:08x}"
@@ -284,7 +283,8 @@ class EfuseBlockBase(EfuseProtectBase):
             return False
         if len(wr_data.bytes) != len(self.bitarray.bytes):
             raise esptool.FatalError(
-                f"Data does not fit: block{self.id} size {len(self.bitarray.bytes)} bytes, data {len(wr_data.bytes)} bytes"
+                f"Data does not fit: block{self.id} size "
+                f"{len(self.bitarray.bytes)} bytes, data {len(wr_data.bytes)} bytes"
             )
         self.check_wr_rd_protect()
 
@@ -671,9 +671,10 @@ class EspEfusesBase:
 
     @staticmethod
     def confirm(action, do_not_confirm):
-        newline = '\n'
+        newline = "\n"
         log.print(
-            f"{action}{'' if action.endswith(newline) else '. '}{newline}This is an irreversible operation!"
+            f"{action}{'' if action.endswith(newline) else '. '}{newline}"
+            f"This is an irreversible operation!"
         )
         if not do_not_confirm:
             log.print("Type 'BURN' (all capitals) to continue.", flush=True)

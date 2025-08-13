@@ -298,7 +298,9 @@ class EfuseMacField(EfuseField):
         if computed_crc == stored_crc:
             valid_msg = f"(CRC 0x{stored_crc:02x} OK)"
         else:
-            valid_msg = f"(CRC 0x{stored_crc:02x} invalid - calculated 0x{computed_crc:02x})"
+            valid_msg = (
+                f"(CRC 0x{stored_crc:02x} invalid - calculated 0x{computed_crc:02x})"
+            )
         return f"{util.hexify(raw_mac, ':')} {valid_msg}"
 
     @staticmethod

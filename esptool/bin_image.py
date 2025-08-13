@@ -265,7 +265,8 @@ class BaseFirmwareImage:
         segment_data = f.read(size)
         if len(segment_data) < size:
             raise FatalError(
-                f"End of file reading segment 0x{offset:x}, length {size} (actual {len(segment_data)})"
+                f"End of file reading segment 0x{offset:x}, length {size} "
+                f"(actual {len(segment_data)})"
             )
         segment = ImageSegment(offset, segment_data, file_offs)
         self.segments.append(segment)
@@ -297,7 +298,8 @@ class BaseFirmwareImage:
             ):
                 raise FatalError(
                     f"Cannot place SHA256 digest on segment boundary"
-                    f"(elf_sha256_offset={self.elf_sha256_offset}, file_pos={file_pos}, segment_size={segment_len})"
+                    f"(elf_sha256_offset={self.elf_sha256_offset}, "
+                    f"file_pos={file_pos}, segment_size={segment_len})"
                 )
             # offset relative to the data part
             patch_offset -= self.SEG_HEADER_LEN
@@ -306,7 +308,8 @@ class BaseFirmwareImage:
                 != b"\x00" * self.SHA256_DIGEST_LEN
             ):
                 raise FatalError(
-                    f"Contents of segment at SHA256 digest offset 0x{self.elf_sha256_offset:x} are not zero. "
+                    f"Contents of segment at SHA256 digest offset "
+                    f"0x{self.elf_sha256_offset:x} are not zero. "
                     "Refusing to overwrite."
                 )
             assert len(self.elf_sha256) == self.SHA256_DIGEST_LEN
@@ -403,7 +406,8 @@ class BaseFirmwareImage:
         if len(irom_segments) > 0:
             if len(irom_segments) != 1:
                 raise FatalError(
-                    f"Found {len(irom_segments)} segments that could be irom0. Bad ELF file?"
+                    f"Found {len(irom_segments)} segments that could be irom0. "
+                    f"Bad ELF file?"
                 )
             return irom_segments[0]
         return None
@@ -441,7 +445,8 @@ class BaseFirmwareImage:
                     and elem_pad_addr == next_elem.addr
                 ):
                     log.note(
-                        f"Inserting {next_elem.addr - (elem.addr + len(elem.data))} bytes padding between {elem.name} and {next_elem.name}"
+                        f"Inserting {next_elem.addr - (elem.addr + len(elem.data))} "
+                        f"bytes padding between {elem.name} and {next_elem.name}"
                     )
                     elem.pad_until_addr(elem_pad_addr)
             if all(
@@ -634,7 +639,8 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             irom_offs = irom_segment.addr - ESP8266ROM.IROM_MAP_START
         else:
             irom_offs = 0
-        return f"{os.path.splitext(input_file)[0]}-0x{irom_offs & ~(ESPLoader.FLASH_SECTOR_SIZE - 1):05x}.bin"
+        sector_mask = ~(ESPLoader.FLASH_SECTOR_SIZE - 1)
+        return f"{os.path.splitext(input_file)[0]}-0x{irom_offs & sector_mask:05x}.bin"
 
     def save(self, filename: str | None) -> bytes | None:
         with io.BytesIO() as f:  # Write to memory first

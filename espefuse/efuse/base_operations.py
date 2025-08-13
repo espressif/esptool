@@ -1001,7 +1001,8 @@ class BaseCommands:
                                 self.efuses[block.key_purpose].get()
                             ):
                                 raise esptool.FatalError(
-                                    f"{efuse_name} must be readable, stop this operation!"
+                                    f"{efuse_name} must be readable, "
+                                    f"stop this operation!"
                                 )
                             break
                 # make full list of which efuses will be disabled
@@ -1013,7 +1014,8 @@ class BaseCommands:
                 ]
                 names = ", ".join(e.name for e in all_disabling)
                 log.print(
-                    f"Permanently read-disabling eFuse{'s' if len(all_disabling) > 1 else ''} {names}"
+                    f"Permanently read-disabling eFuse"
+                    f"{'s' if len(all_disabling) > 1 else ''} {names}"
                 )
                 efuse.disable_read()
 
@@ -1054,7 +1056,8 @@ class BaseCommands:
                 ]
                 names = ", ".join(e.name for e in all_disabling)
                 log.print(
-                    f"Permanently write-disabling eFuse{'s' if len(all_disabling) > 1 else ''} {names}"
+                    f"Permanently write-disabling eFuse"
+                    f"{'s' if len(all_disabling) > 1 else ''} {names}"
                 )
                 efuse.disable_write()
 
@@ -1164,7 +1167,8 @@ class BaseCommands:
             )
         data_block.reverse()
         log.print(
-            f"bit_number:   [{data_block.len - 1:03d}]........................................................[0]"
+            f"bit_number:   [{data_block.len - 1:03d}]"
+            f"........................................................[0]"
         )
         log.print(f"BLOCK{block_obj.id:>2d}   :", data_block)
         block_obj.print_block(data_block, "regs_to_write", debug=True)

@@ -1976,7 +1976,10 @@ class HexFormatter:
                     for c in line.decode("ascii", "replace")
                 )
                 s = s[16:]
-                result += f"\n    {hexify(line[:8], False):<16s} {hexify(line[8:], False):<16s} | {ascii_line}"
+                result += (
+                    f"\n    {hexify(line[:8], False):<16s} "
+                    f"{hexify(line[8:], False):<16s} | {ascii_line}"
+                )
             return result
         else:
             return hexify(self._s, False)
