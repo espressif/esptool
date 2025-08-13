@@ -16,3 +16,6 @@ b57f69bd13222b1753446a0f7c17386eda1dc2c9
 
 # Fixing linter issues
 2e4e77cde269379f3aba2e1344c912f47c5974de
+
+# ruff pyupgrade refactoring
+206970acf821635dbf9adfba99537ac420fef4d2
