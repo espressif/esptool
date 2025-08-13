@@ -72,9 +72,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-C5":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-C5 chip but got for '{}'.".format(
-                    esp.CHIP_NAME
-                )
+                f"Expected the 'esp' param for ESP32-C5 chip but got for '{esp.CHIP_NAME}'."
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -234,7 +232,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         apb_freq = self.get_crystal_freq()
         if apb_freq not in [40, 48]:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=40M and 48M (xtal was {}".format(apb_freq)
+                f"The eFuse supports only xtal=40M and 48M (xtal was {apb_freq}"
             )
 
         self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_NUM_M, 0xFF)
@@ -261,7 +259,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    block.err_bitarray.overwrite(BitArray("uint:32={}".format(word)))
+                    block.err_bitarray.overwrite(BitArray(f"uint:32={word}"))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
@@ -278,9 +276,7 @@ class EspEfuses(base_fields.EspEfusesBase):
             ret_fail |= block.fail
             if not silent and (block.fail or block.num_errors):
                 log.print(
-                    "Error(s) in BLOCK{} [ERRORS:{} FAIL:{}]".format(
-                        block.id, block.num_errors, block.fail
-                    )
+                    f"Error(s) in BLOCK{block.id} [ERRORS:{block.num_errors} FAIL:{block.fail}]"
                 )
         if (self.debug or ret_fail) and not silent:
             self.print_status_regs()

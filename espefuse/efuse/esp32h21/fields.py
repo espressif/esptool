@@ -72,9 +72,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-H21":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-H21 chip but got for '{}'.".format(
-                    esp.CHIP_NAME
-                )
+                f"Expected the 'esp' param for ESP32-H21 chip but got for '{esp.CHIP_NAME}'."
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -235,7 +233,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         # Based on `CONFIG_SOC_XTAL_SUPPORT_32M=y` for this target from ESP-IDF configuration
         if apb_freq != 32:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=32M (xtal was {}".format(apb_freq)
+                f"The eFuse supports only xtal=32M (xtal was {apb_freq}"
             )
         # TODO: [ESP32H21] IDF-11506
 
@@ -252,7 +250,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    block.err_bitarray.overwrite(BitArray("uint:32={}".format(word)))
+                    block.err_bitarray.overwrite(BitArray(f"uint:32={word}"))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
@@ -299,7 +297,7 @@ class EfuseWafer(EfuseField):
         return 0
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning {} is not supported".format(self.name))
+        raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
 class EfuseTempSensor(EfuseField):
@@ -349,7 +347,7 @@ class EfuseMacField(EfuseField):
     def check(self):
         errs, fail = self.parent.get_block_errors(self.block)
         if errs != 0 or fail:
-            output = "Block{} has ERRORS:{} FAIL:{}".format(self.block, errs, fail)
+            output = f"Block{self.block} has ERRORS:{errs} FAIL:{fail}"
         else:
             output = "OK"
         return "(" + output + ")"
@@ -413,9 +411,9 @@ class EfuseKeyPurposeField(EfuseField):
                 break
         if raw_val.isdigit():
             if int(raw_val) not in [p[1] for p in self.KEY_PURPOSES if p[1] > 0]:
-                raise esptool.FatalError("'{}' can not be set (value out of range)".format(raw_val))
+                raise esptool.FatalError(f"'{raw_val}' can not be set (value out of range)")
         else:
-            raise esptool.FatalError("'{}' unknown name".format(raw_val))
+            raise esptool.FatalError(f"'{raw_val}' unknown name")
         return raw_val
 
     def need_reverse(self, new_key_purpose):

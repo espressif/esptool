@@ -296,10 +296,10 @@ class EfuseMacField(EfuseField):
     def get_and_check(raw_mac, stored_crc):
         computed_crc = EfuseMacField.calc_crc(raw_mac)
         if computed_crc == stored_crc:
-            valid_msg = f"(CRC 0x{stored_crc:02x} OK)"
+            valid_msg = f"(CRC {stored_crc:#04x} OK)"
         else:
             valid_msg = (
-                f"(CRC 0x{stored_crc:02x} invalid - calculated 0x{computed_crc:02x})"
+                f"(CRC {stored_crc:#04x} invalid - calculated {computed_crc:#04x})"
             )
         return f"{util.hexify(raw_mac, ':')} {valid_msg}"
 
@@ -387,7 +387,7 @@ class EfuseWafer(EfuseField):
         return revision
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning {} is not supported".format(self.name))
+        raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
 class EfusePkg(EfuseField):

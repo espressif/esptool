@@ -72,9 +72,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-S3":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-S3 chip but got for '{}'.".format(
-                    esp.CHIP_NAME
-                )
+                f"Expected the 'esp' param for ESP32-S3 chip but got for '{esp.CHIP_NAME}'."
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -234,7 +232,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         apb_freq = self.get_crystal_freq()
         if apb_freq != 40:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=40M (xtal was {}".format(apb_freq)
+                f"The eFuse supports only xtal=40M (xtal was {apb_freq}"
             )
 
         self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_NUM_M, 0xFF)
@@ -261,7 +259,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    block.err_bitarray.overwrite(BitArray("uint:32={}".format(word)))
+                    block.err_bitarray.overwrite(BitArray(f"uint:32={word}"))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
@@ -346,7 +344,7 @@ class EfusePsramCap(EfuseField):
         return (hi_bits << 2) + lo_bits
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning {} is not supported".format(self.name))
+        raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
 class EfuseWafer(EfuseField):
@@ -358,7 +356,7 @@ class EfuseWafer(EfuseField):
         return (hi_bits << 3) + lo_bits
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning {} is not supported".format(self.name))
+        raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
 class EfuseTempSensor(EfuseField):
@@ -404,7 +402,7 @@ class EfuseMacField(EfuseField):
     def check(self):
         errs, fail = self.parent.get_block_errors(self.block)
         if errs != 0 or fail:
-            output = "Block{} has ERRORS:{} FAIL:{}".format(self.block, errs, fail)
+            output = f"Block{self.block} has ERRORS:{errs} FAIL:{fail}"
         else:
             output = "OK"
         return "(" + output + ")"

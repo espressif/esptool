@@ -9,7 +9,7 @@ import esptool
 
 def hexify(bitstring, separator=""):
     as_bytes = tuple(b for b in bitstring)
-    return separator.join(("{:02x}".format(b)) for b in as_bytes)
+    return separator.join((f"{b:02x}") for b in as_bytes)
 
 
 def popcnt(b):
