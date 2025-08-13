@@ -671,8 +671,9 @@ class EspEfusesBase:
 
     @staticmethod
     def confirm(action, do_not_confirm):
+        newline = '\n'
         log.print(
-            f"{action}{'' if action.endswith('\n') else '. '}\nThis is an irreversible operation!"
+            f"{action}{'' if action.endswith(newline) else '. '}{newline}This is an irreversible operation!"
         )
         if not do_not_confirm:
             log.print("Type 'BURN' (all capitals) to continue.", flush=True)
