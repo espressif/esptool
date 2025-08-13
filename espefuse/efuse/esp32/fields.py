@@ -82,9 +82,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32 chip but got for '{}'.".format(
-                    esp.CHIP_NAME
-                )
+                f"Expected the 'esp' param for ESP32 chip but got for '{esp.CHIP_NAME}'."
             )
         self.blocks = [
             EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect)
@@ -116,9 +114,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
             else:
                 raise esptool.FatalError(
-                    "The coding scheme ({}) - is not supported".format(
-                        self.coding_scheme
-                    )
+                    f"The coding scheme ({self.coding_scheme}) - is not supported"
                 )
             if self["MAC_VERSION"].get() == 1:
                 self.efuses += [
@@ -300,13 +296,10 @@ class EfuseMacField(EfuseField):
     def get_and_check(raw_mac, stored_crc):
         computed_crc = EfuseMacField.calc_crc(raw_mac)
         if computed_crc == stored_crc:
-            valid_msg = "(CRC 0x{:02x} OK)".format(stored_crc)
+            valid_msg = f"(CRC 0x{stored_crc:02x} OK)"
         else:
-            valid_msg = "(CRC 0x{:02x} invalid - calculated 0x{:02x})".format(
-                stored_crc,
-                computed_crc,
-            )
-        return "{} {}".format(util.hexify(raw_mac, ":"), valid_msg)
+            valid_msg = f"(CRC 0x{stored_crc:02x} invalid - calculated 0x{computed_crc:02x})"
+        return f"{util.hexify(raw_mac, ':')} {valid_msg}"
 
     @staticmethod
     def calc_crc(raw_mac):

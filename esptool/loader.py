@@ -1256,8 +1256,8 @@ class ESPLoader:
             return cls.FLASH_SIZES[arg]
         except KeyError:
             raise FatalError(
-                "Flash size '{}' is not supported by this chip type. "
-                "Supported sizes: {}".format(arg, ", ".join(cls.FLASH_SIZES.keys()))
+                f"Flash size '{arg}' is not supported by this chip type. "
+                f"Supported sizes: {', '.join(cls.FLASH_SIZES.keys())}"
             )
 
     @classmethod
@@ -1269,10 +1269,8 @@ class ESPLoader:
             return cls.FLASH_FREQUENCY[arg]
         except KeyError:
             raise FatalError(
-                "Flash frequency '{}' is not supported by this chip type. "
-                "Supported frequencies: {}".format(
-                    arg, ", ".join(cls.FLASH_FREQUENCY.keys())
-                )
+                f"Flash frequency '{arg}' is not supported by this chip type. "
+                f"Supported frequencies: {', '.join(cls.FLASH_FREQUENCY.keys())}"
             )
 
     def run_stub(self, stub: StubFlasher | None = None) -> "ESPLoader":
@@ -1978,11 +1976,7 @@ class HexFormatter:
                     for c in line.decode("ascii", "replace")
                 )
                 s = s[16:]
-                result += "\n    {:<16s} {:<16s} | {}".format(
-                    hexify(line[:8], False),
-                    hexify(line[8:], False),
-                    ascii_line,
-                )
+                result += f"\n    {hexify(line[:8], False):<16s} {hexify(line[8:], False):<16s} | {ascii_line}"
             return result
         else:
             return hexify(self._s, False)

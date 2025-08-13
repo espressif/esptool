@@ -215,7 +215,7 @@ class EfuseBlockBase(EfuseProtectBase):
             return self.len * 4
         else:
             raise esptool.FatalError(
-                "Coding scheme ({}) not supported".format(coding_scheme)
+                f"Coding scheme ({coding_scheme}) not supported"
             )
 
     def get_coding_scheme(self):
@@ -255,7 +255,7 @@ class EfuseBlockBase(EfuseProtectBase):
         words = self.get_words()
         data = BitArray()
         for word in reversed(words):
-            data.append("uint:32={}".format(word))
+            data.append(f"uint:32={word}")
         self.bitarray.overwrite(data, pos=0)
         if print_info:
             self.print_block(self.bitarray, "read_regs")
@@ -264,14 +264,12 @@ class EfuseBlockBase(EfuseProtectBase):
         if self.parent.debug or debug:
             bit_string.pos = 0
             log.print(
-                "{:<15s} ({:<16s}) [{:>2d}] {}:".format(
-                    self.name, " ".join(self.alias)[:16], self.id, comment
-                ),
+                f"{self.name:<15s} ({' '.join(self.alias)[:16]:<16s}) [{self.id:>2d}] {comment}:",
                 " ".join(
                     [
-                        "{:08x}".format(word)
+                        f"{word:08x}"
                         for word in bit_string.readlist(
-                            "{}*uint:32".format(int(bit_string.len / 32))
+                            f"{int(bit_string.len / 32)}*uint:32"
                         )[::-1]
                     ]
                 ),
@@ -286,9 +284,7 @@ class EfuseBlockBase(EfuseProtectBase):
             return False
         if len(wr_data.bytes) != len(self.bitarray.bytes):
             raise esptool.FatalError(
-                "Data does not fit: block{} size {} bytes, data {} bytes".format(
-                    self.id, len(self.bitarray.bytes), len(wr_data.bytes)
-                )
+                f"Data does not fit: block{self.id} size {len(self.bitarray.bytes)} bytes, data {len(wr_data.bytes)} bytes"
             )
         self.check_wr_rd_protect()
 
@@ -676,9 +672,7 @@ class EspEfusesBase:
     @staticmethod
     def confirm(action, do_not_confirm):
         log.print(
-            "{}{}\nThis is an irreversible operation!".format(
-                action, "" if action.endswith("\n") else ". "
-            )
+            f"{action}{'' if action.endswith('\n') else '. '}\nThis is an irreversible operation!"
         )
         if not do_not_confirm:
             log.print("Type 'BURN' (all capitals) to continue.", flush=True)
