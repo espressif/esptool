@@ -170,9 +170,9 @@ class ImageSegment:
         return result
 
     def __repr__(self):
-        r = f"len 0x{len(self.data):05x} load 0x{self.addr:08x}"
+        r = f"len {len(self.data):#07x} load {self.addr:#010x}"
         if self.file_offs is not None:
-            r += f" file_offs 0x{self.file_offs:08x}"
+            r += f" file_offs {self.file_offs:#010x}"
         return r
 
     def get_memory_type(self, image):
@@ -247,7 +247,7 @@ class BaseFirmwareImage:
         ) = struct.unpack("<BBBBI", load_file.read(8))
 
         if magic != expected_magic:
-            raise FatalError(f"Invalid firmware image magic=0x{magic:x}")
+            raise FatalError(f"Invalid firmware image magic={magic:#x}")
         return segments
 
     def verify(self):
@@ -265,7 +265,7 @@ class BaseFirmwareImage:
         segment_data = f.read(size)
         if len(segment_data) < size:
             raise FatalError(
-                f"End of file reading segment 0x{offset:x}, length {size} "
+                f"End of file reading segment {offset:#x}, length {size} "
                 f"(actual {len(segment_data)})"
             )
         segment = ImageSegment(offset, segment_data, file_offs)
@@ -309,7 +309,7 @@ class BaseFirmwareImage:
             ):
                 raise FatalError(
                     f"Contents of segment at SHA256 digest offset "
-                    f"0x{self.elf_sha256_offset:x} are not zero. "
+                    f"{self.elf_sha256_offset:#x} are not zero. "
                     "Refusing to overwrite."
                 )
             assert len(self.elf_sha256) == self.SHA256_DIGEST_LEN
@@ -640,7 +640,7 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
         else:
             irom_offs = 0
         sector_mask = ~(ESPLoader.FLASH_SECTOR_SIZE - 1)
-        return f"{os.path.splitext(input_file)[0]}-0x{irom_offs & sector_mask:05x}.bin"
+        return f"{os.path.splitext(input_file)[0]}-{irom_offs & sector_mask:#07x}.bin"
 
     def save(self, filename: str | None) -> bytes | None:
         with io.BytesIO() as f:  # Write to memory first

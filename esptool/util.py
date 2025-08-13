@@ -242,7 +242,7 @@ class UnsupportedCommandError(RuntimeError):
 
     def __init__(self, esp, op):
         if esp.secure_download_mode:
-            msg = f"This command (0x{op:x}) is not supported in Secure Download Mode"
+            msg = f"This command ({op:#x}) is not supported in Secure Download Mode"
         else:
-            msg = f"Invalid (unsupported) command 0x{op:x}"
+            msg = f"Invalid (unsupported) command {op:#x}"
         RuntimeError.__init__(self, msg)
