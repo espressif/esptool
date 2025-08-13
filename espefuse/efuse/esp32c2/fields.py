@@ -258,7 +258,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    block.err_bitarray.overwrite(BitArray("uint:32={}".format(word)))
+                    block.err_bitarray.overwrite(BitArray(f"uint:32={word}"))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
