@@ -146,7 +146,7 @@ class AutoHex2BinType(click.Path):
                 # if hex file was detected replace hex file with converted temp bin
                 # otherwise keep the original file
                 return intel_hex_to_bin(f)
-        except IOError as e:
+        except OSError as e:
             raise click.BadParameter(str(e))
 
 
@@ -185,7 +185,7 @@ class AddrFilenamePairType(click.Path):
                     ctx._open_files = []
                 argfile_f = open(value[i + 1], "rb")
                 ctx._open_files.append(argfile_f)
-            except IOError as e:
+            except OSError as e:
                 raise click.BadParameter(str(e))
             # check for intel hex files and convert them to bin
             argfile_list = intel_hex_to_bin(argfile_f, address)
@@ -291,7 +291,7 @@ class OptionEatAll(click.Option):
     Imitates argparse nargs='*' for options."""
 
     def __init__(self, *args, **kwargs):
-        super(OptionEatAll, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._previous_parser_process = None
         self._eat_all_parser = None
         # Set the metavar dynamically based on the type's metavar
@@ -333,7 +333,7 @@ class OptionEatAll(click.Option):
             else:
                 self._previous_parser_process(values, state)
 
-        retval = super(OptionEatAll, self).add_to_parser(parser, ctx)
+        retval = super().add_to_parser(parser, ctx)
         for name in self.opts:
             # Get the parser for the current option
             current_parser = parser._long_opt.get(name) or parser._short_opt.get(name)
@@ -368,7 +368,7 @@ class MutuallyExclusiveOption(click.Option):
                 f"{kwargs.get('help', '')} NOTE: This argument is mutually exclusive "
                 f"with arguments: {ex_str}."
             )
-        super(MutuallyExclusiveOption, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _to_option_name(self, name: str) -> str:
         """Convert dictionary entry for option ('my_name') to click option name
@@ -385,7 +385,7 @@ class MutuallyExclusiveOption(click.Option):
                 f"Illegal usage: {self._to_option_name(self.name)} is mutually "
                 f"exclusive with arguments: {options}."
             )
-        return super(MutuallyExclusiveOption, self).handle_parse_result(ctx, opts, args)
+        return super().handle_parse_result(ctx, opts, args)
 
 
 ############################## Helper functions ###############################

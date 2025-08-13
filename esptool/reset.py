@@ -27,7 +27,7 @@ if os.name != "nt":
 DEFAULT_RESET_DELAY = 0.05  # default time to wait before releasing boot pin after reset
 
 
-class ResetStrategy(object):
+class ResetStrategy:
     print_once = PrintOnce(log.warning)
 
     def __init__(self, port, reset_delay=DEFAULT_RESET_DELAY):

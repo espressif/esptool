@@ -29,7 +29,7 @@ class EfuseBlock(base_fields.EfuseBlockBase):
 
     def __init__(self, parent, param, skip_read=False):
         parent.read_coding_scheme()
-        super(EfuseBlock, self).__init__(parent, param, skip_read=skip_read)
+        super().__init__(parent, param, skip_read=skip_read)
 
     def apply_coding_scheme(self):
         data = self.get_raw(from_read=False)[::-1]
@@ -72,8 +72,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-S3":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-S3 chip but got for '%s'."
-                % (esp.CHIP_NAME)
+                "Expected the 'esp' param for ESP32-S3 chip but got for '{}'.".format(esp.CHIP_NAME)
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -345,7 +344,7 @@ class EfusePsramCap(EfuseField):
         return (hi_bits << 2) + lo_bits
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning %s is not supported" % self.name)
+        raise esptool.FatalError("Burning {} is not supported".format(self.name))
 
 
 class EfuseWafer(EfuseField):
@@ -357,7 +356,7 @@ class EfuseWafer(EfuseField):
         return (hi_bits << 3) + lo_bits
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning %s is not supported" % self.name)
+        raise esptool.FatalError("Burning {} is not supported".format(self.name))
 
 
 class EfuseTempSensor(EfuseField):
@@ -403,7 +402,7 @@ class EfuseMacField(EfuseField):
     def check(self):
         errs, fail = self.parent.get_block_errors(self.block)
         if errs != 0 or fail:
-            output = "Block%d has ERRORS:%d FAIL:%d" % (self.block, errs, fail)
+            output = "Block{} has ERRORS:{} FAIL:{}".format(self.block, errs, fail)
         else:
             output = "OK"
         return "(" + output + ")"
@@ -413,7 +412,7 @@ class EfuseMacField(EfuseField):
             mac = self.get_raw(from_read)[::-1]
         else:
             mac = self.get_raw(from_read)
-        return "%s %s" % (util.hexify(mac, ":"), self.check())
+        return "{} {}".format(util.hexify(mac, ":"), self.check())
 
     def save(self, new_value):
         def print_field(e, new_value):
@@ -424,7 +423,7 @@ class EfuseMacField(EfuseField):
         if self.name == "CUSTOM_MAC":
             bitarray_mac = self.convert_to_bitstring(new_value)
             print_field(self, bitarray_mac)
-            super(EfuseMacField, self).save(new_value)
+            super().save(new_value)
         else:
             # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not sensible,
             # as it's written in the factory.
@@ -495,4 +494,4 @@ class EfuseKeyPurposeField(EfuseField):
         if self.name == "KEY_PURPOSE_5" and str_new_value.startswith("XTS_AES"):
             # see SOC_EFUSE_BLOCK9_KEY_PURPOSE_QUIRK in esp-idf
             raise esptool.FatalError(f"{self.name} can not have {str_new_value} key due to a hardware bug (please see TRM for more details)")
-        return super(EfuseKeyPurposeField, self).save(raw_val)
+        return super().save(raw_val)

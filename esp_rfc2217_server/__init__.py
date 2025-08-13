@@ -134,7 +134,7 @@ def main():
         except KeyboardInterrupt:
             print(flush=True)
             break
-        except socket.error as msg:
+        except OSError as msg:
             logging.error(str(msg))
 
     logging.info("--- exit ---")

@@ -86,9 +86,8 @@ class Command:
                 self.cmd,
                 "--help",
             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
+            capture_output=True,
+            text=True,
         )
         return search_item in result.stdout
 

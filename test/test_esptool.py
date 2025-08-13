@@ -76,7 +76,7 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 print("Running esptool tests...")
 
 
-class ESPRFC2217Server(object):
+class ESPRFC2217Server:
     """Creates a virtual serial port accessible through rfc2217 port."""
 
     def __init__(self, rfc2217_port=None):
@@ -1240,7 +1240,7 @@ class TestKeepImageSettings(EsptoolTestCase):
 
     @classmethod
     def setup_class(self):
-        super(TestKeepImageSettings, self).setup_class()
+        super().setup_class()
         self.BL_IMAGE = f"images/bootloader_{arg_chip}.bin"
         self.flash_offset = esptool.CHIP_DEFS[arg_chip].BOOTLOADER_FLASH_OFFSET
         with open(self.BL_IMAGE, "rb") as f:

@@ -8,7 +8,7 @@ import struct
 from esptool.util import div_roundup
 
 
-class UF2Writer(object):
+class UF2Writer:
     # The UF2 format is described here: https://github.com/microsoft/uf2
     UF2_BLOCK_SIZE = 512
     # max value of CHUNK_SIZE reduced by optional parts. Currently, MD5_PART only.

@@ -5,12 +5,11 @@
 import threading
 import time
 import logging
-import socket
 
 from esp_rfc2217_server.esp_port_manager import EspPortManager
 
 
-class Redirector(object):
+class Redirector:
     def __init__(self, serial_instance, socket, debug=False, esp32r0delay=False):
         self.serial = serial_instance
         self.socket = socket
@@ -54,7 +53,7 @@ class Redirector(object):
                 if data:
                     # escape outgoing data when needed (Telnet IAC (0xff) character)
                     self.write(b"".join(self.rfc2217.escape(data)))
-            except socket.error as msg:
+            except OSError as msg:
                 self.log.error("{}".format(msg))
                 # probably got disconnected
                 break
@@ -74,7 +73,7 @@ class Redirector(object):
                 if not data:
                     break
                 self.serial.write(b"".join(self.rfc2217.filter(data)))
-            except socket.error as msg:
+            except OSError as msg:
                 self.log.error("{}".format(msg))
                 # probably got disconnected
                 break

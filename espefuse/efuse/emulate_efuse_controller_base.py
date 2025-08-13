@@ -10,7 +10,7 @@ from bitstring import BitStream
 from esptool.logger import log
 
 
-class EmulateEfuseControllerBase(object):
+class EmulateEfuseControllerBase:
     """The class for virtual efuse operations. Using for HOST_TEST."""
 
     CHIP_NAME = ""

@@ -162,7 +162,7 @@ class EfuseDefineFields(EfuseFieldsBase):
         file_name = file_name + ".yaml"
         dir_name, _ = os.path.split(dir_name)
         efuse_file = os.path.join(dir_name, "efuse_defs", file_name)
-        with open(f"{efuse_file}", "r") as r_file:
+        with open(f"{efuse_file}") as r_file:
             e_desc = yaml.safe_load(r_file)
         super().__init__(e_desc, extend_efuse_table)
 

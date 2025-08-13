@@ -136,7 +136,7 @@ def LoadFirmwareImage(chip: str, image_data: ImageSource):
         }[chip](f)
 
 
-class ImageSegment(object):
+class ImageSegment:
     """Wrapper class for a segment in an ESP image
     (very similar to a section in an ELFImage also)"""
 
@@ -170,9 +170,9 @@ class ImageSegment(object):
         return result
 
     def __repr__(self):
-        r = "len 0x%05x load 0x%08x" % (len(self.data), self.addr)
+        r = "len 0x{:05x} load 0x{:08x}".format(len(self.data), self.addr)
         if self.file_offs is not None:
-            r += " file_offs 0x%08x" % (self.file_offs)
+            r += " file_offs 0x{:08x}".format(self.file_offs)
         return r
 
     def get_memory_type(self, image):
@@ -215,14 +215,14 @@ class ELFSection(ImageSegment):
     name as well as the common properties of an ImageSegment."""
 
     def __init__(self, name, addr, data, flags, align=4):
-        super(ELFSection, self).__init__(addr, data, flags=flags, align=align)
+        super().__init__(addr, data, flags=flags, align=align)
         self.name = name.decode("utf-8")
 
     def __repr__(self):
-        return "%s %s" % (self.name, super(ELFSection, self).__repr__())
+        return "{} {}".format(self.name, super().__repr__())
 
 
-class BaseFirmwareImage(object):
+class BaseFirmwareImage:
     SEG_HEADER_LEN = 8
     SHA256_DIGEST_LEN = 32
     IROM_ALIGN = 0
@@ -247,14 +247,14 @@ class BaseFirmwareImage(object):
         ) = struct.unpack("<BBBBI", load_file.read(8))
 
         if magic != expected_magic:
-            raise FatalError("Invalid firmware image magic=0x%x" % (magic))
+            raise FatalError("Invalid firmware image magic=0x{:x}".format(magic))
         return segments
 
     def verify(self):
         if len(self.segments) > 16:
             raise FatalError(
-                "Invalid segment count %d (max 16). "
-                "Usually this indicates a linker script problem." % len(self.segments)
+                "Invalid segment count {} (max 16). "
+                "Usually this indicates a linker script problem.".format(len(self.segments))
             )
 
     def load_segment(self, f, is_irom_segment=False):
@@ -265,8 +265,7 @@ class BaseFirmwareImage(object):
         segment_data = f.read(size)
         if len(segment_data) < size:
             raise FatalError(
-                "End of file reading segment 0x%x, length %d (actual length %d)"
-                % (offset, size, len(segment_data))
+                "End of file reading segment 0x{:x}, length {} (actual length {})".format(offset, size, len(segment_data))
             )
         segment = ImageSegment(offset, segment_data, file_offs)
         self.segments.append(segment)
@@ -298,8 +297,7 @@ class BaseFirmwareImage(object):
             ):
                 raise FatalError(
                     "Cannot place SHA256 digest on segment boundary"
-                    "(elf_sha256_offset=%d, file_pos=%d, segment_size=%d)"
-                    % (self.elf_sha256_offset, file_pos, segment_len)
+                    "(elf_sha256_offset={}, file_pos={}, segment_size={})".format(self.elf_sha256_offset, file_pos, segment_len)
                 )
             # offset relative to the data part
             patch_offset -= self.SEG_HEADER_LEN
@@ -308,8 +306,8 @@ class BaseFirmwareImage(object):
                 != b"\x00" * self.SHA256_DIGEST_LEN
             ):
                 raise FatalError(
-                    "Contents of segment at SHA256 digest offset 0x%x are not all zero."
-                    " Refusing to overwrite." % self.elf_sha256_offset
+                    "Contents of segment at SHA256 digest offset 0x{:x} are not all zero."
+                    " Refusing to overwrite.".format(self.elf_sha256_offset)
                 )
             assert len(self.elf_sha256) == self.SHA256_DIGEST_LEN
             segment_data = (
@@ -405,8 +403,7 @@ class BaseFirmwareImage(object):
         if len(irom_segments) > 0:
             if len(irom_segments) != 1:
                 raise FatalError(
-                    "Found %d segments that could be irom0. Bad ELF file?"
-                    % len(irom_segments)
+                    "Found {} segments that could be irom0. Bad ELF file?".format(len(irom_segments))
                 )
             return irom_segments[0]
         return None
@@ -511,7 +508,7 @@ class ESP8266ROMFirmwareImage(BaseFirmwareImage):
     ROM_LOADER = ESP8266ROM
 
     def __init__(self, load_file=None):
-        super(ESP8266ROMFirmwareImage, self).__init__()
+        super().__init__()
         self.flash_mode = 0
         self.flash_size_freq = 0
         self.version = 1
@@ -581,7 +578,7 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
     IMAGE_V2_SEGMENT = 4
 
     def __init__(self, load_file=None):
-        super(ESP8266V2FirmwareImage, self).__init__()
+        super().__init__()
         self.version = 2
         if load_file is not None:
             segments = self.load_common_header(load_file, self.IMAGE_V2_MAGIC)
@@ -641,7 +638,7 @@ class ESP8266V2FirmwareImage(BaseFirmwareImage):
             irom_offs = irom_segment.addr - ESP8266ROM.IROM_MAP_START
         else:
             irom_offs = 0
-        return "%s-0x%05x.bin" % (
+        return "{}-0x{:05x}.bin".format(
             os.path.splitext(input_file)[0],
             irom_offs & ~(ESPLoader.FLASH_SECTOR_SIZE - 1),
         )
@@ -723,7 +720,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
     IROM_ALIGN = 65536
 
     def __init__(self, load_file=None, append_digest=True, ram_only_header=False):
-        super(ESP32FirmwareImage, self).__init__()
+        super().__init__()
         self.secure_pad = None
         self.flash_mode = 0
         self.flash_size_freq = 0
@@ -773,7 +770,7 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     def default_output_name(self, input_file):
         """Derive a default output name from the ELF name."""
-        return "%s.bin" % (os.path.splitext(input_file)[0])
+        return "{}.bin".format(os.path.splitext(input_file)[0])
 
     def warn_if_unusual_segment(self, offset, size, is_irom_segment):
         pass  # TODO: add warnings for wrong ESP32 segment offset/size combinations
@@ -1272,7 +1269,7 @@ class ESP32H21FirmwareImage(ESP32C6FirmwareImage):
 ESP32H21ROM.BOOTLOADER_IMAGE = ESP32H21FirmwareImage
 
 
-class ELFFile(object):
+class ELFFile:
     LEN_SEC_HEADER = 0x28
 
     SEG_TYPE_LOAD = 0x01
@@ -1287,7 +1284,7 @@ class ELFFile(object):
         for s in self.sections:
             if s.name == section_name:
                 return s
-        raise ValueError("No section %s in ELF file" % section_name)
+        raise ValueError("No section {} in ELF file".format(section_name))
 
     def _read_elf_file(self, f):
         # read the ELF file header

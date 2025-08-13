@@ -27,7 +27,7 @@ class EfuseBlock(base_fields.EfuseBlockBase):
         else:
             if parent.coding_scheme is None:
                 parent.read_coding_scheme()
-        super(EfuseBlock, self).__init__(parent, param, skip_read=skip_read)
+        super().__init__(parent, param, skip_read=skip_read)
 
     def apply_coding_scheme(self):
         data = self.get_raw(from_read=False)[::-1]
@@ -82,8 +82,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32 chip but got for '%s'."
-                % (esp.CHIP_NAME)
+                "Expected the 'esp' param for ESP32 chip but got for '{}'.".format(esp.CHIP_NAME)
             )
         self.blocks = [
             EfuseBlock(self, self.Blocks.get(block), skip_read=skip_connect)
@@ -115,7 +114,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
             else:
                 raise esptool.FatalError(
-                    "The coding scheme (%d) - is not supported" % self.coding_scheme
+                    "The coding scheme ({}) - is not supported".format(self.coding_scheme)
                 )
             if self["MAC_VERSION"].get() == 1:
                 self.efuses += [
@@ -297,13 +296,13 @@ class EfuseMacField(EfuseField):
     def get_and_check(raw_mac, stored_crc):
         computed_crc = EfuseMacField.calc_crc(raw_mac)
         if computed_crc == stored_crc:
-            valid_msg = "(CRC 0x%02x OK)" % stored_crc
+            valid_msg = "(CRC 0x{:02x} OK)".format(stored_crc)
         else:
-            valid_msg = "(CRC 0x%02x invalid - calculated 0x%02x)" % (
+            valid_msg = "(CRC 0x{:02x} invalid - calculated 0x{:02x})".format(
                 stored_crc,
                 computed_crc,
             )
-        return "%s %s" % (util.hexify(raw_mac, ":"), valid_msg)
+        return "{} {}".format(util.hexify(raw_mac, ":"), valid_msg)
 
     @staticmethod
     def calc_crc(raw_mac):
@@ -356,7 +355,7 @@ class EfuseMacField(EfuseField):
 
             bitarray_mac = self.convert_to_bitstring(new_value)
             print_field(self, bitarray_mac)
-            super(EfuseMacField, self).save(new_value)
+            super().save(new_value)
 
             crc_val = self.calc_crc(new_value)
             crc_field = self.parent["CUSTOM_MAC_CRC"]
@@ -389,7 +388,7 @@ class EfuseWafer(EfuseField):
         return revision
 
     def save(self, new_value):
-        raise esptool.FatalError("Burning %s is not supported" % self.name)
+        raise esptool.FatalError("Burning {} is not supported".format(self.name))
 
 
 class EfusePkg(EfuseField):

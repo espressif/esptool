@@ -87,7 +87,7 @@ class EsptoolLogger(TemplateLogger):
         Singleton to ensure only one instance of the logger exists.
         """
         if not hasattr(cls, "instance"):
-            cls.instance = super(EsptoolLogger, cls).__new__(cls)
+            cls.instance = super().__new__(cls)
             cls.instance.set_verbosity("auto")
         return cls.instance
 

@@ -9,7 +9,8 @@ import io
 import os
 import json
 import sys
-from typing import Any, BinaryIO, Callable, TextIO
+from typing import Any, BinaryIO, TextIO
+from collections.abc import Callable
 
 import espsecure
 import rich_click as click
@@ -850,9 +851,9 @@ class BaseCommands:
         for block in self.efuses.blocks:
             burn_list_a_block = [e for e in burn_efuses_list if e.block == block.id]
             if len(burn_list_a_block):
-                log.print("  from BLOCK%d" % (block.id))
+                log.print("  from BLOCK{}".format(block.id))
                 for field in burn_list_a_block:
-                    log.print("     - %s" % (field.name))
+                    log.print("     - {}".format(field.name))
                     if (
                         self.efuses.blocks[field.block].get_coding_scheme()
                         != self.efuses.REGS.CODING_SCHEME_NONE
@@ -990,7 +991,7 @@ class BaseCommands:
                     ]
                     if error:
                         raise esptool.FatalError(
-                            "%s must be readable, stop this operation!" % efuse_name
+                            "{} must be readable, stop this operation!".format(efuse_name)
                         )
                 else:
                     for block in self.efuses.Blocks.BLOCKS:
@@ -1000,8 +1001,7 @@ class BaseCommands:
                                 self.efuses[block.key_purpose].get()
                             ):
                                 raise esptool.FatalError(
-                                    "%s must be readable, stop this operation!"
-                                    % efuse_name
+                                    "{} must be readable, stop this operation!".format(efuse_name)
                                 )
                             break
                 # make full list of which efuses will be disabled
@@ -1013,8 +1013,7 @@ class BaseCommands:
                 ]
                 names = ", ".join(e.name for e in all_disabling)
                 log.print(
-                    "Permanently read-disabling eFuse%s %s"
-                    % ("s" if len(all_disabling) > 1 else "", names)
+                    "Permanently read-disabling eFuse{} {}".format("s" if len(all_disabling) > 1 else "", names)
                 )
                 efuse.disable_read()
 
@@ -1055,8 +1054,7 @@ class BaseCommands:
                 ]
                 names = ", ".join(e.name for e in all_disabling)
                 log.print(
-                    "Permanently write-disabling eFuse%s %s"
-                    % ("s" if len(all_disabling) > 1 else "", names)
+                    "Permanently write-disabling eFuse{} {}".format("s" if len(all_disabling) > 1 else "", names)
                 )
                 efuse.disable_write()
 
@@ -1167,10 +1165,9 @@ class BaseCommands:
         data_block.reverse()
         log.print(
             "bit_number:   "
-            "[%-03d]........................................................[0]"
-            % (data_block.len - 1)
+            "[{:03d}]........................................................[0]".format(data_block.len - 1)
         )
-        log.print("BLOCK%-2d   :" % block_obj.id, data_block)
+        log.print("BLOCK{:>2d}   :".format(block_obj.id), data_block)
         block_obj.print_block(data_block, "regs_to_write", debug=True)
         block_obj.save(data_block.bytes[::-1])
 
