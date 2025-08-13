@@ -11,7 +11,7 @@ from esptool.logger import log
 from .csv_table_parser import CSVFuseTable
 
 
-class EfuseRegistersBase(object):
+class EfuseRegistersBase:
     # Coding Scheme values
     CODING_SCHEME_NONE = 0
     CODING_SCHEME_34 = 1
@@ -22,7 +22,7 @@ class EfuseRegistersBase(object):
     EFUSE_BURN_TIMEOUT = 0.250  # seconds
 
 
-class EfuseBlocksBase(object):
+class EfuseBlocksBase:
     BLOCKS: list = []
     NamedtupleBlock = namedtuple(
         "NamedtupleBlock",
@@ -63,7 +63,7 @@ class Field:
     dictionary = None
 
 
-class EfuseFieldsBase(object):
+class EfuseFieldsBase:
     def __init__(self, e_desc, extend_efuse_table_file) -> None:
         self.ALL_EFUSES: list = []
 

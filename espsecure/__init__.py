@@ -250,7 +250,7 @@ def load_ecdsa_signing_key(keyfile: IO) -> ec.EllipticCurvePrivateKey:
             "Incorrect ECDSA private key specified. "
             "Please check algorithm and/or format."
         )
-    if not isinstance(sk.curve, (ec.SECP192R1, ec.SECP256R1, ec.SECP384R1)):
+    if not isinstance(sk.curve, ec.SECP192R1 | ec.SECP256R1 | ec.SECP384R1):
         raise esptool.FatalError("Supports NIST192p, NIST256p and NIST384p keys only.")
     return sk
 
@@ -304,7 +304,7 @@ def _load_sbv2_signing_key(
             )
         return sk
     if isinstance(sk, ec.EllipticCurvePrivateKey):
-        if not isinstance(sk.curve, (ec.SECP192R1, ec.SECP256R1, ec.SECP384R1)):
+        if not isinstance(sk.curve, ec.SECP192R1 | ec.SECP256R1 | ec.SECP384R1):
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
                 "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, "
@@ -328,7 +328,7 @@ def _load_sbv2_pub_key(keydata: bytes) -> rsa.RSAPublicKey | ec.EllipticCurvePub
             )
         return vk
     if isinstance(vk, ec.EllipticCurvePublicKey):
-        if not isinstance(vk.curve, (ec.SECP192R1, ec.SECP256R1, ec.SECP384R1)):
+        if not isinstance(vk.curve, ec.SECP192R1 | ec.SECP256R1 | ec.SECP384R1):
             raise esptool.FatalError(
                 "Key file uses incorrect curve. Secure Boot V2 + ECDSA only supports "
                 "NIST192p, NIST256p, NIST384p (aka prime192v1 / secp192r1, "

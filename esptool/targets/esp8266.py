@@ -113,7 +113,7 @@ class ESP8266ROM(ESPLoader):
 
     def flash_spi_attach(self, hspi_arg):
         if self.IS_STUB:
-            super(ESP8266ROM, self).flash_spi_attach(hspi_arg)
+            super().flash_spi_attach(hspi_arg)
         else:
             # ESP8266 ROM has no flash_spi_attach command in serial protocol,
             # but flash_begin will do it
@@ -122,7 +122,7 @@ class ESP8266ROM(ESPLoader):
     def flash_set_parameters(self, size):
         # not implemented in ROM, but OK to silently skip for ROM
         if self.IS_STUB:
-            super(ESP8266ROM, self).flash_set_parameters(size)
+            super().flash_set_parameters(size)
 
     def chip_id(self):
         """

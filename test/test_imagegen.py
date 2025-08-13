@@ -168,14 +168,14 @@ class TestESP8266V1Image(BaseTestCase):
 
     @classmethod
     def setup_class(self):
-        super(TestESP8266V1Image, self).setup_class()
+        super().setup_class()
         self.run_elf2image(self, "esp8266", self.ELF, 1)
 
     @classmethod
     def teardown_class(self):
         try_delete(self.BIN_LOAD)
         try_delete(self.BIN_IROM)
-        super(TestESP8266V1Image, self).teardown_class()
+        super().teardown_class()
 
     def test_irom_bin(self):
         with open(self.ELF, "rb") as f:

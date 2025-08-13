@@ -132,7 +132,7 @@ class TestSigning(EspSecureHSMTestCase):
         with (
             tempfile.NamedTemporaryFile() as output_file,
             open(
-                os.path.join(TEST_DIR, "secure_images", "softhsm_v2.ini"), "r"
+                os.path.join(TEST_DIR, "secure_images", "softhsm_v2.ini")
             ) as config_file,
         ):
             espsecure.sign_data(
@@ -161,7 +161,7 @@ class TestSigning(EspSecureHSMTestCase):
         with (
             tempfile.NamedTemporaryFile() as output_file1,
             open(
-                os.path.join(TEST_DIR, "secure_images", "softhsm_v2_1.ini"), "r"
+                os.path.join(TEST_DIR, "secure_images", "softhsm_v2_1.ini")
             ) as config_file1,
         ):
             espsecure.sign_data(
@@ -180,7 +180,7 @@ class TestSigning(EspSecureHSMTestCase):
             with (
                 tempfile.NamedTemporaryFile() as output_file2,
                 open(
-                    os.path.join(TEST_DIR, "secure_images", "softhsm_v2_2.ini"), "r"
+                    os.path.join(TEST_DIR, "secure_images", "softhsm_v2_2.ini")
                 ) as config_file2,
             ):
                 espsecure.sign_data(
@@ -200,7 +200,6 @@ class TestSigning(EspSecureHSMTestCase):
                     tempfile.NamedTemporaryFile() as output_file3,
                     open(
                         os.path.join(TEST_DIR, "secure_images", "softhsm_v2_3.ini"),
-                        "r",
                     ) as config_file3,
                 ):
                     espsecure.sign_data(

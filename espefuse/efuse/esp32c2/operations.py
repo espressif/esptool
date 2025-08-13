@@ -152,9 +152,10 @@ class ESP32C2Commands(BaseCommands):
             keypurpose_list
         ):
             raise esptool.FatalError(
-                "The number of blocks (%d), datafile (%d) and "
-                "keypurpose (%d) should be the same."
-                % (len(block_name_list), len(datafile_list), len(keypurpose_list))
+                "The number of blocks ({}), datafile ({}) and "
+                "keypurpose ({}) should be the same.".format(
+                    len(block_name_list), len(datafile_list), len(keypurpose_list)
+                )
             )
 
         assert 1 <= len(block_name_list) <= 2, "Unexpected case"
@@ -277,9 +278,10 @@ class ESP32C2Commands(BaseCommands):
         num_bytes = self.efuses["BLOCK_KEY0_HI_128"].bit_len // 8
         if len(digest) != num_bytes:
             raise esptool.FatalError(
-                "Incorrect digest size %d. "
-                "Digest must be %d bytes (%d bits) of raw binary key data."
-                % (len(digest), num_bytes, num_bytes * 8)
+                "Incorrect digest size {}. "
+                "Digest must be {} bytes ({} bits) of raw binary key data.".format(
+                    len(digest), num_bytes, num_bytes * 8
+                )
             )
         self.burn_key(
             ["BLOCK_KEY0"],

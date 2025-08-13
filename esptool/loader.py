@@ -198,7 +198,7 @@ class StubFlasher:
         cls.STUB_SUBDIRS = [subdir]
 
 
-class ESPLoader(object):
+class ESPLoader:
     """Base class providing access to ESP ROM & software stub bootloaders.
     Subclasses provide ESP8266 & ESP32 Family specific functionality.
 
@@ -420,7 +420,7 @@ class ESPLoader(object):
     def _set_port_baudrate(self, baud):
         try:
             self._port.baudrate = baud
-        except IOError:
+        except OSError:
             raise FatalError(
                 f"Failed to set baud rate {baud}. The driver may not support this rate."
             )
@@ -1256,8 +1256,8 @@ class ESPLoader(object):
             return cls.FLASH_SIZES[arg]
         except KeyError:
             raise FatalError(
-                "Flash size '%s' is not supported by this chip type. "
-                "Supported sizes: %s" % (arg, ", ".join(cls.FLASH_SIZES.keys()))
+                f"Flash size '{arg}' is not supported by this chip type. "
+                f"Supported sizes: {', '.join(cls.FLASH_SIZES.keys())}"
             )
 
     @classmethod
@@ -1269,9 +1269,8 @@ class ESPLoader(object):
             return cls.FLASH_FREQUENCY[arg]
         except KeyError:
             raise FatalError(
-                "Flash frequency '%s' is not supported by this chip type. "
-                "Supported frequencies: %s"
-                % (arg, ", ".join(cls.FLASH_FREQUENCY.keys()))
+                f"Flash frequency '{arg}' is not supported by this chip type. "
+                f"Supported frequencies: {', '.join(cls.FLASH_FREQUENCY.keys())}"
             )
 
     def run_stub(self, stub: StubFlasher | None = None) -> "ESPLoader":
@@ -1938,7 +1937,7 @@ def slip_reader(port, trace_function):
                 partial_packet += b
 
 
-class HexFormatter(object):
+class HexFormatter:
     """
     Wrapper class which takes binary data in its constructor
     and returns a hex string as it's __str__ method.
@@ -1977,10 +1976,9 @@ class HexFormatter(object):
                     for c in line.decode("ascii", "replace")
                 )
                 s = s[16:]
-                result += "\n    %-16s %-16s | %s" % (
-                    hexify(line[:8], False),
-                    hexify(line[8:], False),
-                    ascii_line,
+                result += (
+                    f"\n    {hexify(line[:8], False):<16s} "
+                    f"{hexify(line[8:], False):<16s} | {ascii_line}"
                 )
             return result
         else:

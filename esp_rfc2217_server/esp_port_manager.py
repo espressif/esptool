@@ -38,7 +38,7 @@ class EspPortManager(serial.rfc2217.PortManager):
     def __init__(self, serial_port, connection, esp32r0_delay, logger=None):
         self.esp32r0_delay = esp32r0_delay
         self.is_download_mode = False
-        super(EspPortManager, self).__init__(serial_port, connection, logger)
+        super().__init__(serial_port, connection, logger)
 
     def _telnet_process_subnegotiation(self, suboption):
         if suboption[0:1] == COM_PORT_OPTION and suboption[1:2] == SET_CONTROL:
@@ -66,7 +66,7 @@ class EspPortManager(serial.rfc2217.PortManager):
             ]:
                 return
         # only in cases not handled above do the original implementation in PortManager
-        super(EspPortManager, self)._telnet_process_subnegotiation(suboption)
+        super()._telnet_process_subnegotiation(suboption)
 
     def _hard_reset_thread(self):
         """

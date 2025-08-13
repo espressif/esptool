@@ -180,7 +180,7 @@ class CSVFuseTable(list):
                         print_error(p, n, state)
 
 
-class FuseDefinition(object):
+class FuseDefinition:
     def __init__(self):
         self.field_name = ""
         self.group = ""
@@ -261,11 +261,9 @@ class FuseDefinition(object):
 
 class InputError(RuntimeError):
     def __init__(self, e):
-        super(InputError, self).__init__(e)
+        super().__init__(e)
 
 
 class ValidationError(InputError):
     def __init__(self, p, message):
-        super(ValidationError, self).__init__(
-            f"Entry {p.field_name} invalid: {message}"
-        )
+        super().__init__(f"Entry {p.field_name} invalid: {message}")

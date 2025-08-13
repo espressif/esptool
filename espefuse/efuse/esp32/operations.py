@@ -295,8 +295,9 @@ class ESP32Commands(BaseCommands):
         if chip_revision < 300:
             raise esptool.FatalError(
                 "Incorrect chip revision for Secure boot v2. "
-                "Detected: v%d.%d. Expected: >= v3.0"
-                % (chip_revision / 100, chip_revision % 100)
+                "Detected: v{}.{}. Expected: >= v3.0".format(
+                    chip_revision // 100, chip_revision % 100
+                )
             )
 
         digest = espsecure._digest_sbv2_public_key(keyfile)

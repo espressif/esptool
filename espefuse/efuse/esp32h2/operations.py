@@ -208,8 +208,10 @@ class ESP32H2Commands(BaseCommands):
                 log.print(revers_msg)
             if len(data) != num_bytes:
                 raise esptool.FatalError(
-                    "Incorrect key file size %d. Key file must be %d bytes (%d bits) "
-                    "of raw binary key data." % (len(data), num_bytes, num_bytes * 8)
+                    "Incorrect key file size {}. Key file must be {} bytes ({} bits) "
+                    "of raw binary key data.".format(
+                        len(data), num_bytes, num_bytes * 8
+                    )
                 )
 
             if self.efuses[block.key_purpose_name].need_rd_protect(keypurpose):

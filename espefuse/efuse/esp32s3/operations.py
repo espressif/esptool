@@ -362,8 +362,10 @@ class ESP32S3Commands(BaseCommands):
             digest = espsecure._digest_sbv2_public_key(datafile)
             if len(digest) != num_bytes:
                 raise esptool.FatalError(
-                    "Incorrect digest size %d. Digest must be %d bytes (%d bits) "
-                    "of raw binary key data." % (len(digest), num_bytes, num_bytes * 8)
+                    "Incorrect digest size {}. Digest must be {} bytes ({} bits) "
+                    "of raw binary key data.".format(
+                        len(digest), num_bytes, num_bytes * 8
+                    )
                 )
             digest_list.append(digest)
 

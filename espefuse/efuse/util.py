@@ -9,7 +9,7 @@ import esptool
 
 def hexify(bitstring, separator=""):
     as_bytes = tuple(b for b in bitstring)
-    return separator.join(("%02x" % b) for b in as_bytes)
+    return separator.join((f"{b:02x}") for b in as_bytes)
 
 
 def popcnt(b):
@@ -23,12 +23,12 @@ def check_duplicate_name_in_list(name_list):
         raise esptool.FatalError(f"Found repeated {duples_name} in the name list.")
 
 
-class SdkConfig(object):
+class SdkConfig:
     def __init__(self, path_to_file):
         self.sdkconfig = dict()
         if path_to_file is None:
             return
-        with open(path_to_file, "r") as file:
+        with open(path_to_file) as file:
             for line in file.readlines():
                 if line.startswith("#"):
                     continue

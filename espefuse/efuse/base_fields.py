@@ -17,7 +17,7 @@ from esptool.logger import log
 from . import util
 
 
-class CheckArgValue(object):
+class CheckArgValue:
     def __init__(self, efuses, name):
         self.efuses = efuses
         self.name = name
@@ -85,7 +85,7 @@ class CheckArgValue(object):
         return check_arg_value(efuse, new_value)
 
 
-class EfuseProtectBase(object):
+class EfuseProtectBase:
     # This class is used by EfuseBlockBase and EfuseFieldBase
     read_disable_bit: int | list[int] | None
     write_disable_bit: int | list[int] | None
@@ -214,9 +214,7 @@ class EfuseBlockBase(EfuseProtectBase):
         elif coding_scheme == self.parent.REGS.CODING_SCHEME_RS:
             return self.len * 4
         else:
-            raise esptool.FatalError(
-                "Coding scheme (%d) not supported" % (coding_scheme)
-            )
+            raise esptool.FatalError(f"Coding scheme ({coding_scheme}) not supported")
 
     def get_coding_scheme(self):
         if self.id == 0:
@@ -255,7 +253,7 @@ class EfuseBlockBase(EfuseProtectBase):
         words = self.get_words()
         data = BitArray()
         for word in reversed(words):
-            data.append("uint:32=%d" % word)
+            data.append(f"uint:32={word}")
         self.bitarray.overwrite(data, pos=0)
         if print_info:
             self.print_block(self.bitarray, "read_regs")
@@ -264,13 +262,13 @@ class EfuseBlockBase(EfuseProtectBase):
         if self.parent.debug or debug:
             bit_string.pos = 0
             log.print(
-                "%-15s (%-16s) [%-2d] %s:"
-                % (self.name, " ".join(self.alias)[:16], self.id, comment),
+                f"{self.name:<15s} ({' '.join(self.alias)[:16]:<16s}) "
+                f"[{self.id:<2d}] {comment}:",
                 " ".join(
                     [
-                        "%08x" % word
+                        f"{word:08x}"
                         for word in bit_string.readlist(
-                            "%d*uint:32" % (bit_string.len / 32)
+                            f"{int(bit_string.len / 32)}*uint:32"
                         )[::-1]
                     ]
                 ),
@@ -285,8 +283,8 @@ class EfuseBlockBase(EfuseProtectBase):
             return False
         if len(wr_data.bytes) != len(self.bitarray.bytes):
             raise esptool.FatalError(
-                "Data does not fit: the block%d size is %d bytes, data is %d bytes"
-                % (self.id, len(self.bitarray.bytes), len(wr_data.bytes))
+                f"Data does not fit: block{self.id} size "
+                f"{len(self.bitarray.bytes)} bytes, data {len(wr_data.bytes)} bytes"
             )
         self.check_wr_rd_protect()
 
@@ -468,7 +466,7 @@ class EfuseBlockBase(EfuseProtectBase):
         self.wr_bitarray.set(0)
 
 
-class EspEfusesBase(object):
+class EspEfusesBase:
     """
     Wrapper object to manage the efuse fields in a connected ESP bootloader
     """
@@ -674,8 +672,9 @@ class EspEfusesBase(object):
     @staticmethod
     def confirm(action, do_not_confirm):
         log.print(
-            "%s%s\nThis is an irreversible operation!"
-            % (action, "" if action.endswith("\n") else ". ")
+            "{}{}\nThis is an irreversible operation!".format(
+                action, "" if action.endswith("\n") else ". "
+            )
         )
         if not do_not_confirm:
             log.print("Type 'BURN' (all capitals) to continue.", flush=True)

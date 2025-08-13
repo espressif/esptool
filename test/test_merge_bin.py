@@ -277,7 +277,7 @@ class TestMergeBin:
             os.unlink(f.name)
 
 
-class UF2Block(object):
+class UF2Block:
     def __init__(self, bs):
         self.length = len(bs)
 
@@ -308,7 +308,7 @@ class UF2Block(object):
         return self.length
 
 
-class UF2BlockReader(object):
+class UF2BlockReader:
     def __init__(self, f_name):
         self.f_name = f_name
 
@@ -318,7 +318,7 @@ class UF2BlockReader(object):
                 yield UF2Block(chunk)
 
 
-class BinaryWriter(object):
+class BinaryWriter:
     def __init__(self, f_name):
         self.f_name = f_name
 

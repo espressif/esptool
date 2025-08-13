@@ -23,7 +23,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
         self.Blocks = EfuseDefineBlocks
         self.Fields = EfuseDefineFields(None)
         self.REGS = EfuseDefineRegisters
-        super(EmulateEfuseController, self).__init__(efuse_file, debug)
+        super().__init__(efuse_file, debug)
         self.write_reg(self.REGS.EFUSE_CMD_REG, 0)
 
     """ esptool method start >>"""

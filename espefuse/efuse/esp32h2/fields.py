@@ -29,7 +29,7 @@ class EfuseBlock(base_fields.EfuseBlockBase):
 
     def __init__(self, parent, param, skip_read=False):
         parent.read_coding_scheme()
-        super(EfuseBlock, self).__init__(parent, param, skip_read=skip_read)
+        super().__init__(parent, param, skip_read=skip_read)
 
     def apply_coding_scheme(self):
         data = self.get_raw(from_read=False)[::-1]
@@ -72,8 +72,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
         if esp.CHIP_NAME != "ESP32-H2":
             raise esptool.FatalError(
-                "Expected the 'esp' param for ESP32-H2 chip but got for '%s'."
-                % (esp.CHIP_NAME)
+                f"Expected the 'esp' param for ESP32-H2 chip but got for '{esp.CHIP_NAME}'."
             )
         if not skip_connect:
             flags = self._esp.get_security_info()["flags"]
@@ -238,7 +237,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         # Based on `CONFIG_SOC_XTAL_SUPPORT_32M=y` for this target from ESP-IDF configuration
         if apb_freq != 32:
             raise esptool.FatalError(
-                "The eFuse supports only xtal=32M (xtal was %d)" % apb_freq
+                f"The eFuse supports only xtal=32M (xtal was {apb_freq}"
             )
 
         self.update_reg(self.REGS.EFUSE_DAC_CONF_REG, self.REGS.EFUSE_DAC_NUM_M, 0xFF)
@@ -265,7 +264,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
-                    block.err_bitarray.overwrite(BitArray("uint:32=%d" % word))
+                    block.err_bitarray.overwrite(BitArray(f"uint:32={word}"))
                 block.num_errors = block.err_bitarray.count(True)
                 block.fail = block.num_errors != 0
             else:
@@ -352,7 +351,7 @@ class EfuseMacField(EfuseField):
     def check(self):
         errs, fail = self.parent.get_block_errors(self.block)
         if errs != 0 or fail:
-            output = "Block%d has ERRORS:%d FAIL:%d" % (self.block, errs, fail)
+            output = f"Block{self.block} has ERRORS:{errs} FAIL:{fail}"
         else:
             output = "OK"
         return "(" + output + ")"
@@ -369,7 +368,7 @@ class EfuseMacField(EfuseField):
             mac = mac.bytes
         else:
             mac = self.get_raw(from_read)
-        return "%s %s" % (util.hexify(mac, ":"), self.check())
+        return " ".join([util.hexify(mac, ":"), self.check()])
 
     def save(self, new_value):
         def print_field(e, new_value):
@@ -380,7 +379,7 @@ class EfuseMacField(EfuseField):
         if self.name == "CUSTOM_MAC":
             bitarray_mac = self.convert_to_bitstring(new_value)
             print_field(self, bitarray_mac)
-            super(EfuseMacField, self).save(new_value)
+            super().save(new_value)
         else:
             # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not possible,
             # as it's written in the factory.
@@ -416,9 +415,9 @@ class EfuseKeyPurposeField(EfuseField):
                 break
         if raw_val.isdigit():
             if int(raw_val) not in [p[1] for p in self.KEY_PURPOSES if p[1] > 0]:
-                raise esptool.FatalError("'%s' can not be set (value out of range)" % raw_val)
+                raise esptool.FatalError(f"'{raw_val}' can not be set (value out of range)")
         else:
-            raise esptool.FatalError("'%s' unknown name" % raw_val)
+            raise esptool.FatalError(f"'{raw_val}' unknown name")
         return raw_val
 
     def need_reverse(self, new_key_purpose):
@@ -448,4 +447,4 @@ class EfuseKeyPurposeField(EfuseField):
         if self.name == "KEY_PURPOSE_5" and str_new_value in ["XTS_AES_128_KEY", "ECDSA_KEY"]:
             # see SOC_EFUSE_BLOCK9_KEY_PURPOSE_QUIRK in esp-idf
             raise esptool.FatalError(f"{self.name} can not have {str_new_value} key due to a hardware bug (please see TRM for more details)")
-        return super(EfuseKeyPurposeField, self).save(raw_val)
+        return super().save(raw_val)

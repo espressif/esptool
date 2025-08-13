@@ -277,13 +277,14 @@ class ESP32ROM(ESPLoader):
         word6 = self.read_efuse(6)
         coding_scheme = word6 & 0x3
         features += [
-            "Coding Scheme %s"
-            % {
-                0: "None",
-                1: "3/4",
-                2: "Repeat (UNSUPPORTED)",
-                3: "None (may contain encoding data)",
-            }[coding_scheme]
+            "Coding Scheme {}".format(
+                {
+                    0: "None",
+                    1: "3/4",
+                    2: "Repeat (UNSUPPORTED)",
+                    3: "None (may contain encoding data)",
+                }[coding_scheme]
+            )
         ]
 
         return features
