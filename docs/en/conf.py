@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # English Language RTD & Sphinx config file
 #
