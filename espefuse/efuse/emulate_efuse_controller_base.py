@@ -18,6 +18,7 @@ class EmulateEfuseControllerBase(object):
     Blocks = None
     Fields = None
     REGS = None
+    USB_JTAG_SERIAL_PID = 0x1001
 
     def __init__(self, efuse_file=None, debug=False):
         self.debug = debug
@@ -74,6 +75,9 @@ class EmulateEfuseControllerBase(object):
         """Write the nth word of the ESP3x EFUSE region."""
         blk = self.Blocks.get(self.Blocks.BLOCKS[block])
         self.write_reg(blk.wr_addr + (4 * n), value)
+
+    def _get_pid(self):
+        return -1
 
     """ << esptool method end """
 
