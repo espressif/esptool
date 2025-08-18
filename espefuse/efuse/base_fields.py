@@ -536,8 +536,14 @@ class EspEfusesBase:
         log.print("Re-connecting...")
         baudrate = esp._port.baudrate
         port = esp._port.port
+        connect_mode = (
+            "usb-reset"
+            if esp._get_pid() == esp.USB_JTAG_SERIAL_PID
+            else "default-reset"
+        )
+        log.print(f"Port: {port}, Baudrate: {baudrate}, Connect mode: {connect_mode}")
         esp._port.close()
-        return esptool.detect_chip(port, baudrate)
+        return esptool.detect_chip(port, baudrate, connect_mode)
 
     def get_index_block_by_name(self, name):
         for block in self.blocks:
