@@ -69,8 +69,6 @@ class ESP32C61ROM(ESP32C6ROM):
     KEY_PURPOSES: dict[int, str] = {
         0: "USER/EMPTY",
         1: "ECDSA_KEY",
-        2: "XTS_AES_256_KEY_1",
-        3: "XTS_AES_256_KEY_2",
         4: "XTS_AES_128_KEY",
         5: "HMAC_DOWN_ALL",
         6: "HMAC_DOWN_JTAG",
@@ -80,8 +78,6 @@ class ESP32C61ROM(ESP32C6ROM):
         10: "SECURE_BOOT_DIGEST1",
         11: "SECURE_BOOT_DIGEST2",
         12: "KM_INIT_KEY",
-        13: "XTS_AES_256_KEY_1_PSRAM",
-        14: "XTS_AES_256_KEY_2_PSRAM",
         15: "XTS_AES_128_KEY_PSRAM",
     }
 

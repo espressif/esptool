@@ -63,8 +63,8 @@ Optional arguments:
 
         - USER.
         - RESERVED.
-        :esp32c5 or esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY_1. The first 256 bits of 512bit flash encryption key.
-        :esp32c5 or esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY_2. The second 256 bits of 512bit flash encryption key.
+        :esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY_1. The first 256 bits of 512bit flash encryption key.
+        :esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY_2. The second 256 bits of 512bit flash encryption key.
         :esp32c5 or esp32c61 or esp32h2 or esp32h21 or esp32h4 or esp32p4: - ECDSA_KEY. It can be ECDSA private keys based on NIST192p or NIST256p curve. The private key is extracted from the given file and written into a eFuse block with write and read protection enabled. This private key shall be used by ECDSA accelerator for the signing purpose.
         :esp32c5: - ECDSA_KEY_P192. ECDSA private keys based on NIST192p curve.
         :esp32c5: - ECDSA_KEY_P256. ECDSA private keys based on NIST256p curve.
@@ -79,10 +79,7 @@ Optional arguments:
         - SECURE_BOOT_DIGEST0. 1 secure boot key.
         - SECURE_BOOT_DIGEST1. 2 secure boot key.
         - SECURE_BOOT_DIGEST2. 3 secure boot key.
-        :esp32c5 or esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY. This is a virtual key purpose for flash encryption key. This allows you to write a whole 512-bit key into two blocks with ``XTS_AES_256_KEY_1`` and ``XTS_AES_256_KEY_2`` purposes without splitting the key file.
-        :esp32c5: - XTS_AES_256_PSRAM_KEY. This is a virtual key purpose for psram encryption key. This allows you to write a whole 512-bit key into two blocks with ``XTS_AES_256_PSRAM_KEY_1`` and ``XTS_AES_256_PSRAM_KEY_2`` purposes without splitting the key file.
-        :esp32c5: - XTS_AES_256_PSRAM_KEY_1. The first 256 bits of 512bit psram encryption key.
-        :esp32c5: - XTS_AES_256_PSRAM_KEY_2. The second 256 bits of 512bit psram encryption key.
+        :esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY. This is a virtual key purpose for flash encryption key. This allows you to write a whole 512-bit key into two blocks with ``XTS_AES_256_KEY_1`` and ``XTS_AES_256_KEY_2`` purposes without splitting the key file.
         :esp32c5 or esp32h4 or esp32p4: - KM_INIT_KEY. This is a key that is used for the generation of AES/ECDSA keys by the key manager.
 
 .. only:: esp32c5 or esp32c61 or esp32h2 or esp32h21 or esp32h4 or esp32p4
