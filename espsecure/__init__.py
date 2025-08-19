@@ -1056,7 +1056,7 @@ def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile:
         )
 
 
-def extract_public_key(version: int, keyfile: IO, public_keyfile: IO):
+def extract_public_key(version: str, keyfile: IO, public_keyfile: IO):
     _check_output_is_not_input(keyfile, public_keyfile)
     if version == "1":
         """
@@ -1064,16 +1064,21 @@ def extract_public_key(version: int, keyfile: IO, public_keyfile: IO):
         as raw binary data.
         """
         sk = _load_ecdsa_signing_key(keyfile)
+        # For Secure Boot V1, output raw binary format (X and Y coordinates)
+        public_numbers = sk.public_key().public_numbers()
+        x_bytes = public_numbers.x.to_bytes(32, "big")
+        y_bytes = public_numbers.y.to_bytes(32, "big")
+        vk = x_bytes + y_bytes
     elif version == "2":
         """
         Load an RSA or an ECDSA private key and extract the public key
         as raw binary data.
         """
         sk = _load_sbv2_signing_key(keyfile.read())
-    vk = sk.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
+        vk = sk.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
     public_keyfile.write(vk)
     log.print(f'"{keyfile.name}" public key extracted to "{public_keyfile.name}".')
 

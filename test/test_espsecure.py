@@ -101,6 +101,74 @@ class TestESP32SecureBootloader(EspSecureTestCase):
         finally:
             os.unlink(output_file.name)
 
+    def test_extract_public_key_v1(self):
+        """Test that extract-public-key CLI command produces raw output for version 1"""
+        with tempfile.TemporaryDirectory() as keydir:
+            # Generate a version 1 ECDSA256 key
+            keyfile_name = os.path.join(keydir, "v1_key.pem")
+            espsecure.generate_signing_key("1", "ecdsa256", keyfile_name)
+
+            output_file = os.path.join(keydir, "v1_public_key.bin")
+            output = self.run_espsecure(
+                f"extract-public-key --version 1 --keyfile {keyfile_name} {output_file}"
+            )
+
+            # Check that the command succeeded
+            assert "public key extracted" in output.lower()
+
+            # Read the output file
+            with open(output_file, "rb") as f:
+                v1_output = f.read()
+
+            # Version 1 should produce raw binary (64 bytes for ECDSA256)
+            assert len(v1_output) == 64, (
+                f"Expected 64 bytes for ECDSA256, got {len(v1_output)}"
+            )
+
+            # Raw binary should not contain PEM markers
+            assert b"-----BEGIN PUBLIC KEY-----" not in v1_output
+            assert b"-----END PUBLIC KEY-----" not in v1_output
+            assert b"PUBLIC KEY" not in v1_output
+
+            # Raw binary should contain only binary data (not text)
+            printable_count = sum(1 for b in v1_output if 32 <= b <= 126)
+            assert printable_count < len(v1_output), (
+                "Raw binary should not be all printable ASCII"
+            )
+
+    def test_extract_public_key_v2(self):
+        """Test that extract-public-key CLI command produces PEM output for version 2"""
+        with tempfile.TemporaryDirectory() as keydir:
+            # Generate a version 2 ECDSA256 key
+            keyfile_name = os.path.join(keydir, "v2_key.pem")
+            espsecure.generate_signing_key("2", "ecdsa256", keyfile_name)
+
+            output_file = os.path.join(keydir, "v2_public_key.pem")
+            output = self.run_espsecure(
+                f"extract-public-key --version 2 --keyfile {keyfile_name} {output_file}"
+            )
+
+            # Check that the command succeeded
+            assert "public key extracted" in output.lower()
+
+            # Read the output file
+            with open(output_file, "rb") as f:
+                v2_output = f.read()
+
+            # Version 2 should produce PEM format
+            assert b"-----BEGIN PUBLIC KEY-----" in v2_output
+            assert b"-----END PUBLIC KEY-----" in v2_output
+            assert b"PUBLIC KEY" in v2_output
+
+            # PEM format should be longer than raw binary
+            assert len(v2_output) > 64, "PEM format should be longer than raw binary"
+
+            # PEM format should be mostly printable ASCII
+            printable_count = sum(1 for b in v2_output if 32 <= b <= 126)
+            assert printable_count > len(v2_output) * 0.8, (
+                "PEM format should be mostly printable ASCII"
+            )
+
 
 class TestSigning(EspSecureTestCase):
     def test_key_generation_v1(self):
