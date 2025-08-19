@@ -435,6 +435,15 @@ target_esp32c5:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C5 --chip esp32c5 --baud 115200
 
+target_esp32c5_32mb:
+  extends: .target_esptool_test
+  tags:
+    - esptool_esp32c5_32mb_target
+  variables:
+    ESPTOOL_TEST_FLASH_SIZE: "32"
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/ESP32C5_32MB --chip esp32c5 --baud 115200
+
 # ESP32C61
 target_esp32c61:
   extends: .target_esptool_test
