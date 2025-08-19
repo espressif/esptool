@@ -306,7 +306,7 @@ class EsptoolTestCase:
         # "Hello world" data without unwanted chip reset.
         with serial.serial_for_url(arg_port, arg_baud, rtscts=True) as p:
             p.timeout = 5
-            output = p.read(100)
+            output = p.read(200)
             print(f"Output: {output}")
             assert any(item in output for item in expected_out)
 
