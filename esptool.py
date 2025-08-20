@@ -16,7 +16,7 @@ import sys
 
 if os.name != "nt":
     # Linux/macOS: remove current script directory to avoid importing this file
-    # as a module; we want to import the installed esptool module instead
+    # as a module; we want to import the installed esptool module instead asdfasdflad adgaergwtrgh argwerhgwrth aergerghwh  raerggwrtg aegrrrrr
     with contextlib.suppress(ValueError):
         executable_dir = os.path.dirname(sys.executable)
         sys.path = [
