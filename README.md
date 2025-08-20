@@ -3,6 +3,7 @@
 A Python-based, open-source, platform-independent serial utility for flashing, provisioning, and interacting with Espressif SoCs.
 
 [![Test esptool](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/test_esptool.yml) [![Build esptool](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml/badge.svg?branch=master)](https://github.com/espressif/esptool/actions/workflows/build_esptool.yml)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/espressif/esptool/master.svg)](https://results.pre-commit.ci/latest/github/espressif/esptool/master)
 
 ## Documentation
 
