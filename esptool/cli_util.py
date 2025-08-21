@@ -231,6 +231,8 @@ class Group(click.RichGroup):
     def _replace_deprecated_args(self, args: list[str]) -> list[str]:
         new_args = []
         for arg in args:
+            # In case of arguments with values we need to check the key without value
+            arg, value = arg.split("=", 1) if "=" in arg else (arg, None)
             if arg in self.DEPRECATED_OPTIONS.keys():
                 # Replace underscores with hyphens in option names
                 new_name = self.DEPRECATED_OPTIONS[arg]
@@ -240,6 +242,8 @@ class Group(click.RichGroup):
                         f"Use '{new_name}' instead."
                     )
                     arg = new_name
+            if value is not None:
+                arg += f"={value}"
             new_args.append(arg)
         return new_args
 

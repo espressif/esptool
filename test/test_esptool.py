@@ -445,7 +445,8 @@ class TestFlashing(EsptoolTestCase):
     @pytest.mark.skipif(arg_chip != "esp32", reason="Don't need to test multiple times")
     def test_short_flash_deprecated(self):
         out = self.run_esptool(
-            "--before default_reset write_flash 0x0 images/one_kb.bin --flash_size keep"
+            "--before default_reset write_flash 0x0 images/one_kb.bin "
+            "--flash_size keep --flash_mode=keep"
         )
         assert (
             "Deprecated: Choice 'default_reset' for option '--before' is deprecated. "
@@ -454,6 +455,10 @@ class TestFlashing(EsptoolTestCase):
         assert (
             "Deprecated: Option '--flash_size' is deprecated. "
             "Use '--flash-size' instead." in out
+        )
+        assert (
+            "Deprecated: Option '--flash_mode' is deprecated. "
+            "Use '--flash-mode' instead." in out
         )
         assert (
             "Deprecated: Command 'write_flash' is deprecated. "
