@@ -10,7 +10,7 @@ blockdiag download_procedure_diagram {
 
     // nodes
     start [label = "Start", shape = flowchart.terminator];
-    sync [label = "Synchronization", shape = box];
+    init [label = "Initialization", shape = box];
     success_cond [label = "Success?", shape = flowchart.condition];
     erase_data [label = "Erase data", shape = box];
     transmit_data [label = "Transmit data", shape = box];
@@ -22,11 +22,11 @@ blockdiag download_procedure_diagram {
     fincon_fin [shape = none];
 
     // edges
-    start -> sync -> success_cond;
+    start -> init -> success_cond;
     success_cond -> erase_data [label = "Yes"];
     erase_data -> transmit_data;
     transmit_data -> finish_cond;
-    success_cond -- succ_fin [label = "Timeout"];
+    success_cond -- succ_fin [label = "Failure"];
     finish_cond -> transmit_finish [label = "Yes"];
     finish_cond -- fincon_fin [label = "Failure"];
     succ_fin -- fincon_fin;

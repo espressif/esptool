@@ -1,0 +1,37 @@
+blockdiag chip_type_detection_chart {
+    node_height = 40;
+    node_width = 150;
+    span_width = 40;
+    span_height = 45;
+    default_fontsize = 12
+    orientation = portrait;
+    edge_layout = flowchart;
+    default_group_color = none;
+
+    // nodes
+    start [label = "Start", shape = flowchart.terminator];
+    get_chip_id [label = "get chip-id by\nget-security-info", shape = box];
+    id_success_cond [label = "Success?", shape = flowchart.condition];
+    reg_success_cond [label = "Success?", shape = flowchart.condition];
+    find_by_id [label = "Find ID in list", shape = box];
+
+    get_magic_reg [label = "Read magic register", shape = box];
+    find_by_reg [label = "Find magic number\nin list", shape = box];
+
+    try_esp32s2 [label = "detected ESP32-S2\nin SDM", shape = box];
+
+    finish [label = "Finish", shape = flowchart.terminator];
+
+    // edges
+    start -> get_chip_id -> id_success_cond;
+    id_success_cond -> find_by_id [label = "Yes"];
+    find_by_id -> finish;
+
+    id_success_cond -> get_magic_reg [label = "No"];
+    get_magic_reg -> reg_success_cond;
+    reg_success_cond -> find_by_reg [label = "Yes"];
+    find_by_reg -> finish;
+    reg_success_cond -> try_esp32s2 [label = "No"];
+
+    try_esp32s2 -> finish
+}

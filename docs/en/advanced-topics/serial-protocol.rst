@@ -340,20 +340,51 @@ Functional Description
 .. note::
     This flow chart is used to illustrate the download procedure (writing to flash), other commands have different flows.
 
-Initial Synchronisation
-^^^^^^^^^^^^^^^^^^^^^^^
+Initialization
+^^^^^^^^^^^^^^
 .. list::
 
     :esp8266: *  The ESP chip is reset into UART bootloader mode. The host starts by sending SYNC commands. These commands have a large data payload which is also used by the ESP chip to detect the configured baud rate. The ESP8266 will initialise at 74800bps with a 26MHz crystal and 115200bps with a 40MHz crystal. However the sync packets can be sent at any baud rate, and the UART peripheral will detect this.
     :not esp8266: *  The ESP chip is reset into UART bootloader mode. The host starts by sending SYNC commands. These commands have a large data payload which is also used by the ESP chip to detect the configured baud rate. {IDF_TARGET_NAME} always initialises at 115200bps. However the sync packets can be sent at any baud rate, and the UART peripheral will detect this.
     *  The host should wait until it sees a valid response to a SYNC command, indicating the ESP chip is correctly communicating.
+    *  Chip type detection then uses various methods to identify chip type, subtype, revision, etc. See below.
     *  Esptool then (by default) uses the "RAM Download" sequence to upload :ref:`stub loader <stub>` code to IRAM of the chip. The MEM_END command contains the entry-point address to run the stub loader.
        The stub loader then sends a custom SLIP packet of the sequence OHAI (``0xC0 0x4F 0x48 0x41 0x49 0xC0``), indicating that it is now running. This is the only unsolicited packet ever sent by the ESP.
        If the ``--no-stub`` argument is supplied to esptool, this entire step is skipped.
-    *  esptool then uses READ_REG commands to read various addresses on the chip, to identify chip subtype, revision, etc.
     :not esp8266: *  For commands which need to use the flash, the {IDF_TARGET_NAME} ROM an stub loader requires the SPI_ATTACH and SPI_SET_PARAMS commands. See `SPI Configuration Commands`_.
     :esp8266: *  For stub loader, the host can send a CHANGE_BAUD command to set the baud rate to an explicit value. Compared to auto-detecting during the SYNC pulse, this can be more reliable for setting very high baud rate. Esptool tries to sync at (maximum) 115200bps and then sends this command to go to a higher baud rate, if requested.
     :not esp8266: *  For stub loader and/or {IDF_TARGET_NAME} ROM loader, the host can send a CHANGE_BAUD command to set the baud rate to an explicit value. Compared to auto-detecting during the SYNC pulse, this can be more reliable for setting very high baud rate. Esptool tries to sync at (maximum) 115200bps and then sends this command to go to a higher baud rate, if requested.
+
+Initialization - Chip Type Detection
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+{IDF_TARGET_NAME} Chip Detection
+""""""""""""""""""""""""""""""""
+.. only:: esp8266 or esp32
+
+    {IDF_TARGET_NAME} does not support **GET_SECURITY_INFO (0x14)** command and its **chip-id** value. So, chip is detected by using **READ_REG** and his magic value.
+
+.. only:: esp32s2
+
+    {IDF_TARGET_NAME} supports the **GET_SECURITY_INFO (0x14)** command, but the output lacks the **chip-id**. Therefore, esptool uses the **magic register** as a fallback for this chip as well.
+    If reading the register also fails, it indicates the chip is in **secure download** mode.
+
+.. only:: not esp8266 and not esp32 and not esp32s2
+
+    {IDF_TARGET_NAME} is detected by using **GET_SECURITY_INFO (0x14)** command and its **chip-id** value.
+
+
+Overview of Detection for All Chips
+"""""""""""""""""""""""""""""""""""
+.. blockdiag:: diag/chip_type_detection_chart.diag
+    :caption: All chips detection flow chart
+    :align: center
+
+On older devices that do not support the **GET_SECURITY_INFO (0x14)** command (which provides the **chip-id**), esptool falls back to reading a **magic register** to determine the chip type.
+
+The main exception is the **ESP32-S2**: although it supports the **GET_SECURITY_INFO (0x14)** command, the output lacks the **chip-id**. Therefore, esptool uses the **magic register** as a fallback for this chip as well.
+If reading the register also fails, it indicates the chip is in **secure download** mode.
+
+For details see: `esptool chip detection code <https://github.com/espressif/esptool/blob/v5.0.2/esptool/cmds.py#L101>`__
 
 Writing Data
 ^^^^^^^^^^^^
