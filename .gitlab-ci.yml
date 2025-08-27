@@ -525,7 +525,7 @@ combine_reports:
 
 build_docs:
   stage: build_docs
-  image: python:3.12-bookworm  # 3.12 is the last version with imghdr
+  image: python:3.13-bookworm
   tags:
     - build_docs
   rules:
@@ -549,7 +549,7 @@ build_docs:
 
 .deploy_docs_template:
   stage: deploy_docs
-  image: python:3.12-bookworm  # 3.12 is the last version with imghdr
+  image: python:3.13-bookworm
   tags:
     - deploy
   needs:

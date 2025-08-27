@@ -62,6 +62,7 @@
     docs = [
         "esp-docs~=1.10",
         "sphinx-tabs",
+        "standard-imghdr; python_version >= '3.13'"
     ]
 
 [tool.setuptools]
