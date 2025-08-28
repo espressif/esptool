@@ -1434,6 +1434,8 @@ class ELFFile:
                 )
 
     def _read_segments(self, f, segment_header_offs, segment_header_count, shstrndx):
+        if segment_header_count == 0:
+            return
         f.seek(segment_header_offs)
         len_bytes = segment_header_count * self.LEN_SEG_HEADER
         segment_header = f.read(len_bytes)
