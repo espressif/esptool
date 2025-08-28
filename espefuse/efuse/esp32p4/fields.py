@@ -66,7 +66,10 @@ class EspEfuses(base_fields.EspEfusesBase):
     ):
         super().__init__(esp, skip_connect, debug, do_not_confirm, extend_efuse_table)
         self.Blocks = EfuseDefineBlocks()
-        self.Fields = EfuseDefineFields(extend_efuse_table)
+        chip_revision = 300 if skip_connect else esp.get_chip_revision()
+        revision_file = "esp32p4_v3.0" if chip_revision >= 300 else None
+        log.print(f"Loading eFuses for {esp.CHIP_NAME} v{chip_revision / 100:.1f}...")
+        self.Fields = EfuseDefineFields(extend_efuse_table, revision=revision_file)
         self.REGS = EfuseDefineRegisters
         self.BURN_BLOCK_DATA_NAMES = self.Blocks.get_burn_block_data_names()
         self.BLOCKS_FOR_KEYS = self.Blocks.get_blocks_for_keys()
