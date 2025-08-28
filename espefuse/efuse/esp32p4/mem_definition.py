@@ -111,7 +111,7 @@ class EfuseDefineBlocks(EfuseBlocksBase):
 
 
 class EfuseDefineFields(EfuseFieldsBase):
-    def __init__(self, extend_efuse_table) -> None:
+    def __init__(self, extend_efuse_table, revision=None) -> None:
         # List of efuse fields from TRM the chapter eFuse Controller.
         self.EFUSES = []
         self.KEYBLOCKS = []
@@ -120,6 +120,8 @@ class EfuseDefineFields(EfuseFieldsBase):
 
         dir_name = os.path.dirname(os.path.abspath(__file__))
         dir_name, file_name = os.path.split(dir_name)
+        if revision is not None:
+            file_name = revision
         file_name = file_name + ".yaml"
         dir_name, _ = os.path.split(dir_name)
         efuse_file = os.path.join(dir_name, "efuse_defs", file_name)
