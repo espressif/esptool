@@ -1,6 +1,6 @@
-{IDF_TARGET_STRAP_BOOT_GPIO:default="GPIO9", esp8266="GPIO0", esp32="GPIO0", esp32s2="GPIO0", esp32s3="GPIO0", esp32p4="GPIO35", esp32c5="GPIO28", esp32h21="GPIO14"}
+{IDF_TARGET_STRAP_BOOT_GPIO:default="GPIO9", esp8266="GPIO0", esp32="GPIO0", esp32s2="GPIO0", esp32s3="GPIO0", esp32p4="GPIO35", esp32c5="GPIO28", esp32h21="GPIO14", esp32h4="GPIO14"}
 
-{IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO8", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32p4="GPIO36", esp32c5="GPIO27", esp32h21="GPIO13"}
+{IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO8", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32p4="GPIO36", esp32c5="GPIO27", esp32h21="GPIO13", esp32h4="GPIO13"}
 
 {IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000"}
 
@@ -87,7 +87,7 @@ This guide explains how to select the boot mode correctly and describes the boot
 
       {IDF_TARGET_STRAP_BOOT_2_GPIO} must also be either left unconnected/floating, or driven Low, in order to enter the serial bootloader.
 
-   .. only:: esp32c3 or esp32c2 or esp32h2 or esp32c6 or esp32p4 or esp32c5 or esp32c61 or esp32h21
+   .. only:: esp32c3 or esp32c2 or esp32h2 or esp32c6 or esp32p4 or esp32c5 or esp32c61 or esp32h21 or esp32h4
 
       {IDF_TARGET_STRAP_BOOT_2_GPIO} must also be driven High, in order to enter the serial bootloader reliably. The strapping combination of {IDF_TARGET_STRAP_BOOT_2_GPIO} = 0 and {IDF_TARGET_STRAP_BOOT_GPIO} = 0 is invalid and will trigger unexpected behavior.
 

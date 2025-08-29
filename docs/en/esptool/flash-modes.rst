@@ -1,10 +1,10 @@
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32h2="0x0", esp32h21="0x0"}
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32h2="0x0", esp32h21="0x0", esp32h4="0x2000"}
 
-{IDF_TARGET_FLASH_FREQ_F:default="80", esp32c2="60", esp32h2="48", esp32h21="48"}
+{IDF_TARGET_FLASH_FREQ_F:default="80", esp32c2="60", esp32h2="48", esp32h21="48", esp32h4="48"}
 
-{IDF_TARGET_FLASH_FREQ_0:default="40", esp32c2="30", esp32h2="24", esp32h21="24"}
+{IDF_TARGET_FLASH_FREQ_0:default="40", esp32c2="30", esp32h2="24", esp32h21="24", esp32h4="24"}
 
-{IDF_TARGET_FLASH_FREQ:default="``40m``, ``26m``, ``20m``, ``80m``", esp32c2="``30m``, ``20m``, ``15m``, ``60m``", esp32h2="``24m``, ``16m``, ``12m``, ``48m``", esp32c6="``40m``, ``20m``, ``80m``, esp32c5="``40m``, ``20m``, ``80m``, esp32c61="``40m``, ``20m``, ``80m``", esp32h21="``24m``, ``16m``, ``12m``, ``48m``"}
+{IDF_TARGET_FLASH_FREQ:default="``40m``, ``26m``, ``20m``, ``80m``", esp32c2="``30m``, ``20m``, ``15m``, ``60m``", esp32h2="``24m``, ``16m``, ``12m``, ``48m``", esp32c6="``40m``, ``20m``, ``80m``, esp32c5="``40m``, ``20m``, ``80m``, esp32c61="``40m``, ``20m``, ``80m``", esp32h21="``24m``, ``16m``, ``12m``, ``48m``", esp32h4="``24m``, ``16m``, ``12m``, ``48m``"}
 
 
 .. _flash-modes:
@@ -56,7 +56,7 @@ Size of the SPI flash, given in megabytes.
 
     Valid values are: ``keep``, ``detect``, ``256KB``, ``512KB``, ``1MB``, ``2MB``, ``4MB``, ``2MB-c1``, ``4MB-c1``, ``8MB``, ``16MB``
 
-.. only:: esp32 or esp32c3 or esp32c6 or esp32c2 or esp32h2 or esp32c5 or esp32c61 or esp32h21
+.. only:: esp32 or esp32c3 or esp32c6 or esp32c2 or esp32h2 or esp32c5 or esp32c61 or esp32h21 or esp32h4
 
     Valid values are: ``keep``, ``detect``, ``1MB``, ``2MB``, ``4MB``, ``8MB``, ``16MB``
 
