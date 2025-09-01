@@ -10,7 +10,7 @@ This document provides essential information for coding agents working on the es
 - `espsecure.py` - Security-related operations (signing, encryption)
 - `esp_rfc2217_server.py` - RFC2217 serial-over-TCP server
 
-**Project type:** Python 3.10+ package with console entry points, using setuptools build system and Click/rich_click for CLI interfaces. Supports ESP32, ESP32-S2, ESP32-S3, ESP32-C2, ESP32-C3, ESP32-C5, ESP32-C6, ESP32-H2, ESP32-P4, ESP8266, and other Espressif chips.
+**Project type:** Python 3.10+ package with console entry points, using setuptools build system and Click/rich_click for CLI interfaces. Supports ESP32, ESP32-S2, ESP32-S3, ESP32-C2, ESP32-C3, ESP32-C5, ESP32-C6, ESP32-H2, ESP32-H21, ESP32-P4, ESP8266, and other Espressif chips.
 
 **Repository size:** ~200 files, primarily Python code with some binary stub flasher files and YAML configuration files.
 
@@ -35,7 +35,7 @@ This document provides essential information for coding agents working on the es
 3. **Verify installation works:**
    ```bash
    esptool.py --help
-   espefuse.py --help  
+   espefuse.py --help
    espsecure.py --help
    esp_rfc2217_server.py --help
    ```
@@ -163,7 +163,7 @@ esptool recognizes these environment variables for default behavior:
 - **`ESPTOOL_PORT`** - Default serial port
 - **`ESPTOOL_BAUD`** - Default baud rate
 - **`ESPTOOL_FF`** - Default flash frequency
-- **`ESPTOOL_FM`** - Default flash mode  
+- **`ESPTOOL_FM`** - Default flash mode
 - **`ESPTOOL_FS`** - Default flash size
 - **`ESPTOOL_BEFORE`** - Default reset mode before operation
 - **`ESPTOOL_AFTER`** - Default reset mode after operation
