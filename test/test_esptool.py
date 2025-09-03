@@ -1170,15 +1170,24 @@ class TestMemoryOperations(EsptoolTestCase):
         assert "Read 128 bytes" in output
         os.remove("memout.bin")
 
-    def test_memory_write(self):
-        output = self.run_esptool("write_mem 0x400C0000 0xabad1dea 0x0000ffff")
+    @pytest.fixture
+    def test_address(self):
+        """
+        Return a RAM address suitable for memory read/write tests.
+        ESP32-P4 has different RAM ranges. Address 0x4FF90000 is just
+        inside the range and unused.
+        """
+        return 0x4FF90000 if arg_chip == "esp32p4" else 0x400C0000
+
+    def test_memory_write(self, test_address):
+        output = self.run_esptool(f"write_mem {test_address:#X} 0xabad1dea 0x0000ffff")
         assert "Wrote abad1dea" in output
         assert "mask 0000ffff" in output
-        assert "to 400c0000" in output
+        assert f"to {test_address:x}" in output
 
-    def test_memory_read(self):
-        output = self.run_esptool("read_mem 0x400C0000")
-        assert "0x400c0000 =" in output
+    def test_memory_read(self, test_address):
+        output = self.run_esptool(f"read_mem {test_address:#X}")
+        assert f"{test_address:#x} =" in output
 
 
 class TestKeepImageSettings(EsptoolTestCase):
