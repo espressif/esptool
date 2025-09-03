@@ -905,10 +905,21 @@ def write_flash(
                     raise  # Reconnect limit reached
 
         if esp.IS_STUB:
+            # Get the "encrypted" flag for the last file flashed
+            # Note: all_files list contains quadruplets like:
+            # (address: int, filename: str | None, data: bytes, encrypted: bool)
+            last_file_encrypted = all_files[-1][3]
+
             # Stub only writes each block to flash after 'ack'ing the receive,
-            # so do a final dummy operation which will not be 'ack'ed
+            # so do a final operation which will not be 'ack'ed
             # until the last block has actually been written out to flash
-            esp.read_reg(ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR, timeout=timeout)
+            if compress and not last_file_encrypted:
+                esp.flash_defl_finish(reboot=False, timeout=timeout)
+            else:
+                esp.flash_finish(reboot=False, timeout=timeout)
+
+        # Skip sending flash_finish to ROM loader here,
+        # as it causes the loader to exit and run user code
 
         t = time.time() - t
         speed_msg = ""
@@ -947,22 +958,6 @@ def write_flash(
             log.print(
                 "Cannot verify written data if encrypted or in secure download mode."
             )
-
-    if esp.IS_STUB:
-        # skip sending flash_finish to ROM loader here,
-        # as it causes the loader to exit and run user code
-        esp.flash_begin(0, 0)
-
-        # Get the "encrypted" flag for the last file flashed
-        # Note: all_files list contains quadruplets like:
-        # (address: int, filename: str | None, data: bytes, encrypted: bool)
-        last_file_encrypted = all_files[-1][3]
-
-        # Check whether the last file flashed was compressed or not
-        if compress and not last_file_encrypted:
-            esp.flash_defl_finish(False)
-        else:
-            esp.flash_finish(False)
 
 
 def read_mac(esp: ESPLoader) -> None:

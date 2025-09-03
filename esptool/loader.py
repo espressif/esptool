@@ -1066,11 +1066,16 @@ class ESPLoader:
                 else:
                     raise
 
-    def flash_finish(self, reboot=False):
+    def flash_finish(self, reboot=False, timeout=DEFAULT_TIMEOUT):
         """Leave flash mode and run/reboot"""
         pkt = struct.pack("<I", int(not reboot))
         # stub sends a reply to this command
-        self.check_command("leave flash download mode", self.ESP_CMDS["FLASH_END"], pkt)
+        self.check_command(
+            "leave flash download mode",
+            self.ESP_CMDS["FLASH_END"],
+            pkt,
+            timeout=timeout,
+        )
 
     def run(self, reboot=False):
         """Run application code in flash"""
@@ -1400,7 +1405,7 @@ class ESPLoader:
                     raise
 
     @stub_and_esp32_function_only
-    def flash_defl_finish(self, reboot=False):
+    def flash_defl_finish(self, reboot=False, timeout=DEFAULT_TIMEOUT):
         """Leave compressed flash mode and run/reboot"""
         if not reboot and not self.IS_STUB:
             # skip sending flash_finish to ROM loader, as this
@@ -1408,7 +1413,10 @@ class ESPLoader:
             return
         pkt = struct.pack("<I", int(not reboot))
         self.check_command(
-            "leave compressed flash mode", self.ESP_CMDS["FLASH_DEFL_END"], pkt
+            "leave compressed flash mode",
+            self.ESP_CMDS["FLASH_DEFL_END"],
+            pkt,
+            timeout=timeout,
         )
         self.in_bootloader = False
 
