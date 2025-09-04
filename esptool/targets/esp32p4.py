@@ -80,9 +80,21 @@ class ESP32P4ROM(ESP32ROM):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
-    UARTDEV_BUF_NO = 0x4FF3FEC8  # Variable in ROM .bss which indicates the port in use
-    UARTDEV_BUF_NO_USB_OTG = 5  # The above var when USB-OTG is used
-    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 6  # The above var when USB-JTAG/Serial is used
+    @property
+    def UARTDEV_BUF_NO(self):
+        """Variable .bss.UartDev.buff_uart_no in ROM .bss
+        which indicates the port in use.
+        """
+        BUF_UART_NO_OFFSET = 24
+
+        BSS_UART_DEV_ADDR = 0x4FF3FEB0 if self.get_chip_revision() < 300 else 0x4FFBFEB0
+        return BSS_UART_DEV_ADDR + BUF_UART_NO_OFFSET
+
+    # The value from UARTDEV_BUF_NO when USB-OTG is used
+    UARTDEV_BUF_NO_USB_OTG = 5
+
+    # The value from UARTDEV_BUF_NO when USB-JTAG/Serial is used
+    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 6
 
     MEMORY_MAP = [
         [0x00000000, 0x00010000, "PADDING"],
@@ -285,6 +297,11 @@ class ESP32P4StubLoader(StubMixin, ESP32P4ROM):
         if rom_loader.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
             self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
+
+    def stub_json_name(self):
+        if self.get_chip_revision() < 300:
+            return "esp32p4rc1.json"
+        return "esp32p4.json"
 
 
 ESP32P4ROM.STUB_CLASS = ESP32P4StubLoader

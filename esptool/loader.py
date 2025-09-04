@@ -159,8 +159,10 @@ class StubFlasher:
     # directories will be searched in the order of STUB_SUBDIRS
     STUB_SUBDIRS = ["1"]
 
-    def __init__(self, chip_name):
-        with open(self.get_json_path(chip_name)) as json_file:
+    def __init__(self, target):
+        json_name = target.STUB_CLASS.stub_json_name(target)
+
+        with open(self._get_json_path(json_name, target.CHIP_NAME)) as json_file:
             stub = json.load(json_file)
 
         self.text = base64.b64decode(stub["text"])
@@ -176,10 +178,9 @@ class StubFlasher:
 
         self.bss_start = stub.get("bss_start")
 
-    def get_json_path(self, chip_name):
-        chip_name = strip_chip_name(chip_name)
+    def _get_json_path(self, json_name, chip_name):
         for i, subdir in enumerate(self.STUB_SUBDIRS):
-            json_path = os.path.join(self.STUB_DIR, subdir, f"{chip_name}.json")
+            json_path = os.path.join(self.STUB_DIR, subdir, json_name)
             if os.path.exists(json_path):
                 if i:
                     log.warning(
@@ -933,7 +934,7 @@ class ESPLoader:
         """Start downloading an application image to RAM"""
         # check we're not going to overwrite a running stub with this data
         if self.IS_STUB:
-            stub = StubFlasher(self.CHIP_NAME)
+            stub = StubFlasher(self)
             load_start = offset
             load_end = offset + size
             for stub_start, stub_end in [
@@ -1281,7 +1282,7 @@ class ESPLoader:
     def run_stub(self, stub: StubFlasher | None = None) -> "ESPLoader":
         log.stage()
         if stub is None:
-            stub = StubFlasher(self.CHIP_NAME)
+            stub = StubFlasher(self)
 
         if self.sync_stub_detected:
             log.stage(finish=True)
@@ -1842,6 +1843,10 @@ class StubMixin:
         self._trace_enabled = rom_loader._trace_enabled
         self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
+
+    def stub_json_name(self):
+        chip_name = strip_chip_name(self.CHIP_NAME)
+        return f"{chip_name}.json"
 
 
 def slip_reader(port, trace_function):
