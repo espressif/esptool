@@ -12,7 +12,7 @@ STUBS = (
         "STUB_SET_VERSION": "1",
         "DOWNLOAD_URL": "https://github.com/espressif/esptool-legacy-flasher-stub/releases/download",
         "TAG_URL": "https://github.com/espressif/esptool-legacy-flasher-stub/releases/tag",
-        "VERSION": "v1.7.2",
+        "VERSION": "v1.8.0",
         "FILE_LIST": (
             "esp32",
             "esp32c2",
@@ -25,6 +25,7 @@ STUBS = (
             "esp32h2",
             "esp32h2beta1",
             "esp32h2beta2",
+            "esp32p4rc1",
             "esp32p4",
             "esp32s2",
             "esp32s3",

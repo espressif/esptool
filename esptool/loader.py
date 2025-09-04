@@ -148,8 +148,10 @@ class StubFlasher:
     # directories will be searched in the order of STUB_SUBDIRS
     STUB_SUBDIRS = ["1", "2"]
 
-    def __init__(self, chip_name):
-        with open(self.get_json_path(chip_name)) as json_file:
+    def __init__(self, target):
+        json_name = target.STUB_CLASS.stub_json_name(target)
+
+        with open(self._get_json_path(json_name, target.CHIP_NAME)) as json_file:
             stub = json.load(json_file)
 
         self.text = base64.b64decode(stub["text"])
@@ -165,10 +167,9 @@ class StubFlasher:
 
         self.bss_start = stub.get("bss_start")
 
-    def get_json_path(self, chip_name):
-        chip_name = strip_chip_name(chip_name)
+    def _get_json_path(self, json_name, chip_name):
         for i, subdir in enumerate(self.STUB_SUBDIRS):
-            json_path = os.path.join(self.STUB_DIR, subdir, f"{chip_name}.json")
+            json_path = os.path.join(self.STUB_DIR, subdir, json_name)
             if os.path.exists(json_path):
                 if i:
                     print(
@@ -913,7 +914,7 @@ class ESPLoader(object):
         """Start downloading an application image to RAM"""
         # check we're not going to overwrite a running stub with this data
         if self.IS_STUB:
-            stub = StubFlasher(self.CHIP_NAME)
+            stub = StubFlasher(self)
             load_start = offset
             load_end = offset + size
             for stub_start, stub_end in [
@@ -1207,7 +1208,7 @@ class ESPLoader(object):
 
     def run_stub(self, stub=None):
         if stub is None:
-            stub = StubFlasher(self.CHIP_NAME)
+            stub = StubFlasher(self)
 
         if self.sync_stub_detected:
             print("Stub is already running. No upload is necessary.")
@@ -1743,6 +1744,10 @@ class ESPLoader(object):
             "attempting classic hard reset instead."
         )
         self.hard_reset()
+
+    def stub_json_name(self):
+        chip_name = strip_chip_name(self.CHIP_NAME)
+        return f"{chip_name}.json"
 
 
 def slip_reader(port, trace_function):
