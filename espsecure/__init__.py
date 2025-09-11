@@ -1166,9 +1166,8 @@ def signature_info_v2(datafile: IO):
             )
 
         log.print(
-            f"Public key digest for block {sig_blk_num}: ".join(
-                f"{c:02x}" for c in bytearray(key_digest)
-            )
+            f"Public key digest for block {sig_blk_num}: "
+            f"{' '.join(f'{c:02x}' for c in bytearray(key_digest))}"
         )
 
 
