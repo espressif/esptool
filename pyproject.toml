@@ -60,9 +60,8 @@
     ]
     hsm = ["python-pkcs11"]
     docs = [
-        "esp-docs~=1.10",
+        "esp-docs~=2.1",
         "sphinx-tabs",
-        "standard-imghdr; python_version >= '3.13'"
     ]
 
 [tool.setuptools]
