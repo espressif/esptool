@@ -220,7 +220,7 @@ class Group(EsptoolGroup):
             commands = init_commands(port=None, chip=ctx.obj["chip"], skip_connect=True)
             commands.add_cli_commands(self)
         elif len(used_cmds) == 0:
-            self.get_help(ctx)
+            log.print(self.get_help(ctx))
             ctx.exit()
 
         cmd_groups = self.repeat_read_commands(used_cmds, cmd_groups)
