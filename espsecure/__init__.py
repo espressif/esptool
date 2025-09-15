@@ -961,10 +961,7 @@ def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile:
 
     vk = _get_sbv2_pub_key(keyfile)
 
-    if isinstance(vk, rsa.RSAPublicKey):
-        SIG_BLOCK_MAX_COUNT = 3
-    elif isinstance(vk, ec.EllipticCurvePublicKey):
-        SIG_BLOCK_MAX_COUNT = 1
+    SIG_BLOCK_MAX_COUNT = 3
 
     image_content = datafile.read()
     if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
