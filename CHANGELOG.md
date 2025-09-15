@@ -20,6 +20,10 @@
 </div>
 <hr>
 
+## v5.0.3 (2025-09-)
+
+- Fix bug with rich-click 1.9 compatibility *(Daniel Reeves - bd9241c)*
+
 ## v5.0.2 (2025-07-30)
 
 ### 🐛 Bug Fixes
