@@ -20,6 +20,46 @@
 </div>
 <hr>
 
+## v5.1.0 (2025-09-15)
+
+### ✨ New Features
+
+- **espefuse**: Support ESP32-P4 ECO5 (v3.0) *(Konstantin Kondrashov - 40f103c)*
+- **esp32p4**: Add support for ESP32-P4.ECO5 *(Jaroslav Safka - 6c10050)*
+- **esp32c5**: Add support for >16 MB flash sizes *(Roland Dobai - 8e2b94e)*
+- **espefuse**: Add custom key purposes for ESP32C6/C5/P4 *(Konstantin Kondrashov - c6ce0bc)*
+- **espefuse**: Support burning ECDSA_384 keys *(Konstantin Kondrashov - 4a9a3d8)*
+- **espefuse**: Clean up limitation for BLOCK9 usage *(Konstantin Kondrashov - d63e3db)*
+- **espefuse**: Adds support for burning 512-bit keys for C5 *(Konstantin Kondrashov - 468de5c)*
+
+### 🐛 Bug Fixes
+
+- **espefuse**: Update CLI to support rich-click 1.9.0 *(Peter Dragun - 2ae5535)*
+- **espsecure**: Fix printing key digest in signature info *(Radim Karniš - 7e53596)*
+- **espefuse**: Fixes re-connection issue in check-error via UJS port *(Konstantin Kondrashov - a160468)*
+- **write_flash**: Make write flash mem independent *(Jaroslav Safka - d19413c)*
+- **elf2image**: Handle ELF files with zero program header counts *(Tormod Volden - d27ce37)*
+- **espsecure**: Extract public key version 1 in RAW format *(Peter Dragun - 6cfced8)*
+- **espsecure**: Allow signing multiple files in one go *(Peter Dragun - 0177d61)*
+- **elf2image**: Fix --pad-to-size argument parsing *(Peter Dragun - 66a1377)*
+- **espefuse**: Disable programming and usage of XTS-AES-256 efuse key for ESP32-C5 *(harshal.patil - c85a93d)*
+- **esp32c5**: Erase during flashing above 16MB *(Jaroslav Burian - d65a24e)*
+- **espsecure**: Add support for python-pkcs11 9.0+ *(Peter Dragun - 3ea646f)*
+- Use correct error codes for ROM errors *(Jaroslav Burian - da4346b)*
+- Handle deprecated options with "=" before value *(Peter Dragun - f05fb62)*
+- stop exit 0 when being called programmatically *(Fu Hanxi - d8ae230)*
+
+### 📖 Documentation
+
+- **set_flash_voltage**: Disable for non-related chips *(Radim Karniš - cd2c98e)*
+- bump up esp_docs to 2.1 *(Jaroslav Safka - bb8cd9b)*
+- Add chip type detection explanation *(Jaroslav Safka - 528f605)*
+
+### 🔧 Code Refactoring
+
+- set up and apply pyupgrade ruff rules *(copilot-swe-agent[bot] - 206970a)*
+
+
 ## v5.0.2 (2025-07-30)
 
 ### 🐛 Bug Fixes
