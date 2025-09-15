@@ -30,11 +30,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         if: (matrix.platform != 'linux-armv7') || contains(github.ref_name, 'dev')
         with:
-          python-version: "3.13"
+          python-version: "3.11"
           # Python is used only to apply dev-release patch on Linux runners and no packages are installed as the build happens in the container
           cache: ${{ matrix.platform != 'linux-armv7' && matrix.platform != 'linux-aarch64' && matrix.platform != 'linux-amd64' && 'pip' || '' }}
       - name: Patch version for dev releases
@@ -59,6 +59,7 @@ jobs:
               ]
             }
           icon-file: ${{ matrix.platform == 'windows-amd64' && 'ci/espressif.ico' || '' }}
+          python-version: "3.11"
           target-platform: ${{ matrix.platform }}
           additional-arm-packages: 'openssl libffi-dev libssl-dev libffi7'
           certificate: ${{ secrets.CERTIFICATE }}
