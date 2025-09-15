@@ -138,7 +138,8 @@ class TestSigning(EspSecureTestCase):
             keyfile_name = os.path.join(keydir, "key.pem")
             self.run_espsecure(f"generate_signing_key --version 1 {keyfile_name}")
 
-    def test_key_generation_v2(self):
+    @pytest.mark.parametrize("scheme", ["rsa3072", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_key_generation_v2(self, scheme):
         with tempfile.TemporaryDirectory() as keydir:
             # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
             # cannot be used for keyfile
@@ -230,16 +231,17 @@ class TestSigning(EspSecureTestCase):
             output_file.close()
             os.unlink(output_file.name)
 
-    def test_sign_v2_multiple_keys(self):
+    @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_sign_v2_multiple_keys(self, scheme):
         # 3 keys + Verify with 3rd key
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
                 "2",
                 [
-                    self._open("rsa_secure_boot_signing_key.pem"),
-                    self._open("rsa_secure_boot_signing_key2.pem"),
-                    self._open("rsa_secure_boot_signing_key3.pem"),
+                    self._open(f"{scheme}_secure_boot_signing_key.pem"),
+                    self._open(f"{scheme}_secure_boot_signing_key2.pem"),
+                    self._open(f"{scheme}_secure_boot_signing_key3.pem"),
                 ],
                 output_file.name,
                 False,
@@ -255,7 +257,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key3.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key3.pem"),
                 output_file,
             )
             espsecure.verify_signature(args)
@@ -265,7 +267,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key2.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
                 output_file,
             )
             espsecure.verify_signature(args)
@@ -275,7 +277,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key.pem"),
                 output_file,
             )
             espsecure.verify_signature(args)
@@ -283,7 +285,8 @@ class TestSigning(EspSecureTestCase):
             output_file.close()
             os.unlink(output_file.name)
 
-    def test_sign_v2_append_signatures(self):
+    @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_sign_v2_append_signatures(self, scheme):
         # Append signatures + Verify with an appended key
         # (bootloader_signed_v2_rsa.bin already signed with rsa_secure_boot_signing_key.pem)
         try:
@@ -291,8 +294,8 @@ class TestSigning(EspSecureTestCase):
             args = self.SignArgs(
                 "2",
                 [
-                    self._open("rsa_secure_boot_signing_key2.pem"),
-                    self._open("rsa_secure_boot_signing_key3.pem"),
+                    self._open(f"{scheme}_secure_boot_signing_key2.pem"),
+                    self._open(f"{scheme}_secure_boot_signing_key3.pem"),
                 ],
                 output_file.name,
                 True,
@@ -300,7 +303,7 @@ class TestSigning(EspSecureTestCase):
                 None,
                 None,
                 None,
-                self._open("bootloader_signed_v2_rsa.bin"),
+                self._open(f"bootloader_signed_v2_{scheme}.bin"),
             )
             espsecure.sign_data(args)
 
@@ -308,7 +311,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key.pem"),
                 output_file,
             )
             espsecure.verify_signature(args)
@@ -318,7 +321,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key2.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
                 output_file,
             )
             espsecure.verify_signature(args)
@@ -328,7 +331,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key3.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key3.pem"),
                 output_file,
             )
             espsecure.verify_signature(args)
@@ -336,27 +339,28 @@ class TestSigning(EspSecureTestCase):
             output_file.close()
             os.unlink(output_file.name)
 
-    def test_sign_v2_append_signatures_multiple_steps(self):
+    @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_sign_v2_append_signatures_multiple_steps(self, scheme):
         # similar to previous test, but sign in two invocations
         try:
             output_file1 = tempfile.NamedTemporaryFile(delete=False)
             output_file2 = tempfile.NamedTemporaryFile(delete=False)
             args = self.SignArgs(
                 "2",
-                [self._open("rsa_secure_boot_signing_key2.pem")],
+                [self._open(f"{scheme}_secure_boot_signing_key2.pem")],
                 output_file1.name,
                 True,
                 False,
                 None,
                 None,
                 None,
-                self._open("bootloader_signed_v2_rsa.bin"),
+                self._open(f"bootloader_signed_v2_{scheme}.bin"),
             )
             espsecure.sign_data(args)
 
             args = self.SignArgs(
                 "2",
-                [self._open("rsa_secure_boot_signing_key3.pem")],
+                [self._open(f"{scheme}_secure_boot_signing_key3.pem")],
                 output_file2.name,
                 True,
                 False,
@@ -371,7 +375,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key.pem"),
                 output_file2,
             )
             espsecure.verify_signature(args)
@@ -381,7 +385,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key2.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
                 output_file2,
             )
             espsecure.verify_signature(args)
@@ -391,7 +395,7 @@ class TestSigning(EspSecureTestCase):
                 "2",
                 False,
                 None,
-                self._open("rsa_secure_boot_signing_key3.pem"),
+                self._open(f"{scheme}_secure_boot_signing_key3.pem"),
                 output_file2,
             )
             espsecure.verify_signature(args)
@@ -427,17 +431,18 @@ class TestSigning(EspSecureTestCase):
             output_file.close()
             os.unlink(output_file.name)
 
-    def test_sign_v2_with_multiple_pre_calculated_signatures(self):
+    @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_sign_v2_with_multiple_pre_calculated_signatures(self, scheme):
         # Sign using multiple pre-calculated signatures + Verify
         signing_pubkeys = [
-            "rsa_secure_boot_signing_pubkey.pem",
-            "rsa_secure_boot_signing_pubkey.pem",
-            "rsa_secure_boot_signing_pubkey.pem",
+            f"{scheme}_secure_boot_signing_pubkey.pem",
+            f"{scheme}_secure_boot_signing_pubkey.pem",
+            f"{scheme}_secure_boot_signing_pubkey.pem",
         ]
         pre_calculated_signatures = [
-            "pre_calculated_bootloader_signature_rsa.bin",
-            "pre_calculated_bootloader_signature_rsa.bin",
-            "pre_calculated_bootloader_signature_rsa.bin",
+            f"pre_calculated_bootloader_signature_{scheme}.bin",
+            f"pre_calculated_bootloader_signature_{scheme}.bin",
+            f"pre_calculated_bootloader_signature_{scheme}.bin",
         ]
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
@@ -532,13 +537,14 @@ class TestSigning(EspSecureTestCase):
             espsecure.verify_signature(args)
         assert "Invalid datafile" in str(cm.value)
 
-    def test_verify_signature_multi_signed_wrong_key(self):
+    @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_verify_signature_multi_signed_wrong_key(self, scheme):
         args = self.VerifyArgs(
             "2",
             False,
             None,
-            self._open("rsa_secure_boot_signing_key4.pem"),
-            self._open("bootloader_multi_signed_v2.bin"),
+            self._open(f"{scheme}_secure_boot_signing_key4.pem"),
+            self._open(f"bootloader_multi_signed_v2_{scheme}.bin"),
         )
         with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
@@ -602,13 +608,14 @@ class TestSigning(EspSecureTestCase):
             espsecure.verify_signature(args)
         assert "Signature could not be verified with the provided key." in str(cm.value)
 
-    def test_verify_signature_multi_signed_wrong_pubkey(self):
+    @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_verify_signature_multi_signed_wrong_pubkey(self, scheme):
         args = self.VerifyArgs(
             "2",
             False,
             None,
-            self._open("rsa_secure_boot_signing_pubkey4.pem"),
-            self._open("bootloader_multi_signed_v2.bin"),
+            self._open(f"{scheme}_secure_boot_signing_pubkey4.pem"),
+            self._open(f"bootloader_multi_signed_v2_{scheme}.bin"),
         )
         with pytest.raises(esptool.FatalError) as cm:
             espsecure.verify_signature(args)
