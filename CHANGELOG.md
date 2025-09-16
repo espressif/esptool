@@ -1,3 +1,25 @@
+## v4.10.0 (2025-09-16)
+
+### New Features
+
+- **espefuse**: Support ESP32-P4 ECO5 (v3.0)
+- **esp32p4**: Add support for ESP32-P4.ECO5
+- **esp32c5**: Add support for >16 MB flash sizes
+- **espefuse**: Add custom key purposes for ESP32C6/C5/P4
+- **espefuse**: Support burning ECDSA_384 keys
+- **espefuse**: Clean up limitation for BLOCK9 usage
+- **espefuse**: Adds support for burning 512-bit keys for C5
+
+### Bug Fixes
+
+- **espefuse**: Fixes re-connection issue in check-error via UJS port
+- **write_flash**: Make write flash mem independent
+- Use correct error codes for ROM errors
+- **elf2image**: Handle ELF files with zero program header counts
+- **espefuse**: Disable programming and usage of XTS-AES-256 efuse key for ESP32-C5
+- **esp32c5**: Erase during flashing above 16MB
+- **espsecure**: Add support for python-pkcs11 9.0+
+
 ## v4.9.1 (2025-07-30)
 
 ### Bug Fixes
