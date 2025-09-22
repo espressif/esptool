@@ -160,6 +160,21 @@ class EfuseDefineFields(EfuseFieldsBase):
         f.description = "calc WAFER VERSION MAJOR from (WAFER_VERSION_MAJOR_HI << 2) + WAFER_VERSION_MAJOR_LO (read only)"
         self.CALC.append(f)
 
+        if any(
+            efuse is not None
+            and getattr(efuse, "name", None) == "RECOVERY_BOOTLOADER_FLASH_SECTOR_0_1"
+            for efuse in self.ALL_EFUSES
+        ):
+            f = Field()
+            f.name = "RECOVERY_BOOTLOADER_FLASH_SECTOR"
+            f.block = 0
+            f.bit_len = 12
+            f.type = f"uint:{f.bit_len}"
+            f.category = "config"
+            f.class_type = "recovery_bootloader"
+            f.description = "recovery_bootloader = RECOVERY_BOOTLOADER_FLASH_SECTOR_0_1 + 2_2 + 3_6 + 7_7 + 8_10 + 11_11"
+            self.CALC.append(f)
+
         for efuse in self.ALL_EFUSES:
             if efuse is not None:
                 self.EFUSES.append(efuse)

@@ -145,9 +145,12 @@ class EfuseTestCase:
         self.espefuse_py("burn-efuse CODING_SCHEME 3")
 
     def _set_target_wafer_version(self):
-        # ESP32 has to be ECO3 (v3.0) for tests
         if arg_chip == "esp32":
+            # ESP32 has to be ECO3 (v3.0) for tests
             self.espefuse_py("burn-efuse CHIP_VER_REV1 1 CHIP_VER_REV2 1")
+        if arg_chip == "esp32p4":
+            # ESP32P4 has to be ECO5 (v3.0) for tests
+            self.espefuse_py("burn-efuse WAFER_VERSION_MAJOR_LO 3")
 
     def check_data_block_in_log(
         self, log, file_path, repeat=1, reverse_order=False, offset=0
@@ -280,7 +283,7 @@ class TestReadCommands(EfuseTestCase):
             self.espefuse_py("burn-efuse BLK_VERSION_MAJOR 1")
         elif arg_chip in ["esp32c2", "esp32s2", "esp32c6"]:
             self.espefuse_py("burn-efuse BLK_VERSION_MINOR 1")
-        elif arg_chip in ["esp32h2", "esp32p4"]:
+        elif arg_chip in ["esp32h2"]:
             self.espefuse_py("burn-efuse BLK_VERSION_MINOR 2")
         self.espefuse_py("adc-info")
 
@@ -1388,15 +1391,10 @@ class TestBurnBlockDataCommands(EfuseTestCase):
 
         self.espefuse_py(
             f"burn-block-data \
-            BLOCK1 {IMAGES_DIR}/192bit \
             BLOCK5 {IMAGES_DIR}/256bit_1 \
             BLOCK6 {IMAGES_DIR}/256bit_2"
         )
         output = self.espefuse_py("-d summary")
-        assert (
-            "[1 ] read_regs: 00000000 07060500 00000908 00000000 13000000 00161514"
-            in output
-        )
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_1")
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit_2")

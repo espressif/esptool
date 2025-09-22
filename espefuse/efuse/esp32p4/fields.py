@@ -290,7 +290,48 @@ class EfuseField(base_fields.EfuseFieldBase):
             "t_sensor": EfuseTempSensor,
             "adc_tp": EfuseAdcPointCalibration,
             "wafer": EfuseWafer,
+            "recovery_bootloader": EfuseBtldrRecoveryField,
         }.get(efuse.class_type, EfuseField)(parent, efuse)
+
+
+class EfuseBtldrRecoveryField(EfuseField):
+    """
+    Handles composite recovery bootloader flash sector fields for ESP32-P4 ECO5 (v3.0).
+    Combines/splits the following eFuse fields:
+      - RECOVERY_BOOTLOADER_FLASH_SECTOR_0_1  (bits 1:0, uint:2)
+      - RECOVERY_BOOTLOADER_FLASH_SECTOR_2_2  (bit 2, bool)
+      - RECOVERY_BOOTLOADER_FLASH_SECTOR_3_6  (bits 6:3, uint:4)
+      - RECOVERY_BOOTLOADER_FLASH_SECTOR_7_7  (bit 7, bool)
+      - RECOVERY_BOOTLOADER_FLASH_SECTOR_8_10 (bits 10:8, uint:3)
+      - RECOVERY_BOOTLOADER_FLASH_SECTOR_11_11(bit 11, bool)
+    """
+
+    FIELD_ORDER = [
+        ("RECOVERY_BOOTLOADER_FLASH_SECTOR_0_1", 0, 2),
+        ("RECOVERY_BOOTLOADER_FLASH_SECTOR_2_2", 2, 1),
+        ("RECOVERY_BOOTLOADER_FLASH_SECTOR_3_6", 3, 4),
+        ("RECOVERY_BOOTLOADER_FLASH_SECTOR_7_7", 7, 1),
+        ("RECOVERY_BOOTLOADER_FLASH_SECTOR_8_10", 8, 3),
+        ("RECOVERY_BOOTLOADER_FLASH_SECTOR_11_11", 11, 1),
+    ]
+
+    def get(self, from_read=True):
+        value = 0
+        for field_name, bit_offset, bit_len in self.FIELD_ORDER:
+            field = self.parent[field_name]
+            field_val = field.get(from_read)
+            assert field.bit_len == bit_len
+            value |= (field_val & ((1 << bit_len) - 1)) << bit_offset
+        return value
+
+    def save(self, new_value):
+        for field_name, bit_offset, bit_len in self.FIELD_ORDER:
+            field = self.parent[field_name]
+            field_val = (new_value >> bit_offset) & ((1 << bit_len) - 1)
+            field.save(field_val)
+            log.print(
+                f"\t    - '{field.name}' {field.get_bitstring()} -> {field.get_bitstring(from_read=False)}"
+            )
 
 
 class EfuseWafer(EfuseField):
@@ -389,10 +430,11 @@ class EfuseMacField(EfuseField):
 
 # fmt: off
 class EfuseKeyPurposeField(EfuseField):
-    key_purpose_len = 4  # bits for key purpose
+    key_purpose_len = 5  # bits for key purpose
     KeyPurposeType = tuple[str, int, str | None, str | None, str]
     KEY_PURPOSES: list[KeyPurposeType] = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
+        ("ECDSA_KEY_P256",               1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key P256
         ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key
         ("XTS_AES_256_KEY_1",            2,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_1 (flash/PSRAM encryption)
         ("XTS_AES_256_KEY_2",            3,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256_KEY_2 (flash/PSRAM encryption)
@@ -406,6 +448,10 @@ class EfuseKeyPurposeField(EfuseField):
         ("SECURE_BOOT_DIGEST2",          11, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST2 (Secure Boot key digest)
         ("KM_INIT_KEY",                  12, None,       None,      "need_rd_protect"),      # init key that is used for the generation of AES/ECDSA key
         ("XTS_AES_256_KEY",              -1, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
+        ("ECDSA_KEY_P192",               16, None,       "Reverse", "need_rd_protect"),      # ECDSA key P192
+        ("ECDSA_KEY_P384_L",             17, None,       "Reverse", "need_rd_protect"),      # ECDSA key P384 low
+        ("ECDSA_KEY_P384_H",             18, None,       "Reverse", "need_rd_protect"),      # ECDSA key P384 high
+        ("ECDSA_KEY_P384",               -3, "VIRTUAL",  None,      "need_rd_protect"),      # Virtual purpose splits to ECDSA_KEY_P384_L and ECDSA_KEY_P384_H
     ]
     CUSTOM_KEY_PURPOSES: list[KeyPurposeType] = []
     for id in range(0, 1 << key_purpose_len):
@@ -445,9 +491,25 @@ class EfuseKeyPurposeField(EfuseField):
                 return key[4] == "need_rd_protect"
 
     def get(self, from_read=True):
-        for p in self.KEY_PURPOSES:
-            if p[1] == self.get_raw(from_read):
-                return p[0]
+        # Handle special case for KEY_PURPOSE_<digit>_H fields (e.g., KEY_PURPOSE_0_H ... KEY_PURPOSE_9_H)
+        if self.name.startswith("KEY_PURPOSE_") and self.name.endswith("_H"):
+            return self.get_raw(from_read)
+        else:
+            if any(
+                efuse is not None
+                and getattr(efuse, "name", None) == "KEY_PURPOSE_0_H"
+                for efuse in self.parent
+            ):  # check if the hi bit field for KEY_PURPOSE_.. exists
+                hi_bits = self.parent[f"{self.name}_H"].get_raw(from_read)
+                assert self.parent[f"{self.name}_H"].bit_len == 1
+                lo_bits = self.parent[f"{self.name}"].get_raw(from_read)
+                assert self.parent[f"{self.name}"].bit_len == 4
+                raw_val = (hi_bits << 4) + lo_bits
+            else:
+                raw_val = self.get_raw(from_read)
+            for p in self.KEY_PURPOSES:
+                if p[1] == raw_val:
+                    return p[0]
         return "FORBIDDEN_STATE"
 
     def get_name(self, raw_val):
@@ -457,4 +519,31 @@ class EfuseKeyPurposeField(EfuseField):
 
     def save(self, new_value):
         raw_val = int(self.check_format(str(new_value)))
-        return super().save(raw_val)
+        # Check if _H field exists (5-bit key purpose split into lo/hi)
+        if (any(
+                efuse is not None
+                and getattr(efuse, "name", None) == "KEY_PURPOSE_0_H"
+                for efuse in self.parent
+            )
+            and self.name.startswith("KEY_PURPOSE_")
+            and not self.name.endswith("_H")
+        ):
+            FIELD_ORDER = [
+                (self.name, 0),  # lo bits (bits 0-3)
+                (f"{self.name}_H", 4),  # hi bit (bit 4)
+            ]
+            for field_name, bit_offset in FIELD_ORDER:
+                field = self.parent[field_name]
+                field_val = (raw_val >> bit_offset) & ((1 << field.bit_len) - 1)
+                print(field_val, field_name)
+                if field_val != 0:
+                    if field_name.endswith("_H"):
+                        field.save(field_val)
+                    else:
+                        super().save(field_val)
+                    log.print(
+                        f"\t    - '{field.name}' {field.get_bitstring()} -> {field.get_bitstring(from_read=False)}"
+                    )
+        else:
+            # Single field, just save as usual
+            super().save(raw_val)
