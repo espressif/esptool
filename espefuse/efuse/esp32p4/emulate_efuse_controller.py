@@ -27,7 +27,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     """ esptool method start >>"""
 
     def get_major_chip_version(self):
-        return 0
+        return 3
 
     def get_minor_chip_version(self):
         return 0
