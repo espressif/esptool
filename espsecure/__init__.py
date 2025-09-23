@@ -1648,7 +1648,6 @@ def generate_signing_key_cli(version, scheme, keyfile):
     "-k",
     type=click.File("rb"),
     cls=OptionEatAll,
-    required=True,
     multiple=True,
     help="Private key file for signing. Key is in PEM format.",
 )
