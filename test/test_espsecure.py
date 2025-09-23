@@ -15,7 +15,6 @@ from conftest import need_to_install_package_err
 import pytest
 
 try:
-    import esptool
     import espsecure
 except ImportError:
     need_to_install_package_err()
@@ -55,8 +54,11 @@ class EspSecureTestCase:
         for f in self.cleanup_files:
             f.close()
 
+    def _get_imagepath(self, image_file):
+        return os.path.join(TEST_DIR, "secure_images", image_file)
+
     def _open(self, image_file):
-        f = open(os.path.join(TEST_DIR, "secure_images", image_file), "rb")
+        f = open(self._get_imagepath(image_file), "rb")
         self.cleanup_files.append(f)
         return f
 
@@ -67,11 +69,12 @@ class TestESP32SecureBootloader(EspSecureTestCase):
             output_file = tempfile.NamedTemporaryFile(delete=False)
             output_file.close()
 
-            espsecure.digest_secure_bootloader(
-                self._open("256bit_key.bin"),
-                output_file.name,
-                self._open("256bit_iv.bin"),
-                self._open("bootloader.bin"),
+            self.run_espsecure(
+                f"digest-secure-bootloader "
+                f"--keyfile {self._get_imagepath('256bit_key.bin')} "
+                f"--output {output_file.name} "
+                f"--iv {self._get_imagepath('256bit_iv.bin')} "
+                f"{self._get_imagepath('bootloader.bin')}"
             )
 
             with open(output_file.name, "rb") as of:
@@ -86,8 +89,8 @@ class TestESP32SecureBootloader(EspSecureTestCase):
             output_file.close()
 
             out = self.run_espsecure(
-                "digest-rsa-public-key --keyfile "
-                "secure_images/rsa_secure_boot_signing_key.pem "
+                "digest-rsa-public-key "
+                f"--keyfile {self._get_imagepath('rsa_secure_boot_signing_key.pem')} "
                 f"-o {output_file.name}"
             )
             assert (
@@ -106,7 +109,9 @@ class TestESP32SecureBootloader(EspSecureTestCase):
         with tempfile.TemporaryDirectory() as keydir:
             # Generate a version 1 ECDSA256 key
             keyfile_name = os.path.join(keydir, "v1_key.pem")
-            espsecure.generate_signing_key("1", "ecdsa256", keyfile_name)
+            self.run_espsecure(
+                f"generate-signing-key --version 1 --scheme ecdsa256 {keyfile_name}"
+            )
 
             output_file = os.path.join(keydir, "v1_public_key.bin")
             output = self.run_espsecure(
@@ -141,7 +146,9 @@ class TestESP32SecureBootloader(EspSecureTestCase):
         with tempfile.TemporaryDirectory() as keydir:
             # Generate a version 2 ECDSA256 key
             keyfile_name = os.path.join(keydir, "v2_key.pem")
-            espsecure.generate_signing_key("2", "ecdsa256", keyfile_name)
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {keyfile_name}"
+            )
 
             output_file = os.path.join(keydir, "v2_public_key.pem")
             output = self.run_espsecure(
@@ -195,16 +202,9 @@ class TestSigning(EspSecureTestCase):
 
             # Note: signing bootloader is not actually needed
             # for ESP32, it's just a handy file to sign
-            espsecure.sign_data(
-                "1",
-                [self._open(key_name)],
-                output_file.name,
-                False,
-                False,
-                None,
-                None,
-                None,
-                self._open("bootloader.bin"),
+            self.run_espsecure(
+                f"sign-data --version 1 --keyfile {self._get_imagepath(key_name)} "
+                f"--output {output_file.name} {self._get_imagepath('bootloader.bin')}"
             )
 
             with open(output_file.name, "rb") as of:
@@ -227,20 +227,18 @@ class TestSigning(EspSecureTestCase):
 
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            espsecure.sign_data(
-                "1",
-                None,
-                output_file.name,
-                False,
-                False,
-                None,
-                [self._open(signing_pubkey)],
-                [self._open(pre_calculated_signature)],
-                self._open("bootloader.bin"),
+            self.run_espsecure(
+                f"sign-data --version 1 "
+                f"--pub-key {self._get_imagepath(signing_pubkey)} "
+                f"--signature {self._get_imagepath(pre_calculated_signature)} "
+                f"--output {output_file.name} "
+                f"{self._get_imagepath('bootloader.bin')}"
             )
 
-            espsecure.verify_signature(
-                "1", False, None, self._open(signing_pubkey), output_file
+            self.run_espsecure(
+                f"verify-signature --version 1 "
+                f"--keyfile {self._get_imagepath(signing_pubkey)} "
+                f"{output_file.name}"
             )
         finally:
             output_file.close()
@@ -251,19 +249,18 @@ class TestSigning(EspSecureTestCase):
         key = f"{scheme}_secure_boot_signing_key.pem"
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            espsecure.sign_data(
-                "2",
-                [self._open(key)],
-                output_file.name,
-                False,
-                False,
-                None,
-                None,
-                None,
-                self._open("bootloader_unsigned_v2.bin"),
+            self.run_espsecure(
+                f"sign-data --version 2 "
+                f"--keyfile {self._get_imagepath(key)} "
+                f"--output {output_file.name} "
+                f"{self._get_imagepath('bootloader_unsigned_v2.bin')}"
             )
 
-            espsecure.verify_signature("2", False, None, self._open(key), output_file)
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile {self._get_imagepath(key)} "
+                f"{output_file.name}"
+            )
         finally:
             output_file.close()
             os.unlink(output_file.name)
@@ -272,27 +269,30 @@ class TestSigning(EspSecureTestCase):
     def test_sign_v2_multiple_keys_cli(self, scheme):
         keydir = os.path.join(TEST_DIR, "secure_images")
         with tempfile.NamedTemporaryFile(delete=False) as output_file:
+            keyfiles = [
+                os.path.join(keydir, f"{scheme}_secure_boot_signing_key.pem"),
+                os.path.join(keydir, f"{scheme}_secure_boot_signing_key2.pem"),
+                os.path.join(keydir, f"{scheme}_secure_boot_signing_key3.pem"),
+            ]
+
             self.run_espsecure(
-                "sign-data --version 2 --keyfile "
-                f"{keydir}/{scheme}_secure_boot_signing_key.pem "
-                f"{keydir}/{scheme}_secure_boot_signing_key2.pem "
-                f"{keydir}/{scheme}_secure_boot_signing_key3.pem "
+                f"sign-data --version 2 --keyfile {' '.join(keyfiles)} "
                 f"--output {output_file.name} "
-                f"{keydir}/bootloader_unsigned_v2.bin"
+                f"{os.path.join(keydir, 'bootloader_unsigned_v2.bin')}"
             )
             self.run_espsecure(
                 "verify-signature --version 2 --keyfile "
-                f"{keydir}/{scheme}_secure_boot_signing_key.pem "
+                f"{os.path.join(keydir, f'{scheme}_secure_boot_signing_key.pem')} "
                 f"{output_file.name}"
             )
             self.run_espsecure(
                 "verify-signature --version 2 --keyfile "
-                f"{keydir}/{scheme}_secure_boot_signing_key2.pem "
+                f"{os.path.join(keydir, f'{scheme}_secure_boot_signing_key2.pem')} "
                 f"{output_file.name}"
             )
             self.run_espsecure(
                 "verify-signature --version 2 --keyfile "
-                f"{keydir}/{scheme}_secure_boot_signing_key3.pem "
+                f"{os.path.join(keydir, f'{scheme}_secure_boot_signing_key3.pem')} "
                 f"{output_file.name}"
             )
 
@@ -301,46 +301,38 @@ class TestSigning(EspSecureTestCase):
         # 3 keys + Verify with 3rd key
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            espsecure.sign_data(
-                "2",
-                [
-                    self._open(f"{scheme}_secure_boot_signing_key.pem"),
-                    self._open(f"{scheme}_secure_boot_signing_key2.pem"),
-                    self._open(f"{scheme}_secure_boot_signing_key3.pem"),
-                ],
-                output_file.name,
-                False,
-                False,
-                None,
-                None,
-                None,
-                self._open("bootloader_unsigned_v2.bin"),
+            keyfiles = [
+                self._get_imagepath(f"{scheme}_secure_boot_signing_key.pem"),
+                self._get_imagepath(f"{scheme}_secure_boot_signing_key2.pem"),
+                self._get_imagepath(f"{scheme}_secure_boot_signing_key3.pem"),
+            ]
+
+            self.run_espsecure(
+                f"sign-data --version 2 "
+                f"--keyfile {' '.join(keyfiles)} "
+                f"--output {output_file.name} "
+                f"{self._get_imagepath('bootloader_unsigned_v2.bin')}"
             )
 
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key3.pem"),
-                output_file,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key3.pem')} "
+                f"{output_file.name}"
             )
 
-            output_file.seek(0)
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
-                output_file,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key2.pem')} "
+                f"{output_file.name}"
             )
 
-            output_file.seek(0)
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key.pem"),
-                output_file,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key.pem')} "
+                f"{output_file.name}"
             )
         finally:
             output_file.close()
@@ -353,45 +345,37 @@ class TestSigning(EspSecureTestCase):
         # rsa_secure_boot_signing_key.pem)
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            espsecure.sign_data(
-                "2",
-                [
-                    self._open(f"{scheme}_secure_boot_signing_key2.pem"),
-                    self._open(f"{scheme}_secure_boot_signing_key3.pem"),
-                ],
-                output_file.name,
-                True,
-                False,
-                None,
-                None,
-                None,
-                self._open(f"bootloader_signed_v2_{scheme}.bin"),
+            keyfiles = [
+                self._get_imagepath(f"{scheme}_secure_boot_signing_key2.pem"),
+                self._get_imagepath(f"{scheme}_secure_boot_signing_key3.pem"),
+            ]
+
+            self.run_espsecure(
+                f"sign-data --version 2 --append-signatures "
+                f"--keyfile {' '.join(keyfiles)} "
+                f"--output {output_file.name} "
+                f"{self._get_imagepath(f'bootloader_signed_v2_{scheme}.bin')}"
             )
 
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key.pem"),
-                output_file,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key.pem')} "
+                f"{output_file.name}"
             )
 
-            output_file.seek(0)
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
-                output_file,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key2.pem')} "
+                f"{output_file.name}"
             )
 
-            output_file.seek(0)
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key3.pem"),
-                output_file,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key3.pem')} "
+                f"{output_file.name}"
             )
         finally:
             output_file.close()
@@ -403,54 +387,43 @@ class TestSigning(EspSecureTestCase):
         try:
             output_file1 = tempfile.NamedTemporaryFile(delete=False)
             output_file2 = tempfile.NamedTemporaryFile(delete=False)
-            espsecure.sign_data(
-                "2",
-                [self._open(f"{scheme}_secure_boot_signing_key2.pem")],
-                output_file1.name,
-                True,
-                False,
-                None,
-                None,
-                None,
-                self._open(f"bootloader_signed_v2_{scheme}.bin"),
+            output_file1.close()
+            output_file2.close()
+
+            self.run_espsecure(
+                f"sign-data --version 2 --append-signatures "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key2.pem')} "
+                f"--output {output_file1.name} "
+                f"{self._get_imagepath(f'bootloader_signed_v2_{scheme}.bin')}"
             )
 
-            espsecure.sign_data(
-                "2",
-                [self._open(f"{scheme}_secure_boot_signing_key3.pem")],
-                output_file2.name,
-                True,
-                False,
-                None,
-                None,
-                None,
-                output_file1,
+            self.run_espsecure(
+                f"sign-data --version 2 --append-signatures "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key3.pem')} "
+                f"--output {output_file2.name} {output_file1.name}"
             )
 
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key.pem"),
-                output_file2,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key.pem')} "
+                f"{output_file2.name}"
             )
 
-            output_file2.seek(0)
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
-                output_file2,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key2.pem')} "
+                f"{output_file2.name}"
             )
 
-            output_file2.seek(0)
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key3.pem"),
-                output_file2,
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key3.pem')} "
+                f"{output_file2.name}"
             )
         finally:
             output_file1.close()
@@ -465,20 +438,20 @@ class TestSigning(EspSecureTestCase):
         signature = f"pre_calculated_bootloader_signature_{scheme}.bin"
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            espsecure.sign_data(
-                "2",
-                None,
-                output_file.name,
-                False,
-                False,
-                None,
-                [self._open(pub_key)],
-                [self._open(signature)],
-                self._open("bootloader_unsigned_v2.bin"),
+            output_file.close()
+
+            self.run_espsecure(
+                f"sign-data --version 2 "
+                f"--pub-key {self._get_imagepath(pub_key)} "
+                f"--signature {self._get_imagepath(signature)} "
+                f"--output {output_file.name} "
+                f"{self._get_imagepath('bootloader_unsigned_v2.bin')}"
             )
 
-            espsecure.verify_signature(
-                "2", False, None, self._open(pub_key), output_file
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile {self._get_imagepath(pub_key)} "
+                f"{output_file.name}"
             )
         finally:
             output_file.close()
@@ -499,20 +472,27 @@ class TestSigning(EspSecureTestCase):
         ]
         try:
             output_file = tempfile.NamedTemporaryFile(delete=False)
-            espsecure.sign_data(
-                "2",
-                None,
-                output_file.name,
-                False,
-                False,
-                None,
-                [self._open(pub_key) for pub_key in signing_pubkeys],
-                [self._open(signature) for signature in pre_calculated_signatures],
-                self._open("bootloader_unsigned_v2.bin"),
+            output_file.close()
+
+            pubkey_args = " ".join(
+                f"--pub-key {self._get_imagepath(pub_key)}"
+                for pub_key in signing_pubkeys
+            )
+            signature_args = " ".join(
+                f"--signature {self._get_imagepath(signature)}"
+                for signature in pre_calculated_signatures
             )
 
-            espsecure.verify_signature(
-                "2", False, None, self._open(signing_pubkeys[0]), output_file
+            self.run_espsecure(
+                f"sign-data --version 2 {pubkey_args} {signature_args} "
+                f"--output {output_file.name} "
+                f"{self._get_imagepath('bootloader_unsigned_v2.bin')}"
+            )
+
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile {self._get_imagepath(signing_pubkeys[0])} "
+                f"{output_file.name}"
             )
         finally:
             output_file.close()
@@ -554,59 +534,59 @@ class TestSigning(EspSecureTestCase):
         ],
     )
     def test_verify_signature_correct_key(self, version, keyfile, datafile):
-        espsecure.verify_signature(
-            version,
-            False,
-            None,
-            self._open(keyfile),
-            self._open(datafile),
+        self.run_espsecure(
+            f"verify-signature --version {version} "
+            f"--keyfile {self._get_imagepath(keyfile)} "
+            f"{self._get_imagepath(datafile)}"
         )
 
     def test_verify_signature_wrong_key_v1(self):
-        with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(
-                "1",
-                False,
-                None,
-                self._open("ecdsa256_secure_boot_signing_key2.pem"),
-                self._open("bootloader_signed.bin"),
+        with pytest.raises(subprocess.CalledProcessError) as cm:
+            self.run_espsecure(
+                f"verify-signature --version 1 "
+                f"--keyfile "
+                f"{self._get_imagepath('ecdsa256_secure_boot_signing_key2.pem')} "
+                f"{self._get_imagepath('bootloader_signed.bin')}"
             )
-        assert "Signature is not valid" in str(cm.value)
+        assert "Signature is not valid" in cm.value.output.decode("utf-8")
 
     @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_verify_signature_wrong_key_v2(self, scheme):
-        with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key2.pem"),
-                self._open(f"bootloader_signed_v2_{scheme}.bin"),
+        with pytest.raises(subprocess.CalledProcessError) as cm:
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key2.pem')} "
+                f"{self._get_imagepath(f'bootloader_signed_v2_{scheme}.bin')}"
             )
-        assert "Signature could not be verified with the provided key." in str(cm.value)
+        assert (
+            "Signature could not be verified with the provided key."
+            in cm.value.output.decode("utf-8")
+        )
 
     def test_verify_signature_wrong_scheme(self):
-        with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open("ecdsa256_secure_boot_signing_key.pem"),
-                self._open("bootloader_signed.bin"),
+        with pytest.raises(subprocess.CalledProcessError) as cm:
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath('ecdsa256_secure_boot_signing_key.pem')} "
+                f"{self._get_imagepath('bootloader_signed.bin')}"
             )
-        assert "Invalid datafile" in str(cm.value)
+        assert "Invalid datafile" in cm.value.output.decode("utf-8")
 
     @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_verify_signature_multi_signed_wrong_key(self, scheme):
-        with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_key4.pem"),
-                self._open(f"bootloader_multi_signed_v2_{scheme}.bin"),
+        with pytest.raises(subprocess.CalledProcessError) as cm:
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_key4.pem')} "
+                f"{self._get_imagepath(f'bootloader_multi_signed_v2_{scheme}.bin')}"
             )
-        assert "Signature could not be verified with the provided key." in str(cm.value)
+        assert (
+            "Signature could not be verified with the provided key."
+            in cm.value.output.decode("utf-8")
+        )
 
     @pytest.mark.parametrize(
         "version, keyfile, datafile",
@@ -632,76 +612,82 @@ class TestSigning(EspSecureTestCase):
         ids=["v1", "v2_rsa", "v2_ecdsa384", "v2_ecdsa256", "v2_ecdsa192"],
     )
     def test_verify_signature_correct_pubkey(self, version, keyfile, datafile):
-        espsecure.verify_signature(
-            version,
-            False,
-            None,
-            self._open(keyfile),
-            self._open(datafile),
+        self.run_espsecure(
+            f"verify-signature --version {version} "
+            f"--keyfile {self._get_imagepath(keyfile)} "
+            f"{self._get_imagepath(datafile)}"
         )
 
     def test_verify_signature_wrong_pubkey_v1(self):
-        with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(
-                "1",
-                False,
-                None,
-                self._open("ecdsa256_secure_boot_signing_pubkey2.pem"),
-                self._open("bootloader_signed.bin"),
+        with pytest.raises(subprocess.CalledProcessError) as cm:
+            self.run_espsecure(
+                f"verify-signature --version 1 "
+                f"--keyfile "
+                f"{self._get_imagepath('ecdsa256_secure_boot_signing_pubkey2.pem')} "
+                f"{self._get_imagepath('bootloader_signed.bin')}"
             )
-        assert "Signature is not valid" in str(cm.value)
+        assert "Signature is not valid" in cm.value.output.decode("utf-8")
 
     @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_verify_signature_wrong_pubkey_v2(self, scheme):
-        with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_pubkey2.pem"),
-                self._open(f"bootloader_signed_v2_{scheme}.bin"),
+        with pytest.raises(subprocess.CalledProcessError) as cm:
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_pubkey2.pem')} "
+                f"{self._get_imagepath(f'bootloader_signed_v2_{scheme}.bin')}"
             )
-        assert "Signature could not be verified with the provided key." in str(cm.value)
+        assert (
+            "Signature could not be verified with the provided key."
+            in cm.value.output.decode("utf-8")
+        )
 
     @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_verify_signature_multi_signed_wrong_pubkey(self, scheme):
-        with pytest.raises(esptool.FatalError) as cm:
-            espsecure.verify_signature(
-                "2",
-                False,
-                None,
-                self._open(f"{scheme}_secure_boot_signing_pubkey4.pem"),
-                self._open(f"bootloader_multi_signed_v2_{scheme}.bin"),
+        with pytest.raises(subprocess.CalledProcessError) as cm:
+            self.run_espsecure(
+                f"verify-signature --version 2 "
+                f"--keyfile "
+                f"{self._get_imagepath(f'{scheme}_secure_boot_signing_pubkey4.pem')} "
+                f"{self._get_imagepath(f'bootloader_multi_signed_v2_{scheme}.bin')}"
             )
-        assert "Signature could not be verified with the provided key." in str(cm.value)
+        assert (
+            "Signature could not be verified with the provided key."
+            in cm.value.output.decode("utf-8")
+        )
 
     def test_extract_binary_public_key(self):
-        with (
-            tempfile.NamedTemporaryFile() as pub_keyfile,
-            tempfile.NamedTemporaryFile() as pub_keyfile2,
-        ):
-            espsecure.extract_public_key(
-                "1", self._open("ecdsa256_secure_boot_signing_key.pem"), pub_keyfile
+        with tempfile.TemporaryDirectory() as keydir:
+            pub_keyfile_path = os.path.join(keydir, "pubkey1.bin")
+            pub_keyfile2_path = os.path.join(keydir, "pubkey2.bin")
+
+            self.run_espsecure(
+                f"extract-public-key --version 1 "
+                f"--keyfile "
+                f"{self._get_imagepath('ecdsa256_secure_boot_signing_key.pem')} "
+                f"{pub_keyfile_path}"
             )
 
-            espsecure.extract_public_key(
-                "1", self._open("ecdsa256_secure_boot_signing_key2.pem"), pub_keyfile2
+            self.run_espsecure(
+                f"extract-public-key --version 1 "
+                f"--keyfile "
+                f"{self._get_imagepath('ecdsa256_secure_boot_signing_key2.pem')} "
+                f"{pub_keyfile2_path}"
             )
-
-            pub_keyfile.seek(0)
-            pub_keyfile2.seek(0)
 
             # use correct extracted public key to verify
-            espsecure.verify_signature(
-                "1", False, None, pub_keyfile, self._open("bootloader_signed.bin")
+            self.run_espsecure(
+                f"verify-signature --version 1 --keyfile {pub_keyfile_path} "
+                f"{self._get_imagepath('bootloader_signed.bin')}"
             )
 
             # use wrong extracted public key to try and verify
-            with pytest.raises(esptool.FatalError) as cm:
-                espsecure.verify_signature(
-                    "1", False, None, pub_keyfile2, self._open("bootloader_signed.bin")
+            with pytest.raises(subprocess.CalledProcessError) as cm:
+                self.run_espsecure(
+                    f"verify-signature --version 1 --keyfile {pub_keyfile2_path} "
+                    f"{self._get_imagepath('bootloader_signed.bin')}"
                 )
-            assert "Signature is not valid" in str(cm.value)
+            assert "Signature is not valid" in cm.value.output.decode("utf-8")
 
     @pytest.mark.parametrize("scheme", ["rsa3072", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_generate_and_extract_key_v2(self, scheme):
@@ -709,14 +695,16 @@ class TestSigning(EspSecureTestCase):
             # keyfile cannot exist before generation -> tempfile.NamedTemporaryFile()
             # cannot be used for keyfile
             keyfile_name = os.path.join(keydir, "key.pem")
+            pub_keyfile_name = os.path.join(keydir, "pubkey.pem")
 
-            espsecure.generate_signing_key("2", scheme, keyfile_name)
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme {scheme} {keyfile_name}"
+            )
 
-            with (
-                tempfile.NamedTemporaryFile() as pub_keyfile,
-                open(keyfile_name, "rb") as keyfile,
-            ):
-                espsecure.extract_public_key("2", keyfile, pub_keyfile)
+            self.run_espsecure(
+                f"extract-public-key --version 2 "
+                f"--keyfile {keyfile_name} {pub_keyfile_name}"
+            )
 
 
 class TestFlashEncryption(EspSecureTestCase):
@@ -729,28 +717,51 @@ class TestFlashEncryption(EspSecureTestCase):
         flash_crypt_conf=0xF,
         aes_xts=None,
     ):
-        original_plaintext = self._open(input_plaintext)
-        keyfile = self._open(key_path)
-        ciphertext = io.BytesIO()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ciphertext_path = os.path.join(tmpdir, "ciphertext.bin")
+            plaintext_path = os.path.join(tmpdir, "plaintext.bin")
 
-        espsecure.encrypt_flash_data(
-            keyfile, ciphertext, offset, flash_crypt_conf, aes_xts, original_plaintext
-        )
+            # Build encrypt command
+            encrypt_cmd = (
+                f"encrypt-flash-data --keyfile {self._get_imagepath(key_path)} "
+                f"--output {ciphertext_path} --address {offset}"
+            )
+            if flash_crypt_conf is not None:
+                encrypt_cmd += f" --flash-crypt-conf {flash_crypt_conf}"
+            if aes_xts:
+                encrypt_cmd += " --aes-xts"
+            encrypt_cmd += f" {self._get_imagepath(input_plaintext)}"
 
-        original_plaintext.seek(0)
-        assert original_plaintext.read() != ciphertext.getvalue()
-        with self._open(expected_ciphertext) as f:
-            assert f.read() == ciphertext.getvalue()
+            self.run_espsecure(encrypt_cmd)
 
-        ciphertext.seek(0)
-        keyfile.seek(0)
-        plaintext = io.BytesIO()
-        espsecure.decrypt_flash_data(
-            keyfile, plaintext, offset, flash_crypt_conf, aes_xts, ciphertext
-        )
+            # Verify encrypted content differs from original and matches expected
+            with open(self._get_imagepath(input_plaintext), "rb") as orig:
+                original_data = orig.read()
+            with open(ciphertext_path, "rb") as cipher:
+                cipher_data = cipher.read()
+            with self._open(expected_ciphertext) as expected:
+                expected_data = expected.read()
 
-        original_plaintext.seek(0)
-        assert original_plaintext.read() == plaintext.getvalue()
+            assert original_data != cipher_data
+            assert cipher_data == expected_data
+
+            # Build decrypt command
+            decrypt_cmd = (
+                f"decrypt-flash-data --keyfile {self._get_imagepath(key_path)} "
+                f"--output {plaintext_path} --address {offset}"
+            )
+            if flash_crypt_conf is not None:
+                decrypt_cmd += f" --flash-crypt-conf {flash_crypt_conf}"
+            if aes_xts:
+                decrypt_cmd += " --aes-xts"
+            decrypt_cmd += f" {ciphertext_path}"
+
+            self.run_espsecure(decrypt_cmd)
+
+            # Verify decrypted content matches original
+            with open(plaintext_path, "rb") as decrypted:
+                decrypted_data = decrypted.read()
+            assert original_data == decrypted_data
 
 
 class TestESP32FlashEncryption(TestFlashEncryption):
@@ -873,7 +884,7 @@ class TestDigest(EspSecureTestCase):
 
         self.run_espsecure(
             "digest-private-key "
-            "--keyfile secure_images/ecdsa256_secure_boot_signing_key.pem "
+            f"--keyfile {self._get_imagepath('ecdsa256_secure_boot_signing_key.pem')} "
             f"{outfile_name}"
         )
 
@@ -883,7 +894,7 @@ class TestDigest(EspSecureTestCase):
             )
 
     def test_digest_private_key_with_invalid_output(self, capsys):
-        fname = "secure_images/ecdsa256_secure_boot_signing_key.pem"
+        fname = self._get_imagepath("ecdsa256_secure_boot_signing_key.pem")
 
         with pytest.raises(subprocess.CalledProcessError):
             self.run_espsecure(f"digest-private-key --keyfile {fname} {fname}")
