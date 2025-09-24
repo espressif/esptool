@@ -1050,7 +1050,7 @@ def get_port_list(
     ports = []
     for port in list_ports.comports():
         if sys.platform == "darwin" and port.device.endswith(
-            ("Bluetooth-Incoming-Port", "wlan-debug")
+            ("Bluetooth-Incoming-Port", "wlan-debug", "cu.debug-console")
         ):
             continue
         if vids and (port.vid is None or port.vid not in vids):
@@ -1066,8 +1066,52 @@ def get_port_list(
             or all(serial not in port.serial_number for serial in serials)
         ):
             continue
-        ports.append(port.device)
-    return sorted(ports)
+        ports.append((port.device, port.vid))
+
+    # Constants for sorting optimization
+    ESPRESSIF_VID = 0x303A
+    LINUX_DEVICE_PATTERNS = ("ttyUSB", "ttyACM")
+    MACOS_DEVICE_PATTERNS = ("usbserial", "usbmodem")
+
+    def _port_sort_key_linux(port_info):
+        device, vid = port_info
+
+        if vid == ESPRESSIF_VID:
+            return (3, device)
+
+        if any(pattern in device for pattern in LINUX_DEVICE_PATTERNS):
+            return (2, device)
+
+        return (1, device)
+
+    def _port_sort_key_macos(port_info):
+        device, vid = port_info
+
+        if vid == ESPRESSIF_VID:
+            return (3, device)
+
+        if any(pattern in device for pattern in MACOS_DEVICE_PATTERNS):
+            return (2, device)
+
+        return (1, device)
+
+    def _port_sort_key_windows(port_info):
+        device, vid = port_info
+
+        if vid == ESPRESSIF_VID:
+            return (2, device)
+
+        return (1, device)
+
+    if sys.platform == "win32":
+        key_func = _port_sort_key_windows
+    elif sys.platform == "darwin":
+        key_func = _port_sort_key_macos
+    else:
+        key_func = _port_sort_key_linux
+
+    sorted_port_info = sorted(ports, key=key_func)
+    return [device for device, _ in sorted_port_info]
 
 
 def expand_file_arguments(argv: list[str]) -> list[str]:
