@@ -25,6 +25,10 @@ class ESP32C5ROM(ESP32C6ROM):
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
 
+    EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG = EFUSE_BASE + 0x34
+    EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT = 10
+    FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY = 2
+
     EFUSE_PURPOSE_KEY0_REG = EFUSE_BASE + 0x34
     EFUSE_PURPOSE_KEY0_SHIFT = 22
     EFUSE_PURPOSE_KEY1_REG = EFUSE_BASE + 0x34
@@ -192,7 +196,13 @@ class ESP32C5ROM(ESP32C6ROM):
             self.get_key_block_purpose(b) for b in range(self.EFUSE_MAX_KEY + 1)
         ]
 
-        return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
+        if any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes):
+            return True
+
+        return (
+            self.read_reg(self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG)
+            >> self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT
+        ) & self.FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 29))):
