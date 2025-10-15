@@ -139,31 +139,26 @@ class ESP32C2ROM(ESP32C3ROM):
 
     """ Try to read (encryption key) and check if it is valid """
 
-    def is_flash_encryption_key_valid(self):
-        key_len_256 = (
+    def is_flash_encryption_key_valid(self) -> bool:
+        """Check if the flash encryption key is valid (non-zero or read-disabled)."""
+        key_len_256 = bool(
             self.read_reg(self.EFUSE_XTS_KEY_LENGTH_256_REG)
             & self.EFUSE_XTS_KEY_LENGTH_256
         )
 
-        word0 = self.read_reg(self.EFUSE_RD_DIS_REG) & self.EFUSE_RD_DIS
-        rd_disable = word0 == 3 if key_len_256 else word0 == 1
+        rd_dis_val = self.read_reg(self.EFUSE_RD_DIS_REG) & self.EFUSE_RD_DIS
+        rd_disabled = rd_dis_val == 3 if key_len_256 else rd_dis_val == 1
 
-        # reading of BLOCK3 is NOT ALLOWED so we assume valid key is programmed
-        if rd_disable:
+        if rd_disabled:
+            # Reading BLOCK3 is disabled; assume key is programmed and valid
             return True
-        else:
-            # reading of BLOCK3 is ALLOWED so we will read and verify for non-zero.
-            # When chip has not generated AES/encryption key in BLOCK3,
-            # the contents will be readable and 0.
-            # If the flash encryption is enabled it is expected to have a valid
-            # non-zero key. We break out on first occurrence of non-zero value
-            key_word = [0] * 7 if key_len_256 else [0] * 3
-            for i in range(len(key_word)):
-                key_word[i] = self.read_reg(self.EFUSE_BLOCK_KEY0_REG + i * 4)
-                # key is non-zero so break & return
-                if key_word[i] != 0:
-                    return True
-            return False
+
+        # Reading BLOCK3 is allowed; check if any key word is non-zero
+        key_words = 8 if key_len_256 else 4
+        for i in range(key_words):
+            if self.read_reg(self.EFUSE_BLOCK_KEY0_REG + i * 4) != 0:
+                return True
+        return False
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 21))):
