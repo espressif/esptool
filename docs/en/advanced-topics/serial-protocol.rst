@@ -302,6 +302,26 @@ ROM loaders will not recognize these commands.
 | ``0xd3``   | RUN_USER_CODE     | Exits loader and runs user code   |                                                                                                                         |          |
 +------------+-------------------+-----------------------------------+-------------------------------------------------------------------------------------------------------------------------+----------+
 
+.. only:: not esp8266 and not esp32
+
+    .. _supported-in-sdm:
+
+    Supported in Secure Download Mode
+    """""""""""""""""""""""""""""""""
+
+    Secure Download Mode is a restricted version of the ROM Loader available on Espressif chips. It only allows a limited set of commands:
+
+    * synchronisation (``SYNC``)
+    * attaching SPI flash (``SPI_ATTACH``)
+    * updating SPI config (``SPI_SET_PARAMS``)
+    * changing baud rate (``CHANGE_BAUDRATE``)
+    * basic flash write (``FLASH_BEGIN``, ``FLASH_DATA``, ``FLASH_END``)
+    * reading a summary of currently enabled security features (``GET_SECURITY_INFO``)
+
+    Any other command (e.g., reading or writing memory, arbitrary code execution through loading to RAM, ...) will result in an error.
+
+    You can read more about Secure Download Mode in the `ESP-IDF Security Overview <https://docs.espressif.com/projects/esp-idf/en/stable/{IDF_TARGET_PATH_NAME}/security/security.html#uart-download-mode>`__.
+
 Checksum
 ^^^^^^^^
 
@@ -442,7 +462,7 @@ SPI Configuration Commands
 SPI Attach Command
 """"""""""""""""""
 
-The SPI _ATTACH command enables the SPI flash interface. It takes a 32-bit data payload which is used to determine which SPI peripheral and pins should be used to connect to SPI flash.
+The SPI_ATTACH command enables the SPI flash interface. It takes a 32-bit data payload which is used to determine which SPI peripheral and pins should be used to connect to SPI flash.
 
 .. only:: esp8266
 

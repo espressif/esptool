@@ -136,6 +136,8 @@ This will read 4 bytes from SFDP address 16.
 
 .. only:: not esp8266 and not esp32
 
+    .. _get-security-info:
+
     Read Security Info: ``get_security_info``
     ------------------------------------------
 

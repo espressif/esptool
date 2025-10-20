@@ -335,6 +335,21 @@ Gaps between the files will be filled with `0x00` bytes.
     esptool --chip {IDF_TARGET_NAME} merge-bin --format uf2 -o merged-flash.uf2 --flash-mode dio --flash-size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
 
 
+.. only:: not esp8266 and not esp32
+
+    Commands Supported in Secure Download Mode
+    ------------------------------------------
+
+    When running a command against an SoC with active Secure Download Mode, only the following commands are supported:
+
+    *  :ref:`write-flash`
+    *  :ref:`erase-flash` (only ``erase-region``)
+    *  :ref:`get-security-info`
+
+    Running any other operation will result in an error. This is caused by the set of available serial protocol commands being restricted in Secure Download Mode, see :ref:`supported-in-sdm` for details.
+
+    Binary image manipulation commands (``elf2image``, ``image-info``, ``merge-bin``) are not affected, because they do not require a serial connection with an SoC.
+
 Advanced Commands
 -----------------
 
@@ -351,3 +366,4 @@ The following commands are less commonly used, or only of interest to advanced u
     *  :ref:`read-flash-sfdp`
     :esp8266: *  :ref:`chip-id`
     :esp8266: *  :ref:`run`
+    :not esp8266 and not esp32: *  :ref:`get-security-info`
