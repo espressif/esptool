@@ -15,7 +15,7 @@ jobs:
           - platform: linux-amd64
             runner: ubuntu-latest
           - platform: macos-amd64
-            runner: macos-13
+            runner: macos-15-intel
           - platform: macos-arm64
             runner: macos-latest
           - platform: linux-armv7
@@ -35,8 +35,6 @@ jobs:
         if: (matrix.platform != 'linux-armv7') || contains(github.ref_name, 'dev')
         with:
           python-version: "3.13"
-          # Python is used only to apply dev-release patch on Linux runners and no packages are installed as the build happens in the container
-          cache: ${{ matrix.platform != 'linux-armv7' && matrix.platform != 'linux-aarch64' && matrix.platform != 'linux-amd64' && 'pip' || '' }}
       - name: Patch version for dev releases
         if: contains(github.ref_name, 'dev')
         run: |
