@@ -721,7 +721,7 @@ def write_flash(
                 )
 
     if erase_all:
-        erase_flash(esp)
+        erase_flash(esp, force)
     else:
         for address, (data, _) in norm_addr_data:
             write_end = address + len(data)
