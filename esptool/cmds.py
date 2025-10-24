@@ -619,6 +619,18 @@ def write_flash(
     if encrypt or encrypt_files is not None:
         do_write = True
 
+        if esp.CHIP_NAME == "ESP8266":
+            raise FatalError("ESP8266 does not support encrypted flashing. ")
+
+        # ESP32 ROM bootloader does not support the encryption parameter
+        # in flash commands. Only the stub flasher supports encrypted writes.
+        if esp.CHIP_NAME == "ESP32" and not esp.IS_STUB:
+            raise FatalError(
+                f"{esp.CHIP_NAME} ROM bootloader does not support encrypted writes. "
+                "Encrypted writing is only supported by the flasher stub. "
+                "Do not use --no-stub when writing encrypted data."
+            )
+
         if not esp.secure_download_mode:
             if esp.get_encrypted_download_disabled():
                 raise FatalError(
@@ -773,16 +785,6 @@ def write_flash(
         all_files = sorted(all_files + encrypted_files_flag, key=lambda x: x[0])
 
     for address, data, name, encrypted in all_files:
-        compress = compress
-
-        # Check whether we can compress the current file before flashing
-        if compress and encrypted:
-            source = "input bytes" if name is None else f"'{name}'"
-            log.print("\n")
-            log.warning("Compress and encrypt options are mutually exclusive.")
-            log.print(f"Will flash {source} uncompressed.")
-            compress = False
-
         image = data
 
         if len(image) == 0:
@@ -826,9 +828,11 @@ def write_flash(
                     # Decompress the compressed binary a block at a time,
                     # to dynamically calculate the timeout based on the real write size
                     decompress = zlib.decompressobj()
-                    esp.flash_defl_begin(uncsize, compsize, address)
+                    esp.flash_defl_begin(
+                        uncsize, compsize, address, encrypted_write=encrypted
+                    )
                 else:
-                    esp.flash_begin(uncsize, address, begin_rom_encrypted=encrypted)
+                    esp.flash_begin(uncsize, address, encrypted_write=encrypted)
                 seq = 0
                 bytes_sent = 0  # bytes sent on wire
                 bytes_written = 0  # bytes written to flash
@@ -861,6 +865,8 @@ def write_flash(
                         if not esp.IS_STUB:
                             # ROM code writes block to flash before ACKing
                             timeout = block_timeout
+                        # For compressed data, encryption is handled
+                        # via encrypted_write flag
                         esp.flash_defl_block(block, seq, timeout=timeout)
                         if esp.IS_STUB:
                             # Stub ACKs when block is received,
@@ -869,10 +875,7 @@ def write_flash(
                     else:
                         # Pad the last block
                         block = block + b"\xff" * (esp.FLASH_WRITE_SIZE - len(block))
-                        if encrypted:
-                            esp.flash_encrypt_block(block, seq)
-                        else:
-                            esp.flash_block(block, seq)
+                        esp.flash_block(block, seq, encrypted=encrypted)
                         bytes_written += len(block)
                     bytes_sent += len(block)
                     image = image[esp.FLASH_WRITE_SIZE :]

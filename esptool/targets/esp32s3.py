@@ -38,8 +38,6 @@ class ESP32S3ROM(ESP32ROM):
 
     BOOTLOADER_FLASH_OFFSET = 0x0
 
-    SUPPORTS_ENCRYPTED_FLASH = True
-
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
     # todo: use espefuse APIs to get this info

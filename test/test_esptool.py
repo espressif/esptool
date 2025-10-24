@@ -343,6 +343,65 @@ class TestFlashEncryption(EsptoolTestCase):
         finally:
             esp._port.close()
 
+    def _read_and_compare_encrypted_file(self, address, input_file, should_match=True):
+        """
+        Read encrypted flash, generate expected encrypted file, and compare them.
+
+        Args:
+            address: Flash address to read from
+            input_file: Input file to generate expected encrypted file from
+            should_match: If True, files must match exactly.
+                If False, files must differ.
+        """
+        try:
+            # Get input file size to read the same amount from flash
+            input_file_size = os.path.getsize(input_file)
+            # Read encrypted flash
+            self.run_esptool(
+                f"read-flash {address} {input_file_size} "
+                "images/read_encrypted_flash.bin"
+            )
+            # Generate expected encrypted file
+            self.run_espsecure(
+                f"encrypt-flash-data --address {address} "
+                "--keyfile images/aes_key.bin --flash-crypt-conf 0 "
+                f"--output images/local_enc.bin {input_file}"
+            )
+
+            # Compare the files
+            with open("images/read_encrypted_flash.bin", "rb") as file1:
+                read_file1 = file1.read()
+
+            with open("images/local_enc.bin", "rb") as file2:
+                read_file2 = file2.read()
+
+            # Check file lengths first
+            len1 = len(read_file1)
+            len2 = len(read_file2)
+            if should_match:
+                assert len1 == len2, (
+                    f"File length mismatch: read from flash has {len1} bytes, "
+                    f"expected encrypted file has {len2} bytes"
+                )
+                for rf1, rf2, i in zip(read_file1, read_file2, range(len(read_file2))):
+                    assert rf1 == rf2, (
+                        f"File mismatch at byte position {i}: "
+                        f"expected 0x{rf2:02x}, got 0x{rf1:02x}"
+                    )
+            else:
+                # For mismatch case, check if files differ (either in length or content)
+                if len1 != len2:
+                    # Different lengths means they definitely mismatch
+                    return
+                mismatch = any(rf1 != rf2 for rf1, rf2 in zip(read_file1, read_file2))
+                assert mismatch, "Files should mismatch but they are identical"
+        finally:
+            # Clean up temporary files
+            if os.path.exists("images/read_encrypted_flash.bin"):
+                os.remove("images/read_encrypted_flash.bin")
+            if os.path.exists("images/local_enc.bin"):
+                os.remove("images/local_enc.bin")
+
     def test_blank_efuse_encrypt_write_abort(self):
         """
         since flash crypt config is not set correctly, this test should abort write
@@ -360,80 +419,76 @@ class TestFlashEncryption(EsptoolTestCase):
         )
         assert "Flash encryption key is not programmed".lower() in output.lower()
 
-    def test_blank_efuse_encrypt_write_continue1(self):
+    @pytest.mark.parametrize("compression", ["compress", "no-compress"])
+    def test_blank_efuse_encrypt_write_continue1(self, compression):
         """
         since ignore option is specified, write should happen even though flash crypt
         config is 0
         later encrypted flash contents should be read back & compared with
         precomputed ciphertext
         pass test
+        Tests both with and without compression.
         """
         if self.valid_key_present() is True:
             pytest.skip("Valid encryption key already programmed, aborting the test")
 
-        self.run_esptool(
-            "write-flash --encrypt --ignore-flash-enc-efuse "
+        output = self.run_esptool(
+            f"write-flash --encrypt --ignore-flash-enc-efuse --{compression} "
             "0x10000 images/ram_helloworld/helloworld-esp32.bin"
         )
-        self.run_esptool("read-flash 0x10000 192 images/read_encrypted_flash.bin")
-        self.run_espsecure(
-            "encrypt-flash-data --address 0x10000 --keyfile images/aes_key.bin "
-            "--flash-crypt-conf 0 --output images/local_enc.bin "
-            "images/ram_helloworld/helloworld-esp32.bin"
+
+        if compression == "compress":
+            # Verify that compression was actually used
+            assert "compressed" in output, (
+                "Compression was not used - output should contain 'compressed'"
+            )
+            # Check for the pattern "Wrote X bytes (Y compressed)"
+            # which indicates compression was used
+            match = re.search(r"Wrote (\d+) bytes \((\d+) compressed\)", output)
+            assert match is not None, (
+                "Compression output format not found. "
+                "Expected pattern: 'Wrote X bytes (Y compressed)'"
+            )
+
+        self._read_and_compare_encrypted_file(
+            0x10000, "images/ram_helloworld/helloworld-esp32.bin", should_match=True
         )
+        print("Encrypted write success")
 
-        try:
-            with open("images/read_encrypted_flash.bin", "rb") as file1:
-                read_file1 = file1.read()
-
-            with open("images/local_enc.bin", "rb") as file2:
-                read_file2 = file2.read()
-
-            for rf1, rf2, i in zip(read_file1, read_file2, range(len(read_file2))):
-                assert rf1 == rf2, (
-                    f"Encrypted write failed: file mismatch at byte position {i}"
-                )
-
-            print("Encrypted write success")
-        finally:
-            os.remove("images/read_encrypted_flash.bin")
-            os.remove("images/local_enc.bin")
-
-    def test_blank_efuse_encrypt_write_continue2(self):
+    @pytest.mark.parametrize("compression", ["compress", "no-compress"])
+    def test_blank_efuse_encrypt_write_continue2(self, compression):
         """
         since ignore option is specified, write should happen even though flash crypt
         config is 0
         later encrypted flash contents should be read back & compared with
         precomputed ciphertext
         fail test
+        Tests both with and without compression.
         """
         if self.valid_key_present() is True:
             pytest.skip("Valid encryption key already programmed, aborting the test")
 
-        self.run_esptool(
-            "write-flash --encrypt --ignore-flash-enc-efuse "
+        output = self.run_esptool(
+            f"write-flash --encrypt --ignore-flash-enc-efuse --{compression} "
             "0x10000 images/ram_helloworld/helloworld-esp32_edit.bin"
         )
-        self.run_esptool("read-flash 0x10000 192 images/read_encrypted_flash.bin")
-        self.run_espsecure(
-            "encrypt-flash-data --address 0x10000 --keyfile images/aes_key.bin "
-            "--flash-crypt-conf 0 --output images/local_enc.bin "
-            "images/ram_helloworld/helloworld-esp32.bin"
+
+        if compression == "compress":
+            # Verify that compression was actually used
+            assert "compressed" in output, (
+                "Compression was not used - output should contain 'compressed'"
+            )
+            # Check for the pattern "Wrote X bytes (Y compressed)"
+            # which indicates compression was used
+            match = re.search(r"Wrote (\d+) bytes \((\d+) compressed\)", output)
+            assert match is not None, (
+                "Compression output format not found. "
+                "Expected pattern: 'Wrote X bytes (Y compressed)'"
+            )
+
+        self._read_and_compare_encrypted_file(
+            0x10000, "images/ram_helloworld/helloworld-esp32.bin", should_match=False
         )
-
-        try:
-            with open("images/read_encrypted_flash.bin", "rb") as file1:
-                read_file1 = file1.read()
-
-            with open("images/local_enc.bin", "rb") as file2:
-                read_file2 = file2.read()
-
-            mismatch = any(rf1 != rf2 for rf1, rf2 in zip(read_file1, read_file2))
-            assert mismatch, "Files should mismatch"
-
-        finally:
-            os.remove("images/read_encrypted_flash.bin")
-            os.remove("images/local_enc.bin")
 
 
 class TestFlashing(EsptoolTestCase):

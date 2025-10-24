@@ -69,8 +69,6 @@ class ESP32C3ROM(ESP32ROM):
 
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
-    SUPPORTS_ENCRYPTED_FLASH = True
-
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
     # Variable in ROM .bss which indicates the port in use

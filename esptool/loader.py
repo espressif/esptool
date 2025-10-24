@@ -295,9 +295,6 @@ class ESPLoader:
     # Bootloader flashing offset
     BOOTLOADER_FLASH_OFFSET = 0x0
 
-    # ROM supports an encrypted flashing mode
-    SUPPORTS_ENCRYPTED_FLASH = False
-
     # Response to SYNC might indicate that flasher stub is running
     # instead of the ROM bootloader
     sync_stub_detected = False
@@ -988,7 +985,7 @@ class ESPLoader:
                 raise
             pass
 
-    def flash_begin(self, size, offset, begin_rom_encrypted=False, logging=True):
+    def flash_begin(self, size, offset, encrypted_write=False, logging=True):
         """
         Start downloading to Flash (performs an erase)
 
@@ -1008,8 +1005,11 @@ class ESPLoader:
         params = struct.pack(
             "<IIII", erase_size, num_blocks, self.FLASH_WRITE_SIZE, offset
         )
-        if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
-            params += struct.pack("<I", 1 if begin_rom_encrypted else 0)
+
+        # ESP32 and ESP8266 ROMs do not support extended parameter format
+        if self.IS_STUB or self.CHIP_NAME not in ("ESP32", "ESP8266"):
+            params += struct.pack("<I", 1 if encrypted_write else 0)
+
         self.check_command(
             "enter flash download mode",
             self.ESP_CMDS["FLASH_BEGIN"],
@@ -1020,12 +1020,14 @@ class ESPLoader:
             log.print(f"Took {time.time() - t:.2f}s to erase flash block.")
         return num_blocks
 
-    def flash_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
+    def flash_block(self, data, seq, timeout=DEFAULT_TIMEOUT, encrypted=False):
         """Write block to flash, retry if fail"""
+
+        operation = "encrypted " if encrypted else ""
         for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
             try:
                 self.check_command(
-                    f"write to target flash after seq {seq}",
+                    f"write {operation}to target flash after seq {seq}",
                     self.ESP_CMDS["FLASH_DATA"],
                     struct.pack("<IIII", len(data), seq, 0, 0) + data,
                     self.checksum(data),
@@ -1035,34 +1037,8 @@ class ESPLoader:
             except FatalError:
                 if attempts_left:
                     self.trace(
-                        "Block write failed, "
-                        f"retrying with {attempts_left} attempts left..."
-                    )
-                else:
-                    raise
-
-    def flash_encrypt_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
-        """Encrypt, write block to flash, retry if fail"""
-        if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
-            # ROM support performs the encrypted writes via the normal write command,
-            # triggered by flash_begin(begin_rom_encrypted=True)
-            return self.flash_block(data, seq, timeout)
-
-        for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
-            try:
-                self.check_command(
-                    f"Write encrypted to target flash after seq {seq}",
-                    self.ESP_CMDS["FLASH_ENCRYPT_DATA"],
-                    struct.pack("<IIII", len(data), seq, 0, 0) + data,
-                    self.checksum(data),
-                    timeout=timeout,
-                )
-                break
-            except FatalError:
-                if attempts_left:
-                    self.trace(
-                        "Encrypted block write failed, "
-                        f"retrying with {attempts_left} attempts left"
+                        f"{operation}block write failed, "
+                        f"retrying with {attempts_left} attempts left...".capitalize()
                     )
                 else:
                     raise
@@ -1342,7 +1318,7 @@ class ESPLoader:
         return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
 
     @stub_and_esp32_function_only
-    def flash_defl_begin(self, size, compsize, offset):
+    def flash_defl_begin(self, size, compsize, offset, encrypted_write=False):
         """
         Start downloading compressed data to Flash (performs an erase)
 
@@ -1368,10 +1344,11 @@ class ESPLoader:
         params = struct.pack(
             "<IIII", write_size, num_blocks, self.FLASH_WRITE_SIZE, offset
         )
-        if self.SUPPORTS_ENCRYPTED_FLASH and not self.IS_STUB:
-            # extra param is to enter encrypted flash mode via ROM
-            # (not supported currently)
-            params += struct.pack("<I", 0)
+
+        # ESP32 and ESP8266 ROMs do not support extended parameter format
+        if self.IS_STUB or self.CHIP_NAME not in ("ESP32", "ESP8266"):
+            params += struct.pack("<I", 1 if encrypted_write else 0)
+
         self.check_command(
             "enter compressed flash mode",
             self.ESP_CMDS["FLASH_DEFL_BEGIN"],

@@ -65,8 +65,6 @@ class ESP32H4ROM(ESP32C3ROM):
 
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
-    SUPPORTS_ENCRYPTED_FLASH = True
-
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
     UARTDEV_BUF_NO = 0x4087F580  # Variable in ROM .bss which indicates the port in use

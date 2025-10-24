@@ -37,8 +37,6 @@ class ESP32S2ROM(ESP32ROM):
 
     UART_CLKDIV_REG = 0x3F400014
 
-    SUPPORTS_ENCRYPTED_FLASH = True
-
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
     # todo: use espefuse APIs to get this info
