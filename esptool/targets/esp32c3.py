@@ -73,7 +73,16 @@ class ESP32C3ROM(ESP32ROM):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
-    UARTDEV_BUF_NO = 0x3FCDF07C  # Variable in ROM .bss which indicates the port in use
+    # Variable in ROM .bss which indicates the port in use
+    @property
+    def UARTDEV_BUF_NO(self):
+        """Variable .bss.UartDev.buff_uart_no in ROM .bss
+        which indicates the port in use.
+        """
+        BUF_UART_NO_OFFSET = 24
+        BSS_UART_DEV_ADDR = 0x3FCDF064 if self.get_chip_revision() < 101 else 0x3FCDF060
+        return BSS_UART_DEV_ADDR + BUF_UART_NO_OFFSET
+
     UARTDEV_BUF_NO_USB_JTAG_SERIAL = 3  # The above var when USB-JTAG/Serial is used
 
     RTCCNTL_BASE_REG = 0x60008000
