@@ -491,6 +491,7 @@ class EspEfusesBase(ABC):
     BURN_BLOCK_DATA_NAMES: list[str] = []
     REGS: type[EfuseRegistersBase]
     Blocks: EfuseBlocksBase
+    show_token: bool = False
 
     def __init__(
         self,
@@ -679,6 +680,19 @@ class EspEfusesBase(ABC):
         if not have_wr_data_for_burn:
             log.print("Nothing to burn, see messages above.")
             return True
+        if self.show_token:
+            from espefuse.efuse.emulate_efuse_controller_base import EfsToken
+
+            token = EfsToken.build(
+                self._esp.CHIP_NAME,
+                self._esp.get_chip_revision(),
+                self.blocks,
+                None,
+                "EFSW",
+            )
+            del EfsToken
+            log.print("\neFuse token for burning:")
+            log.print(token)
         EspEfusesBase.confirm("", self.do_not_confirm)
 
         def burn_block(

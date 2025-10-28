@@ -14,6 +14,7 @@ Optional arguments:
     - ``default`` - Usual console eFuse dump;
     - ``joint`` - All eFuse blocks are stored in one file;
     - ``split`` - Each eFuse block is placed in its own file. The tool will create multiple files based on the given the ``--file-name`` argument. Example: "--file-name /path/blk.bin", blk0.bin, blk1.bin ... blkN.bin. Use the ``burn-block-data`` cmd to write it back to another chip.
+    - ``token`` - dump read area of eFuses in EFSR token format.
 - ``--file-name`` - The path to the file in which to save the dump, if not specified, output to the console.
 
 Raw Values of eFuse Registers

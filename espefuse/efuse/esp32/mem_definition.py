@@ -67,6 +67,10 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_BLK0_RDATA5_REG = DR_REG_EFUSE_BASE + 0x014
     EFUSE_RD_CHIP_VER_REV2 = 1 << 20
 
+    ERRORS = [
+        EFUSE_REG_DEC_STATUS,
+    ]
+
 
 class EfuseDefineBlocks(EfuseBlocksBase):
     __base_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE

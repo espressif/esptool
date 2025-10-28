@@ -12,6 +12,10 @@ Positional arguments:
 
 - eFuse name. It can receive a list of eFuse names (like EFUSE_NAME1 EFUSE_NAME2 etc.).
 
+Optional arguments:
+
+- ``--show-token``. Display the eFuse token dump for the write operation before the confirmation prompt. This produces an ``EFSW`` token. If the goal is only to obtain the token, press ENTER to abort (no burning will occur). See :ref:`Token Dump <token>` section for more details on token formats and usage.
+
 Read protection prevents software from reading eFuse fields, only hardware can access such eFuses. Such eFuses are read as zero and the data is marked as ``??`` in this tool.
 
 Write protection prevents further changes of eFuse fields.

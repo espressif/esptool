@@ -117,6 +117,16 @@ class EfuseDefineRegisters(EfuseRegistersBase):
         20: (0x1, 0x1, 0x1),
     }
 
+    ERRORS = [
+        EFUSE_RD_REPEAT_ERR0_REG,
+        EFUSE_RD_REPEAT_ERR1_REG,
+        EFUSE_RD_REPEAT_ERR2_REG,
+        EFUSE_RD_REPEAT_ERR3_REG,
+        EFUSE_RD_REPEAT_ERR4_REG,
+        EFUSE_RD_RS_ERR0_REG,
+        EFUSE_RD_RS_ERR1_REG,
+    ]
+
 
 class EfuseDefineBlocks(EfuseBlocksBase):
     __base_rd_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE

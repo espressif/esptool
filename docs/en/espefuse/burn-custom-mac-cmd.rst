@@ -12,6 +12,7 @@ Positional arguments:
 Optional arguments:
 
 * ``--force-write-always``. Write the eFuse key even if it looks like it is already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.
+* ``--show-token``. Display the eFuse token dump for the write operation before the confirmation prompt. This produces an ``EFSW`` token. If the goal is only to obtain the token, press ENTER to abort (no burning will occur). See :ref:`Token Dump <token>` section for more details on token formats and usage.
 
 If ``CUSTOM_MAC`` is placed in an eFuse block with a coding scheme and already has data then it is not possible to write new data without breaking the encoding. The correct way is to contact Espressif to order chips with ``CUSTOM_MAC`` pre-burned from the factory. Another way is, it is not recommended, to use the ``--force-write-always`` flag to ignore the encoding violation.
 

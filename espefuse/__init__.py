@@ -91,6 +91,11 @@ __all__ = [
     help="For host tests, work in virtual mode (no chip connection).",
 )
 @click.option(
+    "--token",
+    default=None,
+    help="eFuse token dump (format example: EFSR:esp32:000:...).",
+)
+@click.option(
     "--path-efuse-file",
     type=click.Path(),
     help="For host tests, save eFuse memory to file.",
@@ -126,6 +131,7 @@ def cli(
     do_not_confirm,
     postpone,
     extend_efuse_table,
+    token,
 ):
     log.print(f"espefuse v{esptool.__version__}")
 
@@ -138,7 +144,7 @@ def cli(
     if any(cmd.replace("_", "-") in DEPRECATED_COMMANDS for cmd in used_cmds):
         return  # do not connect to ESP if any command is deprecated
 
-    if not port and not external_esp and not is_help and not virt:
+    if not port and not external_esp and not is_help and not (virt or token):
         raise click.BadOptionUsage(
             "--port", "Missing required argument. Please specify the --port option."
         )
@@ -146,7 +152,7 @@ def cli(
     if not esp:
         try:
             esp = get_esp(
-                port, baud, before, chip, is_help, virt, debug, path_efuse_file
+                port, baud, before, chip, is_help, virt, debug, path_efuse_file, token
             )
         except esptool.FatalError as e:
             raise esptool.FatalError(
@@ -156,7 +162,7 @@ def cli(
     def close_port():
         if virt:
             return
-        if not external_esp and esp._port:
+        if not external_esp and not (virt or token) and esp._port:
             esp._port.close()
         if after != "no-reset":
             esptool.reset_chip(esp, after)
@@ -178,6 +184,7 @@ def cli(
         debug=debug,
         do_not_confirm=do_not_confirm,
         extend_efuse_table=extend_efuse_table,
+        token=token,
     )
     commands.efuses.postpone = postpone
     commands.add_cli_commands(cli)

@@ -79,6 +79,19 @@ class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_DAC_NUM_S = 9
     EFUSE_DAC_NUM_M = 0xFF << EFUSE_DAC_NUM_S
 
+    ERRORS = [
+        EFUSE_RD_REPEAT_ERR0_REG,
+        EFUSE_RD_REPEAT_ERR1_REG,
+        EFUSE_RD_REPEAT_ERR2_REG,
+        EFUSE_RD_REPEAT_ERR3_REG,
+        EFUSE_RD_REPEAT_ERR4_REG,
+        EFUSE_RD_REPEAT_ERR5_REG,
+        EFUSE_RD_REPEAT_ERR6_REG,
+        EFUSE_RD_REPEAT_ERR7_REG,
+        EFUSE_RD_RS_ERR0_REG,
+        EFUSE_RD_RS_ERR1_REG,
+    ]
+
 
 class EfuseDefineBlocks(EfuseBlocksBase):
     __base_rd_regs = EfuseDefineRegisters.DR_REG_EFUSE_BASE

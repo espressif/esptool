@@ -22,12 +22,23 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     Fields: EfuseDefineFields
     REGS: type[EfuseDefineRegisters]
 
-    def __init__(self, efuse_file: str | None = None, debug: bool = False):
+    def __init__(
+        self,
+        efuse_file: str | None = None,
+        debug: bool = False,
+        token_dump: str | None = None,
+    ):
         self.Blocks = EfuseDefineBlocks
         self.Fields = EfuseDefineFields(None)
         self.REGS = EfuseDefineRegisters
-        super().__init__(efuse_file, debug)
+        super().__init__(efuse_file, debug, token_dump=token_dump)
         self.write_reg(self.REGS.EFUSE_CMD_REG, 0)
+
+    def set_major_chip_version(self, version):
+        pass
+
+    def set_minor_chip_version(self, version):
+        pass
 
     """ esptool method start >>"""
 

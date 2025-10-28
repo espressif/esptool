@@ -18,6 +18,7 @@ Optional arguments:
 
 * ``--force-write-always``. Write the eFuse key even if it looks like it is already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.
 * ``--offset``. Byte offset in the eFuse block.
+* ``--show-token``. Display the eFuse token dump for the write operation before the confirmation prompt. This produces an ``EFSW`` token. If the goal is only to obtain the token, press ENTER to abort (no burning will occur). See :ref:`Token Dump <token>` section for more details on token formats and usage.
 
 **Example:** Write to eFuse BLOCK3 from binary file ``device_id.bin``, starting at eFuse byte offset 6:
 

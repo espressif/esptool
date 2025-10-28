@@ -22,7 +22,10 @@ import espefuse.efuse.esp32s3 as esp32s3_efuse
 import espefuse.efuse.esp32s31 as esp32s31_efuse
 import esptool
 from espefuse.efuse.base_operations import BaseCommands
-from espefuse.efuse.emulate_efuse_controller_base import EmulateEfuseControllerBase
+from espefuse.efuse.emulate_efuse_controller_base import (
+    EfsToken,
+    EmulateEfuseControllerBase,
+)
 from esptool.util import strip_chip_name
 
 
@@ -59,6 +62,8 @@ SUPPORTED_COMMANDS = (
 )
 
 SUPPORTED_CHIPS = {
+    # Linux target mimics esp32s3 (for testing)
+    "linux": DefChip(esp32s3_efuse, esptool.targets.ESP32S3ROM),
     "esp32": DefChip(esp32_efuse, esptool.targets.ESP32ROM),
     "esp32c2": DefChip(esp32c2_efuse, esptool.targets.ESP32C2ROM),
     "esp32c3": DefChip(esp32c3_efuse, esptool.targets.ESP32C3ROM),
@@ -121,6 +126,7 @@ def init_commands(
     """
     skip_connect = kwargs.get("skip_connect", False)
     virt = kwargs.get("virt", False)
+    token = kwargs.get("token", None)
     debug = kwargs.get("debug", False)
     virt_efuse_file = kwargs.get("virt_efuse_file", None)
     do_not_confirm = kwargs.get("do_not_confirm", False)
@@ -130,7 +136,7 @@ def init_commands(
 
     if esp is None:
         esp = get_esp(
-            port, baud, before, chip, skip_connect, virt, debug, virt_efuse_file
+            port, baud, before, chip, skip_connect, virt, debug, virt_efuse_file, token
         )
 
     try:
@@ -161,6 +167,7 @@ def get_esp(
     virt: bool = False,
     debug: bool = False,
     virt_efuse_file: str | None = None,
+    token: str | None = None,
 ) -> esptool.ESPLoader | EmulateEfuseControllerBase:
     """Get the ESPLoader object for the given chip.
     Uses :func:`esptool.cmds.detect_chip` function.
@@ -176,16 +183,21 @@ def get_esp(
         virt: Whether to use virtual mode
         debug: Whether to enable debug mode
         virt_efuse_file: The file to save the eFuse values to
+        token: eFuse token dump (format string: EFSR:esp32:000:...)
 
     Returns:
         The ESPLoader object or EmulateEfuseController object
     """
+    if token is not None:
+        virt = True
+        _, chip, _, _, _, _ = EfsToken.verify_format(token)
+
     if chip not in ["auto"] + list(SUPPORTED_CHIPS.keys()):
         raise esptool.FatalError(f"get_esp: Unsupported chip ({chip})")
 
     if virt:
         efuse = SUPPORTED_CHIPS.get(chip, SUPPORTED_CHIPS["esp32"]).efuse_lib
-        return efuse.EmulateEfuseController(virt_efuse_file, debug)  # type: ignore
+        return efuse.EmulateEfuseController(virt_efuse_file, debug, token)  # type: ignore
 
     if chip == "auto" and not skip_connect:
         if port is None:

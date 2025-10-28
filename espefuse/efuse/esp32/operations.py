@@ -19,6 +19,7 @@ from ..base_operations import (
     TupleParameter,
     add_force_write_always,
     add_show_sensitive_info_option,
+    add_show_token,
 )
 from .fields import EspEfuses
 from .mem_definition import EfuseDefineBlocks
@@ -58,6 +59,7 @@ class ESP32Commands(BaseCommands):
         )
         @add_force_write_always
         @add_show_sensitive_info_option
+        @add_show_token
         @click.pass_context
         def burn_key_cli(
             ctx, block_keyfile, no_protect_key, show_sensitive_info, **kwargs
@@ -80,6 +82,7 @@ class ESP32Commands(BaseCommands):
         )
         @add_force_write_always
         @add_show_sensitive_info_option
+        @add_show_token
         @click.pass_context
         def burn_key_digest_cli(
             ctx, keyfile, no_protect_key, show_sensitive_info, **kwargs
@@ -91,6 +94,7 @@ class ESP32Commands(BaseCommands):
             "set-flash-voltage",
             short_help="Permanently set the internal flash voltage regulator.",
         )
+        @add_show_token
         @click.argument("voltage", type=click.Choice(["1.8V", "3.3V", "OFF"]))
         def set_flash_voltage_cli(voltage):
             """Permanently set the internal flash voltage regulator to either 1.8V, 3.3V or OFF.

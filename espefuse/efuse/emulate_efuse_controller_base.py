@@ -18,6 +18,7 @@ from espefuse.efuse.mem_definition_base import (
     EfuseRegistersBase,
     Field,
 )
+from espefuse.efuse.token import EfsToken
 from esptool.logger import log
 
 
@@ -34,9 +35,15 @@ class EmulateEfuseControllerBase(ABC):
     # host-test emulation mirrors the real loader's value from a single source.
     USB_JTAG_SERIAL_PID: int = USB_JTAG_SERIAL_PID
 
-    def __init__(self, efuse_file: str | None = None, debug: bool = False):
+    def __init__(self, efuse_file=None, debug=False, token_dump: str | None = None):
         self.debug = debug
         self.efuse_file = efuse_file
+        if token_dump:
+            self.mem = BitStream(self.REGS.EFUSE_MEM_SIZE * 8)
+            self.mem.set(0)
+            self.load_from_token_dump(token_dump)
+            self.save_to_file()
+            return
         if self.efuse_file:
             try:
                 self.mem = BitStream(
@@ -54,15 +61,55 @@ class EmulateEfuseControllerBase(ABC):
             self.mem = BitStream(self.REGS.EFUSE_MEM_SIZE * 8)
             self.mem.set(0)
 
+    def load_from_token_dump(self, token_dump):
+        _, version, block_data, error_data = EfsToken.decode(self.Blocks, token_dump)
+        self.set_chip_revision(version)
+        pos = 0
+        for b in self.Blocks.BLOCKS:
+            blk = self.Blocks.get(b)
+            for i in range(blk.len):
+                self.update_reg(
+                    blk.rd_addr + i * 4,
+                    0xFFFFFFFF,
+                    int.from_bytes(block_data[pos : pos + 4], byteorder="little"),
+                )
+                pos += 4
+        # write error_data if provided
+        if len(error_data):
+            for i, addr in enumerate(self.REGS.ERRORS):
+                self.update_reg(
+                    addr,
+                    0xFFFFFFFF,
+                    int.from_bytes(error_data[i * 4 : i * 4 + 4], byteorder="little"),
+                )
+
+    def direct_write_efuse(self, n, value, block=0):
+        """Direct write to read registers (not via write registers)"""
+        blk = self.Blocks.get(self.Blocks.BLOCKS[block])
+        self.update_reg(blk.rd_addr + (4 * n), 0xFFFFFFFF, value)
+
+    def set_chip_revision(self, version):
+        """Set chip revision via read registers directly"""
+        self.set_major_chip_version(version // 100)
+        self.set_minor_chip_version(version % 100)
+
     """ esptool method start >> """
 
     @abstractmethod
-    def get_major_chip_version(self) -> int:
+    def set_major_chip_version(self, version) -> None:
         pass
 
     @abstractmethod
-    def get_minor_chip_version(self) -> int:
+    def set_minor_chip_version(self, version) -> None:
         pass
+
+    @abstractmethod
+    def get_major_chip_version(self) -> int:
+        return 0
+
+    @abstractmethod
+    def get_minor_chip_version(self) -> int:
+        return 0
 
     def get_chip_description(self) -> str:
         major_rev = self.get_major_chip_version()

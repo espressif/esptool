@@ -20,6 +20,7 @@ from ..base_operations import (
     TupleParameter,
     add_force_write_always,
     add_show_sensitive_info_option,
+    add_show_token,
     protect_options,
 )
 from . import fields
@@ -62,11 +63,11 @@ class ESP32C2Commands(BaseCommands):
         @protect_options
         @add_force_write_always
         @add_show_sensitive_info_option
+        @add_show_token
         @click.pass_context
         def burn_key_cli(ctx, **kwargs):
             """Burn the key block with the specified name"""
             block, keyfile, keypurpose = zip(*kwargs.pop("block_keyfile_keypurpose"))
-            kwargs.pop("force_write_always")
             kwargs["show_sensitive_info"] = ctx.show_sensitive_info
             self.burn_key(block, keyfile, keypurpose, **kwargs)
 
@@ -80,9 +81,9 @@ class ESP32C2Commands(BaseCommands):
         @protect_options
         @add_force_write_always
         @add_show_sensitive_info_option
+        @add_show_token
         @click.pass_context
         def burn_key_digest_cli(ctx, **kwargs):
-            kwargs.pop("force_write_always")
             kwargs["show_sensitive_info"] = ctx.show_sensitive_info
             self.burn_key_digest(**kwargs)
 

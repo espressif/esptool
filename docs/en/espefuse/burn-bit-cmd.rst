@@ -13,6 +13,7 @@ Positional arguments:
 Optional arguments:
 
 - ``--force-write-always``. Burn it even if it looks like it is already been written, or is write protected. Note that this option can not disable write protection, or clear any bit which has already been set.
+- ``--show-token``. Display the eFuse token dump for the write operation before the confirmation prompt. This produces an ``EFSW`` token. If the goal is only to obtain the token, press ENTER to abort (no burning will occur). See :ref:`Token Dump <token>` section for more details on token formats and usage.
 
 Usage
 -----

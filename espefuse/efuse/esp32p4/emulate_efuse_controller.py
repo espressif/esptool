@@ -22,20 +22,39 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     Fields: EfuseDefineFields
     REGS: type[EfuseDefineRegisters]
 
-    def __init__(self, efuse_file: str | None = None, debug: bool = False):
+    def __init__(
+        self,
+        efuse_file: str | None = None,
+        debug: bool = False,
+        token_dump: str | None = None,
+    ):
         self.Blocks = EfuseDefineBlocks
         self.Fields = EfuseDefineFields(None)
         self.REGS = EfuseDefineRegisters
-        super().__init__(efuse_file, debug)
+        super().__init__(efuse_file, debug, token_dump=token_dump)
         self.write_reg(self.REGS.EFUSE_CMD_REG, 0)
+
+    def set_major_chip_version(self, version):
+        version &= 0x7
+        if version:
+            # Major version bit 2 is stored in bit 23
+            self.direct_write_efuse(2, ((version & 0x4) >> 2) << 23, block=1)
+            # Major version bits 1:0 are stored in bits 5:4
+            self.direct_write_efuse(2, (version & 0x3) << 4, block=1)
+
+    def set_minor_chip_version(self, version):
+        version &= 0x0F
+        if version:
+            self.direct_write_efuse(2, version << 0, block=1)
 
     """ esptool method start >>"""
 
-    def get_major_chip_version(self) -> int:
-        return 3
+    def get_minor_chip_version(self):
+        return (self.read_efuse(2, block=1) >> 0) & 0x0F
 
-    def get_minor_chip_version(self) -> int:
-        return 0
+    def get_major_chip_version(self):
+        word = self.read_efuse(2, block=1)
+        return (((word >> 23) & 1) << 2) | ((word >> 4) & 0x03)
 
     def get_crystal_freq(self) -> int:
         return 40  # MHz (common for all chips)

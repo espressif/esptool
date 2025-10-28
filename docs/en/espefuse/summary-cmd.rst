@@ -11,6 +11,7 @@ Optional arguments:
     - ``summary`` - text format (default option).
     - ``json`` - json format. Usage ``--format json``.
     - ``value_only`` - only the value of the eFuse specified as an argument will be displayed. For more information, refer to the :ref:`Filtering eFuses <filtering-eFuses>` section.
+- ``--active`` - Show only those fields that are active (i.e., have at least one bit set, read or write protected, or have an encoding error).
 - ``--file`` - File to save the eFuse summary. Usage ``--file efuses.json``.
 - List of eFuses to filter. For more information, refer to the :ref:`Filtering eFuses <filtering-eFuses>` section.
 
@@ -146,6 +147,8 @@ The ``espefuse summary`` command supports filtering eFuses by name. The eFuses t
     = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 R/W
 
 If ``--format value_only`` is specified, only the value of the eFuse specified as an argument will be displayed. Only one eFuse can be specified as an argument for this format. Example:
+
+When the eFuse table is large, finding specific set values can be time-consuming. Use the ``--active`` flag to display only active fields (those with at least one bit set, read or write protected, or has a coding error). This produces a shorter, more readable table.
 
 .. code-block:: none
 
