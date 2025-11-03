@@ -113,22 +113,41 @@ class ESP32C6ROM(ESP32C3ROM):
         num_word = 3
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 22) & 0x03
 
+    def get_flash_cap(self):
+        num_word = 4
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x07
+
     def get_chip_description(self):
-        chip_name = {
-            0: "ESP32-C6 (QFN40)",
-            1: "ESP32-C6FH4 (QFN32)",
-        }.get(self.get_pkg_version(), "Unknown ESP32-C6")
+        pkg_version = self.get_pkg_version()
+
+        chip_name = "Unknown ESP32-C6"
+        if pkg_version == 0:
+            chip_name = "ESP32-C6 (QFN40)"
+        elif pkg_version == 1:
+            # Both ESP32-C6FH4 and ESP32-C6FH8 have pkg_version 1
+            # so we need to distinguish them by flash_cap
+            flash_cap = self.get_flash_cap()
+            if flash_cap == 1:
+                chip_name = "ESP32-C6FH4 (QFN32)"
+            elif flash_cap == 2:
+                chip_name = "ESP32-C6FH8 (QFN32)"
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
+        flash_version = {
+            1: "Embedded Flash 4MB",
+            2: "Embedded Flash 8MB",
+        }.get(self.get_flash_cap(), "Unknown Embedded Flash")
+
         return [
             "Wi-Fi 6",
             "BT 5 (LE)",
             "IEEE802.15.4",
             "Single Core + LP Core",
             "160MHz",
+            flash_version,
         ]
 
     def get_crystal_freq(self):
