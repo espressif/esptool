@@ -4,6 +4,7 @@
 
 import binascii
 import configparser
+import hashlib
 import os
 import sys
 from esptool.logger import log
@@ -145,8 +146,9 @@ def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
         log.print("Signing payload using the HSM...")
         key_type = private_key.key_type
         mechanism, mechanism_params = get_mechanism(key_type)
+        hashed_payload = hashlib.sha256(payload).digest()
         signature: bytes = private_key.sign(
-            data=payload, mechanism=mechanism, mechanism_param=mechanism_params
+            data=hashed_payload, mechanism=mechanism, mechanism_param=mechanism_params
         )
 
         if len(signature) != 0:
@@ -171,13 +173,13 @@ def get_mechanism(
     key_type: pkcs11.mechanisms.KeyType,
 ) -> tuple[pkcs11.mechanisms.Mechanism, tuple | None]:
     if key_type == pkcs11.mechanisms.KeyType.RSA:
-        return pkcs11.mechanisms.Mechanism.SHA256_RSA_PKCS_PSS, (
+        return pkcs11.mechanisms.Mechanism.RSA_PKCS_PSS, (
             pkcs11.mechanisms.Mechanism.SHA256,
             pkcs11.MGF.SHA256,
             32,
         )
     elif key_type == pkcs11.mechanisms.KeyType.EC:
-        return pkcs11.mechanisms.Mechanism.ECDSA_SHA256, None
+        return pkcs11.mechanisms.Mechanism.ECDSA, None
     else:
         log.error("Invalid signing key mechanism.")
         sys.exit(1)
