@@ -23,6 +23,7 @@ import espefuse.efuse.esp32h4 as esp32h4_efuse
 import espefuse.efuse.esp32p4 as esp32p4_efuse
 import espefuse.efuse.esp32s2 as esp32s2_efuse
 import espefuse.efuse.esp32s3 as esp32s3_efuse
+import espefuse.efuse.esp32s31 as esp32s31_efuse
 
 
 @dataclass
@@ -70,6 +71,7 @@ SUPPORTED_CHIPS = {
     "esp32p4": DefChip(esp32p4_efuse, esptool.targets.ESP32P4ROM),
     "esp32s2": DefChip(esp32s2_efuse, esptool.targets.ESP32S2ROM),
     "esp32s3": DefChip(esp32s3_efuse, esptool.targets.ESP32S3ROM),
+    "esp32s31": DefChip(esp32s31_efuse, esptool.targets.ESP32S31ROM),
 }
 
 

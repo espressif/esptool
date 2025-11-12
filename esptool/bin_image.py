@@ -30,6 +30,7 @@ from .targets import (
     ESP32ROM,
     ESP32S2ROM,
     ESP32S3ROM,
+    ESP32S31ROM,
     ESP8266ROM,
 )
 from .util import FatalError, byte, ImageSource, get_bytes, pad_to
@@ -133,6 +134,7 @@ def LoadFirmwareImage(chip: str, image_data: ImageSource):
             "esp32h21": ESP32H21FirmwareImage,
             "esp32p4": ESP32P4FirmwareImage,
             "esp32h4": ESP32H4FirmwareImage,
+            "esp32s31": ESP32S31FirmwareImage,
         }[chip](f)
 
 
@@ -1266,6 +1268,15 @@ class ESP32H21FirmwareImage(ESP32C6FirmwareImage):
 
 
 ESP32H21ROM.BOOTLOADER_IMAGE = ESP32H21FirmwareImage
+
+
+class ESP32S31FirmwareImage(ESP32C5FirmwareImage):
+    """ESP32S31 Firmware Image almost exactly the same as ESP32C5FirmwareImage"""
+
+    ROM_LOADER = ESP32S31ROM
+
+
+ESP32S31ROM.BOOTLOADER_IMAGE = ESP32S31FirmwareImage
 
 
 class ELFFile:
