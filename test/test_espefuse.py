@@ -2230,10 +2230,15 @@ class TestKeyPurposes(EfuseTestCase):
 
 
 class TestPostponedEfuses(EfuseTestCase):
-    def test_postpone_efuses(self):
+    @pytest.mark.parametrize(
+        "postpone",
+        ["--postpone", "--no-postpone", ""],
+        ids=["postpone", "no-postopone", "default"],
+    )
+    def test_postpone_efuses(self, postpone):
         if arg_chip == "esp32":
-            cmd = f"--postpone \
-                    burn-efuse UART_DOWNLOAD_DIS 1 \
+            cmd = f"{postpone} \
+                    burn-efuse UART_DOWNLOAD_DIS 1 DISABLE_BT 1\
                     burn-key BLOCK1 {IMAGES_DIR}/256bit \
                     burn-efuse ABS_DONE_1 1 FLASH_CRYPT_CNT 1"
             num = 1
@@ -2241,7 +2246,7 @@ class TestPostponedEfuses(EfuseTestCase):
             sb_digest_name = (
                 "SECURE_BOOT_DIGEST" if arg_chip == "esp32c2" else "SECURE_BOOT_DIGEST0"
             )
-            cmd = f"--postpone \
+            cmd = f"{postpone} \
                 burn-efuse ENABLE_SECURITY_DOWNLOAD 1 DIS_DOWNLOAD_MODE 1 \
                 SECURE_VERSION 1 \
                 burn-key BLOCK_KEY0 {IMAGES_DIR}/256bit {sb_digest_name} \
@@ -2249,9 +2254,12 @@ class TestPostponedEfuses(EfuseTestCase):
             num = 3 if arg_chip == "esp32c2" else 4
         output = self.espefuse_py(cmd)
         assert f"BURN BLOCK{num}  - OK" in output
-        assert "BURN BLOCK0  - OK" in output
-        assert "Burn postponed eFuses from BLOCK0" in output
-        assert "BURN BLOCK0  - OK" in output
+        if postpone == "--postpone" or postpone == "":
+            assert "Burn postponed eFuses from BLOCK0" in output
+            assert 2 == output.count("BURN BLOCK0  - OK")
+        if postpone == "--no-postpone":
+            assert 1 == output.count("BURN BLOCK0  - OK")
+            assert "Burn postponed eFuses from BLOCK0" not in output
         assert "Successful" in output
 
 

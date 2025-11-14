@@ -93,9 +93,10 @@ __all__ = [
     "Use with caution!",
 )
 @click.option(
-    "--postpone",
-    is_flag=True,
-    help="Postpone burning some eFuses from BLOCK0 at the end.",
+    "--postpone/--no-postpone",
+    default=True,
+    help="Postpone burning some eFuses from BLOCK0 at the end "
+    "(enabled by default, can be disabled with --no-postpone).",
 )
 @click.option(
     "--extend-efuse-table",
