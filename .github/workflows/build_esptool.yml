@@ -59,8 +59,6 @@ jobs:
           icon-file: ${{ matrix.platform == 'windows-amd64' && 'ci/espressif.ico' || '' }}
           target-platform: ${{ matrix.platform }}
           additional-arm-packages: 'openssl libffi-dev libssl-dev libffi7'
-          certificate: ${{ secrets.CERTIFICATE }}
-          certificate-password: ${{ secrets.CERTIFICATE_PASSWORD }}
 
       - name: Add license and readme
         shell: bash
