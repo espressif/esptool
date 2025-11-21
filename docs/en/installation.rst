@@ -60,11 +60,6 @@ Please note that the binaries might have some limitations:
 - The application has slower startup time compared to running the Python script directly.
 - The application cannot be imported as a Python module in other Python applications.
 
-.. note::
-
-   For Linux, the binaries are built using Ubuntu 22.04 as the base image. That means any version older than Ubuntu 22.04 (or any other distribution that uses ``glibc<2.35``) might not work.
-   For using on Ubuntu 20.04, please use the Python package installation or ``v4.*`` release.
-
 How to Update
 -------------
 
