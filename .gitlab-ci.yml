@@ -521,7 +521,7 @@ combine_reports:
 
 build_docs:
   stage: build_docs
-  image: python:3.7-bullseye
+  image: python:3.8-bullseye
   tags:
     - build_docs
   rules:
@@ -544,7 +544,7 @@ build_docs:
 
 .deploy_docs_template:
   stage: deploy_docs
-  image: python:3.7-bullseye
+  image: python:3.8-bullseye
   tags:
     - deploy
   needs:
