@@ -123,9 +123,9 @@ You will likely have to restart or re-login for the autocompletion to start work
 
       .. code-block:: bash
 
-         eval "$(_ESPTOOL_PY_COMPLETE=zsh_source esptool)"
-         eval "$(_ESPSECURE_PY_COMPLETE=zsh_source espsecure)"
-         eval "$(_ESPEFUSE_PY_COMPLETE=zsh_source espefuse)"
+         eval "$(_ESPTOOL_COMPLETE=zsh_source esptool)"
+         eval "$(_ESPSECURE_COMPLETE=zsh_source espsecure)"
+         eval "$(_ESPEFUSE_COMPLETE=zsh_source espefuse)"
 
 
    .. group-tab:: Fish
