@@ -109,6 +109,12 @@ class ESP32C2ROM(ESP32C3ROM):
         return ESPLoader.get_crystal_freq(self)
 
     def change_baud(self, baud):
+        if self.secure_download_mode:  # ESPTOOL-1231
+            log.warning(
+                "Baud rate change is not supported in secure download mode. "
+                "Keeping 115200 baud."
+            )
+            return
         rom_with_26M_XTAL = not self.IS_STUB and self.get_crystal_freq() == 26
         if rom_with_26M_XTAL:
             # The code is copied over from ESPLoader.change_baud().
