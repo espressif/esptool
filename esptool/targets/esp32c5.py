@@ -60,7 +60,7 @@ class ESP32C5ROM(ESP32C6ROM):
     PCR_SYSCLK_XTAL_FREQ_V = 0x7F << 24
     PCR_SYSCLK_XTAL_FREQ_S = 24
 
-    UARTDEV_BUF_NO = 0x4085f514  # Variable in ROM .bss which indicates the port in use
+    UARTDEV_BUF_NO = 0x4085F514  # Variable in ROM .bss which indicates the port in use
 
     FLASH_FREQUENCY = {
         "80m": 0xF,
@@ -143,9 +143,11 @@ class ESP32C5ROM(ESP32C6ROM):
 
     def hard_reset(self):
         # Debug output using trace
-        self.trace(f'get_uart_no(): {self.get_uart_no()}')
-        self.trace(f'UARTDEV_BUF_NO_USB_JTAG_SERIAL: {self.UARTDEV_BUF_NO_USB_JTAG_SERIAL}')
-        self.trace(f'uses_usb_jtag_serial(): {self.uses_usb_jtag_serial()}')
+        self.trace(f"get_uart_no(): {self.get_uart_no()}")
+        self.trace(
+            f"UARTDEV_BUF_NO_USB_JTAG_SERIAL: {self.UARTDEV_BUF_NO_USB_JTAG_SERIAL}"
+        )
+        self.trace(f"uses_usb_jtag_serial(): {self.uses_usb_jtag_serial()}")
         ESPLoader.hard_reset(self, self.uses_usb_jtag_serial())
 
     def change_baud(self, baud):
