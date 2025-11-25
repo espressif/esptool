@@ -55,7 +55,7 @@ class ESP32C5ROM(ESP32C6ROM):
     PCR_SYSCLK_XTAL_FREQ_V = 0x7F << 24
     PCR_SYSCLK_XTAL_FREQ_S = 24
 
-    UARTDEV_BUF_NO = 0x4085F51C  # Variable in ROM .bss which indicates the port in use
+    UARTDEV_BUF_NO = 0x4085F514  # Variable in ROM .bss which indicates the port in use
 
     FLASH_FREQUENCY = {
         "80m": 0xF,
