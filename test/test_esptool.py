@@ -1083,22 +1083,6 @@ class TestFlashDetection(EsptoolTestCase):
         assert "Device:" in res
 
     @pytest.mark.quick_test
-    @pytest.mark.skipif(
-        arg_chip not in ["esp32c2"],
-        reason="This test make sense only for EPS32-C2",
-    )
-    def test_flash_size(self):
-        """Test ESP32-C2 efuse block for flash size feature"""
-        # ESP32-C2 class inherits methods from ESP32-C3 class
-        # but it does not have the same amount of efuse blocks
-        # the methods are overwritten
-        # in case anything changes this test will fail to remind us
-        res = self.run_esptool("flash-id")
-        lines = res.splitlines()
-        for line in lines:
-            assert "embedded flash" not in line.lower()
-
-    @pytest.mark.quick_test
     def test_flash_sfdp(self):
         """Test manufacturer and device response of flash detection."""
         res = self.run_esptool("read-flash-sfdp 0 4")
@@ -1492,6 +1476,9 @@ class TestAutoDetect(EsptoolTestCase):
     def _check_output(self, output):
         expected_chip_name = esptool.util.expand_chip_name(arg_chip)
         assert f"Detecting chip type... {expected_chip_name}" in output
+        if arg_chip == "esp32c2":
+            # chip_name depends on the package, for example ESP8684H.
+            expected_chip_name = ""
         assert f"{'Chip type:':<20}{expected_chip_name}" in output
 
     @pytest.mark.quick_test

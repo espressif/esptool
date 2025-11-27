@@ -77,14 +77,24 @@ class ESP32C2ROM(ESP32C3ROM):
     def get_chip_description(self):
         chip_name = {
             0: "ESP32-C2",
-            1: "ESP32-C2",
+            1: "ESP8684H",
         }.get(self.get_pkg_version(), "Unknown ESP32-C2")
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["Wi-Fi", "BT 5 (LE)", "Single Core", "120MHz"]
+        features = ["Wi-Fi", "BT 5 (LE)", "Single Core", "120MHz"]
+
+        flash = {
+            0: None,
+            1: "Embedded Flash 4MB",
+            2: "Embedded Flash 2MB",
+            3: "Embedded Flash 1MB",
+        }.get(self.get_flash_cap(), "Unknown Embedded Flash")
+        if flash is not None:
+            features += [flash + f" ({self.get_flash_vendor()})"]
+        return features
 
     def get_minor_chip_version(self):
         num_word = 1
@@ -95,14 +105,13 @@ class ESP32C2ROM(ESP32C3ROM):
         return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 20) & 0x3
 
     def get_flash_cap(self):
-        # ESP32-C2 doesn't have eFuse field FLASH_CAP.
-        # Can't get info about the flash chip.
-        return 0
+        num_word = 7
+        return (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 29) & 0x7
 
     def get_flash_vendor(self):
-        # ESP32-C2 doesn't have eFuse field FLASH_VENDOR.
-        # Can't get info about the flash chip.
-        return ""
+        num_word = 7
+        vendor_id = (self.read_reg(self.EFUSE_BLOCK2_ADDR + (4 * num_word)) >> 24) & 0x7
+        return {1: "XMC", 2: "GD", 3: "FM", 4: "TT", 5: "ZBIT"}.get(vendor_id, "")
 
     def get_crystal_freq(self):
         # The crystal detection algorithm of ESP32/ESP8266 works for ESP32-C2 as well.
