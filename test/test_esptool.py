@@ -749,6 +749,36 @@ class TestFlashing(EsptoolTestCase):
         finally:
             os.unlink(input_file.name)
 
+    def test_compression_auto_skipped_when_no_size_reduction(self):
+        """
+        Test that compression is automatically skipped when it doesn't reduce file size.
+        Uses truly random data which is hard to compress.
+        """
+        try:
+            input_file = tempfile.NamedTemporaryFile(delete=False)
+            file_size = 64 * 1024  # 64KB of random data
+            # Write truly random data that won't compress well
+            for _ in range(file_size):
+                input_file.write(struct.pack("B", random.randrange(0, 256)))
+            input_file.close()
+
+            output = self.run_esptool(
+                f"write-flash --compress 0x20000 {input_file.name}"
+            )
+
+            # Verify that compression was skipped by checking the output message
+            # When compression is used: "Wrote X bytes (Y compressed)"
+            # When compression is skipped: "Wrote X bytes" (no "compressed")
+            assert "Wrote" in output and "bytes" in output, (
+                "Should have 'Wrote X bytes' message"
+            )
+            assert " compressed)" not in output, (
+                f"Compression should have been skipped for random data, "
+                f"but output shows compressed format: {output}"
+            )
+        finally:
+            os.unlink(input_file.name)
+
     @pytest.mark.quick_test
     def test_zero_length(self):
         # Zero length files are skipped with a warning

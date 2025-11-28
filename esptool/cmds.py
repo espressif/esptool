@@ -814,11 +814,24 @@ def write_flash(
                 "Security features enabled, so not changing any flash settings."
             )
         calcmd5 = hashlib.md5(image).hexdigest()
-        uncsize = len(image)
+        uncsize = image_size = len(image)
         if compress:
-            uncimage = image
-            image = zlib.compress(uncimage, 9)
-            compsize = len(image)
+            compressed_image = zlib.compress(image, 9)
+            compsize = len(compressed_image)
+            # Only use compression if it actually reduces the file size
+            if compsize < uncsize:
+                image = compressed_image
+                image_size = compsize
+            else:
+                # Compression didn't help, disable it for this file
+                source = "input image" if name is None else f"file '{name}'"
+                log.note(
+                    f"Cannot compress {source} more than the original size, "
+                    "will flash uncompressed. "
+                    f"Compressed size {compsize} bytes >= uncompressed {uncsize} bytes."
+                )
+                compress = False
+
         original_image = image  # Save the whole image in case retry is needed
         # Try again if reconnect was successful
         log.stage()
@@ -829,7 +842,7 @@ def write_flash(
                     # to dynamically calculate the timeout based on the real write size
                     decompress = zlib.decompressobj()
                     esp.flash_defl_begin(
-                        uncsize, compsize, address, encrypted_write=encrypted
+                        uncsize, image_size, address, encrypted_write=encrypted
                     )
                 else:
                     esp.flash_begin(uncsize, address, encrypted_write=encrypted)
@@ -839,7 +852,6 @@ def write_flash(
                 t = time.time()
 
                 timeout = DEFAULT_TIMEOUT
-                image_size = compsize if compress else uncsize
                 while len(image) >= 0:
                     if not no_progress:
                         log.progress_bar(
