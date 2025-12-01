@@ -155,6 +155,8 @@ class EsptoolLogger(TemplateLogger):
             self._newline_count += message.count("\n")
             if kwargs.get("end", "\n") == "\n":
                 self._newline_count += 1
+            # Flush output in stage mode to ensure output is always shown immediately
+            kwargs["flush"] = True
         print(*args, **kwargs)
         self._print_anyway = False
 
