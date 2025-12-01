@@ -106,7 +106,7 @@ Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <htt
     Enabling the Secure Debug Controller
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Before any other SDC step, the SDC feature itself must be enabled on the device by burning the ``SDC_ENA`` eFuse to ``1``. This is the very first provisioning step: until ``SDC_ENA`` is set, the device does not act on SDC commands and ``esptool generate-sdc-chip-info`` (and certificate verification) will fail. ::
+    Before any other SDC step, the SDC feature itself must be enabled on the device by burning the ``SDC_ENA`` eFuse to ``1``. This is the very first provisioning step: until ``SDC_ENA`` is set, the device does not act on SDC commands and ``esptool read-sdc-chip-info`` (and certificate verification) will fail. ::
 
         espefuse -p $PORT burn-efuse SDC_ENA 1
 
@@ -120,7 +120,7 @@ Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <htt
 
     The SDC public key digest is the digest of the public key corresponding to the SDC private key. The SDC private key is used to generate the SDC certificate, while the public key digest is burned to the device eFuse and used by SDC to authenticate the certificate.
 
-    The SDC public key digest must be burned to the device eFuse before the SDC certificate can be used. Use the ``generate-sdc-public-key-digest`` command to generate this digest.
+    The SDC public key digest must be burned to the device eFuse before the SDC certificate can be used. Use the ``digest-sdc-public-key`` command to generate this digest.
 
     Generating a Private Key
     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -135,38 +135,31 @@ Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <htt
 
     To generate the SDC public key digest from a private key file: ::
 
-        espsecure generate-sdc-public-key-digest -k private_key.pem -o sdc_pub_key_digest.bin
+        espsecure digest-sdc-public-key -k private_key.pem -o sdc_pub_key_digest.bin
 
     To generate from a public key file: ::
 
-        espsecure generate-sdc-public-key-digest --pub-key public_key.pem -o sdc_pub_key_digest.bin
+        espsecure digest-sdc-public-key --pub-key public_key.pem -o sdc_pub_key_digest.bin
 
     To generate from an HSM (see :ref:`Remote Signing Using an External HSM <hsm_signing>` for HSM setup instructions): ::
 
-        espsecure generate-sdc-public-key-digest --hsm --hsm-config hsm_config.ini -o sdc_pub_key_digest.bin
+        espsecure digest-sdc-public-key --hsm --hsm-config hsm_config.ini -o sdc_pub_key_digest.bin
 
 
-    Arguments:
+    To extract a public key from a private key (for use with ``--pub-key``): ::
 
-    *   ``-k`` / ``--keyfile``: Path to the ECDSA private key file (P-256 curve). Public key will be extracted from this private key.
-
-    *   ``--pub-key``: Path to the ECDSA public key file in PEM format.
-
-        To extract a public key from a private key: ``espsecure extract-public-key --version 2 --keyfile private_key.pem public_key.pem``
-    *   ``--hsm``: Enable HSM mode to extract public key from HSM.
-    *   ``--hsm-config``: Path to the HSM configuration file (required if ``--hsm`` is used).
-    *   ``-o`` / ``--output``: Output file path for the SDC public key digest (optional, defaults to ``sdc_pub_key_digest.bin``).
-    *   ``-v`` / ``--verbose``: Enable detailed verbose output showing intermediate values.
+        espsecure extract-public-key --version 2 --keyfile private_key.pem public_key.pem
 
     .. note::
         Only one of ``--keyfile``, ``--pub-key``, or ``--hsm`` can be provided.
+        Run ``espsecure digest-sdc-public-key -h`` for the full list of options.
 
     Burning the Digest to eFuse
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    After generating the digest file, burn it to the device eFuse using ``espefuse burn-key`` with the ``SDC_DIGEST`` key purpose. The ``burn-key`` command automatically sets the key purpose, making it easier than using ``burn-block-data``. For {IDF_TARGET_NAME}, use: ::
+    After generating the digest file, burn it to the device eFuse using ``espefuse burn-key`` with the ``SDC_KEY_DIGEST`` key purpose. The ``burn-key`` command automatically sets the key purpose, making it easier than using ``burn-block-data``. For {IDF_TARGET_NAME}, use: ::
 
-        espefuse -p $PORT burn-key BLOCK_KEY0 sdc_pub_key_digest.bin SDC_DIGEST
+        espefuse -p $PORT burn-key BLOCK_KEY0 sdc_pub_key_digest.bin SDC_KEY_DIGEST
 
     Replace ``BLOCK_KEY0`` with the appropriate eFuse key block name for your chip (e.g., ``BLOCK_KEY0``, ``BLOCK_KEY1``, etc.) and ``$PORT`` with your device port (e.g., ``/dev/ttyUSB0``).
 
@@ -183,25 +176,17 @@ Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <htt
     .. important::
         The same ECDSA private key whose public key digest is burned into the device eFuse must be used to generate the SDC certificate. The certificate will only be accepted by the device if it was signed with the key matching the digest stored in eFuse.
 
-    Certificate Generation Arguments
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    The certificate is bound to the target device through its chip information, passed with ``--chip-info``. To produce ``chip_info.bin`` (64 bytes), connect to the target debugging device and run: ::
 
-    *   ``-k`` / ``--keyfile``: Path to the ECDSA private key file (P-256 curve).
+        esptool -p $PORT --no-stub read-sdc-chip-info
 
-        To generate a new ECDSA P-256 private key, you can use:
+    The ``--no-stub`` option is required because a locked SDC device only accepts ROM bootloader commands and rejects the flasher stub upload.
 
-        *   ``espsecure generate-signing-key --version 2 --scheme ecdsa256 private_key.pem``
-        *   OpenSSL command: ``openssl ecparam -name prime256v1 -genkey -noout -out private_key.pem``
-
-    *   ``--chip-info``: Path to chip_info.bin file (64 bytes). To generate the chip_info.bin file, connect to the target debugging device and run: ``esptool -p $PORT --no-stub generate-sdc-chip-info``. This command will generate the chip_info.bin file by reading the necessary information from the connected debugging device. The ``--no-stub`` option is required because a locked SDC device only accepts ROM bootloader commands and rejects the flasher stub upload.
-    *   ``--enable-jtag``: Enable JTAG access after SDC authentication.
-    *   ``--enable-download-reuse``: Enable download mode reuse after SDC authentication.
-    *   ``--enable-force-spi-boot``: Force SPI boot after SDC authentication.
-    *   ``--output``: Output file path (default: ``sdc_cert.bin``).
-
-    Example command to generate an SDC certificate with above arguments: ::
+    Example command to generate an SDC certificate that re-enables JTAG: ::
 
         espsecure generate-sdc-certificate -k private_key.pem --chip-info chip_info.bin --enable-jtag --output sdc_cert.bin
+
+    Run ``espsecure generate-sdc-certificate -h`` for the full list of options (``--enable-jtag``, ``--enable-download-reuse``, ``--enable-force-spi-boot``, ``--output``, ``--usc``, ...).
 
     Using an External HSM
     ~~~~~~~~~~~~~~~~~~~~~
@@ -212,41 +197,33 @@ Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <htt
 
         espsecure generate-sdc-certificate --hsm --hsm-config hsm_config.ini --mac <mac_address>
 
-    Arguments for HSM:
-
-    *   ``--hsm``: Enable HSM mode.
-    *   ``--hsm-config``: Path to the HSM configuration file.
-
     USC Configuration (JSON)
     ~~~~~~~~~~~~~~~~~~~~~~~~
 
     The Unlock Security Configuration (USC) defines what SDC does after successful authentication. You can provide a JSON file to configure the USC bits using the ``--usc`` argument. This is useful for managing complex configurations or future extensions (e.g., PMA/PMP settings).
 
-    The JSON file should have the following structure:
+    The JSON file is versioned so the format can evolve. Settings are grouped, and each entry is a ``{"key", "value"}`` pair (with an optional ``"description"`` for documentation). Only the ``config_flags`` group is used today; the layout leaves room for future groups (e.g. PMA/PMP entries) without breaking older files:
 
     .. code-block:: json
 
         {
-            "config_flags": {
-                "enable_jtag": true,
-                "enable_download_reuse": false,
-                "enable_force_spi_boot": false
-            },
-            "pma_config": {
-                "description": "PMA configuration parameters (future use)"
-            },
-            "pmp_config": {
-                "description": "PMP configuration parameters (future use)"
-            }
+            "version": 1,
+            "groups": [
+                {
+                    "group": "config_flags",
+                    "entries": [
+                        {"key": "enable_jtag", "value": true, "description": "Enable JTAG debugging"},
+                        {"key": "enable_download_reuse", "value": false, "description": "Enable download mode reuse"},
+                        {"key": "enable_force_spi_boot", "value": false, "description": "Force SPI boot"}
+                    ]
+                }
+            ]
         }
 
-    *   ``config_flags``: A dictionary containing boolean flags for SDC features.
-    *   ``enable_jtag``: Enable JTAG debugging.
-    *   ``enable_download_reuse``: Enable download mode reuse.
-    *   ``enable_force_spi_boot``: Force SPI boot.
+    The recognised ``config_flags`` keys are ``enable_jtag``, ``enable_download_reuse``, and ``enable_force_spi_boot`` (all boolean).
 
     .. note::
-        When a JSON file is provided via ``--usc``, the values in the JSON file override any corresponding CLI arguments (``--enable-jtag``, etc.). If a flag is not present in the JSON file, the CLI argument value (or default) will be used.
+        The top-level ``version`` field is required; a file without ``"version": 1`` is rejected. When a JSON file is provided via ``--usc``, the values in the JSON file override any corresponding CLI arguments (``--enable-jtag``, etc.). If a flag is not present in the JSON file, the CLI argument value (or default) will be used.
 
     ::
 

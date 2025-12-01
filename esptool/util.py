@@ -14,6 +14,10 @@ from esp_pylib.errors import FatalError as _PylibFatalError
 # Define a custom type for the input
 ImageSource: TypeAlias = str | bytes | IO[bytes]
 
+# Chips that implement the Secure Debug Controller (SDC). Append new target
+# names here as SDC support is added on additional chips.
+SDC_SUPPORTED_CHIPS = ("ESP32-S31",)
+
 
 def byte(bitstr, index):
     return bitstr[index]
@@ -269,16 +273,29 @@ class NANDEraseFailed(FatalError):
         FatalError.__init__(self, message)
 
 
-class UnsupportedCommandError(RuntimeError):
+class UnsupportedCommandError(FatalError):
     """
     Wrapper class for when ROM loader returns an invalid command response.
 
-    Usually this indicates the loader is running in Secure Download Mode.
+    Usually this indicates the loader is running in a restricted download mode
+    (e.g. Secure Download Mode).
     """
 
     def __init__(self, esp, op):
         if esp.secure_download_mode:
             msg = f"This command ({op:#x}) is not supported in Secure Download Mode"
+        elif getattr(esp, "CHIP_NAME", None) in SDC_SUPPORTED_CHIPS:
+            # SDC is only implemented on specific chips, so only mention it there
+            # to avoid confusing users of other chips with an irrelevant hint.
+            msg = (
+                f"This command ({op:#x}) is not supported in the current download "
+                "mode. If download mode is disabled and the Secure Debug "
+                "Controller (SDC) is enabled, re-open download mode by verifying a "
+                "download-reuse certificate ('esptool verify-sdc-certificate'), "
+                "then reconnect with '--before no-reset'."
+            )
         else:
-            msg = f"Invalid (unsupported) command {op:#x}"
-        RuntimeError.__init__(self, msg)
+            msg = (
+                f"This command ({op:#x}) is not supported in the current download mode"
+            )
+        super().__init__(msg)

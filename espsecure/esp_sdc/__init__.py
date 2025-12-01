@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Secure Debug Controller Certificate Generation
@@ -7,7 +7,6 @@ import configparser
 import hashlib
 import json
 import os
-import secrets
 import struct
 import zlib
 from typing import IO
@@ -16,6 +15,7 @@ from cryptography import exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, utils
+from rich.markup import escape
 
 from esptool import FatalError
 from esptool.logger import log
@@ -25,11 +25,19 @@ USC_DATA_SIZE = 256  # USC (Unlock Security Configuration) data size in bytes
 PUBLIC_KEY_SIZE = 64  # ECDSA P-256 public key size (32 bytes x + 32 bytes y)
 SIGNATURE_SIZE = 32  # ECDSA signature component size (r or s)
 CERT_HASH_SIZE = 32  # SHA-256 hash size
+CHIP_INFO_SIZE = 32  # Device chip_info (SHA-256 digest) size in bytes
+NONCE_SIZE = 32  # Nonce size in bytes
+MAC_ADDR_SIZE = 6  # Base MAC address size in bytes
+# chip_info file layout: chip_info followed by the nonce used to derive it
+CHIP_INFO_FILE_SIZE = CHIP_INFO_SIZE + NONCE_SIZE  # 64 bytes
 SDC_CERT_HEADER_SIZE = 20  # Certificate header size
 SDC_CERT_BODY_SIZE = (
     USC_DATA_SIZE + PUBLIC_KEY_SIZE + SIGNATURE_SIZE + SIGNATURE_SIZE + CERT_HASH_SIZE
 )  # 256 + 64 + 32 + 32 + 32 = 416 bytes
-SDC_CERT_SIZE = SDC_CERT_HEADER_SIZE + SDC_CERT_BODY_SIZE  # Total: 436 bytes
+# Length of the header + body (436 bytes); this is what the header's ``length``
+# field stores. The serialized certificate on disk is 32 bytes larger because a
+# 32-byte nonce is appended after the body (i.e. 468 bytes total).
+SDC_CERT_HEADER_BODY_SIZE = SDC_CERT_HEADER_SIZE + SDC_CERT_BODY_SIZE
 
 # Certificate Header Constants
 SDC_CERT_MAGIC = 0x524D4143  # "RMAC" magic number (little-endian: "CAMR")
@@ -40,13 +48,23 @@ USC_BIT_JTAG = 0  # Bit 0: Enable JTAG debugging interface
 USC_BIT_DOWNLOAD_REUSE = 1  # Bit 1: Enable download mode reuse
 USC_BIT_FORCE_SPI_BOOT = 2  # Bit 2: Force SPI boot mode
 
+# USC JSON configuration format version. The versioned, group/entry layout
+# leaves room for future USC settings (e.g. PMA/PMP entries) to be added as
+# additional groups without breaking older configuration files.
+USC_JSON_VERSION = 1
+# Boolean flags understood in the "config_flags" group of the USC JSON file.
+USC_CONFIG_FLAG_KEYS = (
+    "enable_jtag",
+    "enable_download_reuse",
+    "enable_force_spi_boot",
+)
+
 
 class SDCCertificateGenerator:
     """SDC Certificate Generator using big-endian format"""
 
     def __init__(self) -> None:
         """Initialize generator with big-endian format"""
-        self.verbose = False
 
     def generate_usc_data(
         self,
@@ -73,13 +91,12 @@ class SDCCertificateGenerator:
         # Combine first word and zero padding
         usc_data = first_word_bytes + zero_bytes
 
-        if self.verbose:
-            log.print("USC data generated successfully")
-            log.print(f"  JTAG: {'Enabled' if enable_jtag else 'Disabled'}")
-            download_reuse_status = "Enabled" if enable_download_reuse else "Disabled"
-            log.print(f"  Download reuse: {download_reuse_status}")
-            force_spi_boot_status = "Enabled" if enable_force_spi_boot else "Disabled"
-            log.print(f"  Force SPI boot: {force_spi_boot_status}")
+        log.debug("USC data generated successfully")
+        log.debug(f"  JTAG: {'Enabled' if enable_jtag else 'Disabled'}")
+        download_reuse_status = "Enabled" if enable_download_reuse else "Disabled"
+        log.debug(f"  Download reuse: {download_reuse_status}")
+        force_spi_boot_status = "Enabled" if enable_force_spi_boot else "Disabled"
+        log.debug(f"  Force SPI boot: {force_spi_boot_status}")
 
         return usc_data
 
@@ -95,8 +112,7 @@ class SDCCertificateGenerator:
         # Extract and validate public key
         public_key_bytes = _get_sdc_public_key_bytes(public_key)
 
-        if self.verbose:
-            log.print("Public key extracted successfully")
+        log.debug("Public key extracted successfully")
 
         return public_key_bytes
 
@@ -110,8 +126,7 @@ class SDCCertificateGenerator:
 
         message = usc_data + chip_info
 
-        if self.verbose:
-            log.print("Certificate message prepared successfully")
+        log.debug("Certificate message prepared successfully")
 
         return message
 
@@ -139,8 +154,7 @@ class SDCCertificateGenerator:
         if r == 0 or s == 0:
             raise FatalError("Invalid signature")
 
-        if self.verbose:
-            log.print("ECDSA signature generated successfully")
+        log.debug("ECDSA signature generated successfully")
 
         return r, s
 
@@ -167,8 +181,7 @@ class SDCCertificateGenerator:
         # Calculate SHA-256 hash
         cert_hash = hashlib.sha256(cert_plain).digest()
 
-        if self.verbose:
-            log.print("Certificate integrity hash calculated successfully")
+        log.debug("Certificate integrity hash calculated successfully")
 
         return cert_hash
 
@@ -182,8 +195,7 @@ class SDCCertificateGenerator:
         # Calculate SHA-256 hash of the public key
         pub_key_hash = hashlib.sha256(public_key).digest()
 
-        if self.verbose:
-            log.print("Public key hash calculated successfully")
+        log.debug("Public key hash calculated successfully")
 
         return pub_key_hash
 
@@ -207,7 +219,7 @@ class SDCCertificateGenerator:
             SDC_CERT_VERSION_1,  # version (1 byte)
             0,  # reserved_1 (1 byte)
             USC_DATA_SIZE,  # usc_len (2 bytes)
-            SDC_CERT_SIZE,  # length (2 bytes)
+            SDC_CERT_HEADER_BODY_SIZE,  # length (2 bytes)
             0,  # reserved_2 (2 bytes)
             crc32,  # crc32 (4 bytes)
             0,  # reserved_3 (4 bytes)
@@ -268,8 +280,9 @@ def _get_sdc_public_key_bytes(public_key: ec.EllipticCurvePublicKey) -> bytes:
         )
 
     public_numbers = public_key.public_numbers()
-    x_bytes: bytes = public_numbers.x.to_bytes(32, "big")
-    y_bytes: bytes = public_numbers.y.to_bytes(32, "big")
+    coord_size = PUBLIC_KEY_SIZE // 2  # 32-byte X and Y coordinates
+    x_bytes: bytes = public_numbers.x.to_bytes(coord_size, "big")
+    y_bytes: bytes = public_numbers.y.to_bytes(coord_size, "big")
     return x_bytes + y_bytes
 
 
@@ -286,9 +299,7 @@ def _normalize_hex_string(hex_str: str) -> str:
     )
 
 
-def _parse_input_data(
-    input_str: str, expected_len: int, param_name: str, verbose: bool = False
-) -> bytes:
+def _parse_input_data(input_str: str, expected_len: int, param_name: str) -> bytes:
     """Parse input data - can be hex string, binary file path, or hex file path
 
     Supports:
@@ -300,7 +311,6 @@ def _parse_input_data(
         input_str: Input as hex string or file path
         expected_len: Expected length in bytes
         param_name: Name of parameter for error messages
-        verbose: Enable verbose output
 
     Returns:
         bytes: Parsed data as bytes
@@ -320,8 +330,9 @@ def _parse_input_data(
         # Try as file path
         if input_lower.endswith(".bin"):
             # Binary file
-            if verbose:
-                log.print(f"Reading {param_name} from binary file: {input_str}")
+            log.debug(
+                f"Reading {param_name} from binary file: {escape(str(input_str))}"
+            )
             with open(input_str, "rb") as f:
                 data = f.read()
             if len(data) != expected_len:
@@ -333,8 +344,7 @@ def _parse_input_data(
             return data
         elif input_lower.endswith(".hex"):
             # Hex text file (.hex)
-            if verbose:
-                log.print(f"Reading {param_name} from hex file: {input_str}")
+            log.debug(f"Reading {param_name} from hex file: {escape(str(input_str))}")
             with open(input_str) as f:
                 hex_content = f.read().strip()
             # Normalize hex string (remove separators, convert to uppercase)
@@ -355,11 +365,10 @@ def _parse_input_data(
                 )
         else:
             # File exists but not .bin or .hex, treat as hex string
-            if verbose:
-                log.print(
-                    f"File '{input_str}' exists but is not .bin or .hex, "
-                    "treating as hex string"
-                )
+            log.debug(
+                f"File '{escape(str(input_str))}' exists but is not .bin or .hex, "
+                "treating as hex string"
+            )
             hex_str = _normalize_hex_string(input_str)
             if len(hex_str) != expected_len * 2:
                 raise FatalError(
@@ -375,8 +384,7 @@ def _parse_input_data(
                 )
     else:
         # Treat as hex string
-        if verbose:
-            log.print(f"Parsing {param_name} from hex string")
+        log.debug(f"Parsing {param_name} from hex string")
         # Normalize hex string (remove separators, convert to uppercase)
         hex_str = _normalize_hex_string(input_str)
 
@@ -397,21 +405,22 @@ def _calculate_chip_info(
     mac: str,
     sdc_session_counter: int | bytes,
     nonce: str | bytes,
-    verbose: bool = False,
 ) -> bytes:
-    """Calculate chip info using SHA256(SHA256(MAC) + nonce + sdc_session_counter)
+    """Calculate chip info: SHA256(SHA256(reverse(MAC)) + nonce + tail).
 
-    First generates UNIQ_id from MAC address using SHA256(MAC), then calculates
-    chip info using SHA256(UNIQ_id + nonce + sdc_session_counter).
+    First generates UNIQ_id from the MAC address using SHA256(reverse(MAC)),
+    then computes SHA256(UNIQ_id + nonce + tail), where ``tail`` is a single
+    byte holding the SDC session counter in its high nibble
+    ((sdc_session_counter << 4)) to match the device's EFUSE_TAIL layout.
 
     Args:
         mac: MAC address as hex string (6 bytes, 12 hex chars) or file path (.bin/.hex).
              Supports formats: "00:00:00:00:00:00", "00-00-00-00-00-00",
              "000000000000", or binary file.
-        sdc_session_counter: SDC session counter as integer (0-255, default: 0) or
-            bytes (1 byte). Must match the value burned in the device eFuse.
+        sdc_session_counter: SDC session counter as integer (valid values
+            0, 1, 3, or 7; default: 0) or bytes (1 byte). Must match the value
+            burned in the device eFuse.
         nonce: Nonce as hex string (32 bytes) or file path (.bin/.hex)
-        verbose: Enable verbose output
 
     Returns:
         bytes: 32-byte chip info (SHA-256 digest)
@@ -422,24 +431,23 @@ def _calculate_chip_info(
     if not nonce:
         raise FatalError("Nonce is required")
 
-    # Parse MAC - must be 6 bytes (standard MAC address length)
+    # Parse MAC - must be MAC_ADDR_SIZE bytes (standard MAC address length)
     if isinstance(mac, bytes):
         mac_bytes = mac
-        if len(mac_bytes) != 6:
+        if len(mac_bytes) != MAC_ADDR_SIZE:
             raise FatalError(
-                "Invalid MAC address length: expected 6 bytes, "
+                f"Invalid MAC address length: expected {MAC_ADDR_SIZE} bytes, "
                 f"got {len(mac_bytes)} bytes."
             )
     else:
-        mac_bytes = _parse_input_data(mac, 6, "MAC", verbose)
+        mac_bytes = _parse_input_data(mac, MAC_ADDR_SIZE, "MAC")
 
     # Generate unique device identifier from MAC address using SHA256.
     # The MAC is supplied in the human-readable order shown by `espefuse summary`
     # (e.g. "30:ed:a0:ed:78:9c"), but the device ROM derives UNIQ_id from the MAC
     # in eFuse byte order, which is the reverse. Reverse the bytes here so the
     # offline computation matches the device: SHA256(reverse(MAC)) -> UNIQ_id.
-    if verbose:
-        log.print("Deriving device unique identifier from MAC address")
+    log.debug("Deriving device unique identifier from MAC address")
     sha256_mac = hashlib.sha256()
     sha256_mac.update(mac_bytes[::-1])
     uniq_id = sha256_mac.digest()  # 32-byte unique identifier
@@ -453,32 +461,46 @@ def _calculate_chip_info(
                 f"got {len(session_counter_bytes)} bytes"
             )
     elif isinstance(sdc_session_counter, int):
-        # Convert integer to 1-byte bytes
-        if sdc_session_counter < 0 or sdc_session_counter > 255:
+        # SDC_SESSION_COUNTER is a 3-bit *write-only* eFuse: its bits can only be
+        # burned 0->1, so across sessions the counter advances 0 -> 1 -> 3 -> 7
+        # (one more low bit each time). Only those 4 values can ever be the
+        # device's counter; 2/4/5/6 are unreachable under monotonic burning.
+        # When the ROM derives chip_info it folds the counter into the high
+        # nibble of a single tail byte (counter << 4) and hashes
+        # UNIQ_id || nonce || tail. Hashing the bare counter value (the previous
+        # behaviour) matched the device only at counter 0 and produced rejected
+        # certs for every non-zero counter.
+        # HW-verified on esp32s31 FPGA: counters 0/1/3/7 -> tail 0x00/10/30/70.
+        if sdc_session_counter not in (0, 1, 3, 7):
             raise FatalError(
-                "Invalid SDC session counter value: expected 0-255, "
+                "Invalid SDC session counter value: expected one of 0, 1, 3, 7 "
+                "(SDC_SESSION_COUNTER is a 3-bit write-only eFuse whose bits burn "
+                "0->1 monotonically, so it advances 0 -> 1 -> 3 -> 7), "
                 f"got {sdc_session_counter}"
             )
-        session_counter_bytes = sdc_session_counter.to_bytes(1, "big")
-        if verbose:
-            log.print(f"SDC session counter: {sdc_session_counter}")
+        session_counter_bytes = (sdc_session_counter << 4).to_bytes(1, "big")
+        log.debug(
+            f"SDC session counter: {sdc_session_counter} "
+            f"(eFuse-tail byte 0x{sdc_session_counter << 4:02x})"
+        )
     else:
         raise FatalError(
             "Invalid SDC session counter type: expected int or bytes, "
             f"got {type(sdc_session_counter).__name__}"
         )
 
-    # Parse nonce - must be 32 bytes (nonce is always required)
+    # Parse nonce - must be NONCE_SIZE bytes (nonce is always required)
     if isinstance(nonce, bytes):
         nonce_bytes = nonce
-        if len(nonce_bytes) != 32:
-            raise FatalError(f"Nonce must be 32 bytes, got {len(nonce_bytes)} bytes")
+        if len(nonce_bytes) != NONCE_SIZE:
+            raise FatalError(
+                f"Nonce must be {NONCE_SIZE} bytes, got {len(nonce_bytes)} bytes"
+            )
     else:
-        nonce_bytes = _parse_input_data(nonce, 32, "nonce", verbose)
+        nonce_bytes = _parse_input_data(nonce, NONCE_SIZE, "nonce")
 
     # Calculate chip info: SHA256(unique_id + nonce + sdc_session_counter)
-    if verbose:
-        log.print("Calculating chip info")
+    log.debug("Calculating chip info")
     sha256 = hashlib.sha256()
     sha256.update(uniq_id)
     sha256.update(nonce_bytes)
@@ -488,19 +510,32 @@ def _calculate_chip_info(
     return sha256.digest()
 
 
-def _load_usc_config_from_json(json_file: str, verbose: bool = False) -> dict:
-    """Load USC configuration from JSON file
+def _load_usc_config_from_json(json_file: str) -> dict:
+    """Load USC configuration from a JSON file.
 
-    Expected JSON format:
-    {
-        "config_flags": {
-            "enable_jtag": true/false,
-            "enable_download_reuse": true/false,
-            "enable_force_spi_boot": true/false
-        },
-        "pma_config": { ... },  # Future use
-        "pmp_config": { ... }   # Future use
-    }
+    Expected JSON format (version 1)::
+
+        {
+            "version": 1,
+            "groups": [
+                {
+                    "group": "config_flags",
+                    "entries": [
+                        {"key": "enable_jtag", "value": true, "description": "..."},
+                        {"key": "enable_download_reuse", "value": false},
+                        {"key": "enable_force_spi_boot", "value": false},
+                    ],
+                }
+            ],
+        }
+
+    The top-level ``version`` field allows the format to evolve, and the
+    ``groups``/``entries`` layout lets future USC settings (e.g. PMA/PMP
+    entries) be added as additional groups without changing the structure.
+    Only the ``config_flags`` group is consumed today; any other group is
+    ignored. The optional per-entry ``description`` is documentation only.
+
+    Returns a flat ``{flag_name: bool}`` dictionary of the recognised flags.
     """
     try:
         with open(json_file) as f:
@@ -516,30 +551,59 @@ def _load_usc_config_from_json(json_file: str, verbose: bool = False) -> dict:
             f"USC JSON file must contain a JSON object, got {type(config).__name__}"
         )
 
-    # Handle nested "config_flags" structure (preferred)
-    if "config_flags" in config:
-        config_flags = config["config_flags"]
-        if not isinstance(config_flags, dict):
-            raise FatalError(
-                "'config_flags' must be a JSON object, "
-                f"got {type(config_flags).__name__}"
-            )
-        active_config = config_flags
-    else:
-        # Fallback: assume flat structure for backward compatibility
-        active_config = config
+    # Validate the format version so future changes can be detected explicitly.
+    version = config.get("version")
+    if version != USC_JSON_VERSION:
+        raise FatalError(
+            f"Unsupported USC JSON version: {version!r}. This espsecure supports "
+            f"version {USC_JSON_VERSION}; add '\"version\": {USC_JSON_VERSION}' to "
+            "the configuration file."
+        )
 
-    # Validate boolean values if present
-    for key in ["enable_jtag", "enable_download_reuse", "enable_force_spi_boot"]:
-        if key in active_config and not isinstance(active_config[key], bool):
-            raise FatalError(
-                f"Invalid value for '{key}' in USC JSON: expected boolean, "
-                f"got {type(active_config[key]).__name__}"
-            )
+    groups = config.get("groups", [])
+    if not isinstance(groups, list):
+        raise FatalError(f"'groups' must be a JSON array, got {type(groups).__name__}")
 
-    if verbose:
-        log.print(f"Loaded USC configuration from {json_file}")
-        log.print(f"Configuration: {active_config}")
+    active_config: dict = {}
+    for group in groups:
+        if not isinstance(group, dict):
+            raise FatalError(
+                f"Each USC group must be a JSON object, got {type(group).__name__}"
+            )
+        # Only the config_flags group is understood today; ignore future groups
+        # (e.g. pma_config, pmp_config) so older tooling stays forward-compatible.
+        if group.get("group") != "config_flags":
+            continue
+        entries = group.get("entries", [])
+        if not isinstance(entries, list):
+            raise FatalError(
+                f"'entries' must be a JSON array, got {type(entries).__name__}"
+            )
+        for entry in entries:
+            if (
+                not isinstance(entry, dict)
+                or "key" not in entry
+                or "value" not in entry
+            ):
+                raise FatalError(
+                    "Each USC entry must be a JSON object with 'key' and 'value' fields"
+                )
+            key = entry["key"]
+            value = entry["value"]
+            if key not in USC_CONFIG_FLAG_KEYS:
+                raise FatalError(
+                    f"Unknown USC config_flags key: {key!r}. Expected one of "
+                    f"{', '.join(USC_CONFIG_FLAG_KEYS)}."
+                )
+            if not isinstance(value, bool):
+                raise FatalError(
+                    f"Invalid value for '{key}' in USC JSON: expected boolean, "
+                    f"got {type(value).__name__}"
+                )
+            active_config[key] = value
+
+    log.debug(f"Loaded USC configuration from {escape(str(json_file))}")
+    log.debug(f"Configuration: {active_config}")
 
     return active_config
 
@@ -549,7 +613,6 @@ def _generate_sdc_certificate_data(
     private_key: rsa.RSAPrivateKey | ec.EllipticCurvePrivateKey | None,
     usc_data: bytes,
     chip_info: bytes,
-    verbose: bool,
     hsm_config: configparser.SectionProxy | None = None,
     pub_key_file: IO | None = None,
 ) -> tuple[bytes, bytes, int, int, bytes, bytes]:
@@ -613,8 +676,7 @@ def _generate_sdc_certificate_data(
         try:
             der_signature = utils.encode_dss_signature(r, s)
             public_key_obj.verify(der_signature, message, ec.ECDSA(hashes.SHA256()))
-            if verbose:
-                log.print("Signature verified successfully with public key")
+            log.debug("Signature verified successfully with public key")
         except exceptions.InvalidSignature as e:
             raise FatalError(
                 f"HSM signature verification failed: {e}. "
@@ -622,8 +684,7 @@ def _generate_sdc_certificate_data(
                 "extracted public key. Check that the HSM key pair is correct."
             )
 
-        if verbose:
-            log.print("ECDSA signature generated successfully using HSM")
+        log.debug("ECDSA signature generated successfully using HSM")
 
         # Calculate certificate hash
         cert_hash = generator.calculate_cert_hash(usc_data, public_key, r, s)
@@ -652,8 +713,7 @@ def _generate_sdc_certificate_data(
             public_key_obj = private_key.public_key()
             der_signature = utils.encode_dss_signature(r, s)
             public_key_obj.verify(der_signature, message, ec.ECDSA(hashes.SHA256()))
-            if verbose:
-                log.print("Signature verified successfully with public key")
+            log.debug("Signature verified successfully with public key")
         except exceptions.InvalidSignature:
             raise FatalError(
                 "Generated signature cannot be verified with the public key - "
@@ -678,7 +738,6 @@ def generate_sdc_certificate(
     chip_info_file: str | None = None,
     mac: str | None = None,
     sdc_session_counter: int = 0,
-    verbose: bool = False,
     hsm: bool = False,
     hsm_config_file: str | None = None,
     pub_key_file: str | None = None,
@@ -698,9 +757,9 @@ def generate_sdc_certificate(
         mac: MAC address as hex string (6 bytes, 12 hex chars) or file path (.bin/.hex).
              Supports formats: "00:00:00:00:00:00", "00-00-00-00-00-00",
              "000000000000", or binary file. Required if chip_info_file is not provided.
-        sdc_session_counter: SDC session counter as integer (0-255, default: 0).
-            Must match the value burned in the device eFuse.
-        verbose: Enable verbose output
+        sdc_session_counter: SDC session counter as integer (valid values
+            0, 1, 3, or 7; default: 0). Must match the value burned in the
+            device eFuse.
         hsm: Use Hardware Security Module for signing
         hsm_config_file: HSM configuration file (required if hsm=True)
         pub_key_file: Public key file (optional if hsm=True, will extract from HSM
@@ -711,9 +770,8 @@ def generate_sdc_certificate(
 
     # Load USC configuration from JSON if provided
     if usc:
-        if verbose:
-            log.print(f"Loading USC configuration from: {usc}")
-        json_config = _load_usc_config_from_json(usc, verbose)
+        log.debug(f"Loading USC configuration from: {escape(str(usc))}")
+        json_config = _load_usc_config_from_json(usc)
         # JSON config overrides command line options
         enable_jtag = json_config.get("enable_jtag", enable_jtag)
         enable_download_reuse = json_config.get(
@@ -726,8 +784,7 @@ def generate_sdc_certificate(
     # Handle chip_info and nonce based on input method
     if chip_info_file:
         # If chip_info_file is provided, read it directly
-        if verbose:
-            log.print(f"Reading chip_info from file: {chip_info_file}")
+        log.debug(f"Reading chip_info from file: {escape(str(chip_info_file))}")
 
         if not os.path.exists(chip_info_file):
             raise FatalError(f"Chip info file not found: {chip_info_file}")
@@ -735,21 +792,19 @@ def generate_sdc_certificate(
         with open(chip_info_file, "rb") as f:
             chip_info_data = f.read()
 
-        # chip_info.bin must contain chip_info (32 bytes) + nonce (32 bytes) =
-        # 64 bytes total
-        if len(chip_info_data) != 64:
+        # chip_info.bin must contain chip_info + nonce = CHIP_INFO_FILE_SIZE bytes
+        if len(chip_info_data) != CHIP_INFO_FILE_SIZE:
             raise FatalError(
-                "Invalid chip_info file size: expected 64 bytes "
-                "(32 bytes chip_info + 32 bytes nonce), "
+                f"Invalid chip_info file size: expected {CHIP_INFO_FILE_SIZE} bytes "
+                f"({CHIP_INFO_SIZE} bytes chip_info + {NONCE_SIZE} bytes nonce), "
                 f"got {len(chip_info_data)} bytes."
             )
-        # Extract chip_info (first 32 bytes) and nonce (last 32 bytes)
-        chip_info = chip_info_data[:32]
-        nonce_bytes = chip_info_data[32:]
-        if verbose:
-            log.print("Extracted chip_info and nonce from chip_info.bin file")
-            log.print(f"  Chip info (32 bytes): {binascii.hexlify(chip_info).decode()}")
-            log.print(f"  Nonce (32 bytes): {binascii.hexlify(nonce_bytes).decode()}")
+        # Extract chip_info (first CHIP_INFO_SIZE bytes) and nonce (remaining)
+        chip_info = chip_info_data[:CHIP_INFO_SIZE]
+        nonce_bytes = chip_info_data[CHIP_INFO_SIZE:]
+        log.debug("Extracted chip_info and nonce from chip_info.bin file")
+        log.debug(f"  Chip info (32 bytes): {binascii.hexlify(chip_info).decode()}")
+        log.debug(f"  Nonce (32 bytes): {binascii.hexlify(nonce_bytes).decode()}")
     else:
         # If chip_info_file is not provided, calculate chip_info from MAC,
         # nonce, sdc_session_counter
@@ -759,19 +814,16 @@ def generate_sdc_certificate(
             )
 
         # Generate nonce automatically
-        nonce_bytes = secrets.token_bytes(32)
-        if verbose:
-            log.print("Auto-generated 32-byte nonce")
-            log.print(f"  Nonce (32 bytes): {binascii.hexlify(nonce_bytes).decode()}")
+        nonce_bytes = os.urandom(NONCE_SIZE)
+        log.debug("Auto-generated 32-byte nonce")
+        log.debug(f"  Nonce (32 bytes): {binascii.hexlify(nonce_bytes).decode()}")
 
         # Calculate chip info (pass nonce as bytes to avoid re-parsing)
-        chip_info = _calculate_chip_info(mac, sdc_session_counter, nonce_bytes, verbose)
-        if verbose:
-            log.print(f"  Chip info (32 bytes): {binascii.hexlify(chip_info).decode()}")
+        chip_info = _calculate_chip_info(mac, sdc_session_counter, nonce_bytes)
+        log.debug(f"  Chip info (32 bytes): {binascii.hexlify(chip_info).decode()}")
 
     # Initialize generator
     generator = SDCCertificateGenerator()
-    generator.verbose = verbose
 
     # Generate USC data
     usc_data = generator.generate_usc_data(
@@ -812,7 +864,6 @@ def generate_sdc_certificate(
                     None,
                     usc_data,
                     chip_info,
-                    verbose,
                     hsm_config,
                     pub_key_io,
                 )
@@ -834,9 +885,7 @@ def generate_sdc_certificate(
 
         # Generate certificate data
         public_key, pub_key_hash, r, s, cert_hash, sdc_cert = (
-            _generate_sdc_certificate_data(
-                generator, private_key, usc_data, chip_info, verbose
-            )
+            _generate_sdc_certificate_data(generator, private_key, usc_data, chip_info)
         )
 
     # Append nonce to certificate
@@ -851,26 +900,25 @@ def generate_sdc_certificate(
         f.write(sdc_cert)
 
     # Print detailed results (verbose mode only)
-    if verbose:
-        log.print(f"SDC certificate written to {output_file}")
-        log.print("\nSDC Certificate Details")
-        log.print("=" * 60)
-        log.print(f"Certificate size: {len(sdc_cert)} bytes")
-        log.print(f"  - Certificate body: {len(sdc_cert) - 32} bytes")
-        log.print(f"  - Nonce: {len(nonce_bytes)} bytes")
-        log.print("\nUSC Configuration:")
-        log.print(f"  - JTAG access: {'Enabled' if enable_jtag else 'Disabled'}")
-        download_reuse_status = "Enabled" if enable_download_reuse else "Disabled"
-        log.print(f"  - Download reuse: {download_reuse_status}")
-        force_spi_boot_status = "Enabled" if enable_force_spi_boot else "Disabled"
-        log.print(f"  - Force SPI boot: {force_spi_boot_status}")
-        log.print("\nCryptographic Details:")
-        log.print(f"  - Public key hash: {binascii.hexlify(pub_key_hash).decode()}")
-        log.print(f"  - Certificate hash: {binascii.hexlify(cert_hash).decode()}")
-        log.print("=" * 60)
+    log.debug(f"SDC certificate written to {escape(str(output_file))}")
+    log.debug("\nSDC Certificate Details")
+    log.debug("=" * 60)
+    log.debug(f"Certificate size: {len(sdc_cert)} bytes")
+    log.debug(f"  - Certificate body: {len(sdc_cert) - NONCE_SIZE} bytes")
+    log.debug(f"  - Nonce: {len(nonce_bytes)} bytes")
+    log.debug("\nUSC Configuration:")
+    log.debug(f"  - JTAG access: {'Enabled' if enable_jtag else 'Disabled'}")
+    download_reuse_status = "Enabled" if enable_download_reuse else "Disabled"
+    log.debug(f"  - Download reuse: {download_reuse_status}")
+    force_spi_boot_status = "Enabled" if enable_force_spi_boot else "Disabled"
+    log.debug(f"  - Force SPI boot: {force_spi_boot_status}")
+    log.debug("\nCryptographic Details:")
+    log.debug(f"  - Public key hash: {binascii.hexlify(pub_key_hash).decode()}")
+    log.debug(f"  - Certificate hash: {binascii.hexlify(cert_hash).decode()}")
+    log.debug("=" * 60)
 
     # Professional success message
-    log.print(f'\nSDC certificate generated successfully: "{output_file}"')
+    log.print(f'\nSDC certificate generated successfully: "{escape(str(output_file))}"')
     log.print(f"Certificate size: {len(sdc_cert)} bytes")
 
     # Summary of configuration (always shown, but concise)
@@ -888,13 +936,12 @@ def generate_sdc_certificate(
         log.print("No additional features enabled (default security configuration)")
 
 
-def generate_sdc_public_key_digest(
+def digest_sdc_public_key(
     private_key_file: str | None = None,
     public_key_file: str | None = None,
     output_file: str | None = None,
     hsm: bool = False,
     hsm_config_file: str | None = None,
-    verbose: bool = False,
 ) -> None:
     """Generate SDC public key digest for eFuse burning
 
@@ -909,7 +956,6 @@ def generate_sdc_public_key_digest(
         output_file: Output file for SDC public key digest (required)
         hsm: Use Hardware Security Module for extracting public key
         hsm_config_file: HSM configuration file (required if hsm=True)
-        verbose: Enable verbose output
 
     Raises:
         FatalError: If key loading fails or public key is invalid
@@ -933,8 +979,7 @@ def generate_sdc_public_key_digest(
         if not hsm_config_file:
             raise FatalError("--hsm-config is required when using --hsm")
 
-        if verbose:
-            log.print("Extracting public key from HSM...")
+        log.debug("Extracting public key from HSM...")
 
         # Read HSM config
         try:
@@ -956,8 +1001,7 @@ def generate_sdc_public_key_digest(
         if not os.path.exists(public_key_file):
             raise FatalError(f"Public key file not found: {public_key_file}")
 
-        if verbose:
-            log.print(f"Loading public key from {public_key_file}...")
+        log.debug(f"Loading public key from {escape(str(public_key_file))}...")
 
         with open(public_key_file, "rb") as f:
             key_data = f.read()
@@ -974,10 +1018,10 @@ def generate_sdc_public_key_digest(
         if not os.path.exists(private_key_file):
             raise FatalError(f"Private key file not found: {private_key_file}")
 
-        if verbose:
-            log.print(
-                f"Extracting public key from private key file {private_key_file}..."
-            )
+        log.debug(
+            f"Extracting public key from private key file "
+            f"{escape(str(private_key_file))}..."
+        )
 
         with open(private_key_file, "rb") as f:
             private_key = _load_private_key_unified(f.read(), key_type_hint="sdc")
@@ -993,27 +1037,23 @@ def generate_sdc_public_key_digest(
     # _get_sdc_public_key_bytes validates key type and curve
     public_key_bytes = _get_sdc_public_key_bytes(public_key_obj)
 
-    if verbose:
-        log.print(
-            "Public key bytes (64 bytes): "
-            f"{binascii.hexlify(public_key_bytes).decode()}"
-        )
+    log.debug(
+        f"Public key bytes (64 bytes): {binascii.hexlify(public_key_bytes).decode()}"
+    )
 
     # Calculate SHA-256 hash
     pub_key_hash = hashlib.sha256(public_key_bytes).digest()
 
-    if verbose:
-        log.print(f"Public key hash: {binascii.hexlify(pub_key_hash).decode()}")
+    log.debug(f"Public key hash: {binascii.hexlify(pub_key_hash).decode()}")
 
     # Reverse the hash for eFuse burning (digest format)
     # The digest is reversed so it can be written using burn-block-data
     # which writes in normal byte order
     pub_key_digest = pub_key_hash[::-1]
 
-    if verbose:
-        log.print(
-            f"Public key digest (reversed): {binascii.hexlify(pub_key_digest).decode()}"
-        )
+    log.debug(
+        f"Public key digest (reversed): {binascii.hexlify(pub_key_digest).decode()}"
+    )
 
     # Write digest to file
     output_dir = os.path.dirname(output_file)
@@ -1023,11 +1063,12 @@ def generate_sdc_public_key_digest(
     with open(output_file, "wb") as f:
         f.write(pub_key_digest)
 
-    if verbose:
-        log.print(f"Public key digest written to {output_file}")
+    log.debug(f"Public key digest written to {escape(str(output_file))}")
 
     # Success message
-    log.print(f'\nSDC public key digest generated successfully: "{output_file}"')
+    log.print(
+        f'\nSDC public key digest generated successfully: "{escape(str(output_file))}"'
+    )
     log.print(f"Digest size: {len(pub_key_digest)} bytes")
     log.print(
         "This digest must be burned to the device eFuse using "

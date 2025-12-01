@@ -260,6 +260,102 @@ def load_ram(esp: ESPLoader, input: ImageSource) -> None:
     esp.mem_finish(image.entrypoint)
 
 
+def verify_sdc_certificate(esp: ESPLoader, certificate: ImageSource) -> None:
+    """
+    Verify Secure Debug Controller (SDC) certificate on the ESP device.
+
+    This function reads a certificate and verifies it against the connected
+    device using SDC verification commands. The certificate is used for secure
+    debug access control. This operation works with the ROM bootloader and does
+    not require the flasher stub to be loaded.
+
+    Args:
+        esp: Initiated esp object connected to a real device.
+        certificate: The SDC certificate to verify. Accepts a file path, bytes,
+            or an open file-like object (see ``ImageSource``).
+    """
+    byte_data, _ = get_bytes(certificate)
+    # The certificate body (after the 20-byte header) begins with the USC
+    # config word (4 bytes, big-endian); bit 0 (USC_BIT_JTAG) requests JTAG
+    # re-enable. Used below to give a precise diagnostic when the device
+    # rejects a JTAG-enable certificate because the RE_ENABLE_JTAG_SOURCE eFuse
+    # selects HMAC (not the SDC) as the JTAG-re-enable source.
+    requests_jtag = len(byte_data) >= 24 and bool(
+        int.from_bytes(byte_data[20:24], "big") & 0x1
+    )
+    log.print("Verifying SDC certificate ...")
+    try:
+        esp.sdc_verify_begin(1, len(byte_data))
+        esp.sdc_verify_data(byte_data)
+        esp.sdc_verify_end()  # raises FatalError if the ROM rejects the cert
+    except FatalError as e:
+        # When RE_ENABLE_JTAG_SOURCE=1 (HMAC owns JTAG re-enable) the ROM
+        # refuses to apply the certificate's JTAG-reuse config; that config
+        # check happens BEFORE the signature check and leaves the SDC command
+        # channel unresponsive, so esptool sees the transport drop rather than
+        # a clean result code. Other rejections (wrong key, chip-info, or
+        # session counter) return a normal error result instead. A dropped
+        # response while verifying a JTAG-requesting certificate therefore
+        # uniquely indicates the RE_ENABLE_JTAG_SOURCE=1 policy rejection.
+        dropped = "Serial data stream stopped" in str(
+            e
+        ) or "No serial data received" in str(e)
+        if requests_jtag and dropped:
+            raise FatalError(
+                "SDC rejected the JTAG re-enable certificate: the device did "
+                "not respond after the certificate was presented. This is "
+                "expected when the RE_ENABLE_JTAG_SOURCE eFuse is set to 1 "
+                "(HMAC): HMAC, not the SDC, is then the source allowed to "
+                "re-enable JTAG, so the SDC cannot re-open JTAG.\n"
+                "To re-enable JTAG through the SDC, RE_ENABLE_JTAG_SOURCE must "
+                "be 0 (the default). If it is 1, use the HMAC JTAG-enable "
+                "workflow instead. (Certificates that do not request JTAG, "
+                "e.g. download-reuse or force-spi-boot, are unaffected.)"
+            ) from e
+        raise
+    log.print("SDC certificate verified successfully.")
+
+
+def read_sdc_chip_info(esp: ESPLoader, output: str = "chip_info.bin") -> None:
+    """
+    Read Secure Debug Controller (SDC) chip info from the device.
+
+    This function sends a random nonce to the device, which uses it to compute
+    chip-specific information via the SDC generation commands. The chip info
+    (32 bytes) read back is appended with the nonce (32 bytes) to create a
+    64-byte output file. The chip info can be used for secure debug certificate
+    generation. This operation works with the ROM bootloader and does not
+    require the flasher stub to be loaded.
+
+    Args:
+        esp: Initiated esp object connected to a real device.
+        output: Output filename for the chip info binary file
+            (defaults to "chip_info.bin").
+    """
+    log.print("Reading SDC chip info ...")
+    # Generate random 32-byte nonce
+    nonce = os.urandom(32)
+
+    log.debug(f"Generated random nonce ({len(nonce)} bytes): {nonce.hex()}")
+
+    esp.sdc_gen_begin()
+    esp.sdc_gen_data(nonce)
+    chip_info = esp.sdc_gen_end()
+
+    if chip_info is None or len(chip_info) != 32:
+        raise FatalError("Failed to generate chip info or invalid chip info size")
+
+    log.debug(f"Generated chip info ({len(chip_info)} bytes): {chip_info.hex()}")
+
+    # Write chip_info + nonce (chip_info = 32 bytes, nonce = 32 bytes, total = 64 bytes)
+    # Format: chip_info (first 32 bytes) + nonce (last 32 bytes)
+    combined_data = chip_info + nonce
+
+    with open(output, "wb") as f:
+        f.write(combined_data)
+    log.print(f"Chip info is saved to {escape(str(output))}!")
+
+
 def read_mem(esp: ESPLoader, address: int) -> None:
     """
     Read and display a 32-bit value from a memory address on the ESP device.

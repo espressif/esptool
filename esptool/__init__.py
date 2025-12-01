@@ -15,6 +15,8 @@ __all__ = [
     "get_security_info",
     "image_info",
     "load_ram",
+    "verify_sdc_certificate",
+    "read_sdc_chip_info",
     "merge_bin",
     "read_flash",
     "read_flash_status",
@@ -86,10 +88,12 @@ from esptool.cmds import (
     read_mac,
     read_mem,
     read_nand_spare,
+    read_sdc_chip_info,
     reset_chip,
     run,
     run_stub,
     verify_flash,
+    verify_sdc_certificate,
     version,
     write_flash,
     write_flash_status,
@@ -107,6 +111,7 @@ from esptool.loader import (
 from esptool.logger import log
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
+    SDC_SUPPORTED_CHIPS,
     FatalError,
     NotImplementedInROMError,
     check_deprecated_py_suffix,
@@ -115,6 +120,11 @@ from esptool.util import (
 
 # Backward compatibility for ESP-IDF
 get_port_list = get_port_names
+
+# Secure Debug Controller (SDC) device-side commands. These talk to the ROM
+# bootloader only (require --no-stub), are supported only on ESP32-S31, and skip
+# chip-info reading, baud-rate change, and post-run reset.
+SDC_COMMANDS = ("verify-sdc-certificate", "read-sdc-chip-info")
 
 # Show arguments in the help output, this was default in argparse
 click.rich_click.SHOW_ARGUMENTS = True
@@ -180,6 +190,8 @@ click.rich_click.COMMAND_GROUPS = {
                 "write-flash-status",
                 "read-flash-sfdp",
                 "get-security-info",
+                "verify-sdc-certificate",
+                "read-sdc-chip-info",
                 "chip-id",
                 "run",
             ],
@@ -570,8 +582,14 @@ def prepare_esp_object(ctx):
     # 2) Print the chip info
     ########################
 
+    # SDC commands work with ROM bootloader and should always skip chip info reading
+    # to avoid communication issues
+    skip_chip_info = ctx.obj["invoked_subcommand"] in SDC_COMMANDS
+
     if esp.secure_download_mode:
         log.print(f"{'Chip type:':<20}{esp.CHIP_NAME} in Secure Download Mode")
+    elif skip_chip_info:
+        log.print(f"{'Chip type:':<20}{esp.CHIP_NAME}")
     else:
         log.print(f"{'Chip type:':<20}{esp.get_chip_description()}")
         log.print(f"{'Features:':<20}{', '.join(esp.get_chip_features())}")
@@ -589,10 +607,31 @@ def prepare_esp_object(ctx):
         "get-security-info",
         "write-flash",
         "erase-region",
+        *SDC_COMMANDS,
     ):
         raise FatalError(
             f"The '{ctx.obj['invoked_subcommand']}' command is not available "
             "in Secure Download Mode."
+        )
+
+    # Secure Debug Controller (SDC) is only implemented on specific chips.
+    if (
+        ctx.obj["invoked_subcommand"] in SDC_COMMANDS
+        and esp.CHIP_NAME not in SDC_SUPPORTED_CHIPS
+    ):
+        raise FatalError(
+            f"The '{ctx.obj['invoked_subcommand']}' command is only supported on "
+            f"{', '.join(SDC_SUPPORTED_CHIPS)}, but the connected chip is "
+            f"{esp.CHIP_NAME}."
+        )
+
+    # SDC commands talk to the ROM bootloader only; a locked SDC device rejects
+    # the flasher stub. Require --no-stub explicitly and guide the user if missing.
+    if ctx.obj["invoked_subcommand"] in SDC_COMMANDS and not ctx.obj["no_stub"]:
+        raise FatalError(
+            f"The '{ctx.obj['invoked_subcommand']}' command must be run with "
+            "'--no-stub'. It communicates with the ROM bootloader only and a "
+            "locked SDC device rejects the flasher stub. Re-run with '--no-stub'."
         )
 
     # 4) Upload the stub flasher
@@ -607,7 +646,13 @@ def prepare_esp_object(ctx):
     if ctx.obj["override_vddsdio"]:
         esp.override_vddsdio(ctx.obj["override_vddsdio"])
 
-    if ctx.obj["baud"] > initial_baud:
+    # SDC commands work with ROM bootloader and should skip baud rate change
+    # when using --no-stub to avoid communication issues
+    skip_baud_change = (
+        ctx.obj["no_stub"] and ctx.obj["invoked_subcommand"] in SDC_COMMANDS
+    )
+
+    if ctx.obj["baud"] > initial_baud and not skip_baud_change:
         try:
             esp.change_baud(ctx.obj["baud"])
         except NotImplementedInROMError:
@@ -644,6 +689,10 @@ def prepare_esp_object(ctx):
         # Handle post-operation behaviour (reset or other)
         if ctx.obj["invoked_subcommand"] == "load-ram":
             # the ESP is now running the loaded image, so let it run
+            log.print("Exiting immediately.")
+        elif ctx.obj["invoked_subcommand"] in SDC_COMMANDS:
+            # SDC commands work with ROM bootloader and don't need reset
+            # Resetting may fail when ROM DL mode is disabled
             log.print("Exiting immediately.")
         else:
             reset_chip(esp, ctx.obj["after"])
@@ -1241,6 +1290,31 @@ def get_security_info_cli(ctx):
     """Print security information report."""
     prepare_esp_object(ctx)
     get_security_info(ctx.obj["esp"])
+
+
+@cli.command("verify-sdc-certificate")
+@click.argument("filename", type=click.Path(exists=True))
+@click.pass_context
+def verify_sdc_certificate_cli(ctx, filename):
+    """Verify SDC certificate on the device for
+    Secure Debug Controller Authentication."""
+    prepare_esp_object(ctx)
+    verify_sdc_certificate(ctx.obj["esp"], filename)
+
+
+@cli.command("read-sdc-chip-info")
+@click.option(
+    "--output",
+    "-o",
+    type=str,
+    default="chip_info.bin",
+    help="Output filename for the generated chip info binary file.",
+)
+@click.pass_context
+def read_sdc_chip_info_cli(ctx, output):
+    """Generate SDC chip info on the device"""
+    prepare_esp_object(ctx)
+    read_sdc_chip_info(ctx.obj["esp"], output)
 
 
 @cli.command("version")

@@ -104,6 +104,11 @@ ERASE_REGION_TIMEOUT_PER_MB = cfg.getfloat("erase_region_timeout_per_mb", 30)
 ERASE_WRITE_TIMEOUT_PER_MB = cfg.getfloat("erase_write_timeout_per_mb", 40)
 # Short timeout for MEM_END, as it may never respond
 MEM_END_ROM_TIMEOUT = cfg.getfloat("mem_end_rom_timeout", 0.2)
+# Secure Debug Controller (SDC) chip_info: the ROM computes a 32-byte value but
+# the SDC_GEN_END response payload is 64 bytes (32 bytes chip_info + 32 bytes of
+# zero padding); the status bytes follow the whole payload.
+SDC_CHIP_INFO_LEN = 32
+SDC_GEN_END_RESP_LEN = 64
 # Timeout for serial port write
 DEFAULT_SERIAL_WRITE_TIMEOUT = cfg.getfloat("serial_write_timeout", 10)
 # Default number of times to try connection
@@ -314,6 +319,13 @@ class ESPLoader:
         "SPI_FLASH_MD5": 0x13,
         # Commands supported by ESP32-S2 and later chips ROM bootloader only
         "GET_SECURITY_INFO": 0x14,
+        # Commands supported by Secure Download Controller
+        "SDC_VERIF_BEGIN": 0x19,
+        "SDC_VERIF_DATA": 0x1A,
+        "SDC_VERIF_END": 0x1B,
+        "SDC_GEN_BEGIN": 0x1C,
+        "SDC_GEN_DATA": 0x1D,
+        "SDC_GEN_END": 0x1E,
         # Some commands supported by stub only
         "ERASE_FLASH": 0xD0,
         "ERASE_REGION": 0xD1,
@@ -1008,6 +1020,83 @@ class ESPLoader:
         self.write_reg(addr, val)
 
         return val
+
+    def sdc_verify_begin(self, ena_nonce, size):
+        return self.check_command(
+            "begin SDC certificate verification",
+            self.ESP_CMDS["SDC_VERIF_BEGIN"],
+            struct.pack("<II", ena_nonce, size),
+            timeout=DEFAULT_TIMEOUT,
+        )
+
+    def sdc_verify_data(self, data):
+        return self.check_command(
+            "write SDC certificate data",
+            self.ESP_CMDS["SDC_VERIF_DATA"],
+            struct.pack("<I", len(data)) + data,
+            self.checksum(data),
+            timeout=DEFAULT_TIMEOUT,
+        )
+
+    def sdc_verify_end(self):
+        # The status byte of this response carries the certificate verification
+        # result (0 = valid, non-zero = rejected by the ROM), so let
+        # check_command raise on a non-zero result instead of ignoring it.
+        data = struct.pack("<I", False)
+        return self.check_command(
+            "verify the SDC certificate",
+            self.ESP_CMDS["SDC_VERIF_END"],
+            data=data,
+            timeout=DEFAULT_TIMEOUT,
+        )
+
+    def sdc_gen_begin(self):
+        data = struct.pack("<I", True)
+        try:
+            return self.check_command(
+                "start SDC generation",
+                self.ESP_CMDS["SDC_GEN_BEGIN"],
+                data=data,
+                timeout=DEFAULT_TIMEOUT,
+            )
+        except FatalError:
+            if self.IS_STUB:
+                raise
+            pass
+
+    def sdc_gen_data(self, data):
+        data1 = struct.pack("<I", len(data)) + data
+        try:
+            return self.check_command(
+                "write SDC generation data",
+                self.ESP_CMDS["SDC_GEN_DATA"],
+                data1,
+                self.checksum(data),
+                timeout=DEFAULT_TIMEOUT,
+            )
+        except FatalError:
+            if self.IS_STUB:
+                raise
+            pass
+
+    def sdc_gen_end(self):
+        data = struct.pack("<I", True)
+        try:
+            r = self.check_command(
+                "finish SDC generation",
+                self.ESP_CMDS["SDC_GEN_END"],
+                data=data,
+                # The ROM returns a 64-byte payload (32 bytes chip_info + 32
+                # bytes zero padding); the status bytes follow it, so the whole
+                # payload length must be declared here or the status would be
+                # read from the zero padding instead.
+                resp_data_len=SDC_GEN_END_RESP_LEN,
+                timeout=DEFAULT_TIMEOUT,
+            )
+        except FatalError:
+            log.error("Error when read chip_info")
+            raise
+        return r[:SDC_CHIP_INFO_LEN] if r else None
 
     def mem_begin(self, size, blocks, blocksize, offset):
         """Start downloading an application image to RAM"""
