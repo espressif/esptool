@@ -95,3 +95,173 @@ Below is a sample HSM config file (``hsm_config.ini``) for using `SoftHSMv2 <htt
     # label_pubkey is the same as label if the label for public key
     # is not explicitly specified while key-pair generation.
     label_pubkey = Public Key for Digital Signature
+
+.. only:: esp32s31
+
+    Secure Debug Controller (SDC)
+    -----------------------------
+
+    The Secure Debug Controller (SDC) is a hardware peripheral available on {IDF_TARGET_NAME} that enables secure debugging on locked devices. When a {IDF_TARGET_NAME} device is locked (e.g., Download mode is disabled), SDC can enable relevant debugging interfaces after successful authentication using a certificate-based mechanism.
+
+    Enabling the Secure Debug Controller
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Before any other SDC step, the SDC feature itself must be enabled on the device by burning the ``SDC_ENA`` eFuse to ``1``. This is the very first provisioning step: until ``SDC_ENA`` is set, the device does not act on SDC commands and ``esptool generate-sdc-chip-info`` (and certificate verification) will fail. ::
+
+        espefuse -p $PORT burn-efuse SDC_ENA 1
+
+    Replace ``$PORT`` with your device port (e.g., ``/dev/ttyUSB0``).
+
+    .. warning::
+        Burning eFuses is an irreversible operation.
+
+    SDC Public Key Digest Generation
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    The SDC public key digest is the digest of the public key corresponding to the SDC private key. The SDC private key is used to generate the SDC certificate, while the public key digest is burned to the device eFuse and used by SDC to authenticate the certificate.
+
+    The SDC public key digest must be burned to the device eFuse before the SDC certificate can be used. Use the ``generate-sdc-public-key-digest`` command to generate this digest.
+
+    Generating a Private Key
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Before generating the SDC public key digest, you need an SDC private key. To generate a new SDC private key (ECDSA P-256), you can use:
+
+    *   ``espsecure generate-signing-key --version 2 --scheme ecdsa256 private_key.pem``
+    *   OpenSSL command: ``openssl ecparam -name prime256v1 -genkey -noout -out private_key.pem``
+
+    Basic Usage
+    ^^^^^^^^^^^
+
+    To generate the SDC public key digest from a private key file: ::
+
+        espsecure generate-sdc-public-key-digest -k private_key.pem -o sdc_pub_key_digest.bin
+
+    To generate from a public key file: ::
+
+        espsecure generate-sdc-public-key-digest --pub-key public_key.pem -o sdc_pub_key_digest.bin
+
+    To generate from an HSM (see :ref:`Remote Signing Using an External HSM <hsm_signing>` for HSM setup instructions): ::
+
+        espsecure generate-sdc-public-key-digest --hsm --hsm-config hsm_config.ini -o sdc_pub_key_digest.bin
+
+
+    Arguments:
+
+    *   ``-k`` / ``--keyfile``: Path to the ECDSA private key file (P-256 curve). Public key will be extracted from this private key.
+
+    *   ``--pub-key``: Path to the ECDSA public key file in PEM format.
+
+        To extract a public key from a private key: ``espsecure extract-public-key --version 2 --keyfile private_key.pem public_key.pem``
+    *   ``--hsm``: Enable HSM mode to extract public key from HSM.
+    *   ``--hsm-config``: Path to the HSM configuration file (required if ``--hsm`` is used).
+    *   ``-o`` / ``--output``: Output file path for the SDC public key digest (optional, defaults to ``sdc_pub_key_digest.bin``).
+    *   ``-v`` / ``--verbose``: Enable detailed verbose output showing intermediate values.
+
+    .. note::
+        Only one of ``--keyfile``, ``--pub-key``, or ``--hsm`` can be provided.
+
+    Burning the Digest to eFuse
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    After generating the digest file, burn it to the device eFuse using ``espefuse burn-key`` with the ``SDC_DIGEST`` key purpose. The ``burn-key`` command automatically sets the key purpose, making it easier than using ``burn-block-data``. For {IDF_TARGET_NAME}, use: ::
+
+        espefuse -p $PORT burn-key BLOCK_KEY0 sdc_pub_key_digest.bin SDC_DIGEST
+
+    Replace ``BLOCK_KEY0`` with the appropriate eFuse key block name for your chip (e.g., ``BLOCK_KEY0``, ``BLOCK_KEY1``, etc.) and ``$PORT`` with your device port (e.g., ``/dev/ttyUSB0``).
+
+    .. warning::
+        Burning eFuses is an irreversible operation. Ensure you have the correct digest file before proceeding. The digest must match the public key used to generate the SDC certificate.
+
+    SDC Certificate Generation
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    The SDC certificate enables secure debugging on {IDF_TARGET_NAME} devices where SDC is enabled. The ``generate-sdc-certificate`` command creates this certificate for authentication with SDC.
+
+    Once authenticated, SDC opens the relevant debug interfaces as configured in the certificate.
+
+    .. important::
+        The same ECDSA private key whose public key digest is burned into the device eFuse must be used to generate the SDC certificate. The certificate will only be accepted by the device if it was signed with the key matching the digest stored in eFuse.
+
+    Certificate Generation Arguments
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    *   ``-k`` / ``--keyfile``: Path to the ECDSA private key file (P-256 curve).
+
+        To generate a new ECDSA P-256 private key, you can use:
+
+        *   ``espsecure generate-signing-key --version 2 --scheme ecdsa256 private_key.pem``
+        *   OpenSSL command: ``openssl ecparam -name prime256v1 -genkey -noout -out private_key.pem``
+
+    *   ``--chip-info``: Path to chip_info.bin file (64 bytes). To generate the chip_info.bin file, connect to the target debugging device and run: ``esptool -p $PORT --no-stub generate-sdc-chip-info``. This command will generate the chip_info.bin file by reading the necessary information from the connected debugging device. The ``--no-stub`` option is required because a locked SDC device only accepts ROM bootloader commands and rejects the flasher stub upload.
+    *   ``--enable-jtag``: Enable JTAG access after SDC authentication.
+    *   ``--enable-download-reuse``: Enable download mode reuse after SDC authentication.
+    *   ``--enable-force-spi-boot``: Force SPI boot after SDC authentication.
+    *   ``--output``: Output file path (default: ``sdc_cert.bin``).
+
+    Example command to generate an SDC certificate with above arguments: ::
+
+        espsecure generate-sdc-certificate -k private_key.pem --chip-info chip_info.bin --enable-jtag --output sdc_cert.bin
+
+    Using an External HSM
+    ~~~~~~~~~~~~~~~~~~~~~
+
+    You can also sign the SDC certificate using a private key stored in an HSM. See :ref:`Remote Signing Using an External HSM <hsm_signing>` for HSM installation and setup instructions.
+
+    ::
+
+        espsecure generate-sdc-certificate --hsm --hsm-config hsm_config.ini --mac <mac_address>
+
+    Arguments for HSM:
+
+    *   ``--hsm``: Enable HSM mode.
+    *   ``--hsm-config``: Path to the HSM configuration file.
+
+    USC Configuration (JSON)
+    ~~~~~~~~~~~~~~~~~~~~~~~~
+
+    The Unlock Security Configuration (USC) defines what SDC does after successful authentication. You can provide a JSON file to configure the USC bits using the ``--usc`` argument. This is useful for managing complex configurations or future extensions (e.g., PMA/PMP settings).
+
+    The JSON file should have the following structure:
+
+    .. code-block:: json
+
+        {
+            "config_flags": {
+                "enable_jtag": true,
+                "enable_download_reuse": false,
+                "enable_force_spi_boot": false
+            },
+            "pma_config": {
+                "description": "PMA configuration parameters (future use)"
+            },
+            "pmp_config": {
+                "description": "PMP configuration parameters (future use)"
+            }
+        }
+
+    *   ``config_flags``: A dictionary containing boolean flags for SDC features.
+    *   ``enable_jtag``: Enable JTAG debugging.
+    *   ``enable_download_reuse``: Enable download mode reuse.
+    *   ``enable_force_spi_boot``: Force SPI boot.
+
+    .. note::
+        When a JSON file is provided via ``--usc``, the values in the JSON file override any corresponding CLI arguments (``--enable-jtag``, etc.). If a flag is not present in the JSON file, the CLI argument value (or default) will be used.
+
+    ::
+
+        espsecure generate-sdc-certificate -k private_key.pem --usc usc_config.json --chip-info chip_info.bin
+
+    Using MAC Address and SDC Session Counter
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    If the device base MAC address and SDC session counter are known, you can generate the SDC certificate offline, without extracting the chip information from the device. Provide ``--mac`` (and ``--sdc-session-counter`` if it is not 0) instead of ``--chip-info``.
+
+    Pass the MAC address in the same human-readable order reported by ``espefuse summary`` (the ``MAC`` eFuse) or ``esptool read-mac``, for example ``00:11:22:33:44:55``. ``espsecure`` reverses the bytes internally to match the device's eFuse byte order when deriving the chip information.
+
+    Example: ::
+
+        espsecure generate-sdc-certificate -k private_key.pem --mac 00:11:22:33:44:55 --sdc-session-counter 0 --enable-jtag --enable-download-reuse
+
+    .. note::
+        The SDC session counter must match the value burned in the device eFuse (``SDC_SESSION_COUNTER``). After each debugging session, user has the option to end the current debugging session by incrementing the SDC session counter (burning the eFuse to the new value). This will require generating a new certificate using the updated counter value for further debugging sessions. ``SDC_SESSION_COUNTER`` is a 3-bit write-only eFuse; since eFuse bits can only be burned from 0 to 1, the counter advances ``0`` → ``1`` → ``3`` → ``7`` (one additional bit per session), so a total of 4 SDC debugging sessions can be performed. The ``--sdc-session-counter`` value must equal the current eFuse value (``0``, ``1``, ``3``, or ``7``).
