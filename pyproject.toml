@@ -37,7 +37,7 @@
         "reedsolo>=1.5.3,<1.8",
         "PyYAML>=5.1",
         "intelhex",
-        "rich_click<1.9.0",  # ESPTOOL-1192
+        "rich_click<2",
         "click<9",
     ]
 
