@@ -118,6 +118,15 @@ class ESP32C5ROM(ESP32C6ROM):
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
+    def get_chip_features(self):
+        return [
+            "Wi-Fi 6 (dual-band)",
+            "BT 5 (LE)",
+            "IEEE802.15.4",
+            "Single Core + LP Core",
+            "240MHz",
+        ]
+
     def get_crystal_freq(self):
         # The crystal detection algorithm of ESP32/ESP8266
         # works for ESP32-C5 as well.
