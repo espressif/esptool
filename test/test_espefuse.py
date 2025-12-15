@@ -250,7 +250,13 @@ class TestReadCommands(EfuseTestCase):
 
     def test_summary(self):
         self.espefuse_py("summary -h")
-        self.espefuse_py("summary")
+        output = self.espefuse_py("summary")
+        # Make sure that summary output does not contain non-ascii characters
+        # which can be an issue on non-unicode systems.
+        for i, c in enumerate(output):
+            assert ord(c) < 128, (
+                f"Non-ascii character found at index {i}: {c} ({hex(ord(c))})"
+            )
 
     def test_summary_json(self):
         self.espefuse_py("summary --format json")
