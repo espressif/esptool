@@ -1209,6 +1209,13 @@ class ESPLoader:
     def get_secure_boot_enabled(self):
         return False
 
+    def get_secure_boot_v1_enabled(self):
+        """
+        Returns True if Secure Boot V1 is enabled.
+        Only ESP32 supports V1; other chips return False.
+        """
+        return False
+
     def get_flash_encryption_enabled(self):
         return False
 

@@ -189,6 +189,13 @@ class ESP32ROM(ESPLoader):
             rev >= 300 and efuses & self.EFUSE_RD_ABS_DONE_1_MASK
         )
 
+    def get_secure_boot_v1_enabled(self):
+        """
+        Returns True if Secure Boot V1 is enabled (ABS_DONE_0 eFuse set).
+        """
+        efuses = self.read_reg(self.EFUSE_RD_ABS_DONE_REG)
+        return bool(efuses & self.EFUSE_RD_ABS_DONE_0_MASK)
+
     def get_pkg_version(self):
         word3 = self.read_efuse(3)
         pkg_version = (word3 >> 9) & 0x07

@@ -61,13 +61,16 @@ Esptool will display information about which flash memory sectors will be erased
 
 Use the ``-e/--erase-all`` option to erase all flash sectors (not just the write areas) before programming.
 
-.. only:: not esp8266
+.. only:: esp32
 
     Bootloader Protection
     ^^^^^^^^^^^^^^^^^^^^^
 
-    Flashing into the bootloader region (``0x0`` -> ``0x8000``) is disabled by default if active `Secure Boot <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html>`_ is detected.
+    Flashing into the bootloader region (``0x0`` -> ``0x8000``) is disabled by default if active `Secure Boot V1 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v1.html>`_ is detected.
+    This is because Secure Boot V1 stores the signing key digest in eFuse, making the bootloader irreplaceable without the original key.
     This is a safety measure to prevent accidentally overwriting the secure bootloader, which **can ultimately lead to bricking the device**.
+
+    `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html>`_ (available on ESP32 revision 3 and later) and all newer chips use a standardized scheme where the private signing key remains outside the chip, allowing safe bootloader updates.
 
     This behavior can be overridden with the ``--force`` option. **Use this only at your own risk and only if you know what you are doing!**
 
