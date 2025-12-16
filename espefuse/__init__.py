@@ -7,7 +7,7 @@ import sys
 import rich_click as click
 
 import esptool
-from esptool.cli_util import ChipType, ResetModeType
+from esptool.cli_util import BaudRateType, ChipType, ResetModeType, SerialPortType
 from esptool.logger import log
 
 from espefuse.cli_util import Group
@@ -53,7 +53,7 @@ __all__ = [
 @click.option(
     "--baud",
     "-b",
-    type=int,
+    type=BaudRateType(),
     default=esptool.ESPLoader.ESP_ROM_BAUD,
     envvar="ESPTOOL_BAUD",
     help="Serial port baud rate used when flashing/reading.",
@@ -62,7 +62,7 @@ __all__ = [
     "--port",
     "-p",
     envvar="ESPTOOL_PORT",
-    type=click.Path(),
+    type=SerialPortType(),
     help="Serial port device.",
 )
 @click.option(

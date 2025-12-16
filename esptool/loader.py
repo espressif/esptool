@@ -67,6 +67,7 @@ except TypeError:
     pass  # __doc__ returns None for pySerial
 
 try:
+    from serial.tools.list_ports_common import ListPortInfo  # noqa: F401
     import serial.tools.list_ports as list_ports
 except ImportError:
     log.error(

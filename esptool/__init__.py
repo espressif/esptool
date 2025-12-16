@@ -75,7 +75,6 @@ from esptool.loader import (
     DEFAULT_OPEN_PORT_ATTEMPTS,
     StubFlasher,
     ESPLoader,
-    list_ports,
 )
 from esptool.logger import log
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
@@ -91,6 +90,7 @@ import serial
 
 from esptool.cli_util import (
     AutoSizeType,
+    BaudRateType,
     Group,
     AddrFilenameArg,
     AutoChunkSizeType,
@@ -100,10 +100,12 @@ from esptool.cli_util import (
     MutuallyExclusiveOption,
     ResetModeType,
     SpiConnectionType,
+    SerialPortType,
     AutoHex2BinType,
     AddrFilenamePairType,
     parse_port_filters,
     parse_size_arg,
+    get_port_list,
 )
 
 # Show arguments in the help output, this was default in argparse
@@ -311,14 +313,14 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
 @click.option(
     "--port",
     "-p",
-    type=click.Path(),
+    type=SerialPortType(),
     default=os.environ.get("ESPTOOL_PORT", None),
     help="Serial port device.",
 )
 @click.option(
     "--baud",
     "-b",
-    type=AnyIntType(),
+    type=BaudRateType(),
     default=os.environ.get("ESPTOOL_BAUD", ESPLoader.ESP_ROM_BAUD),
     help="Serial port baud rate used when flashing/reading.",
 )
@@ -437,7 +439,7 @@ def prepare_esp_object(ctx):
 
     if ctx.obj["port"] is None:
         filters = parse_port_filters(ctx.obj["port_filter"])
-        ser_list = get_port_list(*filters)
+        ser_list = [port.device for port in get_port_list(*filters)]
         log.print(f"Found {len(ser_list)} serial ports...")
     else:
         ser_list = [ctx.obj["port"]]
@@ -1033,85 +1035,6 @@ def main(argv: list[str] | None = None, esp: ESPLoader | None = None):
     except SystemExit as e:
         if e.code != 0:
             raise
-
-
-def get_port_list(
-    vids: list[str] = [],
-    pids: list[str] = [],
-    names: list[str] = [],
-    serials: list[str] = [],
-) -> list[str]:
-    if list_ports is None:
-        raise FatalError(
-            "Listing all serial ports is currently not available. "
-            "Please try to specify the port when running esptool or update "
-            "the pyserial package to the latest version."
-        )
-    ports = []
-    for port in list_ports.comports():
-        if sys.platform == "darwin" and port.device.endswith(
-            ("Bluetooth-Incoming-Port", "wlan-debug", "cu.debug-console")
-        ):
-            continue
-        if vids and (port.vid is None or port.vid not in vids):
-            continue
-        if pids and (port.pid is None or port.pid not in pids):
-            continue
-        if names and (
-            port.name is None or all(name not in port.name for name in names)
-        ):
-            continue
-        if serials and (
-            port.serial_number is None
-            or all(serial not in port.serial_number for serial in serials)
-        ):
-            continue
-        ports.append((port.device, port.vid))
-
-    # Constants for sorting optimization
-    ESPRESSIF_VID = 0x303A
-    LINUX_DEVICE_PATTERNS = ("ttyUSB", "ttyACM")
-    MACOS_DEVICE_PATTERNS = ("usbserial", "usbmodem")
-
-    def _port_sort_key_linux(port_info):
-        device, vid = port_info
-
-        if vid == ESPRESSIF_VID:
-            return (3, device)
-
-        if any(pattern in device for pattern in LINUX_DEVICE_PATTERNS):
-            return (2, device)
-
-        return (1, device)
-
-    def _port_sort_key_macos(port_info):
-        device, vid = port_info
-
-        if vid == ESPRESSIF_VID:
-            return (3, device)
-
-        if any(pattern in device for pattern in MACOS_DEVICE_PATTERNS):
-            return (2, device)
-
-        return (1, device)
-
-    def _port_sort_key_windows(port_info):
-        device, vid = port_info
-
-        if vid == ESPRESSIF_VID:
-            return (2, device)
-
-        return (1, device)
-
-    if sys.platform == "win32":
-        key_func = _port_sort_key_windows
-    elif sys.platform == "darwin":
-        key_func = _port_sort_key_macos
-    else:
-        key_func = _port_sort_key_linux
-
-    sorted_port_info = sorted(ports, key=key_func)
-    return [device for device, _ in sorted_port_info]
 
 
 def expand_file_arguments(argv: list[str]) -> list[str]:
