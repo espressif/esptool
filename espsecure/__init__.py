@@ -403,6 +403,7 @@ def sign_data(
     pub_key: list[IO],
     signature: list[IO],
     datafile: IO,
+    skip_padding: bool = False,
 ):
     if keyfile:
         for file in keyfile:
@@ -420,6 +421,7 @@ def sign_data(
             pub_key,
             signature,
             datafile,
+            skip_padding,
         )
 
 
@@ -501,6 +503,7 @@ def sign_secure_boot_v2(
     pub_key: list[IO],
     signature: list[IO],
     datafile: IO,
+    skip_padding: bool = False,
 ):
     """
     Sign a firmware app image with an RSA private key using RSA-PSS,
@@ -520,6 +523,8 @@ def sign_secure_boot_v2(
                 "from a 4KB aligned sector "
                 "but the datafile supplied is not sector aligned."
             )
+        elif skip_padding:
+            log.print("Skipping sector padding. Data contents are not sector aligned.")
         else:
             pad_by = SECTOR_SIZE - (len(contents) % SECTOR_SIZE)
             log.print(
@@ -862,11 +867,12 @@ def verify_signature(
     hsm_config: IO | None,
     keyfile: IO,
     datafile: IO,
+    skip_padding: bool = False,
 ):
     if version == "1":
         return verify_signature_v1(keyfile, datafile)
     elif version == "2":
-        return verify_signature_v2(hsm, hsm_config, keyfile, datafile)
+        return verify_signature_v2(hsm, hsm_config, keyfile, datafile, skip_padding)
 
 
 def verify_signature_v1(keyfile: IO, datafile: IO):
@@ -942,7 +948,13 @@ def validate_signature_block(image_content: bytes, sig_blk_num: int) -> bytes | 
     return sig_blk
 
 
-def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile: IO):
+def verify_signature_v2(
+    hsm: bool,
+    hsm_config: IO | None,
+    keyfile: IO,
+    datafile: IO,
+    skip_padding: bool = False,
+):
     """Verify a previously signed binary image, using the RSA or ECDSA public key"""
 
     if hsm:
@@ -964,10 +976,16 @@ def verify_signature_v2(hsm: bool, hsm_config: IO | None, keyfile: IO, datafile:
     SIG_BLOCK_MAX_COUNT = 3
 
     image_content = datafile.read()
-    if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
-        raise esptool.FatalError(
-            "Invalid datafile. Data size should be non-zero & a multiple of 4096."
-        )
+    if not skip_padding:
+        if len(image_content) < SECTOR_SIZE or len(image_content) % SECTOR_SIZE != 0:
+            raise esptool.FatalError(
+                "Invalid datafile. Data size should be non-zero & a multiple of 4096."
+            )
+    else:
+        if len(image_content) < SECTOR_SIZE:
+            raise esptool.FatalError(
+                "Invalid datafile. File too small (must be at least 4096 bytes)."
+            )
 
     valid = False
 
@@ -1694,6 +1712,13 @@ def generate_signing_key_cli(version, scheme, keyfile):
     help="Pre-calculated signatures. Signatures generated using external private keys "
     "e.g. keys stored in HSM.",
 )
+@click.option(
+    "--skip-padding",
+    is_flag=True,
+    default=False,
+    help="Skip sector size padding for alignment. Data file will not be padded to "
+    "sector boundary (only applicable for Secure Boot V2).",
+)
 @click.argument("datafile", type=click.File("rb"))
 def sign_data_cli(
     version,
@@ -1705,6 +1730,7 @@ def sign_data_cli(
     pub_key,
     signature,
     datafile,
+    skip_padding,
 ):
     """Sign a data file for use with secure boot."""
     sign_data(
@@ -1717,6 +1743,7 @@ def sign_data_cli(
         pub_key,
         signature,
         datafile,
+        skip_padding,
     )
 
 
@@ -1748,10 +1775,17 @@ def sign_data_cli(
     help="Public key file for verification. "
     "Can be private or public key in PEM format.",
 )
+@click.option(
+    "--skip-padding",
+    is_flag=True,
+    default=False,
+    help="Skip sector size alignment check. Use when verifying files signed with "
+    "--skip-padding (only applicable for Secure Boot V2).",
+)
 @click.argument("datafile", type=click.File("rb"))
-def verify_signature_cli(version, hsm, hsm_config, keyfile, datafile):
+def verify_signature_cli(version, hsm, hsm_config, keyfile, datafile, skip_padding):
     """Verify a data file previously signed by "sign_data" using the public key."""
-    verify_signature(version, hsm, hsm_config, keyfile, datafile)
+    verify_signature(version, hsm, hsm_config, keyfile, datafile, skip_padding)
 
 
 @cli.command("extract-public-key")

@@ -10,6 +10,23 @@ For more details, see the ESP-IDF documentation which explains this tool and how
 *  `Secure Boot <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html>`_
 *  `Flash Encryption <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/flash-encryption.html>`_
 
+Skipping Padding During Data Signing and Verification
+-----------------------------------------------------
+
+By default, ``espsecure sign-data`` pads the input so the signed output is always a multiple of 4096 bytes (SECTOR_SIZE), which may not be desirable for all use cases (e.g. When performing Secure boot over custom data with limited size requirements).
+
+Use the ``--skip-padding`` argument to sign and verify files without adding sector alignment padding. ::
+
+    espsecure sign-data --version 2 --keyfile <keyfile> --skip-padding --output <signed_image> <datafile>
+
+If you used ``--skip-padding`` to sign, you must also use it to verify: ::
+
+    espsecure verify-signature --version 2 --skip-padding --keyfile <keyfile> <signed_image>
+
+.. note::
+    Only use ``--skip-padding`` if you know your use case supports non-sector-aligned images.
+
+
 .. _hsm_signing:
 
 Remote Signing Using an External HSM

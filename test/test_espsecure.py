@@ -16,6 +16,7 @@ import pytest
 
 try:
     import espsecure
+    from espsecure import SECTOR_SIZE
 except ImportError:
     need_to_install_package_err()
 
@@ -264,6 +265,74 @@ class TestSigning(EspSecureTestCase):
         finally:
             output_file.close()
             os.unlink(output_file.name)
+
+    @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
+    def test_sign_v2_data_skip_padding(self, scheme):
+        """Test signing with --skip-padding option"""
+        key = f"{scheme}_secure_boot_signing_key.pem"
+        data_length = 100
+
+        # Create a test file that is NOT sector-aligned (e.g., 100 bytes)
+        with tempfile.NamedTemporaryFile(delete=False) as non_aligned_file:
+            non_aligned_file.write(
+                b"\x00" * data_length
+            )  # data_length bytes, not aligned to 4096
+            non_aligned_file_path = non_aligned_file.name
+
+        try:
+            output_file = tempfile.NamedTemporaryFile(delete=False)
+            output_file.close()
+
+            # Test with --skip-padding
+            output = self.run_espsecure(
+                "sign-data --version 2 --skip-padding "
+                f"--keyfile {self._get_imagepath(key)} "
+                f"--output {output_file.name} "
+                f"{non_aligned_file_path}"
+            )
+
+            # Verify that padding was skipped (check output message)
+            assert "Skipping sector padding" in output
+
+            # Verify file size: should be original size + signature sector (4096)
+            with open(output_file.name, "rb") as f:
+                signed_data = f.read()
+            expected_size = data_length + SECTOR_SIZE  # original + signature sector
+            assert len(signed_data) == expected_size
+
+            # Verify the signed file can still be verified with --skip-padding
+            self.run_espsecure(
+                "verify-signature --version 2 --skip-padding "
+                f"--keyfile {self._get_imagepath(key)} "
+                f"{output_file.name}"
+            )
+
+        finally:
+            os.unlink(non_aligned_file_path)
+            os.unlink(output_file.name)
+
+    def test_verify_signature_v2_skip_padding_file_too_small(self):
+        """Test verify-signature with --skip-padding fails for files < 4096 bytes"""
+        key = "rsa_secure_boot_signing_key.pem"
+
+        # Create a file smaller than 4096 bytes
+        with tempfile.NamedTemporaryFile(delete=False) as small_file:
+            small_file.write(b"\x00" * 100)  # Only 100 bytes
+            small_file_path = small_file.name
+
+        try:
+            with pytest.raises(subprocess.CalledProcessError) as cm:
+                self.run_espsecure(
+                    "verify-signature --version 2 --skip-padding "
+                    f"--keyfile {self._get_imagepath(key)} "
+                    f"{small_file_path}"
+                )
+            assert (
+                "Invalid datafile. File too small (must be at least 4096 bytes)"
+                in cm.value.output.decode("utf-8")
+            )
+        finally:
+            os.unlink(small_file_path)
 
     @pytest.mark.parametrize("scheme", ["rsa", "ecdsa192", "ecdsa256", "ecdsa384"])
     def test_sign_v2_multiple_keys_cli(self, scheme):
