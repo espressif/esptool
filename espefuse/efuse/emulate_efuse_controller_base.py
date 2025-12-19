@@ -215,16 +215,3 @@ class EmulateEfuseControllerBase:
         if self.efuse_file:
             with open(self.efuse_file, "wb") as f:
                 self.mem.tofile(f)
-
-
-class FatalError(RuntimeError):
-    """
-    Wrapper class for runtime errors that aren't caused by internal bugs
-    """
-
-    def __init__(self, message):
-        RuntimeError.__init__(self, message)
-
-    @staticmethod
-    def WithResult(message, result):
-        return FatalError(result)

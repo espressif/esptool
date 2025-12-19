@@ -7,8 +7,9 @@
 import time
 
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
-from ..emulate_efuse_controller_base import EmulateEfuseControllerBase, FatalError
+from ..emulate_efuse_controller_base import EmulateEfuseControllerBase
 from esptool.logger import log
+from esptool import FatalError
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):
