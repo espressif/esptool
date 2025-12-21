@@ -6,6 +6,10 @@
 
 import time
 
+from bitstring import BitStream
+
+from espefuse.efuse.mem_definition_base import BlockDefinition
+
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from ..emulate_efuse_controller_base import EmulateEfuseControllerBase
 from esptool.logger import log
@@ -16,10 +20,11 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     """The class for virtual efuse operations. Using for HOST_TEST."""
 
     CHIP_NAME = "ESP32"
-    mem = None
-    debug = False
+    Blocks: type[EfuseDefineBlocks]
+    Fields: EfuseDefineFields
+    REGS: type[EfuseDefineRegisters]
 
-    def __init__(self, efuse_file=None, debug=False):
+    def __init__(self, efuse_file: str | None = None, debug: bool = False):
         self.Blocks = EfuseDefineBlocks
         self.Fields = EfuseDefineFields(None)
         self.REGS = EfuseDefineRegisters
@@ -27,16 +32,16 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     """ esptool method start >> """
 
-    def get_major_chip_version(self):
+    def get_major_chip_version(self) -> int:
         return 3
 
-    def get_minor_chip_version(self):
+    def get_minor_chip_version(self) -> int:
         return 0
 
-    def get_crystal_freq(self):
+    def get_crystal_freq(self) -> int:
         return 40  # MHz (common for all chips)
 
-    def read_reg(self, addr):
+    def read_reg(self, addr: int) -> int:
         if addr == self.REGS.APB_CTL_DATE_ADDR:
             return self.REGS.APB_CTL_DATE_V << self.REGS.APB_CTL_DATE_S
         else:
@@ -44,7 +49,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     """ << esptool method end """
 
-    def send_burn_cmd(self):
+    def send_burn_cmd(self) -> None:
         def wait_idle():
             deadline = time.time() + self.REGS.EFUSE_BURN_TIMEOUT
             while time.time() < deadline:
@@ -60,7 +65,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
         self.write_reg(self.REGS.EFUSE_REG_CMD, self.REGS.EFUSE_CMD_READ)
         wait_idle()
 
-    def handle_writing_event(self, addr, value):
+    def handle_writing_event(self, addr: int, value: int) -> None:
         if addr == self.REGS.EFUSE_REG_CMD:
             if value == self.REGS.EFUSE_CMD_WRITE:
                 self.write_reg(addr, 0)
@@ -71,7 +76,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 self.write_reg(addr, 0)
                 self.save_to_file()
 
-    def read_raw_coding_scheme(self):
+    def read_raw_coding_scheme(self) -> int:
         coding_scheme = (
             self.read_efuse(self.REGS.EFUSE_CODING_SCHEME_WORD)
             & self.REGS.EFUSE_CODING_SCHEME_MASK
@@ -81,7 +86,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
         else:
             return coding_scheme
 
-    def write_raw_coding_scheme(self, value):
+    def write_raw_coding_scheme(self, value: int) -> None:
         self.write_efuse(
             self.REGS.EFUSE_CODING_SCHEME_WORD,
             value & self.REGS.EFUSE_CODING_SCHEME_MASK,
@@ -93,7 +98,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             )
         log.print(f"Set coding scheme = {self.read_raw_coding_scheme()}")
 
-    def get_bitlen_of_block(self, blk, wr=False):
+    def get_bitlen_of_block(self, blk: BlockDefinition, wr: bool = False) -> int:
         if blk.id == 0:
             return 32 * blk.len
         else:
@@ -108,7 +113,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             else:
                 raise FatalError(f"The {coding_scheme} coding scheme is not supported")
 
-    def handle_coding_scheme(self, blk, data):
+    def handle_coding_scheme(self, blk: BlockDefinition, data: BitStream) -> BitStream:
         # it verifies the coding scheme part of data and returns just data
         if blk.id != 0 and self.read_raw_coding_scheme() == self.REGS.CODING_SCHEME_34:
             # CODING_SCHEME 3/4 applied only for BLK1..3

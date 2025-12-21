@@ -1,10 +1,11 @@
 # This file describes eFuses fields and registers for ESP32 chip
 #
-# SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2020-2026 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from collections import Counter, namedtuple
+from collections import Counter
+from dataclasses import dataclass
 import esptool
 from esptool.logger import log
 
@@ -12,6 +13,9 @@ from .csv_table_parser import CSVFuseTable
 
 
 class EfuseRegistersBase:
+    EFUSE_MEM_SIZE: int
+    DR_REG_EFUSE_BASE: int
+
     # Coding Scheme values
     CODING_SCHEME_NONE = 0
     CODING_SCHEME_34 = 1
@@ -22,17 +26,25 @@ class EfuseRegistersBase:
     EFUSE_BURN_TIMEOUT = 0.250  # seconds
 
 
+@dataclass
+class BlockDefinition:
+    name: str
+    alias: list[str]
+    id: int
+    rd_addr: int
+    wr_addr: int
+    write_disable_bit: int | None
+    read_disable_bit: int | list[int] | None
+    len: int
+    key_purpose: str | None
+
+
 class EfuseBlocksBase:
-    BLOCKS: list = []
-    NamedtupleBlock = namedtuple(
-        "NamedtupleBlock",
-        "name alias id rd_addr wr_addr write_disable_bit "
-        "read_disable_bit len key_purpose",
-    )
+    BLOCKS: list[tuple] = []
 
     @staticmethod
-    def get(tuple_block):
-        return EfuseBlocksBase.NamedtupleBlock._make(tuple_block)
+    def get(tuple_block: tuple) -> BlockDefinition:
+        return BlockDefinition(*tuple_block)
 
     def get_blocks_for_keys(self):
         list_of_names = []
@@ -48,22 +60,24 @@ class EfuseBlocksBase:
 
 
 class Field:
-    name = ""
-    block = 0
-    word = None
-    pos = None
-    bit_len = 0
+    name: str = ""
+    block: int = 0
+    word: int | None = None
+    pos: int | None = None
+    bit_len: int = 0
     alt_names: list[str] = []
-    type = ""
-    write_disable_bit = None
-    read_disable_bit: list[int] | None = None
-    category = "config"
-    class_type = ""
-    description = ""
-    dictionary = None
+    type: str = ""
+    write_disable_bit: int | None = None
+    read_disable_bit: int | list[int] | None = None
+    category: str = "config"
+    class_type: str = ""
+    description: str = ""
+    dictionary: dict | None = None
 
 
 class EfuseFieldsBase:
+    EFUSES: list[Field] = []
+
     def __init__(self, e_desc, extend_efuse_table_file) -> None:
         self.ALL_EFUSES: list = []
 

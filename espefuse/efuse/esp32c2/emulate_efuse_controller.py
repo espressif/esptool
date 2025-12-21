@@ -1,12 +1,14 @@
 # This file describes eFuses controller for ESP32-C2 chip
 #
-# SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bitstring import BitStream
 
 import reedsolo
+
+from espefuse.efuse.mem_definition_base import BlockDefinition
 
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from ..emulate_efuse_controller_base import EmulateEfuseControllerBase
@@ -18,10 +20,11 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     """The class for virtual efuse operation. Using for HOST_TEST."""
 
     CHIP_NAME = "ESP32-C2"
-    mem = None
-    debug = False
+    Blocks: type[EfuseDefineBlocks]
+    Fields: EfuseDefineFields
+    REGS: type[EfuseDefineRegisters]
 
-    def __init__(self, efuse_file=None, debug=False):
+    def __init__(self, efuse_file: str | None = None, debug: bool = False):
         self.Blocks = EfuseDefineBlocks
         self.Fields = EfuseDefineFields(None)
         self.REGS = EfuseDefineRegisters
@@ -30,16 +33,16 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     """ esptool method start >>"""
 
-    def get_major_chip_version(self):
+    def get_major_chip_version(self) -> int:
         return 1
 
-    def get_minor_chip_version(self):
+    def get_minor_chip_version(self) -> int:
         return 0
 
-    def get_crystal_freq(self):
+    def get_crystal_freq(self) -> int:
         return 40  # MHz
 
-    def get_security_info(self):
+    def get_security_info(self) -> dict[str, int]:
         return {
             "flags": 0,
             "flash_crypt_cnt": 0,
@@ -50,7 +53,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     """ << esptool method end """
 
-    def handle_writing_event(self, addr, value):
+    def handle_writing_event(self, addr: int, value: int) -> None:
         if addr == self.REGS.EFUSE_CMD_REG:
             if value & self.REGS.EFUSE_PGM_CMD:
                 self.copy_blocks_wr_regs_to_rd_regs(updated_block=(value >> 2) & 0xF)
@@ -63,7 +66,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
                 self.write_reg(self.REGS.EFUSE_CMD_REG, 0)
                 self.save_to_file()
 
-    def get_bitlen_of_block(self, blk, wr=False):
+    def get_bitlen_of_block(self, blk: BlockDefinition, wr: bool = False) -> int:
         if blk.id == 0:
             if wr:
                 return 32 * 8
@@ -76,7 +79,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             else:
                 return 32 * blk.len
 
-    def handle_coding_scheme(self, blk, data):
+    def handle_coding_scheme(self, blk: BlockDefinition, data: BitStream) -> BitStream:
         if blk.id != 0:
             # CODING_SCHEME RS applied only for all blocks except BLK0.
             coded_bytes = 12
@@ -95,47 +98,16 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
             data = data[(8 - blk.len) * 32 :]
         return data
 
-    def check_rd_protection_area(self):
-        # checks fields which have the read protection bits.
-        # if the read protection bit is set then we need to reset this field to 0.
-
-        def get_read_disable_mask(blk):
-            mask = 0
-            if isinstance(blk.read_disable_bit, list):
-                for i in blk.read_disable_bit:
-                    mask |= 1 << i
-            else:
-                mask = 1 << blk.read_disable_bit
-            return mask
-
-        read_disable_bit = self.read_field("RD_DIS", bitstring=False)
-        for b in self.Blocks.BLOCKS:
-            blk = self.Blocks.get(b)
-            block = self.read_block(blk.id)
-            if (
-                blk.read_disable_bit is not None
-                and read_disable_bit & get_read_disable_mask(blk)
-            ):
-                if isinstance(blk.read_disable_bit, list):
-                    if read_disable_bit & (1 << blk.read_disable_bit[0]):
-                        block.set(
-                            0, [i for i in range(blk.len * 32 // 2, blk.len * 32)]
-                        )
-                    if read_disable_bit & (1 << blk.read_disable_bit[1]):
-                        block.set(0, [i for i in range(0, blk.len * 32 // 2)])
-                else:
-                    block.set(0)
-            else:
-                for field in self.Fields.EFUSES:
-                    if (
-                        blk.id == field.block
-                        and field.read_disable_bit is not None
-                        and read_disable_bit & get_read_disable_mask(field)
-                    ):
-                        raw_data = self.read_field(field.name)
-                        raw_data.set(0)
-                        block.pos = block.length - (
-                            field.word * 32 + field.pos + raw_data.length
-                        )
-                        block.overwrite(BitStream(raw_data.length))
-            self.overwrite_mem_from_block(blk, block)
+    def set_read_disable_bits(
+        self,
+        block: BitStream,
+        read_disable_bit,
+        blk: BlockDefinition,
+    ) -> None:
+        if isinstance(blk.read_disable_bit, list):
+            if read_disable_bit & (1 << blk.read_disable_bit[0]):
+                block.set(0, [i for i in range(blk.len * 32 // 2, blk.len * 32)])
+            if read_disable_bit & (1 << blk.read_disable_bit[1]):
+                block.set(0, [i for i in range(0, blk.len * 32 // 2)])
+        else:
+            block.set(0)

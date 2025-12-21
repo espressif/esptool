@@ -999,8 +999,8 @@ class BaseCommands:
                             f"{efuse_name} must be readable, stop this operation!"
                         )
                 else:
-                    for block in self.efuses.Blocks.BLOCKS:
-                        block = self.efuses.Blocks.get(block)
+                    for block_tuple in self.efuses.Blocks.BLOCKS:
+                        block = self.efuses.Blocks.get(block_tuple)
                         if block.name == efuse_name and block.key_purpose is not None:
                             if not self.efuses[block.key_purpose].need_rd_protect(
                                 self.efuses[block.key_purpose].get()

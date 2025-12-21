@@ -88,7 +88,7 @@ class CheckArgValue:
 class EfuseProtectBase:
     # This class is used by EfuseBlockBase and EfuseFieldBase
     read_disable_bit: int | list[int] | None
-    write_disable_bit: int | list[int] | None
+    write_disable_bit: int | None
     parent: "EspEfusesBase"
     name: str
 
@@ -182,7 +182,7 @@ class EfuseBlockBase(EfuseProtectBase):
         self.rd_addr: int = param.rd_addr
         self.wr_addr: int = param.wr_addr
         self.write_disable_bit: int | None = param.write_disable_bit
-        self.read_disable_bit: int | None = param.read_disable_bit
+        self.read_disable_bit: int | list[int] | None = param.read_disable_bit
         self.len: int = param.len
         self.key_purpose_name: str | None = param.key_purpose
         bit_block_len: int = self.get_block_len() * 8
