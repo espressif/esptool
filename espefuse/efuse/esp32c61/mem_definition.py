@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from dataclasses import dataclass
 import os
 
 import yaml
@@ -15,6 +16,7 @@ from ..mem_definition_base import (
 )
 
 
+@dataclass(frozen=True)
 class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_MEM_SIZE = 0x01FC + 4
 

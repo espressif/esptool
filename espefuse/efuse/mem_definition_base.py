@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import esptool
 from esptool.logger import log
 
@@ -59,13 +59,14 @@ class EfuseBlocksBase:
         return list_of_names
 
 
+@dataclass
 class Field:
     name: str = ""
     block: int = 0
     word: int | None = None
     pos: int | None = None
     bit_len: int = 0
-    alt_names: list[str] = []
+    alt_names: list[str] = field(default_factory=list)
     type: str = ""
     write_disable_bit: int | None = None
     read_disable_bit: int | list[int] | None = None
@@ -73,6 +74,39 @@ class Field:
     class_type: str = ""
     description: str = ""
     dictionary: dict | None = None
+
+    def __post_init__(self):
+        """Automatically generate type string from type prefix if provided."""
+        if self.type and ":" not in self.type:
+            self.type = self._make_type_string(self.type, self.bit_len)
+
+    @staticmethod
+    def _make_type_string(type_prefix: str, bit_len: int) -> str:
+        """Generate a type string for a Field based on type prefix and bit length.
+
+        Args:
+            type_prefix: The base type ("bytes", "uint", "bool")
+            bit_len: The length in bits
+
+        Returns:
+            A formatted type string (e.g., "bytes:8", "uint:64", "bool")
+        """
+        if type_prefix == "bytes":
+            if bit_len % 8 != 0:
+                raise ValueError(
+                    f"bit_len ({bit_len}) must be divisible by 8 for bytes type"
+                )
+            return f"bytes:{bit_len // 8}"
+        elif type_prefix == "uint":
+            return f"uint:{bit_len}"
+        elif type_prefix == "bool":
+            if bit_len != 1:
+                raise ValueError(f"bit_len must be 1 for bool type, got {bit_len}")
+            return "bool"
+        else:
+            raise ValueError(
+                f"Unknown type prefix: {type_prefix}. Must be bytes, uint, or bool"
+            )
 
 
 class EfuseFieldsBase:
@@ -180,23 +214,24 @@ class EfuseFieldsBase:
         for e_name in e_desc["EFUSES"]:
             data_dict = e_desc["EFUSES"][e_name]
             if data_dict["show"] == "y":
-                d = Field()
-                d.name = e_name
-                d.block = data_dict["blk"]
-                d.word = data_dict["word"]
-                d.pos = data_dict["pos"]
-                d.bit_len = data_dict["len"]
-                d.type = data_dict["type"]
-                d.write_disable_bit = data_dict["wr_dis"]
-                d.read_disable_bit = (
-                    [int(x) for x in data_dict["rd_dis"].split(" ")]
-                    if isinstance(data_dict["rd_dis"], str)
-                    else data_dict["rd_dis"]
-                )
-                d.description = data_dict["desc"]
-                d.alt_names = data_dict["alt"].split(" ") if data_dict["alt"] else []
-                d.dictionary = (
-                    eval(data_dict["dict"]) if data_dict["dict"] != "" else None
+                d = Field(
+                    name=e_name,
+                    block=data_dict["blk"],
+                    word=data_dict["word"],
+                    pos=data_dict["pos"],
+                    bit_len=data_dict["len"],
+                    type=data_dict["type"],
+                    write_disable_bit=data_dict["wr_dis"],
+                    read_disable_bit=(
+                        [int(x) for x in data_dict["rd_dis"].split(" ")]
+                        if isinstance(data_dict["rd_dis"], str)
+                        else data_dict["rd_dis"]
+                    ),
+                    description=data_dict["desc"],
+                    alt_names=data_dict["alt"].split(" ") if data_dict["alt"] else [],
+                    dictionary=eval(data_dict["dict"])
+                    if data_dict["dict"] != ""
+                    else None,
                 )
                 set_category_and_class_type(d, e_name)
                 self.ALL_EFUSES.append(d)
@@ -220,12 +255,13 @@ class EfuseFieldsBase:
         if extend_efuse_table_file:
             table = CSVFuseTable.from_csv(extend_efuse_table_file.read())
             for p in table:
-                item = Field()
-                item.name = p.field_name
-                item.block = p.efuse_block
-                item.word = p.bit_start // 32
-                item.pos = p.bit_start % 32
-                item.bit_len = p.bit_count
+                item = Field(
+                    name=p.field_name,
+                    block=p.efuse_block,
+                    word=p.bit_start // 32,
+                    pos=p.bit_start % 32,
+                    bit_len=p.bit_count,
+                )
                 if p.bit_count == 1:
                     str_type = "bool"
                 else:

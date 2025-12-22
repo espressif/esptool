@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from dataclasses import dataclass
 import os
 
 import yaml
@@ -16,6 +17,7 @@ from ..mem_definition_base import (
 )
 
 
+@dataclass(frozen=True)
 class EfuseDefineRegisters(EfuseRegistersBase):
     EFUSE_MEM_SIZE = 0x01FC + 4
 
@@ -148,35 +150,41 @@ class EfuseDefineFields(EfuseFieldsBase):
                 self.BLOCK2_CALIBRATION_EFUSES.append(efuse)
                 self.ALL_EFUSES[i] = None
 
-        f = Field()
-        f.name = "MAC_EUI64"
-        f.block = 1
-        f.bit_len = 64
-        f.type = f"bytes:{f.bit_len // 8}"
-        f.category = "MAC"
-        f.class_type = "mac"
-        f.description = "calc MAC_EUI64 = MAC[0]:MAC[1]:MAC[2]:MAC_EXT[0]:MAC_EXT[1]:MAC[3]:MAC[4]:MAC[5]"
-        self.CALC.append(f)
+        self.CALC.append(
+            Field(
+                name="MAC_EUI64",
+                block=1,
+                bit_len=64,
+                type="bytes",
+                category="MAC",
+                class_type="mac",
+                description="calc MAC_EUI64 = MAC[0]:MAC[1]:MAC[2]:MAC_EXT[0]:MAC_EXT[1]:MAC[3]:MAC[4]:MAC[5]",
+            )
+        )
 
-        f = Field()
-        f.name = "RECOVERY_BOOTLOADER_FLASH_SECTOR"
-        f.block = 0
-        f.bit_len = 12
-        f.type = f"uint:{f.bit_len}"
-        f.category = "config"
-        f.class_type = "recovery_bootloader"
-        f.description = "calc recovery_bootloader = recovery_bootloader_hi << 9 + recovery_bootloader_lo"
-        self.CALC.append(f)
+        self.CALC.append(
+            Field(
+                name="RECOVERY_BOOTLOADER_FLASH_SECTOR",
+                block=0,
+                bit_len=12,
+                type="uint",
+                category="config",
+                class_type="recovery_bootloader",
+                description="calc recovery_bootloader = recovery_bootloader_hi << 9 + recovery_bootloader_lo",
+            )
+        )
 
-        f = Field()
-        f.name = "BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION"
-        f.block = 0
-        f.bit_len = 4
-        f.type = f"uint:{f.bit_len}"
-        f.category = "config"
-        f.class_type = "bootloader_anti_rollback"
-        f.description = "calc ANTI_ROLLBACK_SECURE_VERSION = ANTI_ROLLBACK_SECURE_VERSION_HI << 3 + ANTI_ROLLBACK_SECURE_VERSION_LO"
-        self.CALC.append(f)
+        self.CALC.append(
+            Field(
+                name="BOOTLOADER_ANTI_ROLLBACK_SECURE_VERSION",
+                block=0,
+                bit_len=4,
+                type="uint",
+                category="config",
+                class_type="bootloader_anti_rollback",
+                description="calc ANTI_ROLLBACK_SECURE_VERSION = ANTI_ROLLBACK_SECURE_VERSION_HI << 3 + ANTI_ROLLBACK_SECURE_VERSION_LO",
+            )
+        )
 
         for efuse in self.ALL_EFUSES:
             if efuse is not None:
