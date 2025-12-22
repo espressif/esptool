@@ -38,7 +38,7 @@ class TestPortSorting:
         ):
             mock_list_ports.comports.return_value = mock_ports
 
-            result = [port.device for port in esptool.get_port_list()]
+            result = esptool.get_port_list()
 
             # Expected sorting order (alphabetically within each group):
             # 1. Other devices (priority 1)
@@ -75,7 +75,7 @@ class TestPortSorting:
         ):
             mock_list_ports.comports.return_value = mock_ports
 
-            result = [port.device for port in esptool.get_port_list()]
+            result = esptool.get_port_list()
 
             # Expected sorting order (alphabetically within each group):
             # 1. Other devices (priority 1)
@@ -107,7 +107,7 @@ class TestPortSorting:
         ):
             mock_list_ports.comports.return_value = mock_ports
 
-            result = [port.device for port in esptool.get_port_list()]
+            result = esptool.get_port_list()
 
             # Expected sorting order (alphabetically within each group):
             # 1. All other COM ports (priority 1)
@@ -155,23 +155,21 @@ class TestPortSorting:
             mock_list_ports.comports.return_value = mock_ports
 
             # Test VID filtering - Espressif devices appear last
-            result = [
-                port.device for port in esptool.get_port_list(vids=[ESPRESSIF_VID])
-            ]
+            result = esptool.get_port_list(vids=[ESPRESSIF_VID])
             expected = ["/dev/ttyUSB1", "/dev/ttyUSB2"]
             assert result == expected
 
             # Test PID filtering
-            result = [port.device for port in esptool.get_port_list(pids=[0x1001])]
+            result = esptool.get_port_list(pids=[0x1001])
             expected = ["/dev/ttyUSB1"]
             assert result == expected
 
             # Test name filtering
-            result = [port.device for port in esptool.get_port_list(names=["ESP32"])]
+            result = esptool.get_port_list(names=["ESP32"])
             expected = ["/dev/ttyUSB1", "/dev/ttyUSB2"]
             assert result == expected
 
             # Test serial filtering
-            result = [port.device for port in esptool.get_port_list(serials=["ESP"])]
+            result = esptool.get_port_list(serials=["ESP"])
             expected = ["/dev/ttyUSB1", "/dev/ttyUSB2"]
             assert result == expected

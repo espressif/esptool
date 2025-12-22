@@ -120,7 +120,7 @@ class SerialPortType(click.ParamType):
         self, ctx: click.Context, param: click.Parameter, incomplete: str
     ) -> list[CompletionItem]:
         """Provide shell completion suggestions for serial ports"""
-        available_ports = get_port_list()
+        available_ports = _get_port_list()
         # Filter ports that match the incomplete string (case-insensitive)
         incomplete_lower = incomplete.lower()
         return [
@@ -458,6 +458,19 @@ def arg_auto_int(x: str) -> int:
 
 
 def get_port_list(
+    vids: list[str] = [],
+    pids: list[str] = [],
+    names: list[str] = [],
+    serials: list[str] = [],
+) -> list[str]:
+    """Get the list of serial ports names with optional filters.
+
+    For backwards compatibility, this function returns a list of port names.
+    """
+    return [port.device for port in _get_port_list(vids, pids, names, serials)]
+
+
+def _get_port_list(
     vids: list[str] = [],
     pids: list[str] = [],
     names: list[str] = [],

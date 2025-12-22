@@ -439,7 +439,7 @@ def prepare_esp_object(ctx):
 
     if ctx.obj["port"] is None:
         filters = parse_port_filters(ctx.obj["port_filter"])
-        ser_list = [port.device for port in get_port_list(*filters)]
+        ser_list = get_port_list(*filters)
         log.print(f"Found {len(ser_list)} serial ports...")
     else:
         ser_list = [ctx.obj["port"]]
