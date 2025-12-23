@@ -41,6 +41,7 @@ IMAGES_DIR = os.path.join(TEST_DIR, "images", "efuse")
 S_IMAGES_DIR = os.path.join(TEST_DIR, "secure_images")
 
 import pytest
+from unittest.mock import MagicMock, patch
 
 try:
     from espefuse import SUPPORTED_CHIPS
@@ -1989,6 +1990,7 @@ class TestPublicAPI(EfuseTestCase):
 
     def test_public_api_nesting(self):
         from espefuse import init_commands
+        from espefuse.efuse.base_operations import BaseCommands
 
         def burn_custom_mac(esp):
             with init_commands(
@@ -1997,7 +1999,13 @@ class TestPublicAPI(EfuseTestCase):
                 espefuse.burn_custom_mac(b"\xaa\xcd\xef\x11\x22\x33")
                 espefuse.burn_all()
 
-        with self._init_commands(batch_mode=True) as espefuse:
+        # Mock _close_port to verify it's called
+        with (
+            patch.object(
+                BaseCommands, "_close_port", wraps=BaseCommands._close_port
+            ) as mock_close_port,
+            self._init_commands(batch_mode=True) as espefuse,
+        ):
             espefuse.burn_efuse({"WR_DIS": "2", "RD_DIS": "1"})
             # Burn should be at the end; so the eFuses should be set to 0
             assert espefuse.efuses["WR_DIS"].get() == 0
@@ -2028,6 +2036,45 @@ class TestPublicAPI(EfuseTestCase):
                 if arg_chip == "esp32"
                 else "aa:cd:ef:11:22:33 (OK)"
             )
+            mock_close_port.assert_called_once()
+
+    def test_close_port_on_init_failure(self):
+        """Test that port is closed when init_commands fails during get_efuses."""
+        from espefuse import init_commands
+        from espefuse.efuse.base_operations import BaseCommands
+        import esptool
+
+        # Create a mock ESP object with a mock port
+        mock_esp = MagicMock(spec=esptool.ESPLoader)
+        mock_esp.CHIP_NAME = arg_chip.upper()
+        mock_port = MagicMock()
+        mock_esp._port = mock_port
+
+        # Mock _close_port to verify it's called
+        with patch.object(
+            BaseCommands, "_close_port", wraps=BaseCommands._close_port
+        ) as mock_close_port:
+            # Mock get_efuses to raise an exception (simulating SDM error)
+            with patch("espefuse.efuse_interface._get_command_class") as mock_get_class:
+                mock_commands = MagicMock()
+                mock_commands.esp = None
+                mock_commands.external_esp = False
+
+                def get_efuses_side_effect(*args, **kwargs):
+                    # Simulate get_efuses raising an exception
+                    raise esptool.FatalError("Secure Download Mode is enabled")
+
+                mock_get_class.return_value = mock_commands
+                mock_commands.get_efuses.side_effect = get_efuses_side_effect
+
+                # init_commands should close the port when it fails
+                with pytest.raises(esptool.FatalError):
+                    init_commands(
+                        esp=mock_esp, virt=True, virt_efuse_file=self.efuse_file.name
+                    )
+
+                # Verify that _close_port was called
+                mock_close_port.assert_called_once()
 
 
 class TestMultipleCommands(EfuseTestCase):

@@ -223,16 +223,21 @@ class BaseCommands:
                 f"({self.CHIP_NAME} != {self.esp.CHIP_NAME})"
             )
 
+    @classmethod
+    def _close_port(
+        cls,
+        esp: esptool.ESPLoader | EmulateEfuseControllerBase | None,
+        external_esp: bool = False,
+    ) -> None:
+        """Close the serial port if it was opened internally."""
+        if esp is not None and not external_esp and isinstance(esp, esptool.ESPLoader):
+            esp._port.close()
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if (
-            self.esp is not None
-            and not self.external_esp
-            and isinstance(self.esp, esptool.ESPLoader)
-        ):
-            self.esp._port.close()
+        self._close_port(self.esp, self.external_esp)
 
     ################################# CLI definitions #################################
 

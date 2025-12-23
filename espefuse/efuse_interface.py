@@ -132,15 +132,20 @@ def init_commands(
             port, baud, before, chip, skip_connect, virt, debug, virt_efuse_file
         )
 
-    commands = _get_command_class(strip_chip_name(esp.CHIP_NAME))
-    commands.esp = esp
-    commands.external_esp = external_esp
-    commands.get_efuses(
-        skip_connect=skip_connect,
-        debug_mode=debug,
-        do_not_confirm=do_not_confirm,
-        extend_efuse_table=extend_efuse_table,
-    )
+    try:
+        commands = _get_command_class(strip_chip_name(esp.CHIP_NAME))
+        commands.esp = esp
+        commands.external_esp = external_esp
+        commands.get_efuses(
+            skip_connect=skip_connect,
+            debug_mode=debug,
+            do_not_confirm=do_not_confirm,
+            extend_efuse_table=extend_efuse_table,
+        )
+    except Exception:
+        # If creating commands fails, ensure the port is closed
+        BaseCommands._close_port(esp, external_esp)
+        raise
     if batch_mode:
         commands.use_batch_mode()
     return commands
