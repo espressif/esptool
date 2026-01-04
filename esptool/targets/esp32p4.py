@@ -9,7 +9,7 @@ from typing import Dict
 
 from .esp32 import ESP32ROM
 from ..loader import ESPLoader
-from ..util import FatalError, NotImplementedInROMError
+from ..util import FatalError, NotImplementedInROMError, NotSupportedError
 
 
 class ESP32P4ROM(ESP32ROM):
@@ -79,6 +79,18 @@ class ESP32P4ROM(ESP32ROM):
     SUPPORTS_ENCRYPTED_FLASH = True
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
+
+    # Flash power-on related registers and bits needed for ECO6
+    DR_REG_LPAON_BASE = 0x50110000
+    DR_REG_PMU_BASE = DR_REG_LPAON_BASE + 0x5000
+    DR_REG_LP_SYS_BASE = DR_REG_LPAON_BASE + 0x0
+    LP_SYSTEM_REG_ANA_XPD_PAD_GROUP_REG = DR_REG_LP_SYS_BASE + 0x10C
+    PMU_EXT_LDO_P0_0P1A_ANA_REG = DR_REG_PMU_BASE + 0x1BC
+    PMU_ANA_0P1A_EN_CUR_LIM_0 = 1 << 27
+    PMU_EXT_LDO_P0_0P1A_REG = DR_REG_PMU_BASE + 0x1B8
+    PMU_0P1A_TARGET0_0 = 0xFF << 23
+    PMU_0P1A_FORCE_TIEH_SEL_0 = 1 << 7
+    PMU_DATE_REG = DR_REG_PMU_BASE + 0x3FC
 
     @property
     def UARTDEV_BUF_NO(self):
@@ -289,6 +301,54 @@ class ESP32P4ROM(ESP32ROM):
             self.watchdog_reset()
         else:
             ESPLoader.hard_reset(self)
+
+    def power_on_flash(self):
+        """Power on the flash chip by setting the appropriate regs."""
+        if self.secure_download_mode:
+            raise NotSupportedError(self, "Powering on flash in secure download mode")
+
+        if self.get_chip_revision() <= 300:  # <=ECO5
+            # The flash chip is powered off by default on >=ECO6, when the default flash
+            # voltage changed from 1.8V to 3.3V. This is to prevent damage to 1.8V flash
+            # chips. Board designers must set the appropriate voltage level in eFuse.
+            return
+
+        # Power up pad group
+        self.write_reg(self.LP_SYSTEM_REG_ANA_XPD_PAD_GROUP_REG, 1)
+        sleep(0.01)
+        # Flash power up sequence
+        self.write_reg(
+            self.PMU_EXT_LDO_P0_0P1A_ANA_REG,
+            self.read_reg(self.PMU_EXT_LDO_P0_0P1A_ANA_REG)
+            | self.PMU_ANA_0P1A_EN_CUR_LIM_0,
+        )
+        self.write_reg(
+            self.PMU_EXT_LDO_P0_0P1A_REG,
+            self.read_reg(self.PMU_EXT_LDO_P0_0P1A_REG)
+            | self.PMU_0P1A_FORCE_TIEH_SEL_0,
+        )
+        self.write_reg(self.PMU_DATE_REG, self.read_reg(self.PMU_DATE_REG) | (3 << 0))
+        sleep(0.00005)
+        self.write_reg(
+            self.PMU_EXT_LDO_P0_0P1A_ANA_REG,
+            self.read_reg(self.PMU_EXT_LDO_P0_0P1A_ANA_REG)
+            & ~self.PMU_ANA_0P1A_EN_CUR_LIM_0,
+        )
+        self.write_reg(
+            self.PMU_EXT_LDO_P0_0P1A_REG,
+            self.read_reg(self.PMU_EXT_LDO_P0_0P1A_REG) & ~self.PMU_0P1A_TARGET0_0,
+        )
+        # Update eFuse voltage to PMU
+        self.write_reg(
+            self.PMU_EXT_LDO_P0_0P1A_REG,
+            self.read_reg(self.PMU_EXT_LDO_P0_0P1A_REG) | 0x80,
+        )
+        self.write_reg(
+            self.PMU_EXT_LDO_P0_0P1A_REG,
+            self.read_reg(self.PMU_EXT_LDO_P0_0P1A_REG)
+            & ~self.PMU_0P1A_FORCE_TIEH_SEL_0,
+        )
+        sleep(0.0018)
 
 
 class ESP32P4StubLoader(ESP32P4ROM):
