@@ -7,19 +7,19 @@ ci:
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.13.3
+    rev: v0.14.10
     hooks:
       - id: ruff # Runs ruff linter (replaces flake8)
         args: [--fix, --exit-non-zero-on-fix] # --fix for fixing errors
       - id: ruff-format
   - repo: https://github.com/sphinx-contrib/sphinx-lint
-    rev: v1.0.0
+    rev: v1.0.2
     hooks:
       - id: sphinx-lint
         name: Lint RST files in docs folder using Sphinx Lint
         files: ^((docs/en)/.*\.(rst|inc))|CONTRIBUTING.rst$
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+    rev: v1.19.1
     hooks:
       - id: mypy
         additional_dependencies: ['types-PyYAML<=6.0.12.12']
@@ -32,7 +32,7 @@ repos:
       additional_dependencies:
         - tomli
   - repo: https://github.com/espressif/conventional-precommit-linter
-    rev: v1.10.0
+    rev: v1.11.0
     hooks:
       - id: conventional-precommit-linter
         stages: [commit-msg]
