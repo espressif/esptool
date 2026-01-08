@@ -138,7 +138,7 @@ class ESP32ROM(ESPLoader):
             # the contents will be readable and 0.
             # If the flash encryption is enabled it is expected to have a valid
             # non-zero key. We break out on first occurrence of non-zero value
-            key_word = [0] * 7
+            key_word = [0] * 8  # FE key consists of 8 registers/words.
             for i in range(len(key_word)):
                 key_word[i] = self.read_efuse(14 + i)
                 # key is non-zero so break & return
