@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import glob
 import os
+import sys
 import urllib.request
 
 STUBS = (
     {
         "STUB_SET_VERSION": "1",
-        "DOWNLOAD_URL": "https://github.com/espressif/esptool-legacy-flasher-stub/releases/download",
-        "TAG_URL": "https://github.com/espressif/esptool-legacy-flasher-stub/releases/tag",
+        "URL": "https://github.com/espressif/esptool-legacy-flasher-stub/",
         "VERSION": "v1.11.1",
         "FILE_LIST": (
             "esp32",
@@ -32,9 +32,8 @@ STUBS = (
     },
     {
         "STUB_SET_VERSION": "2",
-        "DOWNLOAD_URL": "https://github.com/espressif/esp-flasher-stub/releases/download",
-        "TAG_URL": "https://github.com/espressif/esp-flasher-stub/releases/tag",
-        "VERSION": "v0.1.0",
+        "URL": "https://github.com/espressif/esp-flasher-stub/",
+        "VERSION": "v0.2.0",
         "FILE_LIST": (
             "esp32",
             "esp32c2",
@@ -43,6 +42,8 @@ STUBS = (
             "esp32c6",
             "esp32c61",
             "esp32h2",
+            "esp32h4",
+            "esp32p4-rev1",
             "esp32p4",
             "esp32s2",
             "esp32s3",
@@ -63,7 +64,13 @@ The binaries in JSON format distributed in this directory are {LICENSE}. They we
 
 def main():
     for stub_set in STUBS:
+        download_url = f"{stub_set['URL']}releases/download"
+        tag_url = f"{stub_set['URL']}releases/tag"
         dest_sub_dir = os.path.join(DESTINATION_DIR, stub_set["STUB_SET_VERSION"])
+        print(
+            f"Downloading stubs from {stub_set['URL']} as version "
+            f"{stub_set['STUB_SET_VERSION']}:"
+        )
 
         """ The directory is cleaned up so we would detect if a stub was just committed
         into the repository but the name was not added into the FILE_LIST of STUBS.
@@ -75,19 +82,31 @@ def main():
 
         for file_name in stub_set["FILE_LIST"]:
             file = ".".join((file_name, "json"))
-            url = "/".join((stub_set["DOWNLOAD_URL"], stub_set["VERSION"], file))
-            dest = os.path.join(dest_sub_dir, file)
+            url = "/".join((download_url, stub_set["VERSION"], file))
+            # TODO: Remove the "rc" renaming
+            # when naming in the legacy flasher stub is updated.
+            dest = os.path.join(
+                dest_sub_dir, file.replace("rc", "-rev") if "rc" in file else file
+            )
             print(f"Downloading {url} to {dest}")
-            urllib.request.urlretrieve(url, dest)
+            try:
+                urllib.request.urlretrieve(url, dest)
+            except urllib.error.URLError as e:
+                print(
+                    f'ERROR: Stub file "{file}" could not be downloaded: {e}',
+                    file=sys.stderr,
+                )
+                exit(1)
 
         with open(os.path.join(dest_sub_dir, "README.md"), "w") as f:
             print(f"Writing README to {f.name}")
             f.write(
                 README_TEMPLATE.format(
                     LICENSE=stub_set["LICENSE"],
-                    URL="/".join((stub_set["TAG_URL"], stub_set["VERSION"])),
+                    URL="/".join((tag_url, stub_set["VERSION"])),
                 )
             )
+        print()
 
 
 if __name__ == "__main__":

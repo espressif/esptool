@@ -358,7 +358,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
 # is implied globally
 @click.option(
     "--stub-version",
-    default=os.environ.get("ESPTOOL_STUB_VERSION", "1"),
+    default=os.environ.get("ESPTOOL_STUB_VERSION", None),
     type=click.Choice(["1", "2"]),
     # not a public option and is not subject to the semantic versioning policy
     hidden=True,
@@ -420,7 +420,8 @@ def cli(
 
 def prepare_esp_object(ctx):
     """Prepare ESP object for operation"""
-    StubFlasher.set_stub_subdir(ctx.obj["stub_version"])
+    if ctx.obj["stub_version"]:
+        StubFlasher.set_stub_subdir(ctx.obj["stub_version"])
     # Commands that require an ESP object (flash read/write, etc.)
     # 1) Get the ESP object
     #######################

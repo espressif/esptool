@@ -158,7 +158,8 @@ def stub_and_esp32_function_only(func):
 class StubFlasher:
     STUB_DIR = os.path.join(os.path.dirname(__file__), "targets", "stub_flasher")
     # directories will be searched in the order of STUB_SUBDIRS
-    STUB_SUBDIRS = ["1"]
+    STUB_SUBDIRS = ["1", "2"]
+    STUB_VERSION_EXPLICIT = False
 
     def __init__(self, target):
         json_name = target.STUB_CLASS.stub_json_name(target)
@@ -183,10 +184,10 @@ class StubFlasher:
         for i, subdir in enumerate(self.STUB_SUBDIRS):
             json_path = os.path.join(self.STUB_DIR, subdir, json_name)
             if os.path.exists(json_path):
-                if i:
+                if i and self.STUB_VERSION_EXPLICIT:
                     log.warning(
-                        f"Stub version {self.STUB_SUBDIRS[0]} doesn't exist, "
-                        f"using {subdir} instead"
+                        f"{chip_name} stub version {self.STUB_SUBDIRS[0]} doesn't "
+                        f"exist, using {subdir} instead."
                     )
 
                 return json_path
@@ -197,7 +198,8 @@ class StubFlasher:
 
     @classmethod
     def set_stub_subdir(cls, subdir):
-        cls.STUB_SUBDIRS = [subdir]
+        cls.STUB_SUBDIRS = [subdir] + [x for x in cls.STUB_SUBDIRS if x != subdir]
+        cls.STUB_VERSION_EXPLICIT = True
 
 
 class ESPLoader:

@@ -968,7 +968,7 @@ class TestFlashing(EsptoolTestCase):
     )
     def test_binary_already_in_flash_32M_flash(self):
         bin = "images/one_kb.bin"
-        addr = 0xFFFFFD
+        addr = 0xFFFFFC
         self.run_esptool(f"write-flash {addr} {bin}")
         output = self.run_esptool(f"write-flash --skip-flashed {addr} {bin}")
         assert f"'{bin}' at {addr:#010x} already in flash, skipping write" in output

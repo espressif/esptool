@@ -374,7 +374,7 @@ class ESP32P4StubLoader(StubMixin, ESP32P4ROM):
 
     def stub_json_name(self):
         if self.get_chip_revision() < 300:
-            return "esp32p4rc1.json"
+            return "esp32p4-rev1.json"
         return "esp32p4.json"
 
 
