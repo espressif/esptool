@@ -6,7 +6,7 @@
 
 from io import IOBase
 from typing import BinaryIO
-import click
+import rich_click as click
 
 import espsecure
 
