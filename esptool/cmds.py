@@ -1268,6 +1268,13 @@ def erase_region(esp: ESPLoader, address: int, size: int, force: bool = False) -
     t = time.time()
     if esp.CHIP_NAME != "ESP8266" and not esp.IS_STUB:
         # flash_begin triggers a flash erase, enabling erasing in ROM and SDM
+        # The ROM defaults to 2MB flash size, detect and set the correct size first
+        # to enable erasing past the 2MB boundary.
+        # Set to 16MB if Secure Download Mode is enabled - this safely covers most of
+        # the standard flash chips.
+        _set_flash_parameters(
+            esp, flash_size="detect" if not esp.secure_download_mode else "16MB"
+        )
         esp.flash_begin(size, address, logging=False)
     else:
         esp.erase_region(address, size)
