@@ -221,3 +221,113 @@ Some of the most common pySerial error causes are:
    * You don't have permission to access the port.
 
 On Linux, read and write access the serial port over USB is necessary. You can add your user to the ``dialout`` or ``uucp`` group to grant access to the serial port. See `Adding user to dialout or uucp on Linux <https://docs.espressif.com/projects/esp-idf/en/stable/get-started/establish-serial-connection.html#adding-user-to-dialout-or-uucp-on-linux>`_.
+
+
+Failed to write to target RAM (result was 0107: Operation timed out)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``esptool`` requires a working and stable serial connection to the target. This connection can be affected by various factors, one of them being the OS drivers.
+Some USB-to-Serial drivers exhibit unstable behavior in certain situations. This becomes especially apparent when transferring larger data packets (e.g., uploading the flasher stub or writing to flash).
+
+This specific issue can sometimes be mitigated by:
+
+.. list::
+
+   * Using a :ref:`configuration file <config>` to increase esptool internal timeout values (mainly ``timeout`` and ``mem_end_rom_timeout``).
+   * Updating or changing the USB-to-Serial drivers.
+   * Using a different USB-to-Serial adapter.
+   * Shortening the Host–>ESP serial communication path as much as possible (e.g., getting rid of USB hubs, using a shorter properly shielded cable, etc.).
+
+
+Known Limitations and Issues
+----------------------------
+
+This section documents the currently known limitations and issues affecting esptool:
+
+Flash and External Memory Support Limitations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+esptool has the following limitations when working with external flash and memory devices:
+
+- NAND flash is currently not supported. Only NOR flash chips are supported.
+- PSRAM access is not supported - esptool cannot read from or write to PSRAM.
+- Octal (OPI) flash is supported only on ESP32-S3 devices.
+- Accessing flash chip areas beyond 16MB (32-bit addressing) is supported only if **all** of the following conditions are met:
+
+   - The :ref:`flasher stub <stub>` is used, as the ROM bootloader does not support 32-bit addressing.
+   - The target chip is ESP32-S3, ESP32-C5, or ESP32-P4.
+   - The flash chip is one of the following supported models:
+
+      - W25Q256
+      - GD25Q256
+      - XM25QH256D
+
+.. _sdm-limitations:
+
+Secure Download Mode Limitations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When Secure Download Mode is enabled, the available serial protocol commands are restricted. In addition to being unable to read flash data or read/write RAM, the following limitations apply:
+
+- The entire flash cannot be :ref:`erased <erase-flash>` using ``erase-flash``. Only flash regions aligned to multiples of ``4096`` (flash sector size) can be erased using ``erase-region``.
+
+   - Writing a binary with purely ``0xFF`` bytes can be used as a workaround to essentially erase flash if necessary, but this is slow and achieves the same result as ``erase-region``.
+
+- The baud rate cannot be :ref:`changed <baud-rate>` with the ``--baud`` option on ESP32-C5 and ESP32-C2.
+
+   - Esptool needs to read specific registers to first detect the crystal frequency, which is then used to calculate the baud rate parameter for the ``CHANGE_BAUDRATE`` (``0x0F``) command. This is not possible in Secure Download Mode, because reading any registers is disabled.
+   - The baud rate can be changed manually when using the :ref:`esptool API <scripting>` by sending the ``CHANGE_BAUDRATE`` command with the desired baud rate based on trial and error (e.g., seeing if the data is scrambled or not in a serial terminal program).
+
+- Flash write or erase operations might fail with the ``0164`` or ``0106`` error codes.
+
+   - This is usually caused by incorrect flash size settings. Since the actual flash size cannot be detected in Secure Download Mode, the ROM bootloader defaults to a flash size of 2MB. Trying to access flash regions larger than 2MB will then fail.
+   - The flash size must be set manually using the ``--flash-size`` :ref:`option <flash-modes>` in CLI mode, or by calling the ``flash_set_parameters`` function when using the :ref:`esptool API <scripting>`.
+   - Esptool prints a warning about this whenever possible.
+
+- Accessing SPI flash memory regions larger than 16MB is not possible when Secure Download Mode is enabled.
+
+   - This is only possible if the :ref:`flasher stub <stub>` is used as described in `Flash and External Memory Support Limitations`_, but stub flasher cannot be used in Secure Download Mode.
+   - Any data written beyond the 16MB boundary will wrap around to the beginning of the flash because the 4-byte address gets truncated to 3 bytes.
+   - An application running on the ESP device itself can still access data beyond 16MB (for example, during an OTA update).
+   - It is recommended to only enable the Secure Download Mode if working with <16MB apps, if the app development is successfully finished, or if other ways to update the >16MB regions are available.
+   - Esptool prints a warning about this whenever possible.
+
+.. only:: not esp8266 and not esp32
+
+   See the :ref:`supported-in-sdm` section for more details.
+
+Secure Boot Limitations
+^^^^^^^^^^^^^^^^^^^^^^^
+
+- The :ref:`flasher stub <stub>` cannot currently be used on ESP32-C3 when Secure Boot is enabled.
+
+   - This is due to a bug in the ROM bootloader that prevents custom code loaded into RAM from being executed.
+
+.. _wdt-reset-limitations:
+
+Watchdog Reset Limitations
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``--after watchdog-reset`` :ref:`reset mode <after-reset>` mechanism was introduced to help to solve certain situations where the classic ``DTR``/``RTS`` reset lines are not available or not working properly. By its nature, it is a hack (hijacking the RTC WDT to trigger immediately and cause a full system reset).
+
+Since it is not a standard reset mechanism, esptool uses it only when it is safe and beneficial. In other situations, it can be unstable or not available at all:
+
+.. list::
+
+   * Works and allows resetting out of download mode when USB-OTG is used for communication.
+   * Disabled on the ESP32-C6 because it can cause a full system freeze requiring a power cycle to recover.
+   * Not available at all on the ESP8266, ESP32, and ESP32-H2 because of hardware limitations.
+   * Cannot be used in Secure Download Mode (SDM).
+   * Can change its behavior between different chip ECO revisions.
+   * Cannot be used to enter the download mode programmatically, the boot strapping pins have to still be physically pulled low.
+
+Leaving Download Mode in USB-Serial/JTAG Mode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If USB-Serial/JTAG is used for communication and the download mode is :ref:`entered manually <manual-bootloader>` (typically by pressing the **EN** button while holding the **Boot** button on a DevKit), esptool cannot exit download mode using the default reset behavior.
+
+Specifically, the USB-Serial/JTAG peripheral can only trigger a **core reset**, which does not re-sample the state of the boot strapping pin. As a result, the state of the boot pin remains sampled as LOW, even if it is physically released, and the chip stays in download mode instead of entering SPI boot mode (which requires the boot pin to be sampled as HIGH).
+
+To automatically leave the download mode, the ``--after watchdog-reset`` option must be used. This triggers a full **system reset**, forcing the boot strapping pins to be re-sampled and allowing normal boot to proceed. This behavior is not enabled automatically, as doing so could introduce the issues described above.
+
+Triggering a system reset manually is as easy as pressing the **EN** button on the DevKit or power-cycling it.

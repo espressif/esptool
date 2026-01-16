@@ -67,6 +67,7 @@ Read or Write RAM: ``read-mem`` & ``write-mem``
 -----------------------------------------------
 
 The ``read-mem`` & ``write-mem`` commands allow reading and writing single words (4 bytes) of RAM. This can be used to "peek" and "poke" at registers.
+Only ROM regions, internal RAM and memory-mapped peripheral registers are accessible. Flash memory and SPIRAM regions are not.
 
 ::
 

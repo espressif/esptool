@@ -320,7 +320,7 @@ ROM loaders will not recognize these commands.
 
     Any other command (e.g., reading or writing memory, arbitrary code execution through loading to RAM, ...) will result in an error.
 
-    You can read more about Secure Download Mode in the `ESP-IDF Security Overview <https://docs.espressif.com/projects/esp-idf/en/stable/{IDF_TARGET_PATH_NAME}/security/security.html#uart-download-mode>`__.
+    You can read more about Secure Download Mode in the `ESP-IDF Security Overview <https://docs.espressif.com/projects/esp-idf/en/stable/{IDF_TARGET_PATH_NAME}/security/security.html#uart-download-mode>`__ or read about its :ref:`limitations here <sdm-limitations>`.
 
 Checksum
 ^^^^^^^^

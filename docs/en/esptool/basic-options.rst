@@ -41,6 +41,8 @@ On most Linux distributions, the solution is to add the user to the ``dialout`` 
 You can call ``su - $USER`` to enable read and write permissions for the serial port without having to log out and back in again.
 Check your Linux distribution's documentation for more information.
 
+.. _baud-rate:
+
 Baud Rate: ``--baud``, ``-b``
 -----------------------------
 
