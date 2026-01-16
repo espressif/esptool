@@ -41,6 +41,7 @@ from .util import (
 )
 from .util import (
     div_roundup,
+    expand_chip_name,
     flash_size_bytes,
     hexify,
     ImageSource,
@@ -1867,7 +1868,7 @@ def _print_image_info(chip: str, data: bytes) -> None:
     image = LoadFirmwareImage(chip, data)
 
     log.print()
-    title = f"{chip.upper()} Image Header"
+    title = f"{expand_chip_name(chip)} Image Header"
     log.print(title)
     log.print("=" * len(title))
     log.print(f"Image version: {image.version}")
@@ -1905,7 +1906,7 @@ def _print_image_info(chip: str, data: bytes) -> None:
     # Extended header (ESP32 and later only)
     if chip != "esp8266":
         log.print()
-        title = f"{chip.upper()} Extended Image Header"
+        title = f"{expand_chip_name(chip)} Extended Image Header"
         log.print(title)
         log.print("=" * len(title))
         log.print(
@@ -1974,7 +1975,7 @@ def _print_image_info(chip: str, data: bytes) -> None:
     log.print()
 
     # Footer
-    title = f"{chip.upper()} Image Footer"
+    title = f"{expand_chip_name(chip)} Image Footer"
     log.print(title)
     log.print("=" * len(title))
     calc_checksum = image.calculate_checksum()
@@ -2255,7 +2256,7 @@ def elf2image(
 
     data, source = get_bytes(input)
     e = ELFFile(data)
-    log.print(f"Creating {chip.upper()} image...")
+    log.print(f"Creating {expand_chip_name(chip)} image...")
     if chip != "esp8266":
         bootloader_image = CHIP_DEFS[chip].BOOTLOADER_IMAGE
         if bootloader_image is None:
@@ -2356,7 +2357,7 @@ def elf2image(
         log.print(f"Merged {delta} ELF section{'s' if delta > 1 else ''}.")
 
     image.verify()
-    log.print(f"Successfully created {chip.upper()} image.")
+    log.print(f"Successfully created {expand_chip_name(chip)} image.")
 
     if output == "auto":
         source = f"{chip}_image" if source is None else source
