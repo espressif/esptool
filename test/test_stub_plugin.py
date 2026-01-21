@@ -260,3 +260,119 @@ class TestCustomStubCompatibility:
         # If we get here without AttributeError, the fix works
         esp._upload_segment.assert_called()
         esp.mem_finish.assert_called_once_with(custom_stub.entry)
+
+
+@pytest.mark.host_test
+class TestNANDFailureCodeDecoding:
+    """Status-byte decoding for the new NAND P_FAIL / E_FAIL response codes."""
+
+    def test_program_failed_decodes_to_subclass(self):
+        from esptool.util import FatalError, NANDProgramFailed
+
+        exc = FatalError.WithResult("write failed", b"\xca\x00")
+        assert isinstance(exc, NANDProgramFailed)
+        assert isinstance(exc, FatalError)
+        assert "NAND program failed" in str(exc)
+
+    def test_erase_failed_decodes_to_subclass(self):
+        from esptool.util import FatalError, NANDEraseFailed
+
+        exc = FatalError.WithResult("erase failed", b"\xcb\x00")
+        assert isinstance(exc, NANDEraseFailed)
+        assert isinstance(exc, FatalError)
+        assert "NAND erase failed" in str(exc)
+
+    def test_transport_error_stays_plain_fatalerror(self):
+        from esptool.util import FatalError, NANDEraseFailed, NANDProgramFailed
+
+        exc = FatalError.WithResult("oops", b"\xc4\x00")  # RESPONSE_FAILED_SPI_OP
+        assert isinstance(exc, FatalError)
+        assert not isinstance(exc, NANDProgramFailed)
+        assert not isinstance(exc, NANDEraseFailed)
+
+
+@pytest.mark.host_test
+class TestNANDBadBlockPolicy:
+    """Bad-block marking must trigger only on chip-reported P_FAIL / E_FAIL.
+
+    Transport-class errors (RESPONSE_FAILED_SPI_OP, timeouts, SLIP corruption)
+    must NOT condemn the block.
+    """
+
+    def _fake_esp(self, erase_side_effect):
+        """Minimal mock acceptable to cmds.erase_region's NAND branch."""
+        esp = MagicMock()
+        esp.read_nand_spare.return_value = 0xFF  # all blocks look good
+        esp.erase_nand_region.side_effect = erase_side_effect
+        return esp
+
+    def test_transport_error_does_not_mark_bad(self):
+        from esptool.cmds import NAND_BLOCK_SIZE, erase_region
+        from esptool.util import FatalError
+
+        def erase_glitch(addr, size):
+            raise FatalError.WithResult("transport boom", b"\xc4\x00")
+
+        esp = self._fake_esp(erase_side_effect=erase_glitch)
+
+        # Transport-class FatalError must propagate (not be silently swallowed)
+        # AND must NOT trigger a bad-block mark.
+        with pytest.raises(FatalError):
+            erase_region(esp, 0, NAND_BLOCK_SIZE, flash_type="nand")
+        esp.write_nand_spare.assert_not_called()
+
+    def test_chip_erase_failed_marks_bad(self):
+        from esptool.cmds import (
+            NAND_BLOCK_SIZE,
+            NAND_PAGES_PER_BLOCK,
+            erase_region,
+        )
+        from esptool.util import FatalError
+
+        def erase_efail(addr, size):
+            raise FatalError.WithResult("E_FAIL", b"\xcb\x00")
+
+        esp = self._fake_esp(erase_side_effect=erase_efail)
+        erase_region(esp, 0, NAND_BLOCK_SIZE, flash_type="nand")
+
+        # The chip said E_FAIL → block 0, page 0 must be marked bad.
+        esp.write_nand_spare.assert_called_once_with(0 * NAND_PAGES_PER_BLOCK, 1)
+
+    def test_chip_pfail_bypasses_loader_retry(self):
+        """write_flash_nand_block retries transport errors but NANDProgramFailed
+        must bypass the retry entirely (chip says cell is bad — no point retrying)."""
+        from esptool.loader import ESPLoader, WRITE_BLOCK_ATTEMPTS
+        from esptool.util import FatalError, NANDProgramFailed
+
+        # NANDProgramFailed: must surface on the very first attempt.
+        esp = MagicMock(spec=ESPLoader)
+        esp.ESP_CMDS = {"SPI_NAND_WRITE_FLASH_DATA": 0xDA}
+        esp.checksum.return_value = 0
+        esp.check_command.side_effect = FatalError.WithResult("P_FAIL", b"\xca\x00")
+
+        with pytest.raises(NANDProgramFailed):
+            ESPLoader.write_flash_nand_block(esp, b"\x00" * 4, 0)
+        assert esp.check_command.call_count == 1
+
+        # Plain transport FatalError: retried up to WRITE_BLOCK_ATTEMPTS times.
+        esp2 = MagicMock(spec=ESPLoader)
+        esp2.ESP_CMDS = {"SPI_NAND_WRITE_FLASH_DATA": 0xDA}
+        esp2.checksum.return_value = 0
+        esp2.check_command.side_effect = FatalError.WithResult("glitch", b"\xc4\x00")
+        with pytest.raises(FatalError):
+            ESPLoader.write_flash_nand_block(esp2, b"\x00" * 4, 0)
+        assert esp2.check_command.call_count == WRITE_BLOCK_ATTEMPTS
+
+    def test_chip_efail_bypasses_loader_retry(self):
+        """NANDEraseFailed must also bypass the retry loop immediately."""
+        from esptool.loader import ESPLoader
+        from esptool.util import FatalError, NANDEraseFailed
+
+        esp = MagicMock(spec=ESPLoader)
+        esp.ESP_CMDS = {"SPI_NAND_WRITE_FLASH_DATA": 0xDA}
+        esp.checksum.return_value = 0
+        esp.check_command.side_effect = FatalError.WithResult("E_FAIL", b"\xcb\x00")
+
+        with pytest.raises(NANDEraseFailed):
+            ESPLoader.write_flash_nand_block(esp, b"\x00" * 4, 0)
+        assert esp.check_command.call_count == 1

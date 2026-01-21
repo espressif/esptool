@@ -27,6 +27,8 @@ from .loader import (
     DEFAULT_TIMEOUT,
     ERASE_WRITE_TIMEOUT_PER_MB,
     ESPLoader,
+    NAND_BLOCK_SIZE,
+    NAND_PAGES_PER_BLOCK,
     StubFlasher,
     timeout_per_mb,
 )
@@ -36,8 +38,11 @@ from .targets import CHIP_DEFS, CHIP_LIST, ROM_LIST
 from .uf2_writer import UF2Writer
 from .util import (
     FatalError,
+    NANDEraseFailed,
+    NANDProgramFailed,
     NotImplementedInROMError,
     NotSupportedError,
+    PrintOnce,
     UnsupportedCommandError,
 )
 from .util import (
@@ -51,6 +56,12 @@ from .util import (
     pad_to,
     sanitize_string,
 )
+
+
+_NAND_EXPERIMENTAL_MSG = (
+    "NAND flash support is experimental and may change without notice."
+)
+_warn_nand_experimental = PrintOnce(log.warning)
 
 
 # Vendors with different detection logic
@@ -571,12 +582,301 @@ def _diff_flash_regions(
     return regions
 
 
+def _read_flash_nand_with_skip(
+    esp: ESPLoader,
+    address: int,
+    size: int,
+    progress_fn=None,
+    nand_end_address: int | None = None,
+) -> bytes:
+    """
+    Read ``size`` bytes of logical data from NAND flash starting at logical
+    ``address``, skipping bad blocks.  Bad blocks are detected via the first
+    spare byte of each block's first page (0xFF = good).  Only data from good
+    blocks is included in the returned buffer; the caller receives contiguous
+    logical data exactly ``size`` bytes long.
+
+    Raises FatalError if the end of the addressable range is reached before
+    ``size`` bytes of good-block data have been accumulated.
+    """
+    if nand_end_address is None:
+        nand_end_address = NAND_TOTAL_SIZE
+    accumulated = b""
+    phys_addr = address
+
+    while len(accumulated) < size:
+        if phys_addr >= nand_end_address:
+            raise FatalError(
+                f"Reached NAND end address {nand_end_address:#x} before reading the "
+                f"requested {size} bytes; remaining good blocks exhausted."
+            )
+
+        # Check bad-block marker for this physical block
+        page_num = phys_addr // NAND_BLOCK_SIZE * NAND_PAGES_PER_BLOCK
+        bb = esp.read_nand_spare(page_num) & 0xFF
+        if bb != 0xFF:
+            log.print(f"Skipping bad block at {phys_addr:#010x} during read")
+            phys_addr += NAND_BLOCK_SIZE
+            if phys_addr >= nand_end_address:
+                raise FatalError(
+                    f"Reached NAND end address {nand_end_address:#x} before reading "
+                    f"the requested {size} bytes; remaining good blocks exhausted."
+                )
+            continue
+
+        remaining = size - len(accumulated)
+        read_size = min(NAND_BLOCK_SIZE - (phys_addr % NAND_BLOCK_SIZE), remaining)
+        chunk = esp.read_flash_nand(phys_addr, read_size, None)
+        accumulated += chunk
+
+        if progress_fn is not None:
+            progress_fn(len(accumulated), size, address)
+
+        phys_addr += read_size
+
+    return accumulated[:size]
+
+
+def _count_good_blocks(esp, start_addr, end_addr, needed):
+    """Return min(good_blocks, needed) between [start_addr, end_addr).
+
+    Stops early once `needed` good blocks are found (matches existing pre-scan
+    behaviour).
+    """
+    good = 0
+    addr = start_addr
+    while addr < end_addr:
+        page_num = addr // NAND_BLOCK_SIZE * NAND_PAGES_PER_BLOCK
+        if esp.read_nand_spare(page_num) & 0xFF == 0xFF:
+            good += 1
+            if good >= needed:
+                break
+        addr += NAND_BLOCK_SIZE
+    return good
+
+
+def _write_flash_nand(
+    esp: ESPLoader, addr_data: list[tuple[int, ImageSource]], **kwargs
+) -> None:
+    """
+    Write firmware or data to NAND flash memory (internal helper).
+    NAND flash writing has different logic due to bad block management.
+    Uses stub commands ESP_SPI_NAND_WRITE_FLASH_BEGIN / ESP_SPI_NAND_WRITE_FLASH_DATA.
+    """
+    _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+    BLOCK_SIZE = NAND_BLOCK_SIZE
+
+    no_progress: bool = kwargs.get("no_progress", False)
+    nand_end_address = kwargs.get("nand_end_address")
+    if nand_end_address is None:
+        nand_end_address = NAND_TOTAL_SIZE
+
+    def split_bytes(data: bytes, chunk_size=BLOCK_SIZE):
+        """Split data into chunks of specified size"""
+        return [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+    # Normalize addr_data to use bytes
+    norm_addr_data = [(addr, get_bytes(data)) for addr, data in addr_data]
+
+    # Record current write block index, may skip bad blocks
+    image_write_block_address = 0
+
+    for address, (image, name) in norm_addr_data:
+        if address % BLOCK_SIZE != 0:
+            raise FatalError(
+                "For NAND flash, each bin should be flashed "
+                f"based on block size: {BLOCK_SIZE // 1024}KB ({BLOCK_SIZE:#x})"
+            )
+
+        if image_write_block_address > address:
+            raise FatalError(
+                "Failed to write image due to image overlap. "
+                "This is usually caused by skip_bad_block"
+            )
+
+        image_write_block_address = address
+
+        # Image should be padded to block size
+        image = pad_to(image, BLOCK_SIZE)
+
+        if len(image) == 0:
+            msg = "Input image is empty." if name is None else f"'{name}' is empty."
+            log.warning(msg)
+            continue
+
+        image_chunks = split_bytes(image)
+        blocks_needed = len(image_chunks)
+
+        good_blocks = _count_good_blocks(esp, address, nand_end_address, blocks_needed)
+        if good_blocks < blocks_needed:
+            raise FatalError(
+                f"Not enough good blocks between {address:#x} and "
+                f"{nand_end_address:#x}: need {blocks_needed}, found {good_blocks}."
+            )
+
+        block_logic_idx = 0
+        while block_logic_idx < len(image_chunks):
+            # Key logic: find a good block to burn
+            found_good = False
+            for _ in range(MAX_NAND_RETRIES):
+                if image_write_block_address >= nand_end_address:
+                    raise FatalError(
+                        f"Exceeded end address {nand_end_address:#x} "
+                        "while skipping bad blocks."
+                    )
+                # Check bad block marker in spare area of the first page of the
+                # current physical block (image_write_block_address tracks skips
+                # from previous chunks, so use it instead of a per-chunk offset).
+                page_num = (
+                    image_write_block_address // BLOCK_SIZE * NAND_PAGES_PER_BLOCK
+                )
+                bb = esp.read_nand_spare(page_num) & 0xFF
+
+                if bb == 0xFF:
+                    # Good block found
+                    found_good = True
+                    break
+                else:
+                    # Bad block, try next one
+                    log.print(
+                        f"Found bad block at {image_write_block_address:#010x}, "
+                        "trying next block!"
+                    )
+                    image_write_block_address += BLOCK_SIZE
+
+            if not found_good:
+                # No good block found after retries
+                raise FatalError("Cannot find a good block to write bin")
+
+            # We have a good block, write it via NAND stub commands
+            image_block = image_chunks[block_logic_idx]
+            uncsize = len(image_block)
+
+            # Transport failures from write_flash_nand_begin / write_flash_nand_block
+            # propagate directly — no bad-block mark.  A NANDProgramFailed raised
+            # by the stub is caught below and triggers an immediate bad-block mark
+            # (the chip itself reported P_FAIL — no need to re-verify).
+            esp.write_flash_nand_begin(uncsize, image_write_block_address)
+
+            t = time.time()
+            timeout = DEFAULT_TIMEOUT
+            bytes_written = 0
+            seq = 0
+            image_block_orig = image_block  # keep for post-write verify
+
+            try:
+                while len(image_block) > 0:
+                    if not no_progress:
+                        log.progress_bar(
+                            cur_iter=uncsize - len(image_block),
+                            total_iters=uncsize,
+                            prefix="Writing at "
+                            f"{image_write_block_address + bytes_written:#010x} ",
+                            suffix=f" {bytes_written}/{uncsize} bytes...",
+                        )
+
+                    block = image_block[0 : esp.FLASH_WRITE_SIZE]
+                    block = block + b"\xff" * (esp.FLASH_WRITE_SIZE - len(block))
+                    esp.write_flash_nand_block(block, seq)
+                    bytes_written += len(block)
+                    image_block = image_block[esp.FLASH_WRITE_SIZE :]
+                    seq += 1
+
+                esp.write_flash_nand_finish(reboot=False)
+            except NANDProgramFailed:
+                fail_addr = image_write_block_address
+                page_num = fail_addr // BLOCK_SIZE * NAND_PAGES_PER_BLOCK
+                log.warning(
+                    f"P_FAIL reported by NAND chip at {fail_addr:#010x}, "
+                    "marking as bad block"
+                )
+                try:
+                    esp.write_nand_spare(page_num, 1)
+                except FatalError:
+                    log.warning("Failed to mark block as bad, continuing anyway")
+                image_write_block_address += BLOCK_SIZE
+                # block_logic_idx not incremented — retry same logical chunk
+                remaining = len(image_chunks) - block_logic_idx
+                found = _count_good_blocks(
+                    esp, image_write_block_address, nand_end_address, remaining
+                )
+                if found < remaining:
+                    raise FatalError(
+                        f"Good-block budget exhausted after bad-block skip: "
+                        f"{remaining} more chunks to write but only {found} good "
+                        f"blocks remain between {image_write_block_address:#x} and "
+                        f"{nand_end_address:#x}."
+                    )
+                continue
+
+            if esp.IS_STUB:
+                esp.read_reg(esp.CHIP_DETECT_MAGIC_REG_ADDR, timeout=timeout)
+
+            t = time.time() - t
+            speed_msg = (
+                f" ({bytes_written / t * 8 / 1000:.1f} kbit/s)" if t > 0.0 else ""
+            )
+            log.print(
+                f"Wrote {bytes_written} bytes at {image_write_block_address:#010x} "
+                f"in {t:.1f} seconds{speed_msg}."
+            )
+
+            # Verify first page of the block to detect a silent program failure
+            # the chip didn't flag (rare, but possible).  Per NAND spec (W25N01GV
+            # chapter 10): mark block bad after a program-failure, then retry the
+            # same logical chunk on the next physical block.  Transport errors
+            # (FatalError from the read itself) propagate directly.
+            first_page = image_block_orig[: esp.FLASH_WRITE_SIZE] + b"\xff" * max(
+                0, esp.FLASH_WRITE_SIZE - len(image_block_orig)
+            )
+            readback = esp.read_flash_nand(
+                image_write_block_address, esp.FLASH_WRITE_SIZE, None
+            )
+            if readback != first_page:
+                # Re-read once before condemning the block.  A single SLIP/UART
+                # corruption on the verify read would otherwise mark a healthy
+                # block bad.  Only condemn if the second read also mismatches.
+                readback = esp.read_flash_nand(
+                    image_write_block_address, esp.FLASH_WRITE_SIZE, None
+                )
+            if readback != first_page:
+                fail_addr = image_write_block_address
+                page_num = fail_addr // BLOCK_SIZE * NAND_PAGES_PER_BLOCK
+                log.warning(
+                    f"Write verify failed at {fail_addr:#010x} after re-read, "
+                    "marking as bad block"
+                )
+                try:
+                    esp.write_nand_spare(page_num, 1)
+                except FatalError:
+                    log.warning("Failed to mark block as bad, continuing anyway")
+                image_write_block_address += BLOCK_SIZE
+                # block_logic_idx not incremented — retry same logical chunk
+                remaining = len(image_chunks) - block_logic_idx
+                found = _count_good_blocks(
+                    esp, image_write_block_address, nand_end_address, remaining
+                )
+                if found < remaining:
+                    raise FatalError(
+                        f"Good-block budget exhausted after bad-block skip: "
+                        f"{remaining} more chunks to write but only {found} good "
+                        f"blocks remain between {image_write_block_address:#x} and "
+                        f"{nand_end_address:#x}."
+                    )
+            else:
+                block_logic_idx += 1
+                image_write_block_address += BLOCK_SIZE
+
+    log.print("Leaving...")
+
+
 def write_flash(
     esp: ESPLoader,
     addr_data: list[tuple[int, ImageSource]],
     flash_freq: str = "keep",
     flash_mode: str = "keep",
     flash_size: str = "keep",
+    flash_type: str = "nor",
     **kwargs,
 ) -> None:
     """
@@ -593,6 +893,7 @@ def write_flash(
             (``"keep"`` to retain current).
         flash_size: Flash size to set in the bootloader image header
             (``"keep"`` to retain current).
+        flash_type: Flash type - "nor" (default) or "nand".
 
     Keyword Args:
         erase_all (bool): Erase the entire flash before writing.
@@ -617,6 +918,11 @@ def write_flash(
         skip_flashed: bool: Skip flashing if the new binary is already in flash.
             Only for use when diff_with is not specified (mutually exclusive).
     """
+    # Check if NAND flash mode is requested
+    if flash_type == "nand":
+        return _write_flash_nand(esp, addr_data, **kwargs)
+
+    # Original NOR flash logic continues below
     # Normalize addr_data to use bytes
     norm_addr_data = [(addr, get_bytes(data)) for addr, data in addr_data]
 
@@ -1346,6 +1652,7 @@ def _verify_flash_connection(esp: ESPLoader) -> bool:
 def attach_flash(
     esp: ESPLoader,
     spi_connection: (tuple[int, int, int, int, int] | str) | None = None,
+    flash_type: str = "nor",
 ) -> None:
     """
     Configure and attach a SPI flash memory chip to the ESP device,
@@ -1359,6 +1666,7 @@ def attach_flash(
             ``(CLK, Q, D, HD, CS)`` for manual configuration
             or a string (``"SPI"`` or ``"HSPI"``) representing a pre-defined config.
             If not provided, the default flash connection is used.
+        flash_type: Type of flash - "nor" (default) or "nand".
     """
 
     def _define_spi_conn(spi_connection):
@@ -1380,8 +1688,16 @@ def attach_flash(
             # Encode the pin numbers as a 32-bit integer with packed 6-bit values,
             # the same way the ESP ROM takes them
             spi_config, value = _define_spi_conn(spi_connection)
-        log.print(f"Configuring SPI flash mode ({spi_config})...")
-        esp.flash_spi_attach(value)
+        flash_mode = "NAND" if flash_type == "nand" else "NOR"
+        log.print(f"Configuring SPI {flash_mode} flash mode ({spi_config})...")
+        if flash_type == "nand":
+            esp.flash_spi_nand_attach(value)
+        else:
+            esp.flash_spi_attach(value)
+    elif flash_type == "nand":
+        # For NAND, always call attach (both ROM and stub need initialization)
+        log.print("Enabling default SPI NAND flash mode...")
+        esp.flash_spi_nand_attach(0)
     elif not esp.IS_STUB:
         if esp.CHIP_NAME != "ESP32" or esp.secure_download_mode:
             log.print("Enabling default SPI flash mode...")
@@ -1399,6 +1715,10 @@ def attach_flash(
             else:
                 log.print("Enabling default SPI flash mode...")
             esp.flash_spi_attach(value)
+
+    # Skip XMC chip detection and flash size detection for NAND
+    if flash_type == "nand":
+        return
 
     def is_xmc_chip_strict():
         # Read ID without cache, because it should be different after the XMC startup
@@ -1545,14 +1865,49 @@ def _set_flash_parameters(esp, flash_size="keep"):
     return "keep" if keep else flash_size
 
 
-def erase_flash(esp: ESPLoader, force: bool = False) -> None:
+NAND_BLOCK_COUNT = 1024
+NAND_TOTAL_SIZE = NAND_BLOCK_COUNT * NAND_BLOCK_SIZE  # 128 MB
+MAX_NAND_RETRIES = 4
+
+
+def erase_flash(esp: ESPLoader, force: bool = False, flash_type: str = "nor") -> None:
     """
     Erase the SPI flash memory of the ESP device.
 
     Args:
         esp: Initiated esp object connected to a real device.
         force: Bypass the security checks for flash encryption and secure boot.
+        flash_type: "nor" or "nand".
     """
+    if flash_type == "nand":
+        _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+        log.stage()
+        log.print("Erasing NAND flash (all blocks including bad-marked)...")
+        t = time.time()
+        erased = 0
+        failed = 0
+        for blk in range(NAND_BLOCK_COUNT):
+            blk_addr = blk * NAND_BLOCK_SIZE
+            page_num = blk * NAND_PAGES_PER_BLOCK
+            try:
+                esp.erase_nand_region(blk_addr, NAND_BLOCK_SIZE)
+                erased += 1
+            except NANDEraseFailed:
+                log.warning(
+                    f"E_FAIL reported by NAND chip at {blk_addr:#010x}, "
+                    "marking as bad block"
+                )
+                failed += 1
+                try:
+                    esp.write_nand_spare(page_num, 1)
+                except FatalError:
+                    log.warning("Failed to mark block as bad, continuing anyway")
+        log.stage(finish=True)
+        log.print(
+            f"NAND erase complete in {time.time() - t:.1f}s: "
+            f"{erased} blocks erased, {failed} failed (marked bad)."
+        )
+        return
     if not force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
         if esp.get_flash_encryption_enabled() or esp.get_secure_boot_enabled():
             raise FatalError(
@@ -1574,7 +1929,13 @@ def erase_flash(esp: ESPLoader, force: bool = False) -> None:
     log.print(f"Flash memory erased successfully in {time.time() - t:.1f} seconds.")
 
 
-def erase_region(esp: ESPLoader, address: int, size: int, force: bool = False) -> None:
+def erase_region(
+    esp: ESPLoader,
+    address: int,
+    size: int,
+    force: bool = False,
+    flash_type: str = "nor",
+) -> None:
     """
     Erase a specific region of the SPI flash memory of the ESP device.
 
@@ -1583,7 +1944,48 @@ def erase_region(esp: ESPLoader, address: int, size: int, force: bool = False) -
         address: The starting address from which to begin erasing.
         size: The total number of bytes to erase.
         force: Bypass the security checks for flash encryption and secure boot.
+        flash_type: "nor" or "nand".
     """
+    if flash_type == "nand":
+        _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+        if address % NAND_BLOCK_SIZE != 0:
+            raise FatalError(
+                "Offset to erase from must be a multiple of "
+                f"NAND block size ({NAND_BLOCK_SIZE})."
+            )
+        if size % NAND_BLOCK_SIZE != 0:
+            raise FatalError(
+                "Size of data to erase must be a multiple of "
+                f"NAND block size ({NAND_BLOCK_SIZE})."
+            )
+        log.stage()
+        log.print("Erasing NAND flash region...")
+        t = time.time()
+        erased = 0
+        failed = 0
+        blk_addr = address
+        while blk_addr < address + size:
+            page_num = blk_addr // NAND_BLOCK_SIZE * NAND_PAGES_PER_BLOCK
+            try:
+                esp.erase_nand_region(blk_addr, NAND_BLOCK_SIZE)
+                erased += 1
+            except NANDEraseFailed:
+                log.warning(
+                    f"E_FAIL reported by NAND chip at {blk_addr:#010x}, "
+                    "marking as bad block"
+                )
+                failed += 1
+                try:
+                    esp.write_nand_spare(page_num, 1)
+                except FatalError:
+                    log.warning("Failed to mark block as bad, continuing anyway")
+            blk_addr += NAND_BLOCK_SIZE
+        log.stage(finish=True)
+        log.print(
+            f"NAND region erase complete in {time.time() - t:.1f}s: "
+            f"{erased} blocks erased, {failed} failed (marked bad)."
+        )
+        return
     if address % ESPLoader.FLASH_SECTOR_SIZE != 0:
         raise FatalError(
             f"Offset to erase from must be a multiple of {ESPLoader.FLASH_SECTOR_SIZE}."
@@ -1711,6 +2113,8 @@ def read_flash(
     output: str | None = None,
     flash_size: str = "keep",
     no_progress: bool = False,
+    flash_type: str = "nor",
+    nand_end_address: int | None = None,
 ) -> bytes | None:
     """
     Read a specified region of SPI flash memory of an ESP device
@@ -1728,12 +2132,15 @@ def read_flash(
             ``"keep"``: auto-detect but skip setting parameters in SDM,
             Explicit size: use the specified flash size.
         no_progress: Disable printing progress.
+        flash_type: Type of flash - "nor" (default) or "nand".
 
     Returns:
         The read flash data as bytes if output is None; otherwise,
         returns None after writing to file.
     """
-    _set_flash_parameters(esp, flash_size)
+    if flash_type != "nand":
+        _set_flash_parameters(esp, flash_size)
+
     if no_progress:
         flash_progress = None
     else:
@@ -1748,7 +2155,13 @@ def read_flash(
 
     log.stage()
     t = time.time()
-    data = esp.read_flash(address, size, flash_progress)
+    if flash_type == "nand":
+        _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+        data = _read_flash_nand_with_skip(
+            esp, address, size, flash_progress, nand_end_address=nand_end_address
+        )
+    else:
+        data = esp.read_flash(address, size, flash_progress)
     t = time.time() - t
     speed_msg = " ({:.1f} kbit/s)".format(len(data) / t * 8 / 1000) if t > 0.0 else ""
     dest_msg = f" to '{output}'" if output else ""
@@ -1772,6 +2185,7 @@ def verify_flash(
     flash_mode: str = "keep",
     flash_size: str = "keep",
     diff: bool = False,
+    flash_type: str = "nor",
 ) -> None:
     """
     Verify the contents of the SPI flash memory against the provided binary files
@@ -1786,17 +2200,74 @@ def verify_flash(
         flash_mode: Flash mode setting (``"keep"`` to retain current).
         flash_size: Flash size setting (``"keep"`` to retain current).
         diff: If True, perform a byte-by-byte comparison on failure.
+        flash_type: "nor" or "nand".
     """
-    flash_size = _set_flash_parameters(esp, flash_size)  # Set flash size parameters
+    if flash_type != "nand":
+        flash_size = _set_flash_parameters(esp, flash_size)
     mismatch = False
 
     for address, data in addr_data:
         data, source = get_bytes(data)
-        image = pad_to(data, 4)
 
-        image = _update_image_flash_params(
-            esp, address, flash_freq, flash_mode, flash_size, image
-        )
+        if flash_type == "nand":
+            _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+            if address % NAND_BLOCK_SIZE != 0:
+                raise FatalError(
+                    f"For NAND flash, verify address must be a multiple of "
+                    f"NAND block size ({NAND_BLOCK_SIZE:#x})."
+                )
+            image = pad_to(data, NAND_BLOCK_SIZE)
+            image_size = len(image)
+            source = "input bytes" if source is None else f"'{source}'"
+            log.print(
+                f"Verifying {image_size:#x} ({image_size}) bytes "
+                f"at {address:#010x} against {source}..."
+            )
+            phys_addr = address
+            chunk_mismatch = False
+            for chunk_start in range(0, image_size, NAND_BLOCK_SIZE):
+                chunk = image[chunk_start : chunk_start + NAND_BLOCK_SIZE]
+                # Find next good block (same skip logic as write)
+                found = False
+                for _ in range(MAX_NAND_RETRIES):
+                    page_num = phys_addr // NAND_BLOCK_SIZE * NAND_PAGES_PER_BLOCK
+                    bb = esp.read_nand_spare(page_num) & 0xFF
+                    if bb == 0xFF:
+                        found = True
+                        break
+                    log.print(f"Skipping bad block at {phys_addr:#010x} during verify")
+                    phys_addr += NAND_BLOCK_SIZE
+                if not found:
+                    raise FatalError(
+                        f"Could not find good block near {phys_addr:#010x} "
+                        "during verify"
+                    )
+                flash_chunk = esp.read_flash_nand(phys_addr, len(chunk))
+                if flash_chunk != chunk:
+                    chunk_mismatch = True
+                    if diff:
+                        differences = [
+                            i for i in range(len(chunk)) if flash_chunk[i] != chunk[i]
+                        ]
+                        log.print(
+                            f"  Block at {phys_addr:#010x}: "
+                            f"{len(differences)} byte differences, "
+                            f"first at offset {differences[0]}"
+                        )
+                    else:
+                        log.print(f"  Block at {phys_addr:#010x}: MISMATCH")
+                phys_addr += NAND_BLOCK_SIZE
+            if chunk_mismatch:
+                mismatch = True
+                log.print("Verification failed.")
+            else:
+                log.print("Verification successful.")
+            continue
+        else:
+            image = pad_to(data, 4)
+            image = _update_image_flash_params(
+                esp, address, flash_freq, flash_mode, flash_size, image
+            )
 
         image_size = len(image)
         source = "input bytes" if source is None else f"'{source}'"
@@ -1804,6 +2275,7 @@ def verify_flash(
             f"Verifying {image_size:#x} ({image_size}) bytes "
             f"at {address:#010x} in flash against {source}..."
         )
+
         # Try digest first, only read if there are differences.
         digest = esp.flash_md5sum(address, image_size)
         expected_digest = hashlib.md5(image).hexdigest()
@@ -2731,3 +3203,74 @@ def version() -> None:
     from . import __version__
 
     log.print(__version__)
+
+
+def read_nand_spare(esp: ESPLoader, page_number: int) -> None:
+    """
+    Read NAND flash spare area for a given page.
+
+    Args:
+        esp: Initiated esp object connected to a real device.
+        page_number: The page number to read spare area from.
+    """
+    _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+    data = esp.read_nand_spare(page_number)
+    log.print(
+        f"NAND spare for page {page_number}: first word {data:#010x} "
+        f"(bad-block marker byte = {data & 0xFF:#04x})"
+    )
+
+
+def write_nand_spare(esp: ESPLoader, page_number: int, is_bad: int) -> None:
+    """
+    Write NAND flash spare area to mark bad blocks.
+
+    JEDEC spare convention: good block = spare bytes 0xFF,
+    bad block = spare bytes 0x00. is_bad=1 writes 0x00 (marks bad),
+    is_bad=0 writes 0xFF (marks good). Note: to fully restore a bad-marked
+    block to 0xFF, a block erase is needed (write alone may not suffice).
+
+    Args:
+        esp: Initiated esp object connected to a real device.
+        page_number: The page number to write spare area to.
+        is_bad: Flag to mark block as bad (1) or good (0).
+    """
+    _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+    data = esp.write_nand_spare(page_number, is_bad)
+    log.print(f"NAND spare written for page {page_number}: echo {data:#010x}")
+
+
+def dump_bbm(esp: ESPLoader, output: str, block_count: int = NAND_BLOCK_COUNT) -> None:
+    """
+    Read bad-block markers for all blocks and save as a compact binary file.
+
+    For each block 0..block_count-1, reads the spare area of the first page
+    (page = block * NAND_PAGES_PER_BLOCK).  A spare first byte of 0xFF means
+    the block is good (0x00 in the output); any other value means the block
+    is bad (0x01 in the output).  The output file is exactly block_count
+    bytes long.
+
+    Args:
+        esp: Initiated esp object connected to a real device.
+        output: Path to write the binary BBM file.
+        block_count: Number of blocks to scan (default: NAND_BLOCK_COUNT = 1024).
+    """
+    _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
+    bbm = bytearray(block_count)
+    bad_indices = []
+    for blk in range(block_count):
+        page_num = blk * NAND_PAGES_PER_BLOCK
+        spare = esp.read_nand_spare(page_num)
+        if (spare & 0xFF) == 0xFF:
+            bbm[blk] = 0x00  # good
+        else:
+            bbm[blk] = 0x01  # bad
+            bad_indices.append(blk)
+
+    with open(output, "wb") as f:
+        f.write(bytes(bbm))
+
+    log.print(f"BBM dump: {block_count} blocks scanned, {len(bad_indices)} bad.")
+    if bad_indices:
+        log.print(f"Bad block indices: {bad_indices}")
+    log.print(f"Written to '{output}' ({block_count} bytes, 0x00=good 0x01=bad).")

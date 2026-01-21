@@ -26,6 +26,8 @@ from .reset import (
 )
 from .util import (
     FatalError,
+    NANDEraseFailed,
+    NANDProgramFailed,
     NotImplementedInROMError,
     NotSupportedError,
     UnsupportedCommandError,
@@ -112,6 +114,12 @@ DEFAULT_CONNECT_ATTEMPTS = cfg.getint("connect_attempts", 7)
 WRITE_BLOCK_ATTEMPTS = cfg.getint("write_block_attempts", 3)
 # Number of times to try opening the serial port
 DEFAULT_OPEN_PORT_ATTEMPTS = cfg.getint("open_port_attempts", 1)
+
+# Pages per NAND flash block for the supported NAND chip (W25N01GV).
+# Sent to the stub as part of the NAND read-flash parameter block.
+NAND_PAGES_PER_BLOCK = 64
+# Size of one NAND block in bytes (64 pages × 2 KB page = 128 KB).
+NAND_BLOCK_SIZE = 0x20000
 
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
@@ -300,6 +308,18 @@ class ESPLoader:
         "RUN_USER_CODE": 0xD3,
         # Flash encryption encrypted data command
         "FLASH_ENCRYPT_DATA": 0xD4,
+        # NAND flash commands (stub only)
+        "SPI_NAND_ATTACH": 0xD5,
+        "SPI_NAND_READ_SPARE": 0xD6,
+        "SPI_NAND_WRITE_SPARE": 0xD7,
+        "SPI_NAND_READ_FLASH": 0xD8,
+        "SPI_NAND_WRITE_FLASH_BEGIN": 0xD9,
+        "SPI_NAND_WRITE_FLASH_DATA": 0xDA,
+        "SPI_NAND_ERASE_FLASH": 0xDB,
+        "SPI_NAND_ERASE_REGION": 0xDC,
+        # Not used by esptool; defined here for completeness (stub-only command)
+        "SPI_NAND_READ_PAGE_DEBUG": 0xDD,
+        "SPI_NAND_WRITE_FLASH_END": 0xDE,
     }
 
     # Response code(s) sent by ROM
@@ -1511,6 +1531,24 @@ class ESPLoader:
             timeout=timeout,
         )
 
+    @stub_function_only
+    def erase_nand_flash(self):
+        self.check_command(
+            "erase NAND flash",
+            self.ESP_CMDS["SPI_NAND_ERASE_FLASH"],
+            timeout=CHIP_ERASE_TIMEOUT,
+        )
+
+    @stub_function_only
+    def erase_nand_region(self, offset, size):
+        timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)
+        self.check_command(
+            "erase NAND region",
+            self.ESP_CMDS["SPI_NAND_ERASE_REGION"],
+            struct.pack("<II", offset, size),
+            timeout=timeout,
+        )
+
     def read_flash_slow(self, offset, length, progress_fn) -> bytes:
         raise NotImplementedInROMError(self, self.read_flash_slow)
 
@@ -1553,6 +1591,100 @@ class ESPLoader:
             )
         return data
 
+    def read_flash_nand(self, offset, length, progress_fn=None) -> bytes:
+        """Read NAND flash via stub command ESP_SPI_NAND_READ_FLASH (0xD8).
+
+        Uses the same SLIP data-frame + ACK + MD5 wire protocol as NOR read_flash.
+        """
+        if not self.IS_STUB:
+            raise FatalError("NAND read_flash is only supported via the stub loader.")
+
+        self.check_command(
+            "read NAND flash",
+            self.ESP_CMDS["SPI_NAND_READ_FLASH"],
+            struct.pack(
+                "<IIII", offset, length, self.FLASH_SECTOR_SIZE, NAND_PAGES_PER_BLOCK
+            ),
+        )
+
+        prev_timeout = self._port.timeout
+        self._port.timeout = 10
+        data = b""
+        try:
+            while len(data) < length:
+                p = self.read()
+                data += p
+                data_len = len(data)
+                if data_len < length and len(p) < self.FLASH_SECTOR_SIZE:
+                    raise FatalError(
+                        f"Corrupt data, expected {self.FLASH_SECTOR_SIZE:#x} "
+                        f"bytes but received {len(p):#x} bytes."
+                    )
+                self.write(struct.pack("<I", data_len))
+                if progress_fn and (data_len % 1024 == 0 or data_len == length):
+                    progress_fn(data_len, length, offset)
+            if len(data) > length:
+                raise FatalError("Read more than expected.")
+
+            digest_frame = self.read()
+            if len(digest_frame) != 16:
+                raise FatalError(f"Expected digest, got: {hexify(digest_frame)}")
+            expected_digest = hexify(digest_frame).upper()
+            digest = hashlib.md5(data).hexdigest().upper()
+            if digest != expected_digest:
+                raise FatalError(
+                    f"Digest mismatch: expected {expected_digest}, got {digest}"
+                )
+        finally:
+            self._port.timeout = prev_timeout
+        return data
+
+    def write_flash_nand_begin(self, size, offset):
+        """Start NAND flash write (stub command). Same as flash_begin but for NAND."""
+        params = struct.pack(
+            "<IIII", offset, size, NAND_BLOCK_SIZE, self.FLASH_WRITE_SIZE
+        )
+        self.check_command(
+            "enter NAND flash download mode",
+            self.ESP_CMDS["SPI_NAND_WRITE_FLASH_BEGIN"],
+            params,
+        )
+
+    def write_flash_nand_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
+        """Write one block to NAND flash (stub command). Same format as flash_block."""
+        for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
+            try:
+                self.check_command(
+                    f"write to NAND flash after seq {seq}",
+                    self.ESP_CMDS["SPI_NAND_WRITE_FLASH_DATA"],
+                    struct.pack("<IIII", len(data), seq, 0, 0) + data,
+                    self.checksum(data),
+                    timeout=timeout,
+                )
+                break
+            except (NANDProgramFailed, NANDEraseFailed):
+                # Chip-reported P_FAIL / E_FAIL — retrying is futile (the cell is
+                # bad). Surface immediately so the caller can mark the block bad.
+                raise
+            except FatalError:
+                if attempts_left:
+                    self.trace(
+                        f"block write failed, "
+                        f"retrying with {attempts_left} attempts left...".capitalize()
+                    )
+                else:
+                    raise
+
+    def write_flash_nand_finish(self, reboot=False, timeout=DEFAULT_TIMEOUT):
+        """End a NAND flash write session (stub plugin command)."""
+        pkt = struct.pack("<I", int(not reboot))
+        self.check_command(
+            "leave NAND flash download mode",
+            self.ESP_CMDS["SPI_NAND_WRITE_FLASH_END"],
+            pkt,
+            timeout=timeout,
+        )
+
     def flash_spi_attach(self, hspi_arg):
         """Send SPI attach command to enable the SPI flash pins
 
@@ -1568,6 +1700,88 @@ class ESPLoader:
             is_legacy = 0
             arg += struct.pack("BBBB", is_legacy, 0, 0, 0)
         self.check_command("configure SPI flash pins", self.ESP_CMDS["SPI_ATTACH"], arg)
+
+    def flash_spi_nand_attach(self, hspi_arg):
+        """Send SPI NAND attach command to enable the SPI NAND flash pins
+
+        Similar to flash_spi_attach but for NAND flash.
+        """
+        arg = struct.pack("<I", hspi_arg)
+        if not self.IS_STUB:
+            is_legacy = 0
+            arg += struct.pack("BBBB", is_legacy, 0, 0, 0)
+        val, data = self.command(self.ESP_CMDS["SPI_NAND_ATTACH"], arg)
+        # 2-byte response contract: data[0]=prot_reg, data[1]=status byte.
+        # Gate on data[1] (status) to match the normal ≥3-byte path.
+        if len(data) < 3:
+            if len(data) >= 2 and data[1] != 0:
+                raise FatalError.WithResult(
+                    "Failed to configure SPI NAND flash pins", data[0:2]
+                )
+            raise FatalError(
+                "Failed to configure SPI NAND flash pins. "
+                f"Only got {len(data)} byte response."
+            )
+        status_bytes = data[1:3]
+        if status_bytes[0] != 0:
+            raise FatalError.WithResult(
+                "Failed to configure SPI NAND flash pins", status_bytes
+            )
+        status_reg = (val >> 24) & 0xFF
+        mfr_id = (val >> 16) & 0xFF
+        dev_id = val & 0xFFFF
+        prot_reg = data[0]
+        # Known/tested NAND JEDEC IDs: (manufacturer, device) → description
+        KNOWN_NAND_IDS = {
+            (0xEF, 0xAA21): "Winbond W25N01GV (1Gbit)",
+        }
+        chip_desc = KNOWN_NAND_IDS.get((mfr_id, dev_id))
+        if chip_desc:
+            log.print(f"Detected NAND chip: {chip_desc}")
+        else:
+            raise FatalError(
+                f"Unrecognized NAND JEDEC ID (mfr={mfr_id:#04x}, dev={dev_id:#06x}).\n"
+                f"Only Winbond W25N01GV is supported."
+            )
+        self.trace(
+            f"NAND debug: status={status_reg:#04x}, JEDEC ID: "
+            f"mfr={mfr_id:#04x} dev={dev_id:#06x}, prot={prot_reg:#04x}"
+        )
+        if prot_reg != 0x00:
+            log.warning(
+                f"NAND protection register is {prot_reg:#04x} (expected 0x00); "
+                "program/erase may not persist."
+            )
+
+    def read_nand_spare(self, page_number):
+        """Read NAND flash spare area for a given page number.
+
+        Returns:
+            int: Only the first response word from the stub, which encodes the
+            first spare bytes in little-endian order (LSB = byte 0, i.e. the
+            bad-block marker).  Callers that want the bad-block marker should
+            use ``result & 0xFF``.
+        """
+        data = self.check_command(
+            "read NAND spare",
+            self.ESP_CMDS["SPI_NAND_READ_SPARE"],
+            struct.pack("<I", page_number),
+        )
+        return data
+
+    def write_nand_spare(self, page_number, is_bad):
+        """Write NAND flash spare area to mark bad blocks.
+
+        Returns:
+            int: Only the first response word echoed back by the stub (same
+            encoding as :meth:`read_nand_spare`).
+        """
+        data = self.check_command(
+            "write NAND spare",
+            self.ESP_CMDS["SPI_NAND_WRITE_SPARE"],
+            struct.pack("<IB", page_number, is_bad),
+        )
+        return data
 
     def flash_set_parameters(self, size):
         """Tell the ESP bootloader the parameters of the chip

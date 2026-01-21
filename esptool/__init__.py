@@ -21,6 +21,7 @@ __all__ = [
     "read_flash_sfdp",
     "read_mac",
     "read_mem",
+    "read_nand_spare",
     "reset_chip",
     "run",
     "run_stub",
@@ -29,6 +30,7 @@ __all__ = [
     "write_flash",
     "write_flash_status",
     "write_mem",
+    "write_nand_spare",
 ]
 
 __version__ = "5.2.0"
@@ -45,6 +47,7 @@ from esptool.cmds import (
     chip_id,
     detect_chip,
     detect_flash_size,
+    dump_bbm,
     dump_mem,
     elf2image,
     erase_flash,
@@ -60,6 +63,7 @@ from esptool.cmds import (
     read_flash_status,
     read_mac,
     read_mem,
+    read_nand_spare,
     reset_chip,
     run,
     run_stub,
@@ -68,6 +72,8 @@ from esptool.cmds import (
     write_flash,
     write_flash_status,
     write_mem,
+    write_nand_spare,
+    NAND_BLOCK_COUNT,
 )
 from esptool.config import load_config_file
 from esptool.loader import (
@@ -191,6 +197,58 @@ def add_spi_connection_arg(function):
         "Value can be SPI, HSPI or a comma-separated list of 5 I/O numbers "
         "to use for SPI flash (CLK,Q,D,HD,CS). Not supported with ESP8266.",
         type=SpiConnectionType(),
+    )(function)
+    return function
+
+
+def _require_spi_connection_for_nand(flash_type: str, kwargs: dict) -> None:
+    """Raise UsageError if flash_type is 'nand' and --spi-connection is absent."""
+    if flash_type == "nand" and kwargs.get("spi_connection") is None:
+        raise click.UsageError(
+            "--spi-connection is required for NAND flash operations."
+        )
+
+
+def nand_command(function):
+    """Decorator for hidden NAND-only commands.
+
+    Sets ctx.obj["plugins"] = ["nand"] and validates that --spi-connection was
+    provided before the wrapped function body runs. Replaces @click.pass_context
+    for the decorated command.
+    """
+
+    import functools
+
+    @functools.wraps(function)
+    @click.pass_context
+    def wrapper(ctx, *args, **kwargs):
+        _require_spi_connection_for_nand("nand", kwargs)
+        ctx.ensure_object(dict)
+        ctx.obj["plugins"] = ["nand"]
+        return function(ctx, *args, **kwargs)
+
+    return wrapper
+
+
+def add_flash_type_arg(function):
+    """Add flash type argument (NOR or NAND)"""
+
+    def _flash_type_callback(ctx: click.Context, _param: click.Parameter, value: str):
+        ctx.ensure_object(dict)
+        if value == "nand":
+            ctx.obj["plugins"] = ["nand"]
+        return value
+
+    function = click.option(
+        "--flash-type",
+        "-ft",
+        help="Flash type: nor (default) or nand.",
+        type=click.Choice(["nor", "nand"]),
+        default="nor",
+        hidden=True,
+        is_eager=False,
+        expose_value=True,
+        callback=_flash_type_callback,
     )(function)
     return function
 
@@ -714,7 +772,16 @@ def write_mem_cli(ctx, address, value, mask):
     exclusive_with=["compress"],
     cls=MutuallyExclusiveOption,
 )
+@click.option(
+    "--nand-end-address",
+    type=AnyIntType(),
+    default=None,
+    hidden=True,
+    help="End address (exclusive) for bad-block skip window (for NAND flash chips). "
+    "Defaults to end of chip address space.",
+)
 @add_spi_flash_options(allow_keep=True, auto_detect=True)
+@add_flash_type_arg
 @add_spi_connection_arg
 @click.pass_context
 def write_flash_cli(ctx, addr_filename, **kwargs):
@@ -750,8 +817,14 @@ def write_flash_cli(ctx, addr_filename, **kwargs):
                 diff_with_expanded.append(entry)
         kwargs["diff_with"] = diff_with_expanded
 
+    flash_type = kwargs.get("flash_type", "nor")
+    _require_spi_connection_for_nand(flash_type, kwargs)
     prepare_esp_object(ctx)
-    attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
+    attach_flash(
+        ctx.obj["esp"],
+        kwargs.pop("spi_connection", None),
+        flash_type=flash_type,
+    )
     write_flash(ctx.obj["esp"], addr_filename, **kwargs)
 
 
@@ -949,28 +1022,101 @@ def write_flash_status_cli(ctx, value, bytes, **kwargs):
 @click.argument("output", type=click.Path())
 @click.option("--no-progress", "-p", is_flag=True, help="Suppress progress output.")
 @add_spi_flash_options(allow_keep=True, auto_detect=True, size_only=True)
+@add_flash_type_arg
 @add_spi_connection_arg
 @click.pass_context
 def read_flash_cli(ctx, address, size, output, **kwargs):
     """Read SPI flash memory content."""
+    flash_type = kwargs.get("flash_type", "nor")
+    _require_spi_connection_for_nand(flash_type, kwargs)
     prepare_esp_object(ctx)
-    attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
+    attach_flash(
+        ctx.obj["esp"],
+        kwargs.pop("spi_connection", None),
+        flash_type=flash_type,
+    )
     size = parse_size_arg(ctx.obj["esp"], size)
-    check_flash_size(ctx.obj["esp"], address, size)
+    if flash_type == "nor":
+        check_flash_size(ctx.obj["esp"], address, size)
     read_flash(ctx.obj["esp"], address, size, output, **kwargs)
+
+
+@cli.command("read-nand-spare", hidden=True)
+@click.argument("page_number", type=AnyIntType())
+@add_spi_connection_arg
+@nand_command
+def read_nand_spare_cli(ctx, page_number, **kwargs):
+    """Read NAND flash spare area for a given page."""
+    spi_connection = kwargs.pop("spi_connection", None)
+    prepare_esp_object(ctx)
+    attach_flash(
+        ctx.obj["esp"],
+        spi_connection,
+        flash_type="nand",
+    )
+    read_nand_spare(ctx.obj["esp"], page_number)
+
+
+@cli.command("write-nand-spare", hidden=True)
+@click.argument("page_number", type=AnyIntType())
+@click.argument("is_bad", type=click.IntRange(0, 1))
+@add_spi_connection_arg
+@nand_command
+def write_nand_spare_cli(ctx, page_number, is_bad, **kwargs):
+    """Write NAND flash spare area to mark bad blocks."""
+    spi_connection = kwargs.pop("spi_connection", None)
+    prepare_esp_object(ctx)
+    attach_flash(
+        ctx.obj["esp"],
+        spi_connection,
+        flash_type="nand",
+    )
+    write_nand_spare(ctx.obj["esp"], page_number, is_bad)
+
+
+@cli.command("dump-bbm", hidden=True)
+@click.argument("output", type=click.Path())
+@click.option(
+    "--block-count",
+    type=int,
+    default=NAND_BLOCK_COUNT,
+    hidden=True,
+    help="Number of blocks to scan",
+)
+@add_spi_connection_arg
+@nand_command
+def dump_bbm_cli(ctx, output, block_count, **kwargs):
+    """Dump bad-block markers from NAND flash to a binary file."""
+    spi_connection = kwargs.pop("spi_connection", None)
+    prepare_esp_object(ctx)
+    attach_flash(
+        ctx.obj["esp"],
+        spi_connection,
+        flash_type="nand",
+    )
+    dump_bbm(ctx.obj["esp"], output, block_count)
 
 
 @cli.command("verify-flash")
 @click.argument("addr-filename", nargs=-1, required=True, cls=AddrFilenameArg)
 @click.option("--diff", "-d", is_flag=True, help="Show differences.")
 @add_spi_flash_options(allow_keep=True, auto_detect=True)
+@add_flash_type_arg
 @add_spi_connection_arg
 @click.pass_context
 def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
     """Verify a binary blob against the flash memory content."""
+    flash_type = kwargs.pop("flash_type", "nor")
+    _require_spi_connection_for_nand(flash_type, kwargs)
     prepare_esp_object(ctx)
-    attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
-    verify_flash(ctx.obj["esp"], addr_filename, diff=diff, **kwargs)
+    attach_flash(
+        ctx.obj["esp"],
+        kwargs.pop("spi_connection", None),
+        flash_type=flash_type,
+    )
+    verify_flash(
+        ctx.obj["esp"], addr_filename, diff=diff, flash_type=flash_type, **kwargs
+    )
 
 
 @cli.command("erase-flash")
@@ -979,13 +1125,19 @@ def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
     is_flag=True,
     help="Erase flash even if security features are enabled. Use with caution!",
 )
+@add_flash_type_arg
 @add_spi_connection_arg
 @click.pass_context
-def erase_flash_cli(ctx, force, **kwargs):
+def erase_flash_cli(ctx, force, flash_type, **kwargs):
     """Erase the SPI flash memory."""
+    _require_spi_connection_for_nand(flash_type, kwargs)
     prepare_esp_object(ctx)
-    attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
-    erase_flash(ctx.obj["esp"], force)
+    attach_flash(
+        ctx.obj["esp"],
+        kwargs.pop("spi_connection", None),
+        flash_type=flash_type,
+    )
+    erase_flash(ctx.obj["esp"], force, flash_type=flash_type)
 
 
 @cli.command("erase-region")
@@ -996,15 +1148,22 @@ def erase_flash_cli(ctx, force, **kwargs):
 )
 @click.argument("address", type=AnyIntType())
 @click.argument("size", type=AutoSizeType())
+@add_flash_type_arg
 @add_spi_connection_arg
 @click.pass_context
-def erase_region_cli(ctx, address, size, force, **kwargs):
+def erase_region_cli(ctx, address, size, force, flash_type, **kwargs):
     """Erase a region of the SPI flash memory."""
+    _require_spi_connection_for_nand(flash_type, kwargs)
     prepare_esp_object(ctx)
-    attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
+    attach_flash(
+        ctx.obj["esp"],
+        kwargs.pop("spi_connection", None),
+        flash_type=flash_type,
+    )
     size = parse_size_arg(ctx.obj["esp"], size)
-    check_flash_size(ctx.obj["esp"], address, size)
-    erase_region(ctx.obj["esp"], address, size, force)
+    if flash_type != "nand":
+        check_flash_size(ctx.obj["esp"], address, size)
+    erase_region(ctx.obj["esp"], address, size, force, flash_type=flash_type)
 
 
 @cli.command("read-flash-sfdp")
