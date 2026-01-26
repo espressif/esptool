@@ -242,6 +242,8 @@ class ESP32P4ROM(ESP32ROM):
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
         if not self.sync_stub_detected:  # Don't run if stub is reused
             self.disable_watchdogs()
+        if not self.secure_download_mode:
+            self.power_on_flash()  # Needs to be powered on before attach_flash()
 
     def uses_usb_otg(self):
         """
@@ -307,8 +309,8 @@ class ESP32P4ROM(ESP32ROM):
         if self.secure_download_mode:
             raise NotSupportedError(self, "Powering on flash in secure download mode")
 
-        if self.get_chip_revision() <= 300:  # <=ECO5
-            # The flash chip is powered off by default on >=ECO6, when the default flash
+        if self.get_chip_revision() != 301:  # !=ECO6
+            # The flash chip is powered off by default on ECO6, when the default flash
             # voltage changed from 1.8V to 3.3V. This is to prevent damage to 1.8V flash
             # chips. Board designers must set the appropriate voltage level in eFuse.
             return

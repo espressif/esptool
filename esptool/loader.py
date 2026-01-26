@@ -1182,9 +1182,6 @@ class ESPLoader(object):
 
         return "USB-Serial/JTAG" if usb_jtag_serial else "USB-OTG" if usb_otg else None
 
-    def power_on_flash(self):
-        pass  # The flash chip needs to be powered on only in special cases
-
     @classmethod
     def parse_flash_size_arg(cls, arg):
         try:
