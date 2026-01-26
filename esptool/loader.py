@@ -1240,9 +1240,6 @@ class ESPLoader:
     def is_flash_encryption_key_valid(self):
         raise NotSupportedError(self, "Flash encryption")
 
-    def power_on_flash(self):
-        pass  # The flash chip needs to be powered on only in special cases
-
     @classmethod
     def parse_flash_size_arg(cls, arg):
         try:

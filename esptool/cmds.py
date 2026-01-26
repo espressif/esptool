@@ -1039,9 +1039,6 @@ def attach_flash(
         value = (hd << 24) | (cs << 18) | (d << 12) | (q << 6) | clk
         return spi_config_txt, value
 
-    if not esp.secure_download_mode:
-        esp.power_on_flash()
-
     # Override the common SPI flash parameter stuff if configured to do so
     if spi_connection is not None:
         spi_config = spi_connection
