@@ -1,3 +1,24 @@
+## v4.11.0 (2026-01-27)
+
+### New Features
+
+- **esp32p4**: Add ECO6 stub flasher support
+- **esp32p4**: Power on SPI flash chip during the attaching process
+- Add missing chip features for ESP32-C5
+
+### Bug Fixes
+
+- **esp32-p4**: Fix flash power on sequence with stub flasher
+- **espefuse**: Fix decoding error in esp32c5 summary
+- **usb_mode_detection**: Fix USB mode detection on ESP32-C5 and ESP32-C61
+- **change_baud**: Disable changing baud rate on ESP32-C2 and ESP32-C5 in SDM
+- **esp32c6**: Fix ESP32-C6FH8 package detection
+- **esp32c3**: fix usb-serial detection for rev1.1
+- **espefuse**: Fix calibration efuses for ESP32-P4 ECO5
+- **espefuse**: Fix ECDSA key purposes for ESP32-P4
+- **image_info**: Sanitize app and bootloader info of null bytes
+- **espsecure**: Allow verifying multiple appended ECDSA signatures
+
 ## v4.10.0 (2025-09-16)
 
 ### New Features
