@@ -798,6 +798,9 @@ def write_flash(
 
         image = pad_to(image, esp.FLASH_ENCRYPTED_WRITE_ALIGN if encrypted else 4)
 
+        # Save the original flashing address (can change due to padding)
+        requested_address = address
+
         if not esp.IS_STUB:
             log.print("Erasing flash...")
 
@@ -866,11 +869,11 @@ def write_flash(
                     if len(image) == 0:  # All data sent, print 100% progress and end
                         break
                     block = image[0 : esp.FLASH_WRITE_SIZE]
+                    block_len = len(block)
                     if compress:
                         # feeding each compressed block into the decompressor lets us
                         # see block-by-block how much will be written
                         block_uncompressed = len(decompress.decompress(block))
-                        bytes_written += block_uncompressed
                         block_timeout = max(
                             DEFAULT_TIMEOUT,
                             timeout_per_mb(
@@ -887,12 +890,13 @@ def write_flash(
                             # Stub ACKs when block is received,
                             # then writes to flash while receiving the block after it
                             timeout = block_timeout
+                        bytes_written += block_uncompressed
                     else:
                         # Pad the last block
-                        block = block + b"\xff" * (esp.FLASH_WRITE_SIZE - len(block))
+                        block = block + b"\xff" * (esp.FLASH_WRITE_SIZE - block_len)
                         esp.flash_block(block, seq, encrypted=encrypted)
-                        bytes_written += len(block)
-                    bytes_sent += len(block)
+                        bytes_written += block_len  # Count without added padding
+                    bytes_sent += block_len
                     image = image[esp.FLASH_WRITE_SIZE :]
                     seq += 1
                 break
@@ -947,14 +951,14 @@ def write_flash(
                 speed_msg = f" ({uncsize / t * 8 / 1000:.1f} kbit/s)"
             log.print(
                 f"Wrote {uncsize} bytes ({bytes_sent} compressed) "
-                f"at {address:#010x} in {t:.1f} seconds{speed_msg}."
+                f"at {requested_address:#010x} in {t:.1f} seconds{speed_msg}."
             )
         else:
             if t > 0.0:
-                speed_msg = " (%.1f kbit/s)" % (bytes_written / t * 8 / 1000)
+                speed_msg = f" ({bytes_written / t * 8 / 1000:.1f} kbit/s)"
             log.print(
-                f"Wrote {bytes_written} bytes at {address:#010x} in {t:.1f} "
-                f"seconds{speed_msg}."
+                f"Wrote {bytes_written} bytes "
+                f"at {requested_address:#010x} in {t:.1f} seconds{speed_msg}."
             )
 
         if not encrypted and not esp.secure_download_mode:
