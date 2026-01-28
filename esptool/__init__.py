@@ -91,6 +91,7 @@ import serial
 from esptool.cli_util import (
     AutoSizeType,
     BaudRateType,
+    DiffWithType,
     Group,
     AddrFilenameArg,
     AutoChunkSizeType,
@@ -650,6 +651,29 @@ def write_mem_cli(ctx, address, value, mask):
     help="Ignore flash encryption eFuse settings.",
 )
 @click.option(
+    "--diff-with",
+    type=DiffWithType(exists=True, dir_okay=False, readable=True),
+    cls=OptionEatAll,
+    multiple=True,
+    help="Previously flashed file(s) to compare the to-be-flashed files with "
+    "for fast reflashing. Use 'skip' to skip comparison for a specific file. "
+    "This list is zipped sequentially with the files being flashed.",
+)
+@click.option(
+    "--no-diff-verify",
+    is_flag=True,
+    help="Skip MD5 checks for faster reflashing. Requires --diff-with to be specified. "
+    "Must be sure the flash content has not changed since the last flash.",
+)
+@click.option(
+    "--skip-flashed",
+    "-s",
+    is_flag=True,
+    help="Skip flashing if the new binary is already in flash. Will perform MD5 checks "
+    "to verify the flash content matches the new binary. "
+    "Automatically enabled for each file with a valid --diff-with pair.",
+)
+@click.option(
     "--force",
     is_flag=True,
     help="Force write, skip security and compatibility checks. Use with caution!",
@@ -681,11 +705,33 @@ def write_flash_cli(ctx, addr_filename, **kwargs):
     # and --encrypt-files, which represents the list of files to encrypt.
     # The reason is that allowing both at the same time increases the chances of
     # having contradictory lists (e.g. one file not available in one of list).
-    if kwargs["encrypt"] and kwargs["encrypt_files"] is not None:
+    if kwargs["encrypt"] and kwargs["encrypt_files"]:
         raise FatalError(
             "Options --encrypt and --encrypt-files "
             "must not be specified at the same time."
         )
+    if kwargs["skip_flashed"] and kwargs["no_diff_verify"]:
+        raise FatalError(
+            "Options --skip-flashed and --no-diff-verify "
+            "must not be specified at the same time."
+        )
+    # Expand HEX file splits in diff_with if any
+    if "diff_with" in kwargs and kwargs["diff_with"]:
+        diff_with_expanded: list = []
+        for entry in kwargs["diff_with"]:
+            # Check if this entry is a HEX file that was split
+            if (
+                entry is not None
+                and hasattr(ctx, "_diff_with_hex_splits")
+                and entry in ctx._diff_with_hex_splits
+            ):
+                # This is a HEX file that was split, expand it to all splits
+                diff_with_expanded.extend(ctx._diff_with_hex_splits[entry])
+            else:
+                # Regular file or None (skip)
+                diff_with_expanded.append(entry)
+        kwargs["diff_with"] = diff_with_expanded
+
     prepare_esp_object(ctx)
     attach_flash(ctx.obj["esp"], kwargs.pop("spi_connection", None))
     write_flash(ctx.obj["esp"], addr_filename, **kwargs)

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 
+import os
 import sys
 import rich_click as click
 
@@ -266,6 +267,64 @@ class AddrFilenamePairType(click.Path):
                 )
             end = sector_end
         return pairs
+
+
+class DiffWithType(click.Path):
+    """Custom type for --diff-with parameter that accepts file paths (binary or HEX),
+    or "skip", and returns a file handle or None. When used with multiple=True, Click
+    will collect the results into a list. HEX files are automatically split into
+    multiple binary files (one per continuous region), allowing a single HEX file
+    to match multiple files being flashed.
+    """
+
+    name = "diff-with-file"
+
+    def get_metavar(
+        self, param: click.Parameter | None, ctx: click.Context | None = None
+    ):
+        return "<filename(s)> or 'skip'"
+
+    def convert(
+        self,
+        value: str,
+        param: click.Parameter | None,
+        ctx: click.Context,
+    ) -> IO[bytes] | None:
+        # Handle special "skip" string
+        if value.lower() == "skip":
+            # Check if a file with this name actually exists
+            if os.path.exists(value):
+                raise click.BadParameter(
+                    f"File named '{value}' exists, but this filename is not supported "
+                    "as it conflicts with the 'skip' keyword. Please rename the file."
+                )
+            return None
+
+        # Validate path using parent class
+        validated_path = super().convert(value, param, ctx)
+        # Open file and store handle in context for cleanup
+        if not hasattr(ctx, "_open_files"):
+            ctx._open_files = []
+        # Initialize dict to map HEX file first split to all splits
+        if not hasattr(ctx, "_diff_with_hex_splits"):
+            ctx._diff_with_hex_splits = {}
+        try:
+            file_handle = open(validated_path, "rb")
+            # Use intel_hex_to_bin to handle HEX file conversion and splitting
+            hex_converted = intel_hex_to_bin(file_handle)
+            # intel_hex_to_bin returns list[tuple[int | None, IO[bytes]]]
+            # Extract just the file handles
+            split_files = [f for _, f in hex_converted]
+            # Store all file handles for cleanup
+            for f in split_files:
+                ctx._open_files.append(f)
+            # If HEX file was split into multiple files, store mapping for expansion
+            if len(split_files) > 1:
+                ctx._diff_with_hex_splits[split_files[0]] = split_files
+            # Return first file (or only file if binary)
+            return split_files[0] if split_files else None
+        except OSError as e:
+            raise click.BadParameter(str(e))
 
 
 ########################### Custom option/argument ############################
