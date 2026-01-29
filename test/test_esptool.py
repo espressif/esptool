@@ -73,6 +73,10 @@ import serial
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# Test data sizes
+TEST_FILE_SIZE_16KB = 16 * 1024  # 4 sectors
+TEST_FILE_SIZE_8KB = 8 * 1024  # 2 sectors
+
 print("Running esptool tests...")
 
 
@@ -296,6 +300,10 @@ class EsptoolTestCase:
             assert rb_b == ct_b, (
                 f"First difference at offset {offs:#x} Expected {ct_b} got {rb_b}"
             )
+
+    def create_test_data(self, size: int, pattern: int = 0xAA) -> bytearray:
+        """Create test data bytearray of specified size filled with pattern byte."""
+        return bytearray([pattern] * size)
 
     def verify_readback(
         self, offset, length, compare_to, is_bootloader=False, spi_connection=None
@@ -947,6 +955,205 @@ class TestFlashing(EsptoolTestCase):
             output = reg_mod.read_reg(reg_mod.RTC_CNTL_SWD_CONF_REG)
             print(f"RTC_CNTL_SWD_CONF_REG: {output}")
             assert output & 0x80000000, "SWD auto feeding is not disabled"
+
+    def test_binary_already_in_flash(self):
+        bin = "images/one_kb.bin"
+        addr = 0x7998
+        self.run_esptool(f"write-flash {addr} {bin}")
+        output = self.run_esptool(f"write-flash --skip-flashed {addr} {bin}")
+        assert f"'{bin}' at {addr:#010x} already in flash, skipping write" in output
+
+    @pytest.mark.skipif(
+        int(os.getenv("ESPTOOL_TEST_FLASH_SIZE", "0")) < 32, reason="needs 32MB flash"
+    )
+    def test_binary_already_in_flash_32M_flash(self):
+        bin = "images/one_kb.bin"
+        addr = 0xFFFFFD
+        self.run_esptool(f"write-flash {addr} {bin}")
+        output = self.run_esptool(f"write-flash --skip-flashed {addr} {bin}")
+        assert f"'{bin}' at {addr:#010x} already in flash, skipping write" in output
+
+    @pytest.mark.quick_test
+    def test_fast_reflash_basic(self):
+        """Test basic fast reflashing with --diff-with when only small parts changed."""
+        # Create old and new binary files
+        old_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        new_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        try:
+            # Create a 16KB old file (4 sectors) with pattern
+            old_data = self.create_test_data(TEST_FILE_SIZE_16KB)
+            old_bin.write(old_data)
+            old_bin.close()
+
+            # Create new file with only first sector changed
+            new_data = bytearray(old_data)
+            new_data[0:100] = [0xBB] * 100  # Change first 100 bytes
+            new_bin.write(new_data)
+            new_bin.close()
+
+            addr = 0x104  # Use intentionally unaligned address
+            # Flash old file first
+            self.run_esptool(f"write-flash {addr} {old_bin.name}")
+            self.verify_readback(addr, TEST_FILE_SIZE_16KB, old_bin.name)
+
+            # Fast reflash with new file
+            output = self.run_esptool(
+                f"write-flash {addr} {new_bin.name} --diff-with {old_bin.name}"
+            )
+            assert (
+                "Diff data in flash matches, will reflash changed sectors only"
+                in output
+            )
+            assert "Reflashing 1 changed sector at 0x0" in output
+
+            # Verify new content is in flash
+            self.verify_readback(addr, TEST_FILE_SIZE_16KB, new_bin.name)
+        finally:
+            os.unlink(old_bin.name)
+            os.unlink(new_bin.name)
+
+    @pytest.mark.skipif(
+        arg_chip == "esp8266", reason="ESP8266 ROM can't do MD5 verification"
+    )
+    def test_fast_reflash_basic_no_stub(self):
+        """Test basic fast reflashing with --no-stub."""
+        # Create old and new binary files
+        old_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        new_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        try:
+            # Create a 16KB old file (4 sectors) with pattern
+            old_data = self.create_test_data(TEST_FILE_SIZE_16KB)
+            old_bin.write(old_data)
+            old_bin.close()
+
+            # Create new file with only first sector changed
+            new_data = bytearray(old_data)
+            new_data[0:100] = [0xBB] * 100  # Change first 100 bytes
+            new_bin.write(new_data)
+            new_bin.close()
+
+            addr = 0x10000
+            # Flash old file first
+            self.run_esptool(f"--no-stub write-flash {addr} {old_bin.name}")
+            self.verify_readback(addr, TEST_FILE_SIZE_16KB, old_bin.name)
+
+            # Fast reflash with new file
+            output = self.run_esptool(
+                f"--no-stub write-flash {addr} {new_bin.name} "
+                f"--diff-with {old_bin.name}"
+            )
+            assert (
+                "Diff data in flash matches, will reflash changed sectors only"
+                in output
+            )
+
+            # Verify new content is in flash
+            self.verify_readback(addr, TEST_FILE_SIZE_16KB, new_bin.name)
+        finally:
+            os.unlink(old_bin.name)
+            os.unlink(new_bin.name)
+
+    def test_fast_reflash_fallback_and_no_diff_verify(self):
+        """Test that fast reflashing falls back to full flash when MD5 doesn't match."""
+        # Create old and new binary files
+        old_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        new_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        try:
+            # Create a 16KB old file
+            old_data = self.create_test_data(TEST_FILE_SIZE_16KB)
+            old_bin.write(old_data)
+            old_bin.close()
+
+            # Create new file with changes
+            new_data = bytearray(old_data)
+            new_data[0:100] = [0xBB] * 100
+            new_bin.write(new_data)
+            new_bin.close()
+
+            addr = 0x10000
+            # Flash something different first (not the old file)
+            different_data = self.create_test_data(TEST_FILE_SIZE_16KB, pattern=0xCC)
+            different_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+            different_bin.write(different_data)
+            different_bin.close()
+            try:
+                self.run_esptool(f"write-flash {addr} {different_bin.name}")
+
+                # Fast reflash with new file - should detect mismatch and do full flash
+                output = self.run_esptool(
+                    f"write-flash {addr} {new_bin.name} --diff-with {old_bin.name}"
+                )
+                assert (
+                    "Diff data in flash has changed, flashing all of the new data"
+                    in output
+                )
+
+                # Verify new content is in flash
+                self.verify_readback(addr, TEST_FILE_SIZE_16KB, new_bin.name)
+
+                # Fast reflash with --no-diff-verify
+                output = self.run_esptool(
+                    f"write-flash {addr} {old_bin.name} "
+                    f"--diff-with {new_bin.name} --no-diff-verify"
+                )
+                assert (
+                    "No diff verification enabled, "
+                    "will reflash changed sectors without pre-verification" in output
+                )
+                assert "Reflashing 1 changed sector at 0x0" in output
+                # Verify new content is in flash
+                self.verify_readback(addr, TEST_FILE_SIZE_16KB, old_bin.name)
+            finally:
+                os.unlink(different_bin.name)
+        finally:
+            os.unlink(old_bin.name)
+            os.unlink(new_bin.name)
+
+    def test_fast_reflash_with_skip(self):
+        """Test fast reflashing with 'skip' for one file."""
+        old_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        new_bin1 = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        new_bin2 = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        try:
+            # Create old and new files
+            old_data = self.create_test_data(TEST_FILE_SIZE_8KB)
+            new_data1 = bytearray(old_data)
+            new_data1[0:50] = [0xBB] * 50
+            new_data2 = self.create_test_data(TEST_FILE_SIZE_8KB, pattern=0xCC)
+
+            old_bin.write(old_data)
+            old_bin.close()
+            new_bin1.write(new_data1)
+            new_bin1.close()
+            new_bin2.write(new_data2)
+            new_bin2.close()
+
+            addr1 = 0x10000
+            addr2 = 0x20000
+
+            # Flash old file and second file first
+            self.run_esptool(
+                f"write-flash {addr1} {old_bin.name} {addr2} {new_bin2.name}"
+            )
+
+            # Fast reflash first file, skip second (use 'skip')
+            output = self.run_esptool(
+                f"write-flash {addr1} {new_bin1.name} {addr2} {new_bin2.name} "
+                f"--diff-with {old_bin.name} skip"
+            )
+            # First file should use fast reflash, second should be normal
+            assert (
+                "Diff data in flash matches, will reflash changed sectors only"
+                in output
+            )
+
+            # Verify both contents are in flash
+            self.verify_readback(addr1, 8 * 1024, new_bin1.name)
+            self.verify_readback(addr2, 8 * 1024, new_bin2.name)
+        finally:
+            os.unlink(old_bin.name)
+            os.unlink(new_bin1.name)
+            os.unlink(new_bin2.name)
 
 
 @pytest.mark.skipif(
@@ -2006,6 +2213,85 @@ class TestESPObjectOperations(EsptoolTestCase):
         assert "Checksum: 0x83 (valid)" in output
         assert "Wrote 0x2400 bytes to file 'output.bin'" in output
         assert esptool.__version__ in output
+
+    @pytest.mark.skipif(
+        "ESPTOOL_TEST_USB_OTG" in os.environ,
+        reason="Hard resets can cause port disappearing in USB-OTG mode.",
+    )
+    def test_fast_reflash_api_direct(self):
+        """
+        Test fast reflashing using the esptool API directly
+        (write_flash with diff_with and no_diff_verify).
+        """
+        old_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        new_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        try:
+            # Create a 16KB old file (4 sectors) with pattern
+            old_data = self.create_test_data(TEST_FILE_SIZE_16KB)
+            old_bin.write(old_data)
+            old_bin.close()
+
+            # Create new file with only first sector changed
+            new_data = bytearray(old_data)
+            new_data[0:100] = [0xBB] * 100  # Change first 100 bytes
+            new_bin.write(new_data)
+            new_bin.close()
+
+            addr = 0x10000
+            # Use API directly to flash old file first
+            with detect_chip(port=arg_port) as esp:
+                esp = esp.run_stub()
+                try:
+                    attach_flash(esp)
+                    # Read old file into bytes
+                    with open(old_bin.name, "rb") as f:
+                        old_bytes = f.read()
+                    write_flash(esp, [(addr, old_bytes)])
+
+                    # Fast reflash with new file using API - with diff_with
+                    with open(new_bin.name, "rb") as f:
+                        new_bytes = f.read()
+                    write_flash(
+                        esp,
+                        [(addr, new_bytes)],
+                        diff_with=[old_bytes],
+                        no_diff_verify=False,
+                    )
+
+                    # Verify new content is in flash
+                    read_data = read_flash(esp, addr, TEST_FILE_SIZE_16KB)
+                    assert read_data == new_bytes, "Flash content should match new file"
+                finally:
+                    reset_chip(esp, "hard-reset")
+
+            # Test with no_diff_verify=True
+            with detect_chip(port=arg_port) as esp:
+                esp = esp.run_stub()
+                try:
+                    attach_flash(esp)
+                    # Flash old file again
+                    with open(old_bin.name, "rb") as f:
+                        old_bytes = f.read()
+                    write_flash(esp, [(addr, old_bytes)])
+
+                    # Fast reflash with no_diff_verify=True
+                    with open(new_bin.name, "rb") as f:
+                        new_bytes = f.read()
+                    write_flash(
+                        esp,
+                        [(addr, new_bytes)],
+                        diff_with=[old_bytes],
+                        no_diff_verify=True,
+                    )
+
+                    # Verify new content is in flash
+                    read_data = read_flash(esp, addr, TEST_FILE_SIZE_16KB)
+                    assert read_data == new_bytes, "Flash content should match new file"
+                finally:
+                    reset_chip(esp, "hard-reset")
+        finally:
+            os.unlink(old_bin.name)
+            os.unlink(new_bin.name)
 
 
 @pytest.mark.host_test
