@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import binascii
 import sys
 
@@ -173,7 +173,7 @@ class EfuseProtectBase:
             self.parent.print_error_msg(error_msg)
 
 
-class EfuseBlockBase(EfuseProtectBase):
+class EfuseBlockBase(ABC, EfuseProtectBase):
     def __init__(self, parent: "EspEfusesBase", param, skip_read: bool = False) -> None:
         self.parent: EspEfusesBase = parent
         self.name: str = param.name
@@ -466,7 +466,7 @@ class EfuseBlockBase(EfuseProtectBase):
         self.wr_bitarray.set(0)
 
 
-class EspEfusesBase:
+class EspEfusesBase(ABC):
     """
     Wrapper object to manage the efuse fields in a connected ESP bootloader
     """

@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import io
 import os
 import json
@@ -195,7 +195,7 @@ def protect_options(function: Callable):
     return function
 
 
-class BaseCommands:
+class BaseCommands(ABC):
     CHIP_NAME = "auto"
     efuse_lib: type[base_fields.EspEfusesBase] | None = None
     efuses: base_fields.EspEfusesBase

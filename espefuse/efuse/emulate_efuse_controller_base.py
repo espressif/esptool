@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import re
 from typing import Any
 
@@ -19,7 +19,7 @@ from espefuse.efuse.mem_definition_base import (
 from esptool.logger import log
 
 
-class EmulateEfuseControllerBase:
+class EmulateEfuseControllerBase(ABC):
     """The class for virtual efuse operations. Using for HOST_TEST."""
 
     CHIP_NAME: str = ""
