@@ -384,7 +384,7 @@ class TestReadProtectionCommands(EfuseTestCase):
         else:
             key1_purpose = (
                 "USER"
-                if arg_chip in ["esp32p4", "esp32c61", "esp32c5", "esp32h4"]
+                if arg_chip in ["esp32p4", "esp32c61", "esp32c5", "esp32h4", "esp32e22"]
                 else "RESERVED"
             )
             self.espefuse_py(
@@ -458,15 +458,11 @@ class TestWriteProtectionCommands(EfuseTestCase):
                            SPI_BOOT_CRYPT_CNT"""
             efuse_lists2 = "RD_DIS KEY_PURPOSE_0 KEY_PURPOSE_2"
         else:
-            efuse_lists = """RD_DIS DIS_FORCE_DOWNLOAD
-                           DIS_DOWNLOAD_MANUAL_ENCRYPT
-                           USB_EXCHG_PINS WDT_DELAY_SEL SPI_BOOT_CRYPT_CNT
+            efuse_lists = """RD_DIS
                            SECURE_BOOT_KEY_REVOKE0 SECURE_BOOT_KEY_REVOKE1
                            SECURE_BOOT_KEY_REVOKE2 KEY_PURPOSE_0 KEY_PURPOSE_1
                            KEY_PURPOSE_2 KEY_PURPOSE_3 KEY_PURPOSE_4 KEY_PURPOSE_5
-                           SECURE_BOOT_EN SECURE_BOOT_AGGRESSIVE_REVOKE FLASH_TPUW
-                           DIS_DOWNLOAD_MODE
-                           ENABLE_SECURITY_DOWNLOAD UART_PRINT_CONTROL
+                           SECURE_BOOT_EN
                            MAC
                            BLOCK_USR_DATA BLOCK_KEY0 BLOCK_KEY1
                            BLOCK_KEY2 BLOCK_KEY3 BLOCK_KEY4 BLOCK_KEY5"""
@@ -477,6 +473,7 @@ class TestWriteProtectionCommands(EfuseTestCase):
                 "esp32c5",
                 "esp32h21",
                 "esp32h4",
+                "esp32e22",
             ]:
                 efuse_lists += """ DIS_DOWNLOAD_ICACHE
                             SPI_PAD_CONFIG_CLK SPI_PAD_CONFIG_Q
@@ -789,7 +786,7 @@ class TestBurnEfuseCommands(EfuseTestCase):
                 SECURE_BOOT_EN 1 \
                 UART_PRINT_CONTROL 1"
             )
-            if arg_chip not in ["esp32h21", "esp32h4"]:
+            if arg_chip not in ["esp32h21", "esp32h4", "esp32e22"]:
                 # chips having the OPTIONAL_UNIQUE_ID field
                 self.espefuse_py(
                     "burn-efuse \
@@ -2303,7 +2300,7 @@ class TestPostponedEfuses(EfuseTestCase):
                 burn-efuse ENABLE_SECURITY_DOWNLOAD 1 DIS_DOWNLOAD_MODE 1 \
                 SECURE_VERSION 1 \
                 burn-key BLOCK_KEY0 {IMAGES_DIR}/256bit {sb_digest_name} \
-                burn-efuse SPI_BOOT_CRYPT_CNT 1 SECURE_BOOT_EN 1"
+                burn-efuse SECURE_BOOT_EN 1"
             num = 3 if arg_chip == "esp32c2" else 4
         output = self.espefuse_py(cmd)
         assert f"BURN BLOCK{num}  - OK" in output
