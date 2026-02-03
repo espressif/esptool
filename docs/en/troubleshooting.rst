@@ -335,7 +335,7 @@ Since it is not a standard reset mechanism, esptool uses it only when it is safe
 
    * Works and allows resetting out of download mode when USB-OTG is used for communication.
    * Disabled on the ESP32-C6 because it can cause a full system freeze requiring a power cycle to recover.
-   * Not available at all on the ESP8266, ESP32, and ESP32-H2 because of hardware limitations.
+   * Not available at all on the ESP8266, ESP32, ESP32-H2, and ESP32-E22 because of hardware limitations.
    * Cannot be used in Secure Download Mode (SDM).
    * Can change its behavior between different chip ECO revisions.
    * Cannot be used to enter the download mode programmatically, the boot strapping pins have to still be physically pulled low.

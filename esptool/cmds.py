@@ -1971,6 +1971,7 @@ def run_stub(esp: ESPLoader) -> ESPLoader:
         "ESP32-H21",
         "ESP32-H4",
         "ESP32-S31",
+        "ESP32-E22",
     ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
         log.warning(
             f"Stub flasher is not yet supported on {esp.CHIP_NAME}, "
@@ -2420,6 +2421,11 @@ def merge_bin(
         )
 
     if output is not None and format == "uf2":
+        if chip_class.UF2_FAMILY_ID == 0:
+            log.warning(
+                f"No UF2 family ID found for {chip_class.CHIP_NAME}, "
+                "using 0x0 as default."
+            )
         with UF2Writer(
             chip_class.UF2_FAMILY_ID,
             output,
