@@ -1012,6 +1012,22 @@ def main(argv=None, esp=None):
             except FatalError as e:
                 esp.trace(f"Unable to perform XMC flash chip startup sequence ({e}).")
 
+        if not esp.secure_download_mode:
+            try:
+                """
+                The flash state in the application has become increasingly complex,
+                which can cause the ROM to run with residual states when reflashing
+                after the application has been running. Since the ROM code is very
+                simple and does not have the capability to handle these states,
+                this adds a reset mechanism to the flash to cleanly reset its state,
+                allowing the ROM to boot successfully (e.g. 120M boot up).
+                """
+                esp.run_spiflash_command(0x66)  # Reset enable
+                esp.run_spiflash_command(0x99)  # Reset
+                time.sleep(0.001)
+            except FatalError as e:
+                esp.trace(f"Unable to reset flash chip ({e}).")
+
         if hasattr(args, "flash_size"):
             print("Configuring flash size...")
             if args.flash_size == "detect":
