@@ -64,6 +64,7 @@ jobs:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-keyvault-uri: ${{ secrets.AZURE_KEYVAULT_URI }}
           azure-keyvault-cert-name: ${{ secrets.AZURE_KEYVAULT_CERT_NAME }}
+          additional-args: "--collect-submodules=rich._unicode_data"
       - name: Add license and readme
         shell: bash
         run: mv LICENSE README.md ./${{ env.DISTPATH }}
