@@ -246,6 +246,11 @@ class EsptoolLogger(TemplateLogger):
         )
 
     def set_logger(self, new_logger):
+        if not isinstance(new_logger, TemplateLogger):
+            raise TypeError(
+                f"New logger must implement the TemplateLogger interface, "
+                f"got {type(new_logger).__name__!r}"
+            )
         self.__class__ = new_logger.__class__
 
     def set_verbosity(self, verbosity: str):

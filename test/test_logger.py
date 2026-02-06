@@ -134,7 +134,8 @@ class TestLogger:
     def test_set_incomplete_logger(self, logger):
         with pytest.raises(
             TypeError,
-            match="'CustomLoggerIncomplete' object layout differs from 'EsptoolLogger'",
+            match="New logger must implement the TemplateLogger interface, "
+            "got 'CustomLoggerIncomplete'",
         ):
             logger.set_logger(CustomLoggerIncomplete())
 
