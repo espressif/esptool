@@ -91,45 +91,24 @@ class EspEfuses(base_fields.EspEfusesBase):
         ]
         if not skip_connect:
             self.get_coding_scheme_warnings()
-        self.efuses = [EfuseField.convert(self, efuse) for efuse in self.Fields.EFUSES]
-        self.efuses += [
-            EfuseField.convert(self, efuse) for efuse in self.Fields.KEYBLOCKS
-        ]
+        self.efuses = self._convert_efuse_defs(self.Fields.EFUSES)
+        self.efuses += self._convert_efuse_defs(self.Fields.KEYBLOCKS)
         if skip_connect:
-            self.efuses += [
-                EfuseField.convert(self, efuse)
-                for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
-            ]
+            self.efuses += self._convert_efuse_defs(
+                self.Fields.BLOCK2_CALIBRATION_EFUSES
+            )
         else:
             if self.get_block_version() >= 1:
-                self.efuses += [
-                    EfuseField.convert(self, efuse)
-                    for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
-                ]
-            self.efuses += [
-                EfuseField.convert(self, efuse) for efuse in self.Fields.CALC
-            ]
+                self.efuses += self._convert_efuse_defs(
+                    self.Fields.BLOCK2_CALIBRATION_EFUSES
+                )
+            self.efuses += self._convert_efuse_defs(self.Fields.CALC)
 
-    def __getitem__(self, efuse_name):
-        """Return the efuse field with the given name"""
-        for e in self.efuses:
-            if efuse_name == e.name or any(x == efuse_name for x in e.alt_names):
-                return e
-        new_fields = False
-        for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES:
-            if efuse.name == efuse_name or any(
-                x == efuse_name for x in efuse.alt_names
-            ):
-                self.efuses += [
-                    EfuseField.convert(self, efuse)
-                    for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
-                ]
-                new_fields = True
-        if new_fields:
-            for e in self.efuses:
-                if efuse_name == e.name or any(x == efuse_name for x in e.alt_names):
-                    return e
-        raise KeyError
+    def _convert_efuse_defs(self, efuse_defs):
+        return [EfuseField.convert(self, efuse) for efuse in efuse_defs]
+
+    def _get_lazy_efuse_groups(self):
+        return [self.Fields.BLOCK2_CALIBRATION_EFUSES]
 
     def read_coding_scheme(self):
         self.coding_scheme = self.REGS.CODING_SCHEME_RS

@@ -506,9 +506,38 @@ class EspEfusesBase(ABC):
     def __iter__(self) -> t.Iterator["EfuseFieldBase"]:
         return self.efuses.__iter__()
 
-    @abstractmethod
     def __getitem__(self, efuse_name: str) -> "EfuseFieldBase":
         """Return the efuse field with the given name (by name or any alt_names)"""
+        for e in self.efuses:
+            if self._match_efuse_name(efuse_name, e):
+                return e
+        for lazy_group in self._get_lazy_efuse_groups():
+            for efuse in lazy_group:
+                if self._match_efuse_name(efuse_name, efuse):
+                    self.efuses += self._convert_efuse_defs(lazy_group)
+                    break
+        for e in self.efuses:
+            if self._match_efuse_name(efuse_name, e):
+                return e
+        raise KeyError(efuse_name)
+
+    def _match_efuse_name(
+        self, efuse_name: str, efuse: "Field | EfuseFieldBase"
+    ) -> bool:
+        """Return True if efuse_name matches the efuse name or any alt name."""
+        return efuse_name == efuse.name or any(x == efuse_name for x in efuse.alt_names)
+
+    @abstractmethod
+    def _convert_efuse_defs(self, efuse_defs: list) -> list["EfuseFieldBase"]:
+        """Convert a list of efuse definitions to field instances."""
+        # Convert is different for each chip, as there are different field types.
+        # The implementation of this method is usually the same for all chips,
+        # only the source of convert method changes.
+        pass
+
+    @abstractmethod
+    def _get_lazy_efuse_groups(self) -> list[list[Field]]:
+        """Return a list of lazy-load groups. Each group is a sequence of efuse defs."""
         pass
 
     def get_crystal_freq(self) -> int:
