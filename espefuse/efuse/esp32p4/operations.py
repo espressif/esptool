@@ -177,6 +177,12 @@ class ESP32P4Commands(BaseCommands):
             else:
                 data = datafile
 
+            if block.key_purpose_name is None:
+                # This should never happen, but it makes mypy happy.
+                raise esptool.FatalError(
+                    f"Key purpose name is not set for block {block.name}."
+                )
+
             log.print(f" - {efuse.name}", end=" ")
             revers_msg = None
             if self.efuses[block.key_purpose_name].need_reverse(keypurpose):

@@ -9,7 +9,7 @@ import io
 import os
 import json
 import sys
-from typing import Any, BinaryIO, TextIO
+from typing import Any, BinaryIO, TextIO, cast
 from collections.abc import Callable
 
 import espsecure
@@ -485,7 +485,7 @@ class BaseCommands(ABC):
     def _key_block_is_unused(
         self,
         block: base_fields.EfuseBlockBase,
-        key_purpose_block: base_fields.EfuseBlockBase,
+        key_purpose_block: base_fields.EfuseFieldBase,
     ) -> bool:
         """Helper method to check if a key block is available for use"""
         if not block.is_readable() or not block.is_writeable():
@@ -514,7 +514,7 @@ class BaseCommands(ABC):
         key_blocks = [b for b in key_blocks if b.name not in block_name_list]
 
         for block in key_blocks:
-            key_purpose_block = self.efuses[block.key_purpose_name]
+            key_purpose_block = self.efuses[cast(str, block.key_purpose_name)]
             if self._key_block_is_unused(block, key_purpose_block):
                 return block
 
@@ -1017,10 +1017,9 @@ class BaseCommands(ABC):
                         not self.efuses["XTS_KEY_LENGTH_256"].get()
                         and efuse_name == "BLOCK_KEY0"
                     )
-                    error |= self.efuses["SECURE_BOOT_EN"].get() and efuse_name in [
-                        "BLOCK_KEY0",
-                        "BLOCK_KEY0_HI_128",
-                    ]
+                    error |= cast(
+                        bool, self.efuses["SECURE_BOOT_EN"].get()
+                    ) and efuse_name in ["BLOCK_KEY0", "BLOCK_KEY0_HI_128"]
                     if error:
                         raise esptool.FatalError(
                             f"{efuse_name} must be readable, stop this operation!"
@@ -1030,7 +1029,7 @@ class BaseCommands(ABC):
                         block = self.efuses.Blocks.get(block_tuple)
                         if block.name == efuse_name and block.key_purpose is not None:
                             if not self.efuses[block.key_purpose].need_rd_protect(
-                                self.efuses[block.key_purpose].get()
+                                cast(str, self.efuses[block.key_purpose].get())
                             ):
                                 raise esptool.FatalError(
                                     f"{efuse_name} must be readable, "

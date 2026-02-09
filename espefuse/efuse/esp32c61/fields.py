@@ -19,6 +19,7 @@ import reedsolo
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from .. import base_fields
 from .. import util
+from ..mem_definition_base import Field
 
 
 class EfuseBlock(base_fields.EfuseBlockBase):
@@ -290,7 +291,7 @@ class EspEfuses(base_fields.EspEfusesBase):
 
 class EfuseField(base_fields.EfuseFieldBase):
     @staticmethod
-    def convert(parent, efuse):
+    def convert(parent: base_fields.EspEfusesBase, efuse: Field) -> "EfuseField":
         return {
             "mac": EfuseMacField,
             "keypurpose": EfuseKeyPurposeField,
