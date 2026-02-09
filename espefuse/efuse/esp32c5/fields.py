@@ -301,6 +301,14 @@ class EfuseField(base_fields.EfuseFieldBase):
         }.get(efuse.class_type, EfuseField)(parent, efuse)
 
 
+class EfuseTempSensor(base_fields.EfuseTempSensor, EfuseField):
+    pass
+
+
+class EfuseAdcPointCalibration(base_fields.EfuseAdcPointCalibration, EfuseField):
+    pass
+
+
 class EfuseBtldrRecoveryField(EfuseField):
     def get(self, from_read=True):
         hi_bits = self.parent["RECOVERY_BOOTLOADER_FLASH_SECTOR_HI"].get(from_read)
@@ -345,21 +353,6 @@ class EfuseBtldrAntiRollbackField(EfuseField):
         log.print(
             f"\t    - '{efuse.name}' {efuse.get_bitstring()} -> {efuse.get_bitstring(from_read=False)}"
         )
-
-
-class EfuseTempSensor(EfuseField):
-    def get(self, from_read=True):
-        value = self.get_bitstring(from_read)
-        sig = -1 if value[0] else 1
-        return sig * value[1:].uint * 0.1
-
-
-class EfuseAdcPointCalibration(EfuseField):
-    def get(self, from_read=True):
-        STEP_SIZE = 4
-        value = self.get_bitstring(from_read)
-        sig = -1 if value[0] else 1
-        return sig * value[1:].uint * STEP_SIZE
 
 
 class EfuseMacField(EfuseField):

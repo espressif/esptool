@@ -295,6 +295,14 @@ class EfuseField(base_fields.EfuseFieldBase):
         }.get(efuse.class_type, EfuseField)(parent, efuse)
 
 
+class EfuseTempSensor(base_fields.EfuseTempSensor, EfuseField):
+    pass
+
+
+class EfuseAdcPointCalibration(base_fields.EfuseAdcPointCalibration, EfuseField):
+    pass
+
+
 class EfuseBtldrRecoveryField(EfuseField):
     """
     Handles composite recovery bootloader flash sector fields for ESP32-P4 ECO5 (v3.0).
@@ -335,31 +343,13 @@ class EfuseBtldrRecoveryField(EfuseField):
             )
 
 
-class EfuseWafer(EfuseField):
+class EfuseWafer(base_fields.EfuseWaferBase, EfuseField):
     def get(self, from_read=True):
         hi_bits = self.parent["WAFER_VERSION_MAJOR_HI"].get(from_read)
         assert self.parent["WAFER_VERSION_MAJOR_HI"].bit_len == 1
         lo_bits = self.parent["WAFER_VERSION_MAJOR_LO"].get(from_read)
         assert self.parent["WAFER_VERSION_MAJOR_LO"].bit_len == 2
         return (hi_bits << 2) + lo_bits
-
-    def save(self, new_value):
-        raise esptool.FatalError(f"Burning {self.name} is not supported")
-
-
-class EfuseTempSensor(EfuseField):
-    def get(self, from_read=True):
-        value = self.get_bitstring(from_read)
-        sig = -1 if value[0] else 1
-        return sig * value[1:].uint * 0.1
-
-
-class EfuseAdcPointCalibration(EfuseField):
-    def get(self, from_read=True):
-        STEP_SIZE = 4
-        value = self.get_bitstring(from_read)
-        sig = -1 if value[0] else 1
-        return sig * value[1:].uint * STEP_SIZE
 
 
 class EfuseMacField(EfuseField):

@@ -1028,3 +1028,28 @@ class EfuseFieldBase(EfuseProtectBase):
 
     def need_rd_protect(self, key_purpose: str) -> bool:
         raise NotImplementedError("need_rd_protect is not implemented for this field")
+
+
+class EfuseWaferBase(EfuseFieldBase):
+    @abstractmethod
+    def get(self, from_read: bool = True) -> int:
+        pass
+
+    def save(self, new_value: int | bytes | BitArray) -> None:
+        raise esptool.FatalError(f"Burning {self.name} is not supported.")
+
+
+class EfuseTempSensor(EfuseFieldBase):
+    def get(self, from_read: bool = True) -> float:
+        value = self.get_bitstring(from_read)
+        sig = -1 if value[0] else 1
+        return sig * int(value[1:].uint) * 0.1
+
+
+class EfuseAdcPointCalibration(EfuseFieldBase):
+    STEP_SIZE: int = 4
+
+    def get(self, from_read: bool = True) -> int:
+        value = self.get_bitstring(from_read)
+        sig = -1 if value[0] else 1
+        return sig * int(value[1:].uint) * self.STEP_SIZE

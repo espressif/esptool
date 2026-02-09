@@ -336,6 +336,14 @@ class EfuseField(base_fields.EfuseFieldBase):
         }.get(efuse.class_type, EfuseField)(parent, efuse)
 
 
+class EfuseTempSensor(base_fields.EfuseTempSensor, EfuseField):
+    pass
+
+
+class EfuseAdcPointCalibration(base_fields.EfuseAdcPointCalibration, EfuseField):
+    pass
+
+
 class EfusePsramCap(EfuseField):
     def get(self, from_read=True):
         hi_bits = self.parent["PSRAM_CAP_3"].get(from_read)
@@ -348,31 +356,13 @@ class EfusePsramCap(EfuseField):
         raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
-class EfuseWafer(EfuseField):
+class EfuseWafer(base_fields.EfuseWaferBase, EfuseField):
     def get(self, from_read=True):
         hi_bits = self.parent["WAFER_VERSION_MINOR_HI"].get(from_read)
         assert self.parent["WAFER_VERSION_MINOR_HI"].bit_len == 1
         lo_bits = self.parent["WAFER_VERSION_MINOR_LO"].get(from_read)
         assert self.parent["WAFER_VERSION_MINOR_LO"].bit_len == 3
         return (hi_bits << 3) + lo_bits
-
-    def save(self, new_value):
-        raise esptool.FatalError(f"Burning {self.name} is not supported")
-
-
-class EfuseTempSensor(EfuseField):
-    def get(self, from_read=True):
-        value = self.get_bitstring(from_read)
-        sig = -1 if value[0] else 1
-        return sig * value[1:].uint * 0.1
-
-
-class EfuseAdcPointCalibration(EfuseField):
-    def get(self, from_read=True):
-        STEP_SIZE = 4
-        value = self.get_bitstring(from_read)
-        sig = -1 if value[0] else 1
-        return sig * value[1:].uint * STEP_SIZE
 
 
 class EfuseMacField(EfuseField):

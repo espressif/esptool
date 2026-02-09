@@ -367,7 +367,7 @@ class EfuseMacField(EfuseField):
             raise esptool.FatalError("Writing Factory MAC address is not supported")
 
 
-class EfuseWafer(EfuseField):
+class EfuseWafer(base_fields.EfuseWaferBase, EfuseField):
     def get(self, from_read=True):
         rev_bit0 = self.parent["CHIP_VER_REV1"].get(from_read)
         assert self.parent["CHIP_VER_REV1"].bit_len == 1
@@ -386,9 +386,6 @@ class EfuseWafer(EfuseField):
             7: 3,
         }.get(combine_value, 0)
         return revision
-
-    def save(self, new_value):
-        raise esptool.FatalError(f"Burning {self.name} is not supported")
 
 
 class EfusePkg(EfuseField):
