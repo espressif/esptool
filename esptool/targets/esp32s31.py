@@ -84,6 +84,8 @@ class ESP32S31ROM(ESP32C5ROM):
         [0x2E000000, 0x2E008000, "RTC_DRAM"],
     ]
 
+    UF2_FAMILY_ID = 0x3101F7C1
+
     EFUSE_MAX_KEY = 5
     KEY_PURPOSES: dict[int, str] = {
         0: "USER/EMPTY",
