@@ -1053,3 +1053,106 @@ class EfuseAdcPointCalibration(EfuseFieldBase):
         value = self.get_bitstring(from_read)
         sig = -1 if value[0] else 1
         return sig * int(value[1:].uint) * self.STEP_SIZE
+
+
+class EfuseKeyPurposeFieldBase(EfuseFieldBase):
+    # KeyPurposeType: Name, ID, Digest, Reverse, RD Protect
+    KeyPurposeType = tuple[str, int, str | None, str | None, str]
+
+    # Set in subclass
+    key_purpose_len: int = 0  # Number of bits for custom key purposes
+    KEY_PURPOSES: list[KeyPurposeType]
+
+    # Automatically set based on KEY_PURPOSES
+    KEY_PURPOSES_NAME: list[str]
+    DIGEST_KEY_PURPOSES: list[str]
+    CUSTOM_KEY_PURPOSES: list[KeyPurposeType]
+
+    # This method ensures that all class variables are initialized based
+    # on the subclass's KEY_PURPOSES only once per inheritance instead of per instance
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # We need to initialize the CUSTOM_KEY_PURPOSES; so each chip has fresh list
+        cls.CUSTOM_KEY_PURPOSES = []
+        # Add custom key purposes if key_purpose_len is set
+        if cls.key_purpose_len > 0:
+            for id in range(0, 1 << cls.key_purpose_len):
+                if id not in [p[1] for p in cls.KEY_PURPOSES]:
+                    cls.CUSTOM_KEY_PURPOSES.append(
+                        (f"CUSTOM_{id}", id, None, None, "no_need_rd_protect")
+                    )
+                    cls.CUSTOM_KEY_PURPOSES.append(
+                        (
+                            f"CUSTOM_DIGEST_{id}",
+                            id,
+                            "DIGEST",
+                            None,
+                            "no_need_rd_protect",
+                        )
+                    )
+            cls.CUSTOM_KEY_PURPOSES.append(
+                (
+                    "CUSTOM_MAX",
+                    (1 << cls.key_purpose_len) - 1,
+                    None,
+                    None,
+                    "no_need_rd_protect",
+                )
+            )
+            cls.CUSTOM_KEY_PURPOSES.append(
+                (
+                    "CUSTOM_DIGEST_MAX",
+                    (1 << cls.key_purpose_len) - 1,
+                    "DIGEST",
+                    None,
+                    "no_need_rd_protect",
+                )
+            )
+            cls.KEY_PURPOSES += cls.CUSTOM_KEY_PURPOSES
+
+        cls.KEY_PURPOSES_NAME = [name[0] for name in cls.KEY_PURPOSES]
+        cls.DIGEST_KEY_PURPOSES = [
+            name[0] for name in cls.KEY_PURPOSES if name[2] == "DIGEST"
+        ]
+
+    def check_format(self, new_value_str):
+        # str convert to int: "XTS_AES_128_KEY" - > str(4)
+        # if int: 4 -> str(4)
+        raw_val = new_value_str
+        for purpose_name in self.KEY_PURPOSES:
+            if purpose_name[0] == new_value_str:
+                raw_val = str(purpose_name[1])
+                break
+        if raw_val.isdigit():
+            if int(raw_val) not in [p[1] for p in self.KEY_PURPOSES if p[1] > 0]:
+                raise esptool.FatalError(
+                    f"'{raw_val}' can not be set (value out of range)"
+                )
+        else:
+            raise esptool.FatalError(f"'{raw_val}' unknown name")
+        return raw_val
+
+    def need_reverse(self, new_key_purpose):
+        for key in self.KEY_PURPOSES:
+            if key[0] == new_key_purpose:
+                return key[3] == "Reverse"
+
+    def need_rd_protect(self, new_key_purpose):
+        for key in self.KEY_PURPOSES:
+            if key[0] == new_key_purpose:
+                return key[4] == "need_rd_protect"
+
+    def get(self, from_read=True):
+        for p in self.KEY_PURPOSES:
+            if p[1] == self.get_raw(from_read):
+                return p[0]
+        return "FORBIDDEN_STATE"
+
+    def get_name(self, raw_val):
+        for key in self.KEY_PURPOSES:
+            if key[1] == raw_val:
+                return key[0]
+
+    def save(self, new_value):
+        raw_val = int(self.check_format(str(new_value)))
+        return super().save(raw_val)

@@ -422,11 +422,10 @@ class EfuseMacField(EfuseField):
             raise esptool.FatalError(f"Burning {self.name} is not supported.")
 
 
-# fmt: off
-class EfuseKeyPurposeField(EfuseField):
+class EfuseKeyPurposeField(base_fields.EfuseKeyPurposeFieldBase, EfuseField):
     key_purpose_len = 5  # bits for key purpose
-    KeyPurposeType = tuple[str, int, str | None, str | None, str]
-    KEY_PURPOSES: list[KeyPurposeType] = [
+    # fmt: off
+    KEY_PURPOSES = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
         ("ECDSA_KEY_P256",               1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key P256
         ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key P256
@@ -446,54 +445,4 @@ class EfuseKeyPurposeField(EfuseField):
         ("ECDSA_KEY_P384_H",             18, None,       "Reverse", "need_rd_protect"),      # ECDSA key P384 high
         ("ECDSA_KEY_P384",               -3, "VIRTUAL",  None,      "need_rd_protect"),      # Virtual purpose splits to ECDSA_KEY_P384_L and ECDSA_KEY_P384_H
     ]
-    CUSTOM_KEY_PURPOSES: list[KeyPurposeType] = []
-    for id in range(0, 1 << key_purpose_len):
-        if id not in [p[1] for p in KEY_PURPOSES]:
-            CUSTOM_KEY_PURPOSES.append((f"CUSTOM_{id}", id, None, None, "no_need_rd_protect"))
-            CUSTOM_KEY_PURPOSES.append((f"CUSTOM_DIGEST_{id}", id, "DIGEST", None, "no_need_rd_protect"))
-    CUSTOM_KEY_PURPOSES.append(("CUSTOM_MAX", (1 << key_purpose_len) - 1, None, None, "no_need_rd_protect"))
-    CUSTOM_KEY_PURPOSES.append(("CUSTOM_DIGEST_MAX", (1 << key_purpose_len) - 1, "DIGEST", None, "no_need_rd_protect"))
-    KEY_PURPOSES += CUSTOM_KEY_PURPOSES
-# fmt: on
-    KEY_PURPOSES_NAME = [name[0] for name in KEY_PURPOSES]
-    DIGEST_KEY_PURPOSES = [name[0] for name in KEY_PURPOSES if name[2] == "DIGEST"]
-
-    def check_format(self, new_value_str):
-        # str convert to int: "XTS_AES_128_KEY" - > str(4)
-        # if int: 4 -> str(4)
-        raw_val = new_value_str
-        for purpose_name in self.KEY_PURPOSES:
-            if purpose_name[0] == new_value_str:
-                raw_val = str(purpose_name[1])
-                break
-        if raw_val.isdigit():
-            if int(raw_val) not in [p[1] for p in self.KEY_PURPOSES if p[1] > 0]:
-                raise esptool.FatalError(f"'{raw_val}' can not be set (value out of range).")
-        else:
-            raise esptool.FatalError(f"'{raw_val}' unknown name.")
-        return raw_val
-
-    def need_reverse(self, new_key_purpose):
-        for key in self.KEY_PURPOSES:
-            if key[0] == new_key_purpose:
-                return key[3] == "Reverse"
-
-    def need_rd_protect(self, new_key_purpose):
-        for key in self.KEY_PURPOSES:
-            if key[0] == new_key_purpose:
-                return key[4] == "need_rd_protect"
-
-    def get(self, from_read=True):
-        for p in self.KEY_PURPOSES:
-            if p[1] == self.get_raw(from_read):
-                return p[0]
-        return "FORBIDDEN_STATE"
-
-    def get_name(self, raw_val):
-        for key in self.KEY_PURPOSES:
-            if key[1] == raw_val:
-                return key[0]
-
-    def save(self, new_value):
-        raw_val = int(self.check_format(str(new_value)))
-        return super().save(raw_val)
+    # fmt: on

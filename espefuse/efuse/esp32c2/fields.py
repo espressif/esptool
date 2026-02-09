@@ -361,15 +361,15 @@ class EfuseMacField(EfuseField):
             raise esptool.FatalError("Writing Factory MAC address is not supported.")
 
 
-class EfuseKeyPurposeField(EfuseField):
+class EfuseKeyPurposeField(base_fields.EfuseKeyPurposeFieldBase, EfuseField):
     # fmt: off
+    # Note: ESP32-C2 does not use reverse nor read protect fields here,
+    # but they are included for compatibility with other chips.
+    # ESP32-C2 does not have proper key purpose fields, but they are used only in espefuse to distinguish between keys.
     KEY_PURPOSES = [
-        ("USER",                                        0, None),      # User purposes (software-only use)
-        ("XTS_AES_128_KEY",                             1, None),      # (whole 256bits) flash/PSRAM encryption
-        ("XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS", 2, None),      # (lo 128bits) flash/PSRAM encryption
-        ("SECURE_BOOT_DIGEST",                          3, "DIGEST"),
-        # (hi 128bits) Secure Boot key digest
-    ]  # fmt: on
-
-    KEY_PURPOSES_NAME = [name[0] for name in KEY_PURPOSES]
-    DIGEST_KEY_PURPOSES = [name[0] for name in KEY_PURPOSES if name[2] == "DIGEST"]
+        ("USER",                                        0, None,     None,      "no_need_rd_protect"),  # User purposes (software-only use)
+        ("XTS_AES_128_KEY",                             1, None,     "Reverse", "need_rd_protect"),     # (whole 256bits) flash/PSRAM encryption
+        ("XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS", 2, None,     "Reverse", "need_rd_protect"),     # (lo 128bits) flash/PSRAM encryption
+        ("SECURE_BOOT_DIGEST",                          3, "DIGEST", None,      "no_need_rd_protect"),  # (hi 128bits) Secure Boot key digest
+    ]
+    # fmt: on
