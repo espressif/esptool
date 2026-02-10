@@ -8,6 +8,7 @@ import struct
 from .esp32c5 import ESP32C5ROM
 from ..loader import ESPLoader, StubMixin
 from ..util import FatalError, NotImplementedInROMError
+from ..logger import log
 
 
 class ESP32S31ROM(ESP32C5ROM):
@@ -204,8 +205,8 @@ class ESP32S31ROM(ESP32C5ROM):
         if not set(spi_connection).issubset(set(range(0, 61))):
             raise FatalError("SPI Pin numbers must be in the range 0-60.")
         if any([v for v in spi_connection if v in [33, 34]]):
-            print(
-                "WARNING: GPIO pins 33 and 34 are used by USB-Serial/JTAG, "
+            log.warning(
+                "GPIO pins 33 and 34 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
 
