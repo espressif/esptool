@@ -813,7 +813,7 @@ def write_flash(
                 and bin(esp.get_security_info()["flash_crypt_cnt"]).count("1") & 1 != 0
             ):
                 raise FatalError(
-                    "WARNING: Detected flash encryption and "
+                    "Detected flash encryption and "
                     "secure download mode enabled.\n"
                     "Flashing plaintext binary may brick your device! "
                     "Use the force argument to override the warning."
@@ -825,7 +825,7 @@ def write_flash(
                 and esp.get_flash_encryption_enabled()
             ):
                 raise FatalError(
-                    "WARNING: Detected flash encryption enabled and "
+                    "Detected flash encryption enabled and "
                     "download manual encrypt disabled.\n"
                     "Flashing plaintext binary may brick your device! "
                     "Use the force argument to override the warning."
