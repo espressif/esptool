@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import binascii
 import struct
 import sys
 import time
@@ -18,7 +17,6 @@ import reedsolo
 
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from .. import base_fields
-from .. import util
 from ..mem_definition_base import Field
 
 
@@ -290,6 +288,10 @@ class EfuseAdcPointCalibration(base_fields.EfuseAdcPointCalibration, EfuseField)
     pass
 
 
+class EfuseMacField(base_fields.EfuseMacFieldBase, EfuseField):
+    pass
+
+
 class EfuseWafer(base_fields.EfuseWaferBase, EfuseField):
     def get(self, from_read=True):
         hi_bits = self.parent["WAFER_VERSION_MINOR_HI"].get(from_read)
@@ -297,62 +299,6 @@ class EfuseWafer(base_fields.EfuseWaferBase, EfuseField):
         lo_bits = self.parent["WAFER_VERSION_MINOR_LO"].get(from_read)
         assert self.parent["WAFER_VERSION_MINOR_LO"].bit_len == 3
         return (hi_bits << 3) + lo_bits
-
-
-class EfuseMacField(EfuseField):
-    def check_format(self, new_value_str):
-        if new_value_str is None:
-            raise esptool.FatalError(
-                "Required MAC Address in AA:CD:EF:01:02:03 format!"
-            )
-        if new_value_str.count(":") != 5:
-            raise esptool.FatalError(
-                "MAC Address needs to be a 6-byte hexadecimal format "
-                "separated by colons (:)!"
-            )
-        hexad = new_value_str.replace(":", "")
-        if len(hexad) != 12:
-            raise esptool.FatalError(
-                "MAC Address needs to be a 6-byte hexadecimal number "
-                "(12 hexadecimal characters)!"
-            )
-        # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
-        bindata = binascii.unhexlify(hexad)
-        # unicast address check according to
-        # https://tools.ietf.org/html/rfc7042#section-2.1
-        if esptool.util.byte(bindata, 0) & 0x01:
-            raise esptool.FatalError("Custom MAC must be a unicast MAC!")
-        return bindata
-
-    def check(self):
-        errs, fail = self.parent.get_block_errors(self.block)
-        if errs != 0 or fail:
-            output = f"Block{self.block} has ERRORS:{errs} FAIL:{fail}."
-        else:
-            output = "OK"
-        return "(" + output + ")"
-
-    def get(self, from_read=True):
-        if self.name == "CUSTOM_MAC":
-            mac = self.get_raw(from_read)[::-1]
-        else:
-            mac = self.get_raw(from_read)
-        return " ".join([util.hexify(mac, ":"), self.check()])
-
-    def save(self, new_value):
-        def print_field(e, new_value):
-            log.print(
-                f"    - '{e.name}' ({e.description}) {e.get_bitstring()} -> {new_value}"
-            )
-
-        if self.name == "CUSTOM_MAC":
-            bitarray_mac = self.convert_to_bitstring(new_value)
-            print_field(self, bitarray_mac)
-            super().save(new_value)
-        else:
-            # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not possible,
-            # as it's written in the factory.
-            raise esptool.FatalError("Writing Factory MAC address is not supported")
 
 
 class EfuseKeyPurposeField(base_fields.EfuseKeyPurposeFieldBase, EfuseField):

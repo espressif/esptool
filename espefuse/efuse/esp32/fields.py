@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import binascii
 import struct
 import time
 
@@ -221,35 +220,11 @@ class EfuseField(base_fields.EfuseFieldBase):
         }.get(efuse.class_type, EfuseField)(parent, efuse)
 
 
-class EfuseMacField(EfuseField):
+class EfuseMacField(base_fields.EfuseMacFieldBase, EfuseField):
     """
     Supports: MAC and CUSTOM_MAC fields.
     (if MAC_VERSION == 1 then the CUSTOM_MAC is used)
     """
-
-    def check_format(self, new_value_str: str | None):
-        if new_value_str is None:
-            raise esptool.FatalError(
-                "Required MAC Address in AA:CD:EF:01:02:03 format!"
-            )
-        if new_value_str.count(":") != 5:
-            raise esptool.FatalError(
-                "MAC Address needs to be a 6-byte hexadecimal format "
-                "separated by colons (:)!"
-            )
-        hexad = new_value_str.replace(":", "")
-        if len(hexad) != 12:
-            raise esptool.FatalError(
-                "MAC Address needs to be a 6-byte hexadecimal number "
-                "(12 hexadecimal characters)!"
-            )
-        # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
-        bindata = binascii.unhexlify(hexad)
-        # unicast address check according to
-        # https://tools.ietf.org/html/rfc7042#section-2.1
-        if esptool.util.byte(bindata, 0) & 0x01:
-            raise esptool.FatalError("Custom MAC must be a unicast MAC!")
-        return bindata
 
     @staticmethod
     def get_and_check(raw_mac, stored_crc):
@@ -313,7 +288,8 @@ class EfuseMacField(EfuseField):
 
             bitarray_mac = self.convert_to_bitstring(new_value)
             print_field(self, bitarray_mac)
-            super().save(new_value)
+            # Skip EfuseMacFieldBase.save() to avoid printing field info twice
+            base_fields.EfuseFieldBase.save(self, new_value)
 
             crc_val = self.calc_crc(new_value)
             crc_field = self.parent["CUSTOM_MAC_CRC"]

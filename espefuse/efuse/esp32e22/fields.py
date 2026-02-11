@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import binascii
 import struct
 import sys
 import time
@@ -18,7 +17,6 @@ import reedsolo
 
 from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from .. import base_fields
-from .. import util
 
 
 class EfuseBlock(base_fields.EfuseBlockBase):
@@ -284,73 +282,8 @@ class EfuseField(base_fields.EfuseFieldBase):
         }.get(efuse.class_type, EfuseField)(parent, efuse)
 
 
-class EfuseMacField(EfuseField):
-    def check_format(self, new_value_str):
-        if new_value_str is None:
-            raise esptool.FatalError(
-                "Required MAC Address in AA:CD:EF:01:02:03 format!"
-            )
-        num_bytes = 8 if self.name == "MAC_EUI64" else 6
-        if new_value_str.count(":") != num_bytes - 1:
-            raise esptool.FatalError(
-                f"MAC Address needs to be a {num_bytes}-byte hexadecimal format "
-                "separated by colons (:)!"
-            )
-        hexad = new_value_str.replace(":", "").split(" ", 1)[0]
-        hexad = hexad.split(" ", 1)[0] if self.is_field_calculated() else hexad
-        if len(hexad) != num_bytes * 2:
-            raise esptool.FatalError(
-                f"MAC Address needs to be a {num_bytes}-byte hexadecimal number "
-                f"({num_bytes * 2} hexadecimal characters)!"
-            )
-        # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
-        bindata = binascii.unhexlify(hexad)
-
-        if not self.is_field_calculated():
-            # unicast address check according to
-            # https://tools.ietf.org/html/rfc7042#section-2.1
-            if esptool.util.byte(bindata, 0) & 0x01:
-                raise esptool.FatalError("Custom MAC must be a unicast MAC!")
-        return bindata
-
-    def check(self):
-        errs, fail = self.parent.get_block_errors(self.block)
-        if errs != 0 or fail:
-            output = f"Block{self.block} has ERRORS:{errs} FAIL:{fail}"
-        else:
-            output = "OK"
-        return "(" + output + ")"
-
-    def get(self, from_read=True):
-        if self.name == "CUSTOM_MAC":
-            mac = self.get_raw(from_read)[::-1]
-        elif self.name == "MAC":
-            mac = self.get_raw(from_read)
-        elif self.name == "MAC_EUI64":
-            mac = self.parent["MAC"].get_bitstring(from_read).copy()
-            mac_ext = self.parent["MAC_EXT"].get_bitstring(from_read)
-            mac.insert(mac_ext, 24)
-            mac = mac.bytes
-        else:
-            mac = self.get_raw(from_read)
-        return f"{util.hexify(mac, ':')} {self.check()}"
-
-    def save(self, new_value):
-        def print_field(e, new_value):
-            log.print(
-                "    - '{}' ({}) {} -> {}".format(
-                    e.name, e.description, e.get_bitstring(), new_value
-                )
-            )
-
-        if self.name == "CUSTOM_MAC":
-            bitarray_mac = self.convert_to_bitstring(new_value)
-            print_field(self, bitarray_mac)
-            super().save(new_value)
-        else:
-            # Writing the BLOCK1 (MAC_SPI_8M_0) default MAC is not possible,
-            # as it's written in the factory.
-            raise esptool.FatalError(f"Burning {self.name} is not supported")
+class EfuseMacField(base_fields.EfuseMacFieldBase, EfuseField):
+    pass
 
 
 class EfuseKeyPurposeField(base_fields.EfuseKeyPurposeFieldBase, EfuseField):

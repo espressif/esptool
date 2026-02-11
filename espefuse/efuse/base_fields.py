@@ -1084,6 +1084,71 @@ class EfuseAdcPointCalibration(EfuseFieldBase):
         return sig * int(value[1:].uint) * self.STEP_SIZE
 
 
+class EfuseMacFieldBase(EfuseFieldBase):
+    def check_format(self, new_value_str: str | None) -> bytes:
+        if new_value_str is None:
+            raise esptool.FatalError(
+                "Required MAC Address in AA:CD:EF:01:02:03 format!"
+            )
+        num_bytes = 8 if self.name == "MAC_EUI64" else 6
+        if new_value_str.count(":") != num_bytes - 1:
+            raise esptool.FatalError(
+                f"MAC Address needs to be a {num_bytes}-byte hexadecimal format "
+                "separated by colons (:)!"
+            )
+        hexad = new_value_str.replace(":", "")
+        hexad = hexad.split(" ", 1)[0]  # remove " (OK)" when combining fields
+        if len(hexad) != num_bytes * 2:
+            raise esptool.FatalError(
+                f"MAC Address needs to be a {num_bytes}-byte hexadecimal number "
+                f"({num_bytes * 2} hexadecimal characters)!"
+            )
+        # order of bytearray = b'\xaa\xcd\xef\x01\x02\x03',
+        bindata = binascii.unhexlify(hexad)
+
+        if not self.is_field_calculated():
+            # unicast address check according to
+            # https://tools.ietf.org/html/rfc7042#section-2.1
+            if esptool.util.byte(bindata, 0) & 0x01:
+                raise esptool.FatalError("Custom MAC must be a unicast MAC!")
+        return bindata
+
+    def check(self) -> str:
+        errs, fail = self.parent.get_block_errors(self.block)
+        if errs != 0 or fail:
+            output = f"Block{self.block} has ERRORS:{errs} FAIL:{fail}"
+        else:
+            output = "OK"
+        return f"({output})"
+
+    def get(self, from_read: bool = True) -> str:
+        if self.name == "CUSTOM_MAC":
+            mac = self.get_raw(from_read)[::-1]  # type: ignore
+        elif self.name == "MAC":
+            mac = self.get_raw(from_read)
+        elif self.name == "MAC_EUI64":
+            mac = self.parent["MAC"].get_bitstring(from_read).copy()
+            mac_ext = self.parent["MAC_EXT"].get_bitstring(from_read)
+            mac.insert(mac_ext, 24)
+            mac = mac.bytes
+        else:
+            mac = self.get_raw(from_read)
+        return " ".join([util.hexify(mac, ":"), self.check()])
+
+    def save(self, new_value: int | bytes | BitArray) -> None:
+        def print_field(e: EfuseFieldBase, new_value: t.Any) -> None:
+            log.print(
+                f"    - '{e.name}' ({e.description}) {e.get_bitstring()} -> {new_value}"
+            )
+
+        if self.name == "CUSTOM_MAC":
+            bitarray_mac = self.convert_to_bitstring(new_value)
+            print_field(self, bitarray_mac)
+            super().save(new_value)
+        else:
+            raise esptool.FatalError(f"Burning {self.name} is not supported.")
+
+
 class EfuseKeyPurposeFieldBase(EfuseFieldBase):
     # KeyPurposeType: Name, ID, Digest, Reverse, RD Protect
     KeyPurposeType = tuple[str, int, str | None, str | None, str]
