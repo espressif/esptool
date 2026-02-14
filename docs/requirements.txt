@@ -1,2 +1,3 @@
 esp-docs~=1.10
-setuptools>=78.1.1 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools>=78.1.1  # not directly required, pinned by Snyk to avoid a vulnerability
+pillow>=10.0.0      # Security fix: CVE-2023-44271, forced upgrade to safe version
