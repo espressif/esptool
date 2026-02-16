@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import struct
+from typing import Dict
 
 from .esp32c3 import ESP32C3ROM
 from ..loader import ESPLoader
@@ -107,6 +108,23 @@ class ESP32H4ROM(ESP32C3ROM):
     ]
 
     UF2_FAMILY_ID = 0x9E0BAA8A
+
+    KEY_PURPOSES: Dict[int, str] = {
+        0: "USER/EMPTY",
+        1: "ECDSA_KEY",  # ECDSA_KEY_P256 (NIST P-256)
+        4: "XTS_AES_128_KEY",
+        5: "HMAC_DOWN_ALL",
+        6: "HMAC_DOWN_JTAG",
+        7: "HMAC_DOWN_DIGITAL_SIGNATURE",
+        8: "HMAC_UP",
+        9: "SECURE_BOOT_DIGEST0",
+        10: "SECURE_BOOT_DIGEST1",
+        11: "SECURE_BOOT_DIGEST2",
+        12: "KM_INIT_KEY",
+        16: "ECDSA_KEY_P192",
+        17: "ECDSA_KEY_P384_L",
+        18: "ECDSA_KEY_P384_H",
+    }
 
     # not alloc yet, return 0
     def get_pkg_version(self):
