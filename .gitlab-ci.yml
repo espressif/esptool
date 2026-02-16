@@ -126,7 +126,7 @@ host_tests_espefuse:
 
 host_tests_latest_python:
   <<: *host_tests_template
-  image: python:3.13-bullseye
+  image: python:3.14-trixie
   variables:
     PYTEST_ADDOPTS: "-sv --junitxml=test/report.xml --color=yes"
   script:
@@ -160,7 +160,7 @@ host_tests_hsm:
 
 run_pre_commit_hooks:
   stage: test
-  image: python:3.10-bullseye
+  image: python:3.14-trixie
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
   tags:
@@ -528,7 +528,7 @@ combine_reports:
 
 build_docs:
   stage: build_docs
-  image: python:3.13-bookworm
+  image: python:3.14-trixie
   tags:
     - build_docs
   rules:
@@ -552,7 +552,7 @@ build_docs:
 
 .deploy_docs_template:
   stage: deploy_docs
-  image: python:3.13-bookworm
+  image: python:3.14-trixie
   tags:
     - deploy
   needs:

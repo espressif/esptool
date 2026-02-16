@@ -113,7 +113,7 @@ pre-commit run --all-files
 ## Validation and CI/CD
 
 ### GitHub Actions Workflows
-- **`test_esptool.yml`** - Main test suite (Python 3.10-3.13 matrix, host tests, pre-commit)
+- **`test_esptool.yml`** - Main test suite (Python 3.10-3.14 matrix, host tests, pre-commit)
 - **`build_esptool.yml`** - Build binaries for multiple platforms
 - **`dangerjs.yml`** - PR review automation
 
