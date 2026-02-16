@@ -239,6 +239,25 @@ This specific issue can sometimes be mitigated by:
    * Shortening the Host–>ESP serial communication path as much as possible (e.g., getting rid of USB hubs, using a shorter properly shielded cable, etc.).
 
 
+Installation Fails on Unknown Project Name
+------------------------------------------
+
+If you see errors like this:
+
+.. code-block:: none
+
+   $ pip install esptool==5.1.0
+   Collecting esptool==5.1.0
+   ....
+   WARNING: Generating metadata for package esptool produced metadata for project name unknown. Fix your #egg=esptool fragments.
+   Discarding https://files.pythonhosted.org/packages/.../esptool-5.1.0.tar.gz (from https://pypi.org/simple/esptool/) (requires-python:>=3.10): Requested unknown from https://files.pythonhosted.org/packages/.../esptool-5.1.0.tar.gz has inconsistent name: filename has 'esptool', but metadata has 'unknown'
+   ERROR: Could not find a version that satisfies the requirement esptool==5.1.0 (from versions: 4.0, 4.0.1, 4.1, 4.2, 4.2.1, 4.3, 4.4, 4.5, 4.5.1, 4.6, 4.6.1, 4.6.2, 4.7.0, 4.8.0, 4.8.1, 4.9.0, 4.10.0, 4.11.0, 5.0.0, 5.0.1, 5.0.2, 5.1.0)
+   ERROR: No matching distribution found for esptool==5.1.0
+
+or you are not able to install ``esptool`` version ``4.8.0`` or higher, then please make sure that your version of ``setuptools`` is at least ``64.0.0``. If you need to upgrade, you can run ``pip install setuptools>=64``.
+Make sure that you are using a virtual environment and followed the installation instructions in the :ref:`installation` section.
+
+
 Known Limitations and Issues
 ----------------------------
 

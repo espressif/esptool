@@ -20,7 +20,7 @@ The latest stable esptool release can be installed from `PyPI <https://pypi.org/
 
 With some Python installations this may not work and you'll receive an error, try ``python -m pip install esptool`` or ``pip3 install esptool``, or consult your `Python installation manual <https://pip.pypa.io/en/stable/installation/>`_ for information about how to access pip.
 
-`Setuptools <https://setuptools.pypa.io/en/latest/userguide/quickstart.html>`_ is also a requirement which is not available on all systems by default. You can install it by a package manager of your operating system, or by ``pip install setuptools``.
+`Setuptools <https://setuptools.pypa.io/en/latest/userguide/quickstart.html>`_ is also a requirement which is not available on all systems by default. You can install it by a package manager of your operating system, or by ``pip install setuptools>=64``.
 
 After installing, you will have ``esptool`` installed into the default Python executables directory and you should be able to run it with the command ``esptool`` or ``python -m esptool``. Please note that probably only ``python -m esptool`` will work for Pythons installed from Windows Store.
 
