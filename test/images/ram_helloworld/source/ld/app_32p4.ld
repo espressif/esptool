@@ -23,4 +23,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "../../../../flasher_stub/ld/rom_32p4.ld"
+PROVIDE ( ets_printf = 0x4fc00024 );

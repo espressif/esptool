@@ -23,7 +23,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "../../../../flasher_stub/ld/rom_8266.ld"
-
-PROVIDE(SPIFlashModeConfig = 0x40004568);
-PROVIDE(SPIParamCfg = 0x40004c2c);
+PROVIDE ( ets_printf = 0x400024cc );
