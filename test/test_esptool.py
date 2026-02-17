@@ -1500,8 +1500,9 @@ class TestReadIdentityValues(EsptoolTestCase):
 class TestMemoryOperations(EsptoolTestCase):
     @pytest.mark.quick_test
     def test_memory_dump(self):
-        output = self.run_esptool("dump-mem 0x50000000 128 memout.bin")
-        assert "Dumped 128 bytes from 0x50000000" in output
+        addr = 0x42000000 if arg_chip == "esp32h4" else 0x50000000
+        output = self.run_esptool(f"dump-mem {addr} 128 memout.bin")
+        assert f"Dumped 128 bytes from {addr:#x}" in output
         assert "to 'memout.bin'" in output
         os.remove("memout.bin")
 
@@ -1883,6 +1884,10 @@ class TestReadWriteMemory(EsptoolTestCase):
                     test_addr = region[1] - 0x2FFFF
                 elif arg_chip == "esp32c2":
                     # Write at the end of DRAM on ESP32-C2 to avoid overwriting the stub
+                    test_addr = region[1] - 8
+                elif arg_chip == "esp32h4":
+                    # Write into the "BYTE_ACCESSIBLE" space and after the stub
+                    region = esp.get_memory_region("BYTE_ACCESSIBLE")
                     test_addr = region[1] - 8
                 else:
                     test_addr = region[0]
