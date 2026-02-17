@@ -1974,7 +1974,14 @@ class TestReset(EsptoolTestCase):
     def test_watchdog_reset(self):
         # Erase the bootloader to get "invalid header" output + test watchdog reset
         res = self.run_esptool("--after watchdog-reset erase-region 0x0 0x4000")
-        if arg_chip in ["esp8266", "esp32", "esp32h2", "esp32c6", "esp32e22"]:
+        if arg_chip in [
+            "esp8266",
+            "esp32",
+            "esp32h2",
+            "esp32c6",
+            "esp32h4",
+            "esp32e22",
+        ]:
             assert "Watchdog hard reset is not supported" in res
             assert "Hard resetting via RTS pin..." in res
         else:
