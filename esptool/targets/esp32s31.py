@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Fredrik Ahlberg, Angus Gratton,
+# SPDX-FileCopyrightText: 2025-2026 Fredrik Ahlberg, Angus Gratton,
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
@@ -21,8 +21,6 @@ class ESP32S31ROM(ESP32C5ROM):
     DROM_MAP_END = 0x54000000
 
     BOOTLOADER_FLASH_OFFSET = 0x2000  # First 2 sectors are reserved for FE purposes
-
-    CHIP_DETECT_MAGIC_VALUE = [0x0, 0x0ADDBAD0]
 
     UART_DATE_REG_ADDR = 0x2038A000 + 0x8C
 
@@ -67,8 +65,6 @@ class ESP32S31ROM(ESP32C5ROM):
     PURPOSE_VAL_XTS_AES256_KEY_1 = 2
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
-
-    SUPPORTS_ENCRYPTED_FLASH = True
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
@@ -134,7 +130,7 @@ class ESP32S31ROM(ESP32C5ROM):
         ]
 
     def get_crystal_freq(self):
-        # ESP32S31 XTAL is fixed to 40MHz
+        # ESP32-S31 XTAL is fixed to 40MHz
         return 40
 
     def get_flash_voltage(self):
