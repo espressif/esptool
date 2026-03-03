@@ -606,12 +606,15 @@ def write_flash(
         no_progress (bool): Disable progress updates.
         diff_with: list[ImageSource | None]: Previously flashed image(s)
             to compare with for fast reflashing. Will be zipped with addr_data.
-        no_diff_verify: bool: Skip MD5 checks for faster reflashing. Requires
-            diff_with to be specified. Must be sure the flash content has not changed
-            since the last flash. Mutually exclusive with skip_flashed.
+        no_diff_verify: bool: Skip post-flash verification of unchanged files when
+            using diff_with to save time (trust the state of the flash contents).
+            Only unchanged files are skipped without an MD5 check,
+            written data is still verified after write and the whole file
+            is reflashed if verification fails. Use only when flash has not been
+            modified since the last flash.
+            Requires diff_with. Mutually exclusive with skip_flashed.
         skip_flashed: bool: Skip flashing if the new binary is already in flash.
-            Automatically enabled for each file with a diff_with pair.
-            Mutually exclusive with no_diff_verify.
+            Only for use when diff_with is not specified (mutually exclusive).
     """
     # Normalize addr_data to use bytes
     norm_addr_data = [(addr, get_bytes(data)) for addr, data in addr_data]
@@ -637,10 +640,8 @@ def write_flash(
     if not compress and not no_compress:
         compress = esp.IS_STUB
 
-    if skip_flashed and no_diff_verify:
-        raise FatalError(
-            "Options no_diff_verify and skip_flashed are mutually exclusive."
-        )
+    if skip_flashed and diff_with:
+        raise FatalError("Options diff_with and skip_flashed are mutually exclusive.")
 
     # Check for conditions that disable fast reflashing and skip-flashed checks
     reason = None
@@ -660,6 +661,7 @@ def write_flash(
                 f"with {reason}. Will flash all data."
             )
             diff_with = []
+            no_diff_verify = False
         if skip_flashed:
             log.note(
                 "Skipping flashing of already flashed content is not supported "
@@ -668,7 +670,7 @@ def write_flash(
             skip_flashed = False
 
     if no_diff_verify and not diff_with:
-        log.note("No diff verification mode requires diff data to be specified.")
+        log.note("Option no_diff_verify requires diff_with to be specified.")
         no_diff_verify = False
 
     if not force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
@@ -975,54 +977,14 @@ def write_flash(
         base_size = image_size
 
         image_md5 = hashlib.md5(image).hexdigest()
-        do_pre_md5_checks = (
-            (skip_flashed or diff_data)
-            and not no_diff_verify
-            and not erase_all
-            and not encrypted
-            and not (esp.CHIP_NAME == "ESP8266" and not esp.IS_STUB)
-            and not esp.secure_download_mode
-        )
 
-        # Prepare for pre-MD5 checks while minimizing number of flash_md5sum calls,
-        # which are time-consuming.
-        new_shorter = True
-        if do_pre_md5_checks and diff_data:
-            old_image_size = len(diff_data)
-            new_shorter = image_size <= old_image_size
-            if new_shorter:
-                # If new data is shorter or the same length as the old data,
-                # check the overlap only, we don't care about the rest of old data
-                old_image_md5_overlap = hashlib.md5(diff_data[:image_size]).hexdigest()
-            else:
-                # If new data is longer than the old data,
-                # check first the overlap and then also the rest of new data
-                old_image_md5 = hashlib.md5(diff_data).hexdigest()
-
-        # Decide if we skip flash, do a fast reflash or a full flash
-        if do_pre_md5_checks:
-            data_already_in_flash = False
+        # Skip flash write if the new image is already in flash
+        if skip_flashed:
             log.stage()
             log.print("Comparing flash contents against new data...")
-            if not diff_data or new_shorter:
-                flash_md5 = esp.flash_md5sum(address, image_size)
-                log.stage(finish=True)
-                if flash_md5 == image_md5:
-                    data_already_in_flash = True
-            else:  # New data is longer than the old data, check per-partes
-                flash_md5_overlap = esp.flash_md5sum(address, old_image_size)
-                new_image_md5_overlap = hashlib.md5(image[:old_image_size]).hexdigest()
-                if flash_md5_overlap == new_image_md5_overlap:
-                    # Overlap matches, now check the rest of the new data
-                    flash_md5_rest = esp.flash_md5sum(
-                        address + old_image_size, image_size - old_image_size
-                    )
-                    new_image_md5_rest = hashlib.md5(image[old_image_size:]).hexdigest()
-                    if flash_md5_rest == new_image_md5_rest:
-                        data_already_in_flash = True
-                log.stage(finish=True)
-
-            if data_already_in_flash:
+            flash_md5 = esp.flash_md5sum(address, image_size)
+            log.stage(finish=True)
+            if flash_md5 == image_md5:
                 source = "Input bytes" if name is None else f"'{name}'"
                 log.print(
                     f"{source} at {orig_address:#010x} already in flash, "
@@ -1032,245 +994,268 @@ def write_flash(
 
         # Default: one flash cycle of the full image, flag = False means not reflashing
         cycles = [[image, address, name, False]]
-        # Check if fast reflashing is possible (requires diff_data)
-        if diff_data and (no_diff_verify or do_pre_md5_checks):
-            reflash = False
-            if no_diff_verify or (
-                flash_md5 == old_image_md5_overlap
-                if new_shorter
-                else flash_md5_overlap == old_image_md5
-            ):
-                reflash = True
-            else:
-                log.note(
-                    "Diff data in flash has changed, flashing all of the new data..."
-                )
-
-            if reflash:
-                regions = _diff_flash_regions(diff_data, image, address)
-
-                if not regions:
-                    log.print("No changed sectors found, skipping write.")
-                    continue
-
-                if no_diff_verify:
-                    log.print(
-                        "No diff verification enabled, "
-                        "will reflash changed sectors without pre-verification..."
-                    )
-                else:
-                    log.print(
-                        "Diff data in flash matches, "
-                        "will reflash changed sectors only..."
-                    )
-
-                cycles = []  # Reflash: flash one/more cycles of changed sectors only
+        # With diff data: assume previous binary in flash, reflash only changed sectors
+        # (no pre-flash MD5). Post-flash MD5 verifies - if it fails, we full reflash.
+        if diff_data:
+            regions = _diff_flash_regions(diff_data, image, address)
+            if regions:
+                log.print("Changed data sectors found, fast reflashing...")
+                cycles = []
                 for addr, data in regions:
                     cycles.append([data, addr, name, True])
-
-        # Flash the full image or do flash cycles of changed sectors only
-        for cur_cycle, (image, address, name, reflashing) in enumerate(cycles):
-            uncsize = image_size = len(image)
-            if reflashing:
-                no_of_sectors = image_size // esp.FLASH_SECTOR_SIZE
-                log.print(
-                    f"Reflashing {no_of_sectors} changed "
-                    f"sector{'s' if no_of_sectors > 1 else ''} at {address:#010x}..."
-                )
-                orig_address = address
-
-            if not erase_all:
-                write_end = address + image_size
-                bytes_over = orig_address % esp.FLASH_SECTOR_SIZE
-                if bytes_over != 0:
-                    log.note(
-                        f"Flash address {orig_address:#010x} is not aligned "
-                        f"to a {esp.FLASH_SECTOR_SIZE:#x} byte flash sector. "
-                        f"{bytes_over:#x} bytes before this address will be erased."
+            else:  # No sectors changed
+                if no_diff_verify:
+                    log.print(
+                        "No changed sectors found and trust flash content mode "
+                        "is enabled, skipping write and verification."
                     )
-                # Print the address range of to-be-erased flash memory region
-                log.print(
-                    "Flash will be erased from {:#010x} to {:#010x}...".format(
-                        orig_address - bytes_over,
-                        div_roundup(write_end, esp.FLASH_SECTOR_SIZE)
-                        * esp.FLASH_SECTOR_SIZE
-                        - 1,
-                    )
-                )
-            if compress:
-                compressed_image = zlib.compress(image, 9)
-                compsize = len(compressed_image)
-                # Only use compression if it actually reduces the data size
-                if compsize < uncsize:
-                    image = compressed_image
-                    image_size = compsize
+                    continue
+                # Verify if the new binary is already in flash
+                log.stage()
+                log.print("No changed sectors found, verifying if data is in flash...")
+                if not encrypted and not esp.secure_download_mode:
+                    try:
+                        flash_md5 = esp.flash_md5sum(address, image_size)
+                        log.stage(finish=True)
+                        if flash_md5 == image_md5:
+                            source = "Input bytes" if name is None else f"'{name}'"
+                            log.print(f"{source} at {orig_address:#010x} verified.")
+                            continue
+                    except NotImplementedInROMError:  # ESP8266 ROM
+                        log.stage(finish=True)
                 else:
-                    # Compression didn't help, disable it for this file
-                    source = (
-                        "changed data"
-                        if reflashing
-                        else "input image"
-                        if name is None
-                        else f"file '{name}'"
-                    )
-                    log.note(
-                        f"Cannot compress {source} more than the original size, "
-                        f"will flash uncompressed. Compressed size {compsize} bytes "
-                        f">= uncompressed {uncsize} bytes."
-                    )
-                    compress = False
+                    log.stage(finish=True)
+                log.note("Data not found in flash, flashing the whole image...")
 
-            original_image = image  # Save the whole image in case retry is needed
-            # Try again if reconnect was successful
-            log.stage()
-            for attempt in range(1, esp.WRITE_FLASH_ATTEMPTS + 1):
-                try:
-                    if not esp.IS_STUB:
-                        log.print("Erasing flash...")
-                    if compress:
-                        # Decompress the compressed binary a block at a time,
-                        # to dynamically calculate the timeout based on the write size
-                        decompress = zlib.decompressobj()
-                        esp.flash_defl_begin(
-                            uncsize, image_size, address, encrypted_write=encrypted
+        full_image = image  # Keep for potential full reflash on MD5 mismatch
+        was_reflashing = any(reflashing for _, _, _, reflashing in cycles)
+
+        # Flash the full image or do flash cycles of changed sectors only.
+        # If flashing changed sectors only and post-flash verification fails,
+        # retry by reflashing the whole file (flash may have differed from expected).
+        while True:
+            # Save so we restore on full-image retry; a small chunk may have set
+            # compress = False but the full image might still compress well.
+            compress_for_retry = compress
+            for cur_cycle, (image, address, name, reflashing) in enumerate(cycles):
+                uncsize = image_size = len(image)
+                if reflashing:
+                    no_of_sectors = image_size // esp.FLASH_SECTOR_SIZE
+                    log.print(
+                        f"Reflashing {no_of_sectors} changed sector"
+                        f"{'s' if no_of_sectors > 1 else ''} at {address:#010x}..."
+                    )
+                    orig_address = address
+
+                if not erase_all:
+                    write_end = address + image_size
+                    bytes_over = orig_address % esp.FLASH_SECTOR_SIZE
+                    if bytes_over != 0:
+                        log.note(
+                            f"Flash address {orig_address:#010x} is not aligned "
+                            f"to a {esp.FLASH_SECTOR_SIZE:#x} byte flash sector. "
+                            f"{bytes_over:#x} bytes before this address will be erased."
                         )
+                    # Print the address range of to-be-erased flash memory region
+                    log.print(
+                        "Flash will be erased from {:#010x} to {:#010x}...".format(
+                            orig_address - bytes_over,
+                            div_roundup(write_end, esp.FLASH_SECTOR_SIZE)
+                            * esp.FLASH_SECTOR_SIZE
+                            - 1,
+                        )
+                    )
+                if compress:
+                    compressed_image = zlib.compress(image, 9)
+                    compsize = len(compressed_image)
+                    # Only use compression if it actually reduces the data size
+                    if compsize < uncsize:
+                        image = compressed_image
+                        image_size = compsize
                     else:
-                        esp.flash_begin(uncsize, address, encrypted_write=encrypted)
-                    seq = 0
-                    bytes_sent = 0  # bytes sent on wire
-                    bytes_written = 0  # bytes written to flash
-                    t = time.time()
+                        # Compression didn't help, disable it for this file
+                        source = (
+                            "changed data"
+                            if reflashing
+                            else "input image"
+                            if name is None
+                            else f"file '{name}'"
+                        )
+                        log.note(
+                            f"Cannot compress {source} more than the original size, "
+                            f"will flash uncompressed. Compressed size {compsize} bytes"
+                            f" >= uncompressed {uncsize} bytes."
+                        )
+                        compress = False
 
-                    timeout = DEFAULT_TIMEOUT
-                    while len(image) >= 0:
-                        if not no_progress:
-                            log.progress_bar(
-                                cur_iter=image_size - len(image),
-                                total_iters=image_size,
-                                prefix=f"Writing at {address + bytes_written:#010x} ",
-                                suffix=f" {bytes_sent}/{image_size} bytes...",
-                            )
-                        if len(image) == 0:  # All data sent, print 100% and end
-                            break
-                        block = image[0 : esp.FLASH_WRITE_SIZE]
-                        block_len = len(block)
+                original_image = image  # Save the whole image in case retry is needed
+                # Try again if reconnect was successful
+                log.stage()
+                for attempt in range(1, esp.WRITE_FLASH_ATTEMPTS + 1):
+                    try:
+                        if not esp.IS_STUB:
+                            log.print("Erasing flash...")
                         if compress:
-                            # feeding each compressed block into the decompressor lets
-                            # us see block-by-block how much will be written
-                            block_uncompressed = len(decompress.decompress(block))
-                            block_timeout = max(
-                                DEFAULT_TIMEOUT,
-                                timeout_per_mb(
-                                    ERASE_WRITE_TIMEOUT_PER_MB, block_uncompressed
-                                ),
+                            # Decompress the compressed binary a block at a time, to
+                            # dynamically calculate the timeout based on the write size
+                            decompress = zlib.decompressobj()
+                            esp.flash_defl_begin(
+                                uncsize, image_size, address, encrypted_write=encrypted
                             )
-                            if not esp.IS_STUB:
-                                # ROM code writes block to flash before ACKing
-                                timeout = block_timeout
-                            # For compressed data, encryption is handled
-                            # via encrypted_write flag
-                            esp.flash_defl_block(block, seq, timeout=timeout)
-                            if esp.IS_STUB:
-                                # Stub ACKs when block is received, then writes
-                                # to flash while receiving the block after it
-                                timeout = block_timeout
-                            bytes_written += block_uncompressed
                         else:
-                            # Pad the last block
-                            block = block + b"\xff" * (esp.FLASH_WRITE_SIZE - block_len)
-                            esp.flash_block(block, seq, encrypted=encrypted)
-                            bytes_written += block_len  # Count without added padding
-                        bytes_sent += block_len
-                        image = image[esp.FLASH_WRITE_SIZE :]
-                        seq += 1
-                    break
-                except SerialException:
-                    if attempt == esp.WRITE_FLASH_ATTEMPTS or encrypted:
-                        # Already retried once or encrypted mode is disabled because of
-                        # security reasons
-                        raise
-                    log.print("\nLost connection, retrying...")
-                    esp._port.close()
-                    log.print("Waiting for the chip to reconnect", end="")
-                    for _ in range(DEFAULT_CONNECT_ATTEMPTS):
-                        try:
-                            time.sleep(1)
-                            esp._port.open()
-                            log.print()  # Print new line (was suppressed by print("."))
-                            esp.connect()
-                            if esp.IS_STUB:
-                                # Hack to bypass the stub overwrite check
-                                esp.IS_STUB = False
-                                # Reflash stub because chip was reset
-                                esp = esp.run_stub()
-                            image = original_image
-                            break
-                        except SerialException:
-                            log.print(".", end="", flush=True)
-                    else:
-                        raise  # Reconnect limit reached
+                            esp.flash_begin(uncsize, address, encrypted_write=encrypted)
+                        seq = 0
+                        bytes_sent = 0  # bytes sent on wire
+                        bytes_written = 0  # bytes written to flash
+                        t = time.time()
 
-            # Skip sending flash_finish to ROM loader here,
-            # as it causes the loader to exit and run user code
-            if esp.IS_STUB:
-                # Get the "encrypted" flag for the last file flashed
-                # Note: all_files list contains tuples like:
-                # (address: int, data:
-                # bytes, name: str | None,
-                # encrypted: bool,
-                # diff_data: bytes | None)
-                last_file_encrypted = all_files[-1][3]
+                        timeout = DEFAULT_TIMEOUT
+                        while len(image) >= 0:
+                            if not no_progress:
+                                log.progress_bar(
+                                    cur_iter=image_size - len(image),
+                                    total_iters=image_size,
+                                    prefix="Writing at "
+                                    f"{address + bytes_written:#010x} ",
+                                    suffix=f" {bytes_sent}/{image_size} bytes...",
+                                )
+                            if len(image) == 0:  # All data sent, print 100% and end
+                                break
+                            block = image[0 : esp.FLASH_WRITE_SIZE]
+                            block_len = len(block)
+                            if compress:
+                                # feeding each compressed block into the decompressor
+                                # lets us see block-by-block how much will be written
+                                block_uncompressed = len(decompress.decompress(block))
+                                block_timeout = max(
+                                    DEFAULT_TIMEOUT,
+                                    timeout_per_mb(
+                                        ERASE_WRITE_TIMEOUT_PER_MB, block_uncompressed
+                                    ),
+                                )
+                                if not esp.IS_STUB:
+                                    # ROM code writes block to flash before ACKing
+                                    timeout = block_timeout
+                                # For compressed data, encryption is handled
+                                # via encrypted_write flag
+                                esp.flash_defl_block(block, seq, timeout=timeout)
+                                if esp.IS_STUB:
+                                    # Stub ACKs when block is received, then writes
+                                    # to flash while receiving the block after it
+                                    timeout = block_timeout
+                                bytes_written += block_uncompressed
+                            else:
+                                # Pad the last block
+                                block = block + b"\xff" * (
+                                    esp.FLASH_WRITE_SIZE - block_len
+                                )
+                                esp.flash_block(block, seq, encrypted=encrypted)
+                                bytes_written += (
+                                    block_len  # Count without added padding
+                                )
+                            bytes_sent += block_len
+                            image = image[esp.FLASH_WRITE_SIZE :]
+                            seq += 1
+                        break
+                    except SerialException:
+                        if attempt == esp.WRITE_FLASH_ATTEMPTS or encrypted:
+                            # Already retried once or encrypted mode is disabled
+                            # because of security reasons
+                            raise
+                        log.print("\nLost connection, retrying...")
+                        esp._port.close()
+                        log.print("Waiting for the chip to reconnect", end="")
+                        for _ in range(DEFAULT_CONNECT_ATTEMPTS):
+                            try:
+                                time.sleep(1)
+                                esp._port.open()
+                                # Print new line (was suppressed by print("."))
+                                log.print()
+                                esp.connect()
+                                if esp.IS_STUB:
+                                    # Hack to bypass the stub overwrite check
+                                    esp.IS_STUB = False
+                                    # Reflash stub because chip was reset
+                                    esp = esp.run_stub()
+                                image = original_image
+                                break
+                            except SerialException:
+                                log.print(".", end="", flush=True)
+                        else:
+                            raise  # Reconnect limit reached
 
-                # Stub only writes each block to flash after 'ack'ing the receive,
-                # so do a final operation which will not be 'ack'ed
-                # until the last block has actually been written out to flash
-                if cur_cycle == len(cycles) - 1:  # Only end once, after the last cycle
-                    if compress and not last_file_encrypted:
-                        esp.flash_defl_finish(reboot=False, timeout=timeout)
-                    else:
-                        esp.flash_finish(reboot=False, timeout=timeout)
+                # Skip sending flash_finish to ROM loader here,
+                # as it causes the loader to exit and run user code
+                if esp.IS_STUB:
+                    # Get the "encrypted" flag for the last file flashed
+                    # Note: all_files list contains tuples like:
+                    # (address: int, data:
+                    # bytes, name: str | None,
+                    # encrypted: bool,
+                    # diff_data: bytes | None)
+                    last_file_encrypted = all_files[-1][3]
 
-            t = time.time() - t
-            speed_msg = ""
-            log.stage(finish=True)
-            if compress:
-                if t > 0.0:
-                    speed_msg = f" ({uncsize / t * 8 / 1000:.1f} kbit/s)"
-                log.print(
-                    f"Wrote {uncsize} bytes ({bytes_sent} compressed) "
-                    f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
-                )
-            else:
-                if t > 0.0:
-                    speed_msg = f" ({bytes_written / t * 8 / 1000:.1f} kbit/s)"
-                log.print(
-                    f"Wrote {bytes_written} bytes "
-                    f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
-                )
+                    # Stub only writes each block to flash after 'ack'ing the receive,
+                    # so do a final operation which will not be 'ack'ed
+                    # until the last block has actually been written out to flash
+                    if cur_cycle == len(cycles) - 1:  # Only end once, after last cycle
+                        if compress and not last_file_encrypted:
+                            esp.flash_defl_finish(reboot=False, timeout=timeout)
+                        else:
+                            esp.flash_finish(reboot=False, timeout=timeout)
 
-        log.stage()
-        log.print("Verifying written data...")
-        if not encrypted and not esp.secure_download_mode:
-            try:
-                res = esp.flash_md5sum(base_address, base_size)
+                t = time.time() - t
+                speed_msg = ""
                 log.stage(finish=True)
-                if res != image_md5:
-                    log.print(f"Input MD5: {image_md5}")
-                    log.print(f"Flash MD5: {res}")
-                    if res == hashlib.md5(b"\xff" * base_size).hexdigest():
-                        raise FatalError(
-                            "Write failed, the written flash region is empty."
-                        )
-                    raise FatalError("MD5 of file does not match data in flash!")
+                if compress:
+                    if t > 0.0:
+                        speed_msg = f" ({uncsize / t * 8 / 1000:.1f} kbit/s)"
+                    log.print(
+                        f"Wrote {uncsize} bytes ({bytes_sent} compressed) "
+                        f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
+                    )
                 else:
+                    if t > 0.0:
+                        speed_msg = f" ({bytes_written / t * 8 / 1000:.1f} kbit/s)"
+                    log.print(
+                        f"Wrote {bytes_written} bytes "
+                        f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
+                    )
+
+            log.stage()
+            log.print("Verifying written data...")
+            if not encrypted and not esp.secure_download_mode:
+                try:
+                    res = esp.flash_md5sum(base_address, base_size)
+                    log.stage(finish=True)
+                    if res != image_md5:
+                        if was_reflashing:
+                            log.note(
+                                "Verification failed after fast reflash (flash content "
+                                "did not match the expected data). "
+                                "Reflashing the whole image..."
+                            )
+                            cycles = [[full_image, base_address, name, False]]
+                            was_reflashing = False  # Next cycle will be a full reflash
+                            compress = compress_for_retry  # Re-evaluate compression
+                            continue
+                        log.print(f"Input MD5: {image_md5}")
+                        log.print(f"Flash MD5: {res}")
+                        if res == hashlib.md5(b"\xff" * base_size).hexdigest():
+                            raise FatalError(
+                                "Write failed, the written flash region is empty."
+                            )
+                        raise FatalError("MD5 of file does not match data in flash!")
                     log.print("Hash of data verified.")
-            except NotImplementedInROMError:
-                pass
-        else:
-            log.stage(finish=True)
-            log.print(
-                "Cannot verify written data if encrypted or in secure download mode."
-            )
+                except NotImplementedInROMError:
+                    pass
+            else:
+                log.stage(finish=True)
+                log.print(
+                    "Cannot verify written data if encrypted "
+                    "or in secure download mode."
+                )
+            break
 
 
 def read_mac(esp: ESPLoader) -> None:

@@ -661,18 +661,25 @@ def write_mem_cli(ctx, address, value, mask):
     "This list is zipped sequentially with the files being flashed.",
 )
 @click.option(
-    "--no-diff-verify",
+    "--trust-flash-content",
     is_flag=True,
-    help="Skip MD5 checks for faster reflashing. Requires --diff-with to be specified. "
-    "Must be sure the flash content has not changed since the last flash.",
+    help="Skip post-flash verification of unchanged files when using --diff-with to "
+    "save time. Only unchanged files are skipped without an MD5 check, written data "
+    "is still verified after write and the whole file is reflashed if verification "
+    "fails. Requires --diff-with. Use only when flash has not been modified since the "
+    "last flash (e.g. no other tool, app, or manual change touched the data in flash).",
+    exclusive_with=["skip_flashed"],
+    cls=MutuallyExclusiveOption,
 )
 @click.option(
     "--skip-flashed",
     "-s",
     is_flag=True,
-    help="Skip flashing if the new binary is already in flash. Will perform MD5 checks "
+    help="Skip flashing if the new binary is already in flash. Performs MD5 checks "
     "to verify the flash content matches the new binary. "
-    "Automatically enabled for each file with a valid --diff-with pair.",
+    "Only for use when no --diff-with files are specified (mutually exclusive).",
+    exclusive_with=["diff_with", "trust_flash_content"],
+    cls=MutuallyExclusiveOption,
 )
 @click.option(
     "--force",
@@ -711,11 +718,10 @@ def write_flash_cli(ctx, addr_filename, **kwargs):
             "Options --encrypt and --encrypt-files "
             "must not be specified at the same time."
         )
-    if kwargs["skip_flashed"] and kwargs["no_diff_verify"]:
-        raise FatalError(
-            "Options --skip-flashed and --no-diff-verify "
-            "must not be specified at the same time."
-        )
+    if kwargs["trust_flash_content"] and not kwargs.get("diff_with"):
+        raise FatalError("Option --trust-flash-content requires --diff-with.")
+    # Map CLI name to internal name for write_flash
+    kwargs["no_diff_verify"] = kwargs.pop("trust_flash_content", False)
     # Expand HEX file splits in diff_with if any
     if "diff_with" in kwargs and kwargs["diff_with"]:
         diff_with_expanded: list = []

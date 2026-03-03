@@ -1000,10 +1000,7 @@ class TestFlashing(EsptoolTestCase):
             output = self.run_esptool(
                 f"write-flash {addr} {new_bin.name} --diff-with {old_bin.name}"
             )
-            assert (
-                "Diff data in flash matches, will reflash changed sectors only"
-                in output
-            )
+            assert "Changed data sectors found, fast reflashing..." in output
             assert "Reflashing 1 changed sector at 0x0" in output
 
             # Verify new content is in flash
@@ -1042,10 +1039,7 @@ class TestFlashing(EsptoolTestCase):
                 f"--no-stub write-flash {addr} {new_bin.name} "
                 f"--diff-with {old_bin.name}"
             )
-            assert (
-                "Diff data in flash matches, will reflash changed sectors only"
-                in output
-            )
+            assert "Changed data sectors found, fast reflashing..." in output
 
             # Verify new content is in flash
             self.verify_readback(addr, TEST_FILE_SIZE_16KB, new_bin.name)
@@ -1079,32 +1073,73 @@ class TestFlashing(EsptoolTestCase):
             try:
                 self.run_esptool(f"write-flash {addr} {different_bin.name}")
 
-                # Fast reflash with new file - should detect mismatch and do full flash
+                # Flash has different_bin; we assume old_bin, reflash changed sectors,
+                # then post-flash MD5 fails and we full reflash
                 output = self.run_esptool(
                     f"write-flash {addr} {new_bin.name} --diff-with {old_bin.name}"
                 )
                 assert (
-                    "Diff data in flash has changed, flashing all of the new data"
-                    in output
-                )
+                    "Reflashing the whole file" in output
+                    or "Verification failed after fast reflash" in output
+                ), f"Expected fallback to full reflash; output: {output[:600]}"
 
                 # Verify new content is in flash
                 self.verify_readback(addr, TEST_FILE_SIZE_16KB, new_bin.name)
 
-                # Fast reflash with --no-diff-verify
+                # Fast reflash with --trust-flash-content
                 output = self.run_esptool(
                     f"write-flash {addr} {old_bin.name} "
-                    f"--diff-with {new_bin.name} --no-diff-verify"
+                    f"--diff-with {new_bin.name} --trust-flash-content"
                 )
-                assert (
-                    "No diff verification enabled, "
-                    "will reflash changed sectors without pre-verification" in output
-                )
-                assert "Reflashing 1 changed sector at 0x0" in output
+                assert "Changed data sectors found, fast reflashing..." in output
+                assert "Reflashing 1 changed sector" in output
                 # Verify new content is in flash
                 self.verify_readback(addr, TEST_FILE_SIZE_16KB, old_bin.name)
             finally:
                 os.unlink(different_bin.name)
+        finally:
+            os.unlink(old_bin.name)
+            os.unlink(new_bin.name)
+
+    def test_trust_flash_content_md5_mismatch_reflashes_whole_file(self):
+        """
+        With --trust-flash-content, MD5 mismatch after fast reflash runs full reflash.
+        """
+        old_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        new_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        try:
+            old_data = self.create_test_data(TEST_FILE_SIZE_16KB)
+            old_bin.write(old_data)
+            old_bin.close()
+
+            new_data = bytearray(old_data)
+            new_data[0:100] = [0xBB] * 100
+            new_bin.write(new_data)
+            new_bin.close()
+
+            addr = 0x10000
+            # Flash something that is neither old nor new (so diff assumption is wrong)
+            wrong_data = self.create_test_data(TEST_FILE_SIZE_16KB, pattern=0xCC)
+            wrong_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+            wrong_bin.write(wrong_data)
+            wrong_bin.close()
+            try:
+                self.run_esptool(f"write-flash {addr} {wrong_bin.name}")
+
+                # --trust-flash-content: we assume flash has old_bin, only write diff.
+                # Flash actually has wrong_bin, so result will be wrong and MD5 fails.
+                # esptool should then reflash the whole file.
+                output = self.run_esptool(
+                    f"write-flash {addr} {new_bin.name} "
+                    f"--diff-with {old_bin.name} --trust-flash-content"
+                )
+                assert (
+                    "Verification failed after fast reflash" in output
+                    and "Reflashing the whole image" in output
+                )
+                self.verify_readback(addr, TEST_FILE_SIZE_16KB, new_bin.name)
+            finally:
+                os.unlink(wrong_bin.name)
         finally:
             os.unlink(old_bin.name)
             os.unlink(new_bin.name)
@@ -1142,10 +1177,7 @@ class TestFlashing(EsptoolTestCase):
                 f"--diff-with {old_bin.name} skip"
             )
             # First file should use fast reflash, second should be normal
-            assert (
-                "Diff data in flash matches, will reflash changed sectors only"
-                in output
-            )
+            assert "Changed data sectors found, fast reflashing..." in output
 
             # Verify both contents are in flash
             self.verify_readback(addr1, 8 * 1024, new_bin1.name)

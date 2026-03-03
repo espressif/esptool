@@ -66,12 +66,6 @@ Skipping Unchanged Content
 
 By default, esptool is set to erase the flash and try to flash the whole content of the provided binaries into flash. However, you can enable a check to skip flashing to save time if the new binary is already present in flash by using the ``--skip-flashed`` (or ``-s``) option. When enabled, esptool computes an MD5 checksum of the flash content and compares it with the new binary. If they match exactly, flashing is skipped entirely and a message is displayed indicating that the content is already in flash.
 
-The ``--skip-flashed`` option is automatically enabled for each file that has a corresponding ``--diff-with`` pair (see `Fast Reflashing <#fast-reflashing>`__ below), as the MD5 check is already performed as part of the fast reflashing process.
-
-.. note::
-
-    The ``--skip-flashed`` and ``--no-diff-verify`` (see `No Diff Verification Mode <#no-diff-verification-mode>`__ below) options are mutually exclusive. You cannot use both at the same time.
-
 For larger binaries, checksumming the flash content can take significant time. If you are certain the content needs to be rewritten (e.g., after a flash erase or when you know the content has changed), omit ``--skip-flashed`` to proceed directly to flashing without performing MD5 checks in order to save time.
 
 Fast Reflashing
@@ -79,7 +73,7 @@ Fast Reflashing
 
 When repeatedly flashing similar firmware (e.g., during development), esptool can significantly speed up the flashing process by only rewriting changed flash sectors instead of the entire binary. This is called **fast reflashing** or **differential flashing**.
 
-To enable fast reflashing, use the ``--diff-with`` option to provide the previously flashed binary file(s) for comparison, which will tell esptool that ``old_app.bin`` was previously written to address ``0x10000``, and now it should be compared with the new, updated binary `new_app.bin` and flash only those sectors of `new_app.bin` which are different from `old_app.bin`.:
+To enable fast reflashing, use the ``--diff-with`` option to provide the previously flashed binary file(s) for comparison, which will tell esptool that ``old_app.bin`` was previously written to address ``0x10000``, and now it should be compared with the new, updated binary ``new_app.bin`` and flash only those sectors of ``new_app.bin`` which are different from ``old_app.bin``.:
 
 ::
 
@@ -110,15 +104,14 @@ The following example will fast reflash only ``bootloader.bin``, while fully fla
 How It Works
 """"""""""""
 
-1. Esptool compares the new binary with the previously flashed binary on a sector-by-sector basis (4KB sectors).
-2. It verifies that the device flash still contains the previous binary by computing an MD5 checksum.
-3. If the previous binary is still in flash, only the changed sectors are rewritten.
-4. If the flash content has changed (e.g., from a previous manual flash), the entire new binary is flashed.
+1. Esptool compares the new binary with the previously flashed binary (the ``--diff-with`` file) on a sector-by-sector basis (4KB sectors). Esptool assumes the previous binary is still in flash.
+2. If there are changed sectors, only those sectors are rewritten. A post-flash MD5 check then verifies the result. If verification fails (e.g. the flash content didn't match the expected state, or some of the newly flashed data got corrupted), the whole file is reflashed automatically.
+3. If no sectors have changed, esptool checks whether the new binary really is in flash. If it is, flashing is skipped. If not, the whole file is flashed.
 
 This can dramatically reduce flashing time when only small portions of the firmware have changed, as only the modified 4KB sectors need to be erased and rewritten.
 
 When Fast Reflashing is Most Effective
-"""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""
 
 Fast reflashing provides the greatest time savings when there are large blocks of unchanged data between the old and new binaries. This is particularly effective during development when using build systems that organize linker sections to minimize changes between builds.
 
@@ -130,22 +123,24 @@ Fast reflashing provides the greatest time savings when there are large blocks o
 
 Another scenario where fast reflashing is highly effective is when reflashing large asset files (e.g., images, fonts, or other binary data) that have changed only slightly.
 
-No Diff Verification Mode
-"""""""""""""""""""""""""
+Trust Flash Content Mode
+""""""""""""""""""""""""
 
-For even faster reflashing in repeatable scenarios (e.g., when you are certain the flash state will match the ``--diff-with`` files), you can use ``--no-diff-verify`` to skip the MD5 verification (second step in `How It Works <#how-it-works>`__). This can save significant amounts of time with large binaries:
+With ``--diff-with`` alone, when no sectors have changed esptool still performs one MD5 read to confirm the new binary is in flash before skipping. For even faster reflashing in repeatable scenarios (e.g., when you are certain the flash contents have not been modified since the last time you flashed), you can use ``--trust-flash-content`` to skip that step: when no sectors have changed, esptool will skip writing without verifying that the binary is in flash.
+
+Only **unchanged** files (no sectors changed) are skipped without verification when using this option. For files that **are** written (changed sectors or full reflash), esptool always verifies the data after write and automatically reflashes the whole file if verification fails. The option requires ``--diff-with``.
 
 ::
 
-    esptool write-flash 0x10000 new_app.bin --diff-with old_app.bin --no-diff-verify
+    esptool write-flash 0x10000 new_app.bin --diff-with old_app.bin --trust-flash-content
+
+When there *are* changed sectors, behavior is the same as without ``--trust-flash-content``: only changed sectors are written, then a post-flash MD5 check runs. If that check fails, the whole file is reflashed automatically.
 
 .. warning::
 
-    ``--no-diff-verify`` assumes the device flash still contains the previous binary. If the flash has been modified (e.g., by another flashing operation or manual changes), the fast reflashing may produce incorrect results. Only use this option when you are certain the flash state matches the ``--diff-with`` file.
+    ``--trust-flash-content`` assumes the flash contents have not been modified since the last time you flashed (e.g. no other flashing tool, manual change, or erase). If unchanged files were in fact modified in flash, they will not be verified and the device may have incorrect content for those files. Only use this option when you are certain the flash content matches the ``--diff-with`` file.
 
-.. note::
-
-    The ``--no-diff-verify`` option is mutually exclusive with ``--skip-flashed``. You cannot use both at the same time.
+If the flash content does differ from what ``--diff-with`` describes for a file that was written, the post-write MD5 check will fail. In that case, esptool automatically reflashes the whole file and verifies again, so the final flash content is correct. You will see a message like ``Verification failed after fast reflash (flash content did not match the expected data). Reflashing the whole image...``.
 
 Limitations
 """""""""""

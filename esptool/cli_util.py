@@ -338,6 +338,7 @@ class Group(click.RichGroup):
         "--use_segments": "--use-segments",
         "--ignore_flash_encryption_efuse_setting": "--ignore-flash-enc-efuse",
         "--fill-flash-size": "--pad-to-size",
+        "--no-diff-verify": "--trust-flash-content",
     }
 
     def __call__(self, esp: ESPLoader | None = None, *args, **kwargs):
