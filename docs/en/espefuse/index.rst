@@ -50,7 +50,8 @@ Optional General Arguments Of Commands
 - ``--chip``, ``-c`` - Target chip type. If this argument is omitted, the tool automatically detects the chip type when connected. But if the command has a help option, the chip is not connected, and the default chip is ``esp32``, please specify the specific type of chip to get the correct help. Example of usage: ``-c esp32``, ``-c esp32c3``, ``-c esp32s2`` and others.
 - ``--baud``, ``-b`` - Serial port baud rate, the same as for esptool.
 - ``--port``, ``-p`` - Serial port device, for example: ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
-- ``--before`` -  What to do before connecting to the chip: ``default-reset``, ``no-reset``, ``esp32r1``, ``no-reset-no-sync``.
+- ``--before`` -  What to do before connecting to the chip: ``default-reset``, ``usb-reset``, ``no-reset``, ``no-reset-no-sync``.
+- ``--after``, ``-a`` -  What to do after the operation is finished: ``hard-reset``, ``soft-reset``, ``no-reset``, ``watchdog-reset``.
 - ``--debug``, ``-d`` - Show debugging information.
 - ``--virt`` - For host tests. The tool will work in the virtual mode (without connecting to a chip).
 - ``--path-efuse-file`` - For host tests. Use it together with ``--virt`` option. The tool will work in the virtual mode (without connecting to a chip) and save eFuse memory to a given file. If the file does not exists the tool creates it. To reset written eFuses just delete the file. Usage: ``--path-efuse-file efuse_memory.bin``.
@@ -184,4 +185,4 @@ Recommendations
     - Combine multiple commands into one with this :ref:`perform-multiple-operations` feature.
     - Most commands support getting a list of arguments (eFuse names, keys).
 
-3. Make sure the power supply is stable because this may cause burning problems.
+2. Make sure the power supply is stable because this may cause burning problems.

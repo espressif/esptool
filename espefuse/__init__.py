@@ -74,6 +74,13 @@ __all__ = [
     help="Which reset to perform before connecting to the chip.",
 )
 @click.option(
+    "--after",
+    "-a",
+    type=ResetModeType(["hard-reset", "soft-reset", "no-reset", "watchdog-reset"]),
+    default="no-reset",
+    help="Which reset to perform after operation is finished.",
+)
+@click.option(
     "--debug", "-d", is_flag=True, help="Show debugging information (loglevel=DEBUG)."
 )
 @click.option(
@@ -110,6 +117,7 @@ def cli(
     baud,
     port,
     before,
+    after,
     debug,
     virt,
     path_efuse_file,
@@ -144,8 +152,12 @@ def cli(
             )
 
     def close_port():
-        if not external_esp and not virt and esp._port:
+        if virt:
+            return
+        if not external_esp and esp._port:
             esp._port.close()
+        if after != "no-reset":
+            esptool.reset_chip(esp, after)
 
     ctx.call_on_close(close_port)
 
