@@ -926,6 +926,9 @@ def write_flash(
 
     # Process and flash all files/input streams one by one
     for address, image, name, encrypted, diff_data in all_files:
+        if len(all_files) > 1:
+            source = f"'{name}'" if name is not None else "input"
+            log.print(f"\nWriting {source} at {address:#010x}...")
         if len(image) == 0:
             log.warning(
                 "Input bytes are empty." if name is None else f"'{name}' is empty."
