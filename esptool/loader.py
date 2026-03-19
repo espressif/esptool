@@ -161,7 +161,7 @@ class StubFlasher:
     STUB_SUBDIRS = ["1", "2"]
     STUB_VERSION_EXPLICIT = False
 
-    def __init__(self, target):
+    def __init__(self, target, plugins=None):
         json_name = target.STUB_CLASS.stub_json_name(target)
 
         with open(self._get_json_path(json_name, target.CHIP_NAME)) as json_file:
@@ -172,13 +172,54 @@ class StubFlasher:
         self.entry = stub["entry"]
 
         try:
-            self.data = base64.b64decode(stub["data"])
+            # bytearray: plugins patch the FPT in-place via struct.pack_into.
+            # Therefore, it cannot be immutable bytes.
+            self.data = bytearray(base64.b64decode(stub["data"]))
             self.data_start = stub["data_start"]
         except KeyError:
             self.data = None
             self.data_start = None
 
         self.bss_start = stub.get("bss_start")
+
+        # Plugin support: list of (load_addr, bytes) segments to upload
+        self.plugin_segments = []
+        if plugins:
+            chip_name = target.CHIP_NAME
+            if stub.get("plugin_table_offset") is not None:
+                self._apply_plugins(stub, plugins, chip_name)
+            else:
+                raise FatalError(f"{chip_name} stub does not support plugins.")
+
+    def _apply_plugins(self, stub, plugins, chip_name):
+        fpt_offset = stub["plugin_table_offset"]
+        first_opcode = stub.get("plugin_first_opcode", 0xD5)
+        plugin_text_kb = 0
+        for name in plugins:
+            pinfo = stub.get("plugins", {}).get(name)
+            if pinfo is None:
+                raise FatalError(f"Plugin '{name}' not found in {chip_name} stub.")
+            ptext = base64.b64decode(pinfo["text"])
+            self.plugin_segments.append((pinfo["text_start"], bytes(ptext)))
+            plugin_text_kb += len(ptext) / 1024
+            for opcode_str, handler_offset in pinfo["handlers"].items():
+                opcode = int(opcode_str, 16)
+                idx = opcode - first_opcode
+                fpt_entry_addr = pinfo["text_start"] + handler_offset
+                entry_off = fpt_offset + idx * 4
+                struct.pack_into("<I", self.data, entry_off, fpt_entry_addr)
+            bss_size = pinfo.get("bss_size", 0)
+            if bss_size > 0:
+                self.data += bytearray(bss_size)
+        base_text_kb = len(self.text) / 1024
+        log.print(
+            f"Stub: {base_text_kb:.1f} KB (base)"
+            + (
+                f" + {plugin_text_kb:.1f} KB ({', '.join(plugins)})"
+                if self.plugin_segments
+                else ""
+            )
+        )
 
     def _get_json_path(self, json_name, chip_name):
         for i, subdir in enumerate(self.STUB_SUBDIRS):
@@ -1285,16 +1326,14 @@ class ESPLoader:
 
         # Upload
         log.print("Uploading stub flasher...")
-        for field in [stub.text, stub.data]:
+        for field, offs in [
+            (stub.text, stub.text_start),
+            (stub.data, stub.data_start),
+        ]:
             if field is not None:
-                offs = stub.text_start if field == stub.text else stub.data_start
-                length = len(field)
-                blocks = (length + self.ESP_RAM_BLOCK - 1) // self.ESP_RAM_BLOCK
-                self.mem_begin(length, blocks, self.ESP_RAM_BLOCK, offs)
-                for seq in range(blocks):
-                    from_offs = seq * self.ESP_RAM_BLOCK
-                    to_offs = from_offs + self.ESP_RAM_BLOCK
-                    self.mem_block(field[from_offs:to_offs], seq)
+                self._upload_segment(field, offs)
+        for load_addr, segment_bytes in getattr(stub, "plugin_segments", []):
+            self._upload_segment(segment_bytes, load_addr)
 
         log.print("Running stub flasher...")
         if not secure_boot_workflow:
@@ -1330,6 +1369,16 @@ class ESPLoader:
         log.stage(finish=True)
         log.print("Stub flasher running.")
         return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
+
+    def _upload_segment(self, data, offs):
+        """Upload a binary segment to device RAM via mem_begin/mem_block."""
+        length = len(data)
+        blocks = (length + self.ESP_RAM_BLOCK - 1) // self.ESP_RAM_BLOCK
+        self.mem_begin(length, blocks, self.ESP_RAM_BLOCK, offs)
+        for seq in range(blocks):
+            from_offs = seq * self.ESP_RAM_BLOCK
+            to_offs = from_offs + self.ESP_RAM_BLOCK
+            self.mem_block(data[from_offs:to_offs], seq)
 
     @stub_and_esp32_function_only
     def flash_defl_begin(self, size, compsize, offset, encrypted_write=False):

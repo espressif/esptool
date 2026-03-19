@@ -27,6 +27,7 @@ from .loader import (
     DEFAULT_TIMEOUT,
     ERASE_WRITE_TIMEOUT_PER_MB,
     ESPLoader,
+    StubFlasher,
     timeout_per_mb,
 )
 from .logger import log
@@ -1982,13 +1983,14 @@ def reset_chip(esp: ESPLoader, reset_mode: str = "hard-reset") -> None:
         raise FatalError(f"Invalid reset mode: {reset_mode}")
 
 
-def run_stub(esp: ESPLoader) -> ESPLoader:
+def run_stub(esp: ESPLoader, plugins: list[str] | None = None) -> ESPLoader:
     """
     Load and execute the stub loader on the ESP device. If stub loading
     is not supported or is explicitly disabled, warnings are logged.
 
     Args:
         esp: Initiated esp object connected to a real device.
+        plugins: Optional list of plugin names to load (e.g. ["nand"]).
 
     Returns:
         The esp instance, either as a stub child class in a state
@@ -2021,7 +2023,8 @@ def run_stub(esp: ESPLoader) -> ESPLoader:
         )
     else:
         try:
-            return esp.run_stub()
+            stub = StubFlasher(esp, plugins=plugins)
+            return esp.run_stub(stub)
         except Exception:
             # The CH9102 bridge (PID: 0x55D4) can have issues on MacOS
             if sys.platform == "darwin" and esp._get_pid() == 0x55D4:

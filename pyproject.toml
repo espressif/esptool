@@ -93,7 +93,7 @@
 
 [tool.codespell]
     skip = '*.bin,*.json,*test/images/efuse/*,*docs/en/espefuse/inc/*'
-    ignore-words-list = 'bloc,ser,dout,exten'
+    ignore-words-list = 'bloc,ser,dout,exten,fpt'
     write-changes = false
 
 [tool.mypy]

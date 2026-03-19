@@ -423,8 +423,16 @@ def cli(
 
 def prepare_esp_object(ctx):
     """Prepare ESP object for operation"""
+    if ctx.obj.get("plugins") and ctx.obj["no_stub"]:
+        raise FatalError(
+            "Plugin commands require the stub flasher. Remove --no-stub to use plugins."
+        )
     if ctx.obj["stub_version"]:
         StubFlasher.set_stub_subdir(ctx.obj["stub_version"])
+    elif ctx.obj.get("plugins"):
+        # Plugin support requires stubs built with the plugin mechanism (dir "2").
+        # Prefer that directory when plugins are requested.
+        StubFlasher.set_stub_subdir("2")
     # Commands that require an ESP object (flash read/write, etc.)
     # 1) Get the ESP object
     #######################
@@ -524,7 +532,7 @@ def prepare_esp_object(ctx):
     ############################
 
     if not ctx.obj["no_stub"]:
-        esp = run_stub(esp)
+        esp = run_stub(esp, plugins=ctx.obj.get("plugins"))
 
     # 5) Configure the baud rate and voltage regulator
     ##################################################
