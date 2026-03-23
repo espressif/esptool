@@ -1,0 +1,57 @@
+# Synchronizes GitHub issues, comments, and pull requests with Jira.
+# See: https://github.com/espressif/sync-jira-actions/blob/v1/README.md
+---
+name: 🔷 Sync to Jira
+
+run-name: >
+  Sync to Jira -
+  ${{ github.event_name == 'issue_comment' && 'Issue Comment' ||
+      github.event_name == 'schedule' && 'New Pull Requests' ||
+      github.event_name == 'issues' && format('Issue ({0})', github.event.action) ||
+      github.event_name == 'workflow_dispatch' && 'Manual Sync' }}
+
+on:
+  # No `types` under `issues` — runs on every issues activity (opened, edited, closed, labeled, …).
+  issues:
+  issue_comment:
+    types: [created, edited, deleted]
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to be performed"
+        required: true
+        default: "mirror-issues"
+      issue-numbers:
+        description: "Issue numbers to sync (comma-separated)"
+        required: true
+
+jobs:
+  sync-to-jira:
+    name: >
+      Sync to Jira -
+      ${{ github.event_name == 'issue_comment' && 'Issue Comment' ||
+          github.event_name == 'schedule' && 'New Pull Requests' ||
+          github.event_name == 'issues' && format('Issue ({0})', github.event.action) ||
+          github.event_name == 'workflow_dispatch' && 'Manual Sync' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Run synchronization to Jira
+        uses: espressif/sync-jira-actions@v1
+        with:
+          cron_job: ${{ github.event_name == 'schedule' && 'true' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JIRA_PASS: ${{ secrets.JIRA_PASS }}
+          JIRA_PROJECT: ESPTOOL
+          JIRA_COMPONENT: GitHub
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_USER: ${{ secrets.JIRA_USER }}
