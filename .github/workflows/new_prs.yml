@@ -10,6 +10,10 @@ jobs:
   sync_prs_to_jira:
     name: Sync PRs to Jira
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@master
       - name: Sync PRs to Jira project

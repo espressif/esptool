@@ -7,6 +7,10 @@ jobs:
   sync_issue_comments_to_jira:
     name: Sync Issue Comments to Jira
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@master
       - name: Sync issue comments to Jira
