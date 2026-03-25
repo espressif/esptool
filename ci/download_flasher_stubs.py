@@ -26,7 +26,6 @@ STUBS = (
             "esp32h2beta1",
             "esp32h2beta2",
             "esp32p4rc1",
-            "esp32p4",
             "esp32s2",
             "esp32s3",
             "esp32s3beta2",
