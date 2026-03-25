@@ -63,8 +63,10 @@ class ESP32P4ROM(ESP32ROM):
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 20
 
-    EFUSE_SPI_BOOT_CRYPT_CNT_REG = EFUSE_BASE + 0x034
+    EFUSE_RD_REPEAT_DATA1_REG = EFUSE_BASE + 0x034
+    EFUSE_SPI_BOOT_CRYPT_CNT_REG = EFUSE_RD_REPEAT_DATA1_REG
     EFUSE_SPI_BOOT_CRYPT_CNT_MASK = 0x7 << 18
+    EFUSE_DOWNLOAD_MODE_XPD_ON_MASK = 0x1 << 16
 
     EFUSE_SECURE_BOOT_EN_REG = EFUSE_BASE + 0x038
     EFUSE_SECURE_BOOT_EN_MASK = 1 << 20
@@ -319,10 +321,29 @@ class ESP32P4ROM(ESP32ROM):
         if self.secure_download_mode:
             raise NotSupportedError(self, "Powering on flash in secure download mode")
 
-        if self.get_chip_revision() != 301:  # !=ECO6
-            # The flash chip is powered off by default on ECO6, when the default flash
-            # voltage changed from 1.8V to 3.3V. This is to prevent damage to 1.8V flash
-            # chips. Board designers must set the appropriate voltage level in eFuse.
+        revision = self.get_chip_revision()
+        # Flash defaults off on ECO6/ECO7 after the 1.8 V → 3.3 V default change
+        # (protects 1.8 V parts, board voltage must be set in eFuse). Other silicon
+        # revisions do not need this sequence.
+        if revision not in [301, 302]:
+            return
+
+        # On ECO7, also skip when DOWNLOAD_MODE_XPD_ON is programmed: ROM already
+        # asserts flash XPD in download mode, so esptool must not run this path.
+        if revision == 302 and (
+            self.read_reg(self.EFUSE_RD_REPEAT_DATA1_REG)
+            & self.EFUSE_DOWNLOAD_MODE_XPD_ON_MASK
+        ):
+            # ECO7 ROM bug: on a cold power-on, ROM can assert flash XPD (force
+            # the flash supply/pads on) and the first download session works.
+            # A subsequent entry into ROM download mode over USB–UART reset leaves
+            # the flash already powered, but ROM still runs the same “turn flash XPD on”
+            # path. That path is not safe to run twice while flash is already on,
+            # so the second attach/download can fail.
+            #
+            # Clear PMU_DATE_REG so the “flash force on” state from the power-up
+            # sequence is released before the loader proceeds to SPI flash attach.
+            self.write_reg(self.PMU_DATE_REG, 0)
             return
 
         # Power up pad group
