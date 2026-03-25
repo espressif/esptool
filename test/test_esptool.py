@@ -29,7 +29,7 @@ import subprocess
 import sys
 import tempfile
 from socket import AF_INET, SOCK_STREAM, socket
-from time import sleep
+from time import monotonic, sleep
 from typing import List
 from unittest.mock import MagicMock
 
@@ -86,7 +86,13 @@ class ESPRFC2217Server(object):
         return port
 
     def wait_for_server_starts(self, attempts_count):
+        # The RFC2217 server listens on IPv4 (AF_INET). Use 127.0.0.1 here, not
+        # "localhost", which may resolve to ::1 first on Linux CI and never
+        # reach the IPv4 listener.
+        connect_deadline_s = 15.0
+        poll_interval_s = 0.25
         for attempt in range(attempts_count):
+            self.p = None
             try:
                 self.p = subprocess.Popen(
                     self.cmd,
@@ -95,20 +101,36 @@ class ESPRFC2217Server(object):
                     stderr=subprocess.STDOUT,
                     close_fds=True,
                 )
-                sleep(2)
-                s = socket(AF_INET, SOCK_STREAM)
-                result = s.connect_ex(("localhost", self.port))
-                s.close()
-                if result == 0:
-                    print("Server started successfully.")
-                    return
+                deadline = monotonic() + connect_deadline_s
+                while monotonic() < deadline:
+                    if self.p.poll() is not None:
+                        self.server_output_file.flush()
+                        print(
+                            f"RFC2217 server exited early (code {self.p.returncode})."
+                        )
+                        break
+                    probe = socket(AF_INET, SOCK_STREAM)
+                    probe.settimeout(0.5)
+                    try:
+                        if probe.connect_ex(("127.0.0.1", self.port)) == 0:
+                            print("Server started successfully.")
+                            return
+                    finally:
+                        probe.close()
+                    sleep(poll_interval_s)
             except Exception as e:
                 print(e)
             print(
                 "Server start failed."
                 + (" Retrying . . ." if attempt < attempts_count - 1 else "")
             )
-            self.p.terminate()
+            if self.p is not None:
+                self.p.terminate()
+                try:
+                    self.p.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.p.kill()
+            self.server_output_file.flush()
         raise Exception("Server not started successfully!")
 
     def __enter__(self):
@@ -1494,13 +1516,13 @@ class TestVirtualPort(TestAutoDetect):
             output = self.run_esptool(
                 "chip_id",
                 chip="auto",
-                port=f"rfc2217://localhost:{str(server.port)}?ign_set_control",
+                port=f"rfc2217://127.0.0.1:{str(server.port)}?ign_set_control",
             )
             self._check_output(output)
 
     def test_highspeed_flash_virtual_port(self):
         with ESPRFC2217Server() as server:
-            rfc2217_port = f"rfc2217://localhost:{str(server.port)}?ign_set_control"
+            rfc2217_port = f"rfc2217://127.0.0.1:{str(server.port)}?ign_set_control"
             self.run_esptool(
                 "write_flash 0x0 images/fifty_kb.bin",
                 baud=921600,
