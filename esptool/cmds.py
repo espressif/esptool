@@ -686,6 +686,21 @@ def write_flash(
                         "Use the force argument to override, "
                         "please use with caution, otherwise it may brick your device!"
                     )
+        # Check if flash encryption with key manager is active
+        # The 0x0-0x2000 region stores key recovery info and must not be erased
+        if (
+            esp.get_flash_encryption_enabled()
+            and esp.uses_key_manager_for_flash_encryption()
+        ):
+            for address, (data, _) in norm_addr_data:
+                if address < 0x2000:
+                    raise FatalError(
+                        "Flash encryption with Key Manager detected, "
+                        "writing to flash region 0x0-0x2000 is disabled "
+                        "to protect key recovery info. "
+                        "Use the force argument to override, "
+                        "please use with caution, otherwise it may brick your device!"
+                    )
         # Check if chip_id and min_rev in image are valid for the target in use
         for _, (data, name) in norm_addr_data:
             try:
@@ -1578,6 +1593,19 @@ def erase_region(esp: ESPLoader, address: int, size: int, force: bool = False) -
             f"{ESPLoader.FLASH_SECTOR_SIZE}."
         )
     if not force and esp.CHIP_NAME != "ESP8266" and not esp.secure_download_mode:
+        # Protect key recovery region when flash encryption uses key manager
+        if (
+            esp.get_flash_encryption_enabled()
+            and esp.uses_key_manager_for_flash_encryption()
+            and address < 0x2000
+        ):
+            raise FatalError(
+                "Flash encryption with Key Manager detected, "
+                "erasing flash region 0x0-0x2000 is disabled "
+                "to protect key recovery info. "
+                "Use the force argument to override, "
+                "please use with caution, otherwise it may brick your device!"
+            )
         if esp.get_flash_encryption_enabled() or esp.get_secure_boot_enabled():
             raise FatalError(
                 "Active security features detected, "

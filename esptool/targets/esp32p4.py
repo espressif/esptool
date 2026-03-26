@@ -227,6 +227,15 @@ class ESP32P4ROM(ESP32ROM):
         ][key_block]
         return (self.read_reg(reg) >> shift) & 0xF
 
+    def uses_key_manager_for_flash_encryption(self):
+        return bool(
+            (
+                self.read_reg(self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG)
+                >> self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT
+            )
+            & self.FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY
+        )
+
     def is_flash_encryption_key_valid(self):
         # Need to see either an AES-128 key or two AES-256 keys
         purposes = [
@@ -241,10 +250,7 @@ class ESP32P4ROM(ESP32ROM):
         ):
             return True
 
-        return (
-            self.read_reg(self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG)
-            >> self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT
-        ) & self.FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY
+        return self.uses_key_manager_for_flash_encryption()
 
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)

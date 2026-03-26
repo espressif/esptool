@@ -1222,6 +1222,9 @@ class ESPLoader:
     def get_flash_encryption_enabled(self):
         return False
 
+    def uses_key_manager_for_flash_encryption(self):
+        return False
+
     def get_encrypted_download_disabled(self):
         return False
 

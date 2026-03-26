@@ -62,6 +62,10 @@ class ESP32S31ROM(ESP32C5ROM):
     EFUSE_SECURE_BOOT_EN_REG = EFUSE_BASE + 0x038
     EFUSE_SECURE_BOOT_EN_MASK = 1 << 20
 
+    EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG = EFUSE_BASE + 0x034
+    EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT = 12
+    FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY = 2
+
     PURPOSE_VAL_XTS_AES256_KEY_1 = 2
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
@@ -175,6 +179,15 @@ class ESP32S31ROM(ESP32C5ROM):
         ][key_block]
         return (self.read_reg(reg) >> shift) & 0xF
 
+    def uses_key_manager_for_flash_encryption(self):
+        return bool(
+            (
+                self.read_reg(self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG)
+                >> self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT
+            )
+            & self.FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY
+        )
+
     def is_flash_encryption_key_valid(self):
         # Need to see either an AES-128 key or two AES-256 keys
         purposes = [
@@ -184,9 +197,12 @@ class ESP32S31ROM(ESP32C5ROM):
         if any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes):
             return True
 
-        return any(p == self.PURPOSE_VAL_XTS_AES256_KEY_1 for p in purposes) and any(
+        if any(p == self.PURPOSE_VAL_XTS_AES256_KEY_1 for p in purposes) and any(
             p == self.PURPOSE_VAL_XTS_AES256_KEY_2 for p in purposes
-        )
+        ):
+            return True
+
+        return self.uses_key_manager_for_flash_encryption()
 
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)

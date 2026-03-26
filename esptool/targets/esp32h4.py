@@ -63,6 +63,10 @@ class ESP32H4ROM(ESP32C3ROM):
     EFUSE_FORCE_USE_KM_KEY_REG = EFUSE_BASE + 0x038
     EFUSE_FORCE_USE_KM_KEY_MASK = 0xF << 19
 
+    EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG = EFUSE_BASE + 0x038
+    EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT = 19
+    FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY = 2
+
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
@@ -193,11 +197,23 @@ class ESP32H4ROM(ESP32C3ROM):
         ][key_block]
         return (self.read_reg(reg) >> shift) & 0x1F
 
+    def uses_key_manager_for_flash_encryption(self):
+        return bool(
+            (
+                self.read_reg(self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG)
+                >> self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT
+            )
+            & self.FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY
+        )
+
     def is_flash_encryption_key_valid(self):
         # Need to see an AES-128 key
         purposes = [self.get_key_block_purpose(b) for b in range(6)]
 
-        return any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes)
+        if any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes):
+            return True
+
+        return self.uses_key_manager_for_flash_encryption()
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 40))):

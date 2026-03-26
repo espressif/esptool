@@ -195,6 +195,15 @@ class ESP32C5ROM(ESP32C6ROM):
         ][key_block]
         return (self.read_reg(reg) >> shift) & 0x1F
 
+    def uses_key_manager_for_flash_encryption(self):
+        return bool(
+            (
+                self.read_reg(self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG)
+                >> self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT
+            )
+            & self.FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY
+        )
+
     def is_flash_encryption_key_valid(self):
         # Need to see an AES-128 key
         purposes = [
@@ -204,10 +213,7 @@ class ESP32C5ROM(ESP32C6ROM):
         if any(p == self.PURPOSE_VAL_XTS_AES128_KEY for p in purposes):
             return True
 
-        return (
-            self.read_reg(self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_REG)
-            >> self.EFUSE_FORCE_USE_KEY_MANAGER_KEY_SHIFT
-        ) & self.FORCE_USE_KEY_MANAGER_VAL_XTS_AES_KEY
+        return self.uses_key_manager_for_flash_encryption()
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 29))):
