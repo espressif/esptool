@@ -1276,6 +1276,7 @@ class ESP32S31FirmwareImage(ESP32C5FirmwareImage):
     """ESP32S31 Firmware Image almost exactly the same as ESP32C5FirmwareImage"""
 
     ROM_LOADER = ESP32S31ROM
+    MMU_PAGE_SIZE_CONF = (32768, 65536, 131072, 262144)
 
 
 ESP32S31ROM.BOOTLOADER_IMAGE = ESP32S31FirmwareImage
