@@ -142,6 +142,7 @@ class USBJTAGSerialReset(ResetStrategy):
         self._setDTR(False)
         self._setRTS(False)  # Chip out of reset
 
+
 class CP2102CReset(ResetStrategy):
     """
     Custom reset sequence, which is required when the device is connecting via
@@ -160,6 +161,7 @@ class CP2102CReset(ResetStrategy):
         self._setDTR(True)  # IO0=LOW
         self._setRTS(False)  # EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
+
 
 class HardReset(ResetStrategy):
     """
