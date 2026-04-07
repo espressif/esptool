@@ -24,6 +24,7 @@ from .reset import (
     USBJTAGSerialReset,
     UnixTightReset,
     CP2102CReset,
+    CP2102CHardReset,
 )
 from .util import (
     FatalError,
@@ -1838,7 +1839,10 @@ class ESPLoader:
         if cfg_custom_hard_reset_sequence is not None:
             CustomReset(self._port, cfg_custom_hard_reset_sequence)()
         else:
-            HardReset(self._port, uses_usb)()
+            if self._get_pid() == self.CP2102C_PID:
+                CP2102CHardReset(self._port)()
+            else:
+                HardReset(self._port, uses_usb)()
 
     def soft_reset(self, stay_in_bootloader):
         if not self.IS_STUB:
