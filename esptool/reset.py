@@ -155,11 +155,11 @@ class CP2102CReset(ResetStrategy):
     """
 
     def reset(self):
-        self._setDTR(False)  # IO0=HIGH
-        self._setRTS(True)  # EN=LOW, chip in reset
+        self._setDTR(False)
+        self._setRTS(True)
         time.sleep(0.1)
-        self._setDTR(True)  # IO0=LOW
-        self._setRTS(False)  # EN=HIGH, chip out of reset
+        self._setDTR(True)
+        self._setRTS(False)
         time.sleep(self.reset_delay)
 
 
@@ -185,6 +185,20 @@ class HardReset(ResetStrategy):
             time.sleep(0.1)
             self._setRTS(False)
 
+
+class CP2102CHardReset(ResetStrategy):
+    """
+    Hard reset sequence for CP2102C bridges.
+    """
+
+    def reset(self):
+        self._setDTRandRTS(False, True)
+        time.sleep(0.1)
+        self._setDTRandRTS(True, True)
+        # Workaround for hardware flow control:
+        # We must give the chip some time to produce so much data
+        # so that the hardware flow control does not put RTS high again
+        time.sleep(1.5)
 
 class CustomReset(ResetStrategy):
     """
