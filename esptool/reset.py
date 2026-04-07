@@ -142,6 +142,24 @@ class USBJTAGSerialReset(ResetStrategy):
         self._setDTR(False)
         self._setRTS(False)  # Chip out of reset
 
+class CP2102CReset(ResetStrategy):
+    """
+    Custom reset sequence, which is required when the device is connecting via
+    a CP2102C USB-to-UART bridge.
+    The only difference: Do not set DTR to HIGH at the end of the sequence.
+    This is a workaround specifically for the CP2102C, which has hardware flow
+    control always enabled and pulls RTS low when it receives data on RX, which
+    resets the device. By keeping DTR low, we avoid the reset when using the
+    standard DTR/RTS to BOOT/RESET circuitry.
+    """
+
+    def reset(self):
+        self._setDTR(False)  # IO0=HIGH
+        self._setRTS(True)  # EN=LOW, chip in reset
+        time.sleep(0.1)
+        self._setDTR(True)  # IO0=LOW
+        self._setRTS(False)  # EN=HIGH, chip out of reset
+        time.sleep(self.reset_delay)
 
 class HardReset(ResetStrategy):
     """

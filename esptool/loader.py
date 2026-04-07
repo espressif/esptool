@@ -23,6 +23,7 @@ from .reset import (
     HardReset,
     UnixTightReset,
     USBJTAGSerialReset,
+    CP2102CReset,
 )
 from .util import (
     FatalError,
@@ -373,6 +374,7 @@ class ESPLoader:
     ESPRESSIF_VID = 0x303A
 
     USB_JTAG_SERIAL_PID = 0x1001
+    CP2102C_PID = 0xEA64
 
     # Chip IDs that are no longer supported by esptool
     UNSUPPORTED_CHIPS = {
@@ -811,6 +813,9 @@ class ESPLoader:
         # USB-JTAG/Serial mode
         if mode == "usb-reset" or self.get_usb_vid_pid()[1] == self.USB_JTAG_SERIAL_PID:
             return (USBJTAGSerialReset(self._port),)
+
+        if self._get_pid() == self.CP2102C_PID:
+            return (CP2102CReset(self._port),)
 
         # USB-to-Serial bridge
         if os.name != "nt" and not self._port.name.startswith("rfc2217:"):
