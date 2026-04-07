@@ -150,13 +150,16 @@ class USBJTAGSerialReset(ResetStrategy):
         self._setDTR(False)
         self._setRTS(False)  # Chip out of reset
 
+
 class HardReset(ResetStrategy):
     """
     Reset sequence for hard resetting the chip.
     Can be used to reset out of the bootloader or to restart a running app.
     """
 
-    def __init__(self, port, uses_usb=False, reset_delay=DEFAULT_RESET_DELAY, flow_control=False):
+    def __init__(
+        self, port, uses_usb=False, reset_delay=DEFAULT_RESET_DELAY, flow_control=False
+    ):
         super().__init__(port, reset_delay, flow_control)
         self.uses_usb = uses_usb
 
@@ -181,6 +184,7 @@ class HardReset(ResetStrategy):
             # Give the target time to emit enough data so RTS doesn't toggle
             # back during the most fragile part of boot.
             time.sleep(FLOW_CONTROL_HOLD_TIME)
+
 
 class CustomReset(ResetStrategy):
     """
