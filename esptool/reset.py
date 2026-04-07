@@ -25,14 +25,16 @@ if os.name != "nt":
     TIOCM_RTS = getattr(termios, "TIOCM_RTS", 0x004)
 
 DEFAULT_RESET_DELAY = 0.05  # default time to wait before releasing boot pin after reset
+FLOW_CONTROL_HOLD_TIME = 1.5
 
 
 class ResetStrategy:
     print_once = PrintOnce(log.warning)
 
-    def __init__(self, port, reset_delay=DEFAULT_RESET_DELAY):
+    def __init__(self, port, reset_delay=DEFAULT_RESET_DELAY, flow_control=False):
         self.port = port
         self.reset_delay = reset_delay
+        self.flow_control = flow_control
 
     def __call__(self):
         """
@@ -102,7 +104,10 @@ class ClassicReset(ResetStrategy):
         self._setDTR(True)  # IO0=LOW
         self._setRTS(False)  # EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
-        self._setDTR(False)  # IO0=HIGH, done
+        if not self.flow_control:
+            # Flow control: Keep DTR high so that RTS toggling doesn't cause
+            # RESET (assuming standard reset circuitry).
+            self._setDTR(False)  # IO0=HIGH, done
 
 
 class UnixTightReset(ResetStrategy):
@@ -118,8 +123,11 @@ class UnixTightReset(ResetStrategy):
         time.sleep(0.1)
         self._setDTRandRTS(True, False)  # IO0=LOW & EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
-        self._setDTRandRTS(False, False)  # IO0=HIGH, done
-        self._setDTR(False)  # Needed in some environments to ensure IO0=HIGH
+        if not self.flow_control:
+            # Flow control: Keep DTR high so that RTS toggling doesn't cause
+            # RESET (assuming standard reset circuitry).
+            self._setDTRandRTS(False, False)  # IO0=HIGH, done
+            self._setDTR(False)  # Needed in some environments to ensure IO0=HIGH
 
 
 class USBJTAGSerialReset(ResetStrategy):
@@ -142,63 +150,37 @@ class USBJTAGSerialReset(ResetStrategy):
         self._setDTR(False)
         self._setRTS(False)  # Chip out of reset
 
-
-class CP2102CReset(ResetStrategy):
-    """
-    Custom reset sequence, which is required when the device is connecting via
-    a CP2102C USB-to-UART bridge.
-    The only difference: Do not set DTR to HIGH at the end of the sequence.
-    This is a workaround specifically for the CP2102C, which has hardware flow
-    control always enabled and pulls RTS low when it receives data on RX, which
-    resets the device. By keeping DTR low, we avoid the reset when using the
-    standard DTR/RTS to BOOT/RESET circuitry.
-    """
-
-    def reset(self):
-        self._setDTR(False)
-        self._setRTS(True)
-        time.sleep(0.1)
-        self._setDTR(True)
-        self._setRTS(False)
-        time.sleep(self.reset_delay)
-
-
 class HardReset(ResetStrategy):
     """
     Reset sequence for hard resetting the chip.
     Can be used to reset out of the bootloader or to restart a running app.
     """
 
-    def __init__(self, port, uses_usb=False):
-        super().__init__(port)
+    def __init__(self, port, uses_usb=False, reset_delay=DEFAULT_RESET_DELAY, flow_control=False):
+        super().__init__(port, reset_delay, flow_control)
         self.uses_usb = uses_usb
 
     def reset(self):
-        self._setRTS(True)  # EN->LOW
-        if self.uses_usb:
-            # Give the chip some time to come out of reset,
-            # to be able to handle further DTR/RTS transitions
-            time.sleep(0.2)
-            self._setRTS(False)
-            time.sleep(0.2)
+        if not self.flow_control:
+            self._setRTS(True)  # EN->LOW
+            if self.uses_usb:
+                # Give the chip some time to come out of reset,
+                # to be able to handle further DTR/RTS transitions
+                time.sleep(0.2)
+                self._setRTS(False)
+                time.sleep(0.2)
+            else:
+                time.sleep(0.1)
+                self._setRTS(False)
         else:
+            self._setDTR(False)
+            self._setRTS(True)
             time.sleep(0.1)
-            self._setRTS(False)
-
-
-class CP2102CHardReset(ResetStrategy):
-    """
-    Hard reset sequence for CP2102C bridges.
-    """
-
-    def reset(self):
-        self._setDTRandRTS(False, True)
-        time.sleep(0.1)
-        self._setDTRandRTS(True, True)
-        # Workaround for hardware flow control:
-        # We must give the chip some time to produce so much data
-        # so that the hardware flow control does not put RTS high again
-        time.sleep(1.5)
+            self._setRTS(True)
+            self._setDTR(True)
+            # Give the target time to emit enough data so RTS doesn't toggle
+            # back during the most fragile part of boot.
+            time.sleep(FLOW_CONTROL_HOLD_TIME)
 
 class CustomReset(ResetStrategy):
     """
