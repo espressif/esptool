@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from abc import ABC, abstractmethod
-import sys
 import os
+import sys
+from typing import ClassVar
 
 
 class TemplateLogger(ABC):
@@ -66,6 +67,8 @@ class TemplateLogger(ABC):
 
 
 class EsptoolLogger(TemplateLogger):
+    instance: ClassVar["EsptoolLogger | None"] = None
+
     ansi_red: str = ""
     ansi_yellow: str = ""
     ansi_blue: str = ""
@@ -86,21 +89,22 @@ class EsptoolLogger(TemplateLogger):
         """
         Singleton to ensure only one instance of the logger exists.
         """
-        if not hasattr(cls, "instance"):
+        if cls.instance is None:
             cls.instance = super().__new__(cls)
             cls.instance.set_verbosity("auto")
         return cls.instance
 
     @classmethod
     def _del(cls) -> None:
-        if hasattr(cls, "instance"):
-            del cls.instance
+        cls.instance = None
 
     @classmethod
     def _set_smart_features(cls, override: bool | None = None):
+        inst = cls.instance
+        assert inst is not None
         # Check for smart terminal and color support
         if override is not None:
-            cls.instance._smart_features = override
+            inst._smart_features = override
         else:
             is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
             term_supports_color = os.getenv("TERM", "").lower() in (
@@ -114,34 +118,32 @@ class EsptoolLogger(TemplateLogger):
             no_color = os.getenv("NO_COLOR", "").strip().lower() in ("1", "true", "yes")
 
             # Determine if colors should be enabled
-            cls.instance._smart_features = (
-                is_tty or term_supports_color and not no_color
-            )
+            inst._smart_features = is_tty or term_supports_color and not no_color
             # Handle Windows specifically
-            if sys.platform == "win32" and cls.instance._smart_features:
+            if sys.platform == "win32" and inst._smart_features:
                 try:
                     from colorama import init
 
                     init()  # Enable ANSI support on Windows
                 except ImportError:
-                    cls.instance._smart_features = False
+                    inst._smart_features = False
 
-        if cls.instance._smart_features:
-            cls.instance.ansi_red = "\033[1;31m"
-            cls.instance.ansi_yellow = "\033[0;33m"
-            cls.instance.ansi_blue = "\033[1;36m"
-            cls.instance.ansi_normal = "\033[0m"
-            cls.instance.ansi_clear = "\033[K"
-            cls.instance.ansi_line_up = "\033[1A"
-            cls.instance.ansi_line_clear = "\x1b[2K"
+        if inst._smart_features:
+            inst.ansi_red = "\033[1;31m"
+            inst.ansi_yellow = "\033[0;33m"
+            inst.ansi_blue = "\033[1;36m"
+            inst.ansi_normal = "\033[0m"
+            inst.ansi_clear = "\033[K"
+            inst.ansi_line_up = "\033[1A"
+            inst.ansi_line_clear = "\x1b[2K"
         else:
-            cls.instance.ansi_red = ""
-            cls.instance.ansi_yellow = ""
-            cls.instance.ansi_blue = ""
-            cls.instance.ansi_normal = ""
-            cls.instance.ansi_clear = ""
-            cls.instance.ansi_line_up = ""
-            cls.instance.ansi_line_clear = ""
+            inst.ansi_red = ""
+            inst.ansi_yellow = ""
+            inst.ansi_blue = ""
+            inst.ansi_normal = ""
+            inst.ansi_clear = ""
+            inst.ansi_line_up = ""
+            inst.ansi_line_clear = ""
 
     def print(self, *args, **kwargs):
         """
