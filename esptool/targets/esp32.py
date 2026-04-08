@@ -327,15 +327,15 @@ class ESP32ROM(ESPLoader):
         return size
 
     def _get_efuse_flash_voltage(self) -> str | None:
+        # Same decision order as espefuse esp32 EfuseClass.summary()
         efuse = self.read_reg(self.EFUSE_VDD_SPI_REG)
-        # check efuse setting
-        if efuse & (self.VDD_SPI_FORCE | self.VDD_SPI_XPD | self.VDD_SPI_TIEH):
-            return "3.3V"
-        elif efuse & (self.VDD_SPI_FORCE | self.VDD_SPI_XPD):
-            return "1.8V"
-        elif efuse & self.VDD_SPI_FORCE:
+        if not (efuse & self.VDD_SPI_FORCE):
+            return None
+        if not (efuse & self.VDD_SPI_XPD):
             return "OFF"
-        return None
+        if not (efuse & self.VDD_SPI_TIEH):
+            return "1.8V"
+        return "3.3V"
 
     def _get_rtc_cntl_flash_voltage(self) -> str | None:
         reg = self.read_reg(self.RTC_CNTL_SDIO_CONF_REG)
