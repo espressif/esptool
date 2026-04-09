@@ -71,9 +71,6 @@ class ESP32E22ROM(ESP32ROM):
 
     USES_MAGIC_VALUE = False
 
-    UARTDEV_BUF_NO = 0x3111B700  # Variable in ROM .bss which indicates the port in use
-    UARTDEV_BUF_NO_USB_OTG = 3  # The above var when USB-OTG is used
-
     USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
 
     GPIO_STRAP_REG = 0xC310D000
@@ -212,11 +209,11 @@ class ESP32E22ROM(ESP32ROM):
 
     def uses_usb_otg(self):
         """
-        Check the UARTDEV_BUF_NO register to see if USB-OTG console is being used
+        True if the host sees this port as Espressif USB OTG (VID/PID match).
         """
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
-        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_OTG
+        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
 
     def check_spi_connection(self, spi_connection):  # TODO: Check pins
         if not set(spi_connection).issubset(set(range(0, 53))):

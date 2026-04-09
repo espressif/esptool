@@ -101,9 +101,6 @@ class EmulateEfuseControllerBase(ABC):
         blk = self.Blocks.get(self.Blocks.BLOCKS[block])
         self.write_reg(blk.wr_addr + (4 * n), value)
 
-    def _get_pid(self) -> int:
-        return -1
-
     """ << esptool method end """
 
     def handle_writing_event(self, addr: int, value: int) -> None:

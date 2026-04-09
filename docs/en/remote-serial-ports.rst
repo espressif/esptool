@@ -11,6 +11,9 @@ It is possible to connect to any networked remote serial port that supports `RFC
 
 Custom baud rates and DTR/RTS automatic resetting are supported over the RFC2217 protocol, the same as for a local serial port.
 
+.. note::
+    **USB-OTG and USB-Serial-JTAG are not supported** when the esptool client uses a remote port (``rfc2217://…`` or ``socket://…``). Esptool distinguishes these native USB interfaces from UART bridges using the USB vendor and product ID of the **local** serial device. Remote URLs do not expose those IDs to the client, so esptool cannot apply behavior specific to USB-OTG or USB-Serial-JTAG.
+
 .. _rfc2217_server:
 
 Pyserial Example Servers

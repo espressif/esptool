@@ -71,18 +71,6 @@ class ESP32C3ROM(ESP32ROM):
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
 
-    # Variable in ROM .bss which indicates the port in use
-    @property
-    def UARTDEV_BUF_NO(self):
-        """Variable .bss.UartDev.buff_uart_no in ROM .bss
-        which indicates the port in use.
-        """
-        BUF_UART_NO_OFFSET = 24
-        BSS_UART_DEV_ADDR = 0x3FCDF064 if self.get_chip_revision() < 101 else 0x3FCDF060
-        return BSS_UART_DEV_ADDR + BUF_UART_NO_OFFSET
-
-    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 3  # The above var when USB-JTAG/Serial is used
-
     RTCCNTL_BASE_REG = 0x60008000
     RTC_CNTL_SWD_CONF_REG = RTCCNTL_BASE_REG + 0x00AC
     RTC_CNTL_SWD_AUTO_FEED_EN = 1 << 31
@@ -230,14 +218,6 @@ class ESP32C3ROM(ESP32ROM):
 
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)
-
-    def uses_usb_jtag_serial(self):
-        """
-        Check the UARTDEV_BUF_NO register to see if USB-JTAG/Serial is being used
-        """
-        if self.secure_download_mode:
-            return False  # Can't detect USB-JTAG/Serial in secure download mode
-        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL
 
     def disable_watchdogs(self):
         # When USB-JTAG/Serial is used, the RTC WDT and SWD watchdog are not reset

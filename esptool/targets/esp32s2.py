@@ -74,9 +74,6 @@ class ESP32S2ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
-    UARTDEV_BUF_NO = 0x3FFFFD14  # Variable in ROM .bss which indicates the port in use
-    UARTDEV_BUF_NO_USB_OTG = 2  # Value of the above indicating that USB-OTG is in use
-
     USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
 
     GPIO_STRAP_REG = 0x3F404038
@@ -274,11 +271,11 @@ class ESP32S2ROM(ESP32ROM):
 
     def uses_usb_otg(self):
         """
-        Check the UARTDEV_BUF_NO register to see if USB-OTG console is being used
+        True if the host sees this port as Espressif USB OTG (VID/PID match).
         """
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
-        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_OTG
+        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
 
     def _post_connect(self):
         if self.uses_usb_otg():

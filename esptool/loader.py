@@ -364,7 +364,9 @@ class ESPLoader:
     # instead of the ROM bootloader
     sync_stub_detected = False
 
-    # Device PIDs
+    # Device VIDs, PIDs
+    ESPRESSIF_VID = 0x303A
+
     USB_JTAG_SERIAL_PID = 0x1001
 
     # Chip IDs that are no longer supported by esptool
@@ -405,7 +407,7 @@ class ESPLoader:
         # Device-and-runtime-specific cache
         self.cache = {
             "flash_id": None,
-            "uart_no": None,
+            "usb_vid": None,
             "usb_pid": None,
             "security_info": None,
         }
@@ -673,25 +675,25 @@ class ESPLoader:
             val, _ = self.command()
             self.sync_stub_detected &= val == 0
 
-    def _get_pid(self):
-        if self.cache["usb_pid"] is not None:
-            return self.cache["usb_pid"]
+    def get_usb_vid_pid(self):
+        if self.cache["usb_vid"] is not None and self.cache["usb_pid"] is not None:
+            return self.cache["usb_vid"], self.cache["usb_pid"]
 
         if list_ports is None:
             log.print(
                 "\nListing all serial ports is currently not available. "
-                "Can't get device PID."
+                "Can't get device VID/PID."
             )
-            return
+            return None, None
         active_port = self._port.port
 
         # Pyserial only identifies regular ports, URL handlers are not supported
         if not active_port.lower().startswith(("com", "/dev/")):
             log.print(
-                "\nDevice PID identification is only supported on "
+                "\nDevice VID/PID identification is only supported on "
                 "COM and /dev/ serial ports."
             )
-            return
+            return None, None
         # Return the real path if the active port is a symlink
         if active_port.startswith("/dev/") and os.path.islink(active_port):
             active_port = os.path.realpath(active_port)
@@ -704,12 +706,14 @@ class ESPLoader:
         ports = list_ports.comports()
         for p in ports:
             if p.device in active_ports:
+                self.cache["usb_vid"] = p.vid
                 self.cache["usb_pid"] = p.pid
-                return p.pid
+                return p.vid, p.pid
         log.print(
-            f"\nFailed to get PID of a device on {active_port}, "
+            f"\nFailed to get VID/PID of a device on {active_port}, "
             "using standard reset sequence."
         )
+        return None, None
 
     def _connect_attempt(self, reset_strategy, mode="default-reset"):
         """A single connection attempt"""
@@ -800,7 +804,7 @@ class ESPLoader:
             delay = extra_delay = 7
 
         # USB-JTAG/Serial mode
-        if mode == "usb-reset" or self._get_pid() == self.USB_JTAG_SERIAL_PID:
+        if mode == "usb-reset" or self.get_usb_vid_pid()[1] == self.USB_JTAG_SERIAL_PID:
             return (USBJTAGSerialReset(self._port),)
 
         # USB-to-Serial bridge
@@ -1221,23 +1225,13 @@ class ESPLoader:
             )
         return chip_id
 
-    def get_uart_no(self):
-        """
-        Read the UARTDEV_BUF_NO register to get the number of the currently used console
-        """
-        # Some ESP chips do not have this register
-        try:
-            if self.cache["uart_no"] is None:
-                self.cache["uart_no"] = self.read_reg(self.UARTDEV_BUF_NO) & 0xFF
-            return self.cache["uart_no"]
-        except AttributeError:
-            return None
-
     def uses_usb_jtag_serial(self):
         """
-        Check if the chip uses USB-Serial/JTAG mode.
+        True if the host sees this port as Espressif USB Serial/JTAG (VID/PID match).
         """
-        return False
+        if self.secure_download_mode:
+            return False  # can't detect USB-JTAG/Serial in secure download mode
+        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.USB_JTAG_SERIAL_PID)
 
     def uses_usb_otg(self):
         """

@@ -1873,7 +1873,10 @@ class TestUSBMode(EsptoolTestCase):
 
 
 @pytest.mark.flaky(reruns=5)
-@pytest.mark.skipif(arg_preload_port is not False, reason="USB-to-UART bridge only")
+@pytest.mark.skipif(
+    "ESPTOOL_TEST_USB_OTG" in os.environ or arg_preload_port is not False,
+    reason="USB-to-UART bridge only",
+)
 @pytest.mark.skipif(os.name == "nt", reason="Linux/MacOS only")
 class TestVirtualPort(TestAutoDetect):
     def test_auto_detect_virtual_port(self):

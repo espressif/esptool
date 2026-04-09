@@ -2499,7 +2499,7 @@ def run_stub(esp: ESPLoader, plugins: list[str] | None = None) -> ESPLoader:
             return esp.run_stub(stub)
         except Exception:
             # The CH9102 bridge (PID: 0x55D4) can have issues on MacOS
-            if sys.platform == "darwin" and esp._get_pid() == 0x55D4:
+            if sys.platform == "darwin" and esp.get_usb_vid_pid()[1] == 0x55D4:
                 log.print()
                 log.note(
                     "If issues persist, "

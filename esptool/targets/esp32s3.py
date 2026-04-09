@@ -77,10 +77,6 @@ class ESP32S3ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
-    UARTDEV_BUF_NO = 0x3FCEF14C  # Variable in ROM .bss which indicates the port in use
-    UARTDEV_BUF_NO_USB_OTG = 3  # The above var when USB-OTG is used
-    UARTDEV_BUF_NO_USB_JTAG_SERIAL = 4  # The above var when USB-JTAG/Serial is used
-
     RTCCNTL_BASE_REG = 0x60008000
     RTC_CNTL_SWD_CONF_REG = RTCCNTL_BASE_REG + 0x00B4
     RTC_CNTL_SWD_AUTO_FEED_EN = 1 << 31
@@ -313,19 +309,11 @@ class ESP32S3ROM(ESP32ROM):
 
     def uses_usb_otg(self):
         """
-        Check the UARTDEV_BUF_NO register to see if USB-OTG console is being used
+        True if the host sees this port as Espressif USB OTG (VID/PID match).
         """
         if self.secure_download_mode:
             return False  # can't detect native USB in secure download mode
-        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_OTG
-
-    def uses_usb_jtag_serial(self):
-        """
-        Check the UARTDEV_BUF_NO register to see if USB-JTAG/Serial is being used
-        """
-        if self.secure_download_mode:
-            return False  # can't detect USB-JTAG/Serial in secure download mode
-        return self.get_uart_no() == self.UARTDEV_BUF_NO_USB_JTAG_SERIAL
+        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
 
     def disable_watchdogs(self):
         # When USB-JTAG/Serial is used, the RTC WDT and SWD watchdog are not reset
