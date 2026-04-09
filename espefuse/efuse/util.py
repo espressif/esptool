@@ -6,10 +6,29 @@
 
 import esptool
 
+from bitstring import Bits
+
 
 def hexify(bitstring, separator=""):
     as_bytes = tuple(b for b in bitstring)
     return separator.join((f"{b:02x}") for b in as_bytes)
+
+
+def json_raw_value_hex(efuse_type: str, bits: Bits) -> str:
+    """``0x``-prefixed lowercase hex string for JSON ``raw_value``,
+    same style for all field types.
+
+    For ``bytes`` fields, uses the same byte order as the text/JSON ``value`` hex
+    (``bits.bytes`` reversed). For other types, encodes the field bit pattern with
+    leading zero bits padded to a nibble boundary so ``Bits.hex`` is defined.
+    """
+    if efuse_type.startswith("bytes"):
+        return "0x" + str(bits.bytes[::-1].hex())
+    b = bits if isinstance(bits, Bits) else Bits(bits)
+    pad = (4 - (b.len % 4)) % 4
+    if pad:
+        b = Bits(pad) + b
+    return "0x" + str(b.hex)
 
 
 def popcnt(b):

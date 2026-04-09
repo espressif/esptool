@@ -25,7 +25,9 @@
 #       because of a long delay (~6 seconds) after resetting the FPGA.
 #       This is not necessary when using other images than ESP32
 
+import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -261,6 +263,33 @@ class TestReadCommands(EfuseTestCase):
 
     def test_summary_json(self):
         self.espefuse_py("summary --format json")
+
+    def test_summary_json_raw_value(self):
+        output = self.espefuse_py("summary --format json")
+        start = output.find("{")
+        assert start >= 0, "JSON object not found in summary --format json output"
+        data = json.loads(output[start:])
+        assert data
+        hex_pat = re.compile(r"^0x[0-9a-f]+$")
+        for name, entry in data.items():
+            assert "raw_value" in entry, f"missing raw_value for {name!r}"
+            raw = entry["raw_value"]
+            assert isinstance(raw, str) and hex_pat.match(raw), (
+                f"raw_value for {name!r} must be a 0x-prefixed lowercase hex string, "
+                f"got {raw!r}"
+            )
+            efuse_type = entry["efuse_type"]
+            hex_digits = len(raw) - 2
+            if efuse_type.startswith("bytes"):
+                assert hex_digits == 2 * (entry["bit_len"] // 8), (
+                    f"bytes field {name!r}: raw_value length mismatch "
+                    f"(bit_len={entry['bit_len']}, raw={raw!r})"
+                )
+            else:
+                assert hex_digits == (entry["bit_len"] + 3) // 4, (
+                    f"non-bytes field {name!r}: raw_value nibble count "
+                    f"(bit_len={entry['bit_len']}, raw={raw!r})"
+                )
 
     def test_summary_filter(self):
         self.espefuse_py("summary MAC")
