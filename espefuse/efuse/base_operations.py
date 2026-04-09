@@ -356,6 +356,9 @@ def summary(esp, efuses, args):
                 json_efuse[e.name] = {
                     "name": e.name,
                     "value": base_value if readable else value,
+                    "raw_value": util.json_raw_value_hex(
+                        e.efuse_type, e.get_bitstring()
+                    ),
                     "readable": readable,
                     "writeable": writeable,
                     "description": e.description,

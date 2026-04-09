@@ -14,6 +14,8 @@ Optional arguments:
 - ``--file`` - File to save the efuse summary. Usage ``--file efuses.json``.
 - List of eFuses to filter. For more information, refer to the :ref:`Filtering eFuses <filtering-eFuses>` section.
 
+.. _text-format-summary:
+
 Text Format Summary
 -------------------
 
@@ -54,6 +56,12 @@ Json Format Summary
 
 The json representation of eFuses for the ESP32 chip is shown below.
 
+Each field includes ``raw_value``: a lowercase hexadecimal string of the fuse bits
+with a ``0x`` prefix. The format is the same for every field: non-``bytes`` fields
+are padded with leading zero bits to a nibble (4-bit) boundary; ``bytes`` fields
+use the same byte order as the ``value`` hex (see the :ref:`text format summary <text-format-summary>`),
+as a continuous digit string after the ``0x`` prefix (no spaces).
+
 .. code-block:: none
 
     > espefuse.py summary --format json
@@ -67,6 +75,7 @@ The json representation of eFuses for the ESP32 chip is shown below.
             "efuse_type": "bool",
             "name": "ABS_DONE_0",
             "pos": 4,
+            "raw_value": "0x0",
             "readable": true,
             "value": false,
             "word": 6,
@@ -80,6 +89,7 @@ The json representation of eFuses for the ESP32 chip is shown below.
             "efuse_type": "bytes:32",
             "name": "BLOCK1",
             "pos": 0,
+            "raw_value": "0x0000000000000000000000000000000000000000000000000000000000000000",
             "readable": true,
             "value": "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
             "word": 0,
@@ -89,11 +99,12 @@ The json representation of eFuses for the ESP32 chip is shown below.
         "CODING_SCHEME": {
             "bit_len": 2,
             "block": 0,
-            "category": "efuse",
+            "category": "config",
             "description": "Efuse variable block length scheme",
             "efuse_type": "uint:2",
             "name": "CODING_SCHEME",
             "pos": 0,
+            "raw_value": "0x0",
             "readable": true,
             "value": "NONE (BLK1-3 len=256 bits)",
             "word": 6,
