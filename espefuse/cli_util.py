@@ -6,17 +6,16 @@ from typing import Any
 
 import rich_click as click
 from click.parser import OptionParser, ParsingState, _unpack_args
-from esptool.cli_util import Group as EsptoolGroup
-from esptool.logger import log
 
 from espefuse.efuse_interface import (
     DEPRECATED_COMMANDS,
-    init_commands,
     SUPPORTED_BURN_COMMANDS,
-    SUPPORTED_READ_COMMANDS,
     SUPPORTED_COMMANDS,
+    SUPPORTED_READ_COMMANDS,
+    init_commands,
 )
-
+from esptool.cli_util import Group as EsptoolGroup
+from esptool.logger import log
 
 click.rich_click.USE_CLICK_SHORT_HELP = True
 click.rich_click.COMMAND_GROUPS = {

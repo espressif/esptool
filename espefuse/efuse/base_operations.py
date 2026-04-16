@@ -4,24 +4,22 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from abc import ABC, abstractmethod
 import io
-import os
 import json
+import os
 import sys
-from typing import Any, BinaryIO, TextIO, cast
+from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import Any, BinaryIO, TextIO, cast
 
-import espsecure
 import rich_click as click
-
 from bitstring import BitStream
 
+import espsecure
 import esptool
 from esptool.logger import log
 
-from . import base_fields
-from . import util
+from . import base_fields, util
 from .emulate_efuse_controller_base import EmulateEfuseControllerBase
 
 

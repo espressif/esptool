@@ -40,10 +40,35 @@ import shlex
 import sys
 import time
 import traceback
-import rich_click as click
 import typing as t
+from itertools import chain, cycle, repeat
 
+import rich_click as click
+import serial
+
+from esptool.cli_util import (
+    AddrFilenameArg,
+    AddrFilenamePairType,
+    AnyIntType,
+    AutoChunkSizeType,
+    AutoHex2BinType,
+    AutoSizeType,
+    BaudRateType,
+    ChipType,
+    DiffWithType,
+    Group,
+    MutuallyExclusiveOption,
+    OptionEatAll,
+    ResetModeType,
+    SerialPortType,
+    SpiConnectionType,
+    get_port_list,
+    parse_port_filters,
+    parse_size_arg,
+)
 from esptool.cmds import (
+    NAND_BLOCK_COUNT,
+    attach_flash,
     chip_id,
     detect_chip,
     detect_flash_size,
@@ -52,14 +77,13 @@ from esptool.cmds import (
     elf2image,
     erase_flash,
     erase_region,
-    attach_flash,
     flash_id,
-    read_flash_sfdp,
     get_security_info,
     image_info,
     load_ram,
     merge_bin,
     read_flash,
+    read_flash_sfdp,
     read_flash_status,
     read_mac,
     read_mem,
@@ -73,14 +97,13 @@ from esptool.cmds import (
     write_flash_status,
     write_mem,
     write_nand_spare,
-    NAND_BLOCK_COUNT,
 )
 from esptool.config import load_config_file
 from esptool.loader import (
     DEFAULT_CONNECT_ATTEMPTS,
     DEFAULT_OPEN_PORT_ATTEMPTS,
-    StubFlasher,
     ESPLoader,
+    StubFlasher,
 )
 from esptool.logger import log
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
@@ -89,30 +112,6 @@ from esptool.util import (
     NotImplementedInROMError,
     check_deprecated_py_suffix,
     flash_size_bytes,
-)
-from itertools import chain, cycle, repeat
-
-import serial
-
-from esptool.cli_util import (
-    AutoSizeType,
-    BaudRateType,
-    DiffWithType,
-    Group,
-    AddrFilenameArg,
-    AutoChunkSizeType,
-    ChipType,
-    AnyIntType,
-    OptionEatAll,
-    MutuallyExclusiveOption,
-    ResetModeType,
-    SpiConnectionType,
-    SerialPortType,
-    AutoHex2BinType,
-    AddrFilenamePairType,
-    parse_port_filters,
-    parse_size_arg,
-    get_port_list,
 )
 
 # Show arguments in the help output, this was default in argparse

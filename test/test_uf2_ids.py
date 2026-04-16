@@ -1,10 +1,8 @@
 import json
 
-from conftest import need_to_install_package_err
-
 import pytest
-
 import requests
+from conftest import need_to_install_package_err
 
 try:
     from esptool.targets import CHIP_DEFS

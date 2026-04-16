@@ -4,20 +4,20 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from abc import ABC, abstractmethod
 import binascii
 import sys
 import typing as t
+from abc import ABC, abstractmethod
 
-from bitstring import BitArray, BitStream, Bits, CreationError
+from bitstring import BitArray, Bits, BitStream, CreationError
 
+import esptool
 from espefuse.efuse.mem_definition_base import (
     BlockDefinition,
     EfuseBlocksBase,
     EfuseRegistersBase,
     Field,
 )
-import esptool
 from esptool.logger import log
 
 from . import util

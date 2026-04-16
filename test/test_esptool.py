@@ -31,8 +31,9 @@ import tempfile
 from io import StringIO
 from socket import AF_INET, SOCK_STREAM, socket
 from time import monotonic, sleep
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Link command line options --port, --chip, --baud, --with-trace, and --preload-port
 from conftest import (
@@ -44,21 +45,18 @@ from conftest import (
     need_to_install_package_err,
 )
 
-
-import pytest
-
 try:
-    import esptool
     import espefuse
+    import esptool
     from esptool.cmds import (
+        attach_flash,
         detect_chip,
         erase_flash,
-        attach_flash,
         flash_id,
         image_info,
         merge_bin,
-        read_flash_sfdp,
         read_flash,
+        read_flash_sfdp,
         read_mac,
         reset_chip,
         verify_flash,
@@ -69,7 +67,6 @@ except ImportError:
     need_to_install_package_err()
 
 import serial
-
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 

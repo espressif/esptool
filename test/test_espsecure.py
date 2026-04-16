@@ -10,9 +10,8 @@ import subprocess
 import sys
 import tempfile
 
-from conftest import need_to_install_package_err
-
 import pytest
+from conftest import need_to_install_package_err
 
 try:
     import espsecure

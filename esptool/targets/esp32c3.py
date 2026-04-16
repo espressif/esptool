@@ -6,10 +6,10 @@
 import struct
 from time import sleep
 
-from .esp32 import ESP32ROM
 from ..loader import ESPLoader, StubMixin
 from ..logger import log
 from ..util import FatalError, NotSupportedError
+from .esp32 import ESP32ROM
 
 
 class ESP32C3ROM(ESP32ROM):

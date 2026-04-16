@@ -7,20 +7,19 @@ import sys
 import rich_click as click
 
 import esptool
-from esptool.cli_util import BaudRateType, ChipType, ResetModeType, SerialPortType
-from esptool.logger import log
-
 from espefuse.cli_util import Group
 from espefuse.efuse.base_operations import BaseCommands
 from espefuse.efuse_interface import (
     DEPRECATED_COMMANDS,
+    SUPPORTED_BURN_COMMANDS,
+    SUPPORTED_CHIPS,
+    SUPPORTED_COMMANDS,
+    SUPPORTED_READ_COMMANDS,
     get_esp,
     init_commands,
-    SUPPORTED_COMMANDS,
-    SUPPORTED_BURN_COMMANDS,
-    SUPPORTED_READ_COMMANDS,
-    SUPPORTED_CHIPS,
 )
+from esptool.cli_util import BaudRateType, ChipType, ResetModeType, SerialPortType
+from esptool.logger import log
 from esptool.util import check_deprecated_py_suffix
 
 __all__ = [

@@ -1,4 +1,5 @@
 import os
+
 from setuptools import setup
 
 if os.name != "nt":

@@ -8,16 +8,15 @@ import struct
 import sys
 import time
 
+import reedsolo
 from bitstring import BitArray
-from esptool.logger import log
 
 import esptool
+from esptool.logger import log
 
-import reedsolo
-
-from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 from .. import base_fields
 from ..mem_definition_base import Field
+from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 
 
 class EfuseBlock(base_fields.EfuseBlockBase):

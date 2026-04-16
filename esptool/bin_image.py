@@ -25,8 +25,8 @@ from .targets import (
     ESP32C61ROM,
     ESP32E22ROM,
     ESP32H2ROM,
-    ESP32H21ROM,
     ESP32H4ROM,
+    ESP32H21ROM,
     ESP32P4ROM,
     ESP32ROM,
     ESP32S2ROM,
@@ -34,7 +34,7 @@ from .targets import (
     ESP32S31ROM,
     ESP8266ROM,
 )
-from .util import FatalError, byte, ImageSource, get_bytes, pad_to
+from .util import FatalError, ImageSource, byte, get_bytes, pad_to
 
 
 def align_file_position(f, size):

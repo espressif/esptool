@@ -2,7 +2,6 @@
 # used by esptool, espefuse, and espsecure
 
 import pytest
-
 import reedsolo
 
 

@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 import configparser
-from dataclasses import dataclass
-import rich_click as click
 import hashlib
 import operator
 import os
@@ -11,20 +9,20 @@ import struct
 import sys
 import tempfile
 import zlib
+from dataclasses import dataclass
 from typing import IO
 
+import rich_click as click
 from cryptography import exceptions
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, utils
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.utils import int_to_bytes
 
+import esptool
 from esptool.cli_util import OptionEatAll
 from esptool.logger import log
-
-import esptool
 from esptool.util import check_deprecated_py_suffix
 
 SIG_BLOCK_MAGIC = 0xE7

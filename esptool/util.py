@@ -3,10 +3,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 from __future__ import annotations
+
 import os
 import re
 import struct
-
 from typing import IO, TypeAlias
 
 # Define a custom type for the input
@@ -131,6 +131,7 @@ def get_key_from_value(dict, val):
 def check_deprecated_py_suffix(module_name: str) -> None:
     """Check if called with deprecated .py suffix"""
     import sys
+
     from esptool import log
 
     script_name = sys.argv[0] if sys.argv else ""

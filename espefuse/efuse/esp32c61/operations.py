@@ -6,14 +6,13 @@
 
 import io
 from typing import BinaryIO
-from esptool.logger import log
+
 import rich_click as click
 
 import espsecure
 import esptool
+from esptool.logger import log
 
-from . import fields
-from .mem_definition import EfuseDefineBlocks
 from .. import util
 from ..base_operations import (
     BaseCommands,
@@ -23,6 +22,8 @@ from ..base_operations import (
     add_show_sensitive_info_option,
     protect_options,
 )
+from . import fields
+from .mem_definition import EfuseDefineBlocks
 
 
 class ESP32C61Commands(BaseCommands):

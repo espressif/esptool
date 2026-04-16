@@ -10,10 +10,9 @@ import time
 import esptool
 from esptool import log
 
-from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
-from .. import base_fields
-from .. import util
+from .. import base_fields, util
 from ..mem_definition_base import Field
+from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 
 
 class EfuseBlock(base_fields.EfuseBlockBase):

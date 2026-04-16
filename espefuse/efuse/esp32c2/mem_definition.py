@@ -5,8 +5,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import copy
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 
 import yaml
 

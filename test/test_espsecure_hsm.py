@@ -11,8 +11,9 @@ import tempfile
 from conftest import need_to_install_package_err
 
 try:
-    import espsecure
     import pkcs11
+
+    import espsecure
 except ImportError:
     need_to_install_package_err()
 

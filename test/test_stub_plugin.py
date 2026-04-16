@@ -341,7 +341,7 @@ class TestNANDBadBlockPolicy:
     def test_chip_pfail_bypasses_loader_retry(self):
         """write_flash_nand_block retries transport errors but NANDProgramFailed
         must bypass the retry entirely (chip says cell is bad — no point retrying)."""
-        from esptool.loader import ESPLoader, WRITE_BLOCK_ATTEMPTS
+        from esptool.loader import WRITE_BLOCK_ATTEMPTS, ESPLoader
         from esptool.util import FatalError, NANDProgramFailed
 
         # NANDProgramFailed: must surface on the very first attempt.

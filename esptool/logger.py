@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from abc import ABC, abstractmethod
 import os
 import sys
+from abc import ABC, abstractmethod
 from typing import ClassVar
 
 

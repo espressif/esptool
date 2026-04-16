@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 
-from .esp32h2 import ESP32H2ROM
 from ..loader import StubMixin
 from ..logger import log
 from ..util import FatalError
+from .esp32h2 import ESP32H2ROM
 
 
 class ESP32H21ROM(ESP32H2ROM):

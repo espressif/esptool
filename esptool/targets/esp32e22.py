@@ -5,10 +5,10 @@
 
 import struct
 
-from .esp32 import ESP32ROM
 from ..loader import ESPLoader, StubMixin
 from ..logger import log
 from ..util import FatalError, NotSupportedError
+from .esp32 import ESP32ROM
 
 
 class ESP32E22ROM(ESP32ROM):

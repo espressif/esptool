@@ -4,13 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 import os
 import threading
-from esptool.reset import (
-    ClassicReset,
-    CustomReset,
-    DEFAULT_RESET_DELAY,
-    HardReset,
-    UnixTightReset,
-)
+
 import serial
 import serial.rfc2217
 from serial.rfc2217 import (
@@ -23,6 +17,13 @@ from serial.rfc2217 import (
 )
 
 from esptool.config import load_config_file
+from esptool.reset import (
+    DEFAULT_RESET_DELAY,
+    ClassicReset,
+    CustomReset,
+    HardReset,
+    UnixTightReset,
+)
 
 cfg, _ = load_config_file(verbose=True)
 cfg = cfg["esptool"]

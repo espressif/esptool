@@ -4,14 +4,14 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from bitstring import BitStream
 import reedsolo
+from bitstring import BitStream
 
 from espefuse.efuse.mem_definition_base import BlockDefinition
-
-from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
-from ..emulate_efuse_controller_base import EmulateEfuseControllerBase
 from esptool import FatalError
+
+from ..emulate_efuse_controller_base import EmulateEfuseControllerBase
+from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineRegisters
 
 
 class EmulateEfuseController(EmulateEfuseControllerBase):

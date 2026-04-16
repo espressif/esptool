@@ -12,14 +12,13 @@ from functools import partial
 
 IMAGES_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "images")
 
+import pytest
 from conftest import need_to_install_package_err
 
-import pytest
-
 try:
-    from esptool.util import byte
-    from esptool.uf2_writer import UF2Writer
     from esptool.targets import CHIP_DEFS
+    from esptool.uf2_writer import UF2Writer
+    from esptool.util import byte
 except ImportError:
     need_to_install_package_err()
 

@@ -1,17 +1,15 @@
 import hashlib
+import math
 import os
 import os.path
 import re
 import struct
 import subprocess
 import sys
-import math
-
-from conftest import need_to_install_package_err
-
-from elftools.elf.elffile import ELFFile
 
 import pytest
+from conftest import need_to_install_package_err
+from elftools.elf.elffile import ELFFile
 
 TEST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "elf2image")
 

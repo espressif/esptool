@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from esptool.logger import log
-
 from pkcs11.exceptions import (
     AnotherUserAlreadyLoggedIn,
     ArgumentsBad,
@@ -17,6 +15,7 @@ from pkcs11.exceptions import (
     SessionClosed,
 )
 
+from esptool.logger import log
 
 try:
     # AlreadyInitialized is not available since python-pkcs11 9.0, as multiple

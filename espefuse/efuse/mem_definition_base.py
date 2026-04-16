@@ -6,6 +6,7 @@
 
 from collections import Counter
 from dataclasses import dataclass, field
+
 import esptool
 from esptool.logger import log
 

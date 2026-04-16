@@ -7,12 +7,14 @@ import configparser
 import hashlib
 import os
 import sys
-from esptool.logger import log
 from getpass import getpass
 from typing import IO
 
+from esptool.logger import log
+
 try:
     import pkcs11
+
     from .exceptions import handle_exceptions
 except ImportError:
     raise ImportError(

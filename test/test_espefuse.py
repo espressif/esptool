@@ -42,8 +42,9 @@ TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 IMAGES_DIR = os.path.join(TEST_DIR, "images", "efuse")
 S_IMAGES_DIR = os.path.join(TEST_DIR, "secure_images")
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 try:
     from espefuse import SUPPORTED_CHIPS
@@ -2082,9 +2083,9 @@ class TestPublicAPI(EfuseTestCase):
 
     def test_close_port_on_init_failure(self):
         """Test that port is closed when init_commands fails during get_efuses."""
+        import esptool
         from espefuse import init_commands
         from espefuse.efuse.base_operations import BaseCommands
-        import esptool
 
         # Create a mock ESP object with a mock port
         mock_esp = MagicMock(spec=esptool.ESPLoader)

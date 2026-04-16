@@ -15,6 +15,7 @@
 import logging
 import socket
 import sys
+
 import serial
 
 from esp_rfc2217_server.redirector import Redirector

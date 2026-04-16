@@ -6,11 +6,11 @@
 import struct
 import time
 
-from .esp32c3 import ESP32C3ROM
-from .esp32c6 import ESP32C6ROM
 from ..loader import ESPLoader, StubMixin
 from ..logger import log
 from ..util import FatalError
+from .esp32c3 import ESP32C3ROM
+from .esp32c6 import ESP32C6ROM
 
 
 class ESP32C5ROM(ESP32C6ROM):

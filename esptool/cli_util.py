@@ -5,16 +5,16 @@
 
 import os
 import sys
+from typing import IO, Any
+
 import rich_click as click
+from click.shell_completion import CompletionItem
 
 from esptool.bin_image import ESPLoader, intel_hex_to_bin
 from esptool.cmds import detect_flash_size
-from esptool.util import FatalError, flash_size_bytes, strip_chip_name
+from esptool.loader import ListPortInfo, list_ports
 from esptool.logger import log
-from esptool.loader import list_ports, ListPortInfo
-from typing import IO, Any
-
-from click.shell_completion import CompletionItem
+from esptool.util import FatalError, flash_size_bytes, strip_chip_name
 
 ################################ Custom types #################################
 

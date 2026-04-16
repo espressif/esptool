@@ -1,9 +1,11 @@
-import pytest
 from io import StringIO
 from unittest.mock import patch
+
+import pytest
+
 from esptool import __version__
-from esptool.logger import EsptoolLogger, log, TemplateLogger
 from esptool.cmds import version
+from esptool.logger import EsptoolLogger, TemplateLogger, log
 
 
 # Custom logger that implements all methods

@@ -4,11 +4,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from abc import ABC, abstractmethod
 import re
+from abc import ABC, abstractmethod
 from typing import Any
 
 from bitstring import BitStream
+
 from espefuse.efuse.mem_definition_base import (
     BlockDefinition,
     EfuseBlocksBase,

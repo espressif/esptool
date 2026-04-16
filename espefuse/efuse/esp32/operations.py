@@ -5,16 +5,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from typing import BinaryIO
+
 import rich_click as click
 
 import espsecure
-
 import esptool
 from esptool.logger import log
 
-from .mem_definition import EfuseDefineBlocks
 from .. import util
-from .fields import EspEfuses
 from ..base_operations import (
     BaseCommands,
     NonCompositeTuple,
@@ -22,6 +20,8 @@ from ..base_operations import (
     add_force_write_always,
     add_show_sensitive_info_option,
 )
+from .fields import EspEfuses
+from .mem_definition import EfuseDefineBlocks
 
 
 class ESP32Commands(BaseCommands):

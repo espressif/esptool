@@ -5,10 +5,10 @@
 
 import struct
 
-from .esp32c5 import ESP32C5ROM
 from ..loader import ESPLoader, StubMixin
 from ..logger import log
 from ..util import FatalError, NotImplementedInROMError
+from .esp32c5 import ESP32C5ROM
 
 
 class ESP32S31ROM(ESP32C5ROM):

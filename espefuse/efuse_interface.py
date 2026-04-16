@@ -6,11 +6,6 @@ from dataclasses import dataclass
 from io import StringIO
 from typing import Any
 
-from espefuse.efuse.base_operations import BaseCommands
-from espefuse.efuse.emulate_efuse_controller_base import EmulateEfuseControllerBase
-import esptool
-from esptool.util import strip_chip_name
-
 import espefuse.efuse.esp32 as esp32_efuse
 import espefuse.efuse.esp32c2 as esp32c2_efuse
 import espefuse.efuse.esp32c3 as esp32c3_efuse
@@ -19,12 +14,16 @@ import espefuse.efuse.esp32c6 as esp32c6_efuse
 import espefuse.efuse.esp32c61 as esp32c61_efuse
 import espefuse.efuse.esp32e22 as esp32e22_efuse
 import espefuse.efuse.esp32h2 as esp32h2_efuse
-import espefuse.efuse.esp32h21 as esp32h21_efuse
 import espefuse.efuse.esp32h4 as esp32h4_efuse
+import espefuse.efuse.esp32h21 as esp32h21_efuse
 import espefuse.efuse.esp32p4 as esp32p4_efuse
 import espefuse.efuse.esp32s2 as esp32s2_efuse
 import espefuse.efuse.esp32s3 as esp32s3_efuse
 import espefuse.efuse.esp32s31 as esp32s31_efuse
+import esptool
+from espefuse.efuse.base_operations import BaseCommands
+from espefuse.efuse.emulate_efuse_controller_base import EmulateEfuseControllerBase
+from esptool.util import strip_chip_name
 
 
 @dataclass

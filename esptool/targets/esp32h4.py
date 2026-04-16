@@ -5,10 +5,10 @@
 
 import struct
 
-from .esp32c3 import ESP32C3ROM
 from ..loader import ESPLoader, StubMixin
 from ..logger import log
 from ..util import FatalError
+from .esp32c3 import ESP32C3ROM
 
 
 class ESP32H4ROM(ESP32C3ROM):

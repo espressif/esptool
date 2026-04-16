@@ -5,9 +5,9 @@
 
 import struct
 
+from ..loader import StubMixin
 from .esp32c3 import ESP32C3ROM
 from .esp32c6 import ESP32C6ROM
-from ..loader import StubMixin
 
 
 class ESP32C61ROM(ESP32C6ROM):

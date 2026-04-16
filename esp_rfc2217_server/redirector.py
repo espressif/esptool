@@ -2,9 +2,9 @@
 # Espressif Systems (Shanghai) CO LTD, other contributors as noted.
 #
 # SPDX-License-Identifier: BSD-3-Clause
+import logging
 import threading
 import time
-import logging
 
 from esp_rfc2217_server.esp_port_manager import EspPortManager
 

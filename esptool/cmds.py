@@ -5,58 +5,55 @@
 
 import hashlib
 import io
+import itertools
 import os
 import struct
 import sys
 import time
 import zlib
-import itertools
+from typing import cast
 
 from intelhex import IntelHex
 from serial import SerialException
-from typing import cast
 
-from .bin_image import ELFFile, LoadFirmwareImage
 from .bin_image import (
+    ELFFile,
     ESP8266ROMFirmwareImage,
     ESP8266V2FirmwareImage,
     ESP8266V3FirmwareImage,
+    LoadFirmwareImage,
 )
 from .loader import (
     DEFAULT_CONNECT_ATTEMPTS,
     DEFAULT_TIMEOUT,
     ERASE_WRITE_TIMEOUT_PER_MB,
-    ESPLoader,
     NAND_BLOCK_SIZE,
     NAND_PAGES_PER_BLOCK,
+    ESPLoader,
     StubFlasher,
     timeout_per_mb,
 )
 from .logger import log
-
 from .targets import CHIP_DEFS, CHIP_LIST, ROM_LIST
 from .uf2_writer import UF2Writer
 from .util import (
     FatalError,
+    ImageSource,
     NANDEraseFailed,
     NANDProgramFailed,
     NotImplementedInROMError,
     NotSupportedError,
     PrintOnce,
     UnsupportedCommandError,
-)
-from .util import (
     div_roundup,
     expand_chip_name,
     flash_size_bytes,
-    hexify,
-    ImageSource,
     get_bytes,
     get_key_from_value,
+    hexify,
     pad_to,
     sanitize_string,
 )
-
 
 _NAND_EXPERIMENTAL_MSG = (
     "NAND flash support is experimental and may change without notice."

@@ -17,12 +17,12 @@ import time
 from .config import load_config_file
 from .logger import log
 from .reset import (
+    DEFAULT_RESET_DELAY,
     ClassicReset,
     CustomReset,
-    DEFAULT_RESET_DELAY,
     HardReset,
-    USBJTAGSerialReset,
     UnixTightReset,
+    USBJTAGSerialReset,
 )
 from .util import (
     FatalError,
@@ -31,8 +31,6 @@ from .util import (
     NotImplementedInROMError,
     NotSupportedError,
     UnsupportedCommandError,
-)
-from .util import (
     byte,
     get_key_from_value,
     hexify,
@@ -69,8 +67,8 @@ except TypeError:
     pass  # __doc__ returns None for pySerial
 
 try:
-    from serial.tools.list_ports_common import ListPortInfo  # noqa: F401
     import serial.tools.list_ports as list_ports
+    from serial.tools.list_ports_common import ListPortInfo  # noqa: F401
 except ImportError:
     log.error(
         f"The installed version ({serial.VERSION}) of pySerial appears to be too old "
