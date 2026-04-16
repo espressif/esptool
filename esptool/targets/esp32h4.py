@@ -92,7 +92,7 @@ class ESP32H4ROM(ESP32C3ROM):
     PCR_SYSCLK_XTAL_FREQ_S = 24
 
     FLASH_FREQUENCY = {
-        "48m": 0x0,
+        "48m": 0xF,
         "24m": 0x0,
         "16m": 0x1,
         "12m": 0x2,
