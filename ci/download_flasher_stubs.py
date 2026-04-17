@@ -45,6 +45,7 @@ STUBS = (
             "esp32p4",
             "esp32s2",
             "esp32s3",
+            "esp32s31",
             "esp8266",
         ),
         "LICENSE": "dual licensed under the Apache License Version 2.0 or the MIT "

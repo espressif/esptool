@@ -7,8 +7,8 @@ import struct
 
 from .esp32c5 import ESP32C5ROM
 from ..loader import ESPLoader, StubMixin
-from ..util import FatalError, NotImplementedInROMError
 from ..logger import log
+from ..util import FatalError, NotImplementedInROMError
 
 
 class ESP32S31ROM(ESP32C5ROM):
@@ -37,6 +37,12 @@ class ESP32S31ROM(ESP32C5ROM):
     SPI_W0_OFFS = 0x58
 
     SPI_ADDR_REG_MSB = False
+
+    DR_REG_LP_WDT_BASE = 0x20801000
+    RTC_CNTL_WDTCONFIG0_REG = DR_REG_LP_WDT_BASE + 0x0
+    RTC_CNTL_WDTCONFIG1_REG = DR_REG_LP_WDT_BASE + 0x4
+    RTC_CNTL_WDTWPROTECT_REG = DR_REG_LP_WDT_BASE + 0x18
+    RTC_CNTL_WDT_WKEY = 0x50D83AA1
 
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
 
@@ -86,6 +92,8 @@ class ESP32S31ROM(ESP32C5ROM):
     ]
 
     UF2_FAMILY_ID = 0x3101F7C1
+
+    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
 
     EFUSE_MAX_KEY = 5
     KEY_PURPOSES: dict[int, str] = {
@@ -208,10 +216,14 @@ class ESP32S31ROM(ESP32C5ROM):
         ESPLoader.change_baud(self, baud)
 
     def _post_connect(self):
-        pass
-        # TODO: Disable watchdogs when USB modes are supported in the stub
-        # if not self.sync_stub_detected:  # Don't run if stub is reused
-        #     self.disable_watchdogs()
+        if self.uses_usb_otg():
+            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
+
+    def uses_usb_otg(self):
+        """
+        True if the host sees this port as Espressif USB OTG (VID/PID match).
+        """
+        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
 
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 61))):
@@ -221,6 +233,13 @@ class ESP32S31ROM(ESP32C5ROM):
                 "GPIO pins 33 and 34 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )
+
+    def hard_reset(self):
+        (
+            self.watchdog_reset()
+            if (not self.secure_download_mode and self.uses_usb_otg())
+            else ESPLoader.hard_reset(self)
+        )
 
 
 class ESP32S31StubLoader(StubMixin, ESP32S31ROM):
