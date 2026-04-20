@@ -1229,15 +1229,13 @@ class ESPLoader:
         """
         True if the host sees this port as Espressif USB Serial/JTAG (VID/PID match).
         """
-        if self.secure_download_mode:
-            return False  # can't detect USB-JTAG/Serial in secure download mode
         return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.USB_JTAG_SERIAL_PID)
 
     def uses_usb_otg(self):
         """
-        Check if the chip uses USB OTG mode.
+        True if the host sees this port as Espressif USB-OTG (VID/PID match).
         """
-        return False
+        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
 
     def get_usb_mode(self):
         """

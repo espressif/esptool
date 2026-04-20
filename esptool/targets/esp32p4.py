@@ -247,14 +247,6 @@ class ESP32P4ROM(ESP32ROM):
         if not self.secure_download_mode:
             self.power_on_flash()  # Needs to be powered on before attach_flash()
 
-    def uses_usb_otg(self):
-        """
-        True if the host sees this port as Espressif USB OTG (VID/PID match).
-        """
-        if self.secure_download_mode:
-            return False  # can't detect native USB in secure download mode
-        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
-
     def disable_watchdogs(self):
         # When USB-JTAG/Serial is used, the RTC WDT and SWD watchdog are not reset
         # and can then reset the board during flashing. Disable them.

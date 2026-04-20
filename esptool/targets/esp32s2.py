@@ -269,14 +269,6 @@ class ESP32S2ROM(ESP32ROM):
             p == self.PURPOSE_VAL_XTS_AES256_KEY_2 for p in purposes
         )
 
-    def uses_usb_otg(self):
-        """
-        True if the host sees this port as Espressif USB OTG (VID/PID match).
-        """
-        if self.secure_download_mode:
-            return False  # can't detect native USB in secure download mode
-        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
-
     def _post_connect(self):
         if self.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK

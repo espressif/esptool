@@ -219,12 +219,6 @@ class ESP32S31ROM(ESP32C5ROM):
         if self.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
 
-    def uses_usb_otg(self):
-        """
-        True if the host sees this port as Espressif USB OTG (VID/PID match).
-        """
-        return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
-
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 61))):
             raise FatalError("SPI Pin numbers must be in the range 0-60.")
