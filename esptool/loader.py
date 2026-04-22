@@ -178,7 +178,16 @@ class StubFlasher:
 
                 return json_path
         else:
-            raise FileNotFoundError(f"Stub flasher JSON file for {chip_name} not found")
+            raise FatalError(
+                f"Flasher stub data is missing for {chip_name}. \n"
+                "This means the esptool installation is incomplete or broken - "
+                "stub JSON files were removed or a third-party distribution package "
+                "didn't ship them. "
+                "It is unlikely to be a defect in esptool itself.\n\n"
+                "Try reinstalling esptool or restoring the stub files "
+                "from the upstream source tree. As a workaround, "
+                "you can pass --no-stub (slower operation, fewer features)."
+            )
 
     @classmethod
     def set_stub_subdir(cls, subdir):
