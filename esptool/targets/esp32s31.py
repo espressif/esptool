@@ -98,7 +98,7 @@ class ESP32S31ROM(ESP32C5ROM):
     EFUSE_MAX_KEY = 5
     KEY_PURPOSES: dict[int, str] = {
         0: "USER/EMPTY",
-        1: "ECDSA_KEY",
+        1: "ECDSA_KEY",  # ECDSA_KEY_P256 (NIST P-256)
         2: "XTS_AES_256_KEY_1",
         3: "XTS_AES_256_KEY_2",
         4: "XTS_AES_128_KEY",
@@ -110,6 +110,13 @@ class ESP32S31ROM(ESP32C5ROM):
         10: "SECURE_BOOT_DIGEST1",
         11: "SECURE_BOOT_DIGEST2",
         12: "KM_INIT_KEY",
+        13: "XTS_AES_256_PSRAM_KEY_1",
+        14: "XTS_AES_256_PSRAM_KEY_2",
+        15: "XTS_AES_128_PSRAM_KEY",
+        16: "ECDSA_KEY_P192",
+        17: "ECDSA_KEY_P384_L",
+        18: "ECDSA_KEY_P384_H",
+        19: "RMA_SG_HASH_256",
     }
 
     def get_pkg_version(self):

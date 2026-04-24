@@ -66,10 +66,7 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
 
     def get_bitlen_of_block(self, blk: BlockDefinition, wr: bool = False) -> int:
         if blk.id == 0:
-            if wr:
-                return 32 * 8
-            else:
-                return 32 * blk.len
+            return 32 * blk.len
         else:
             if wr:
                 rs_coding = 32 * 3

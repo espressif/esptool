@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import struct
+import sys
 import time
 
 import reedsolo
@@ -20,7 +21,9 @@ from .mem_definition import EfuseDefineBlocks, EfuseDefineFields, EfuseDefineReg
 
 class EfuseBlock(base_fields.EfuseBlockBase):
     def len_of_burn_unit(self):
-        # The writing register window is 8 registers for any blocks.
+        if self.id == 0:
+            return self.len * 4
+        # The data part of the writing register window is 8 registers for RS blocks.
         # len in bytes
         return 8 * 4
 
@@ -132,7 +135,7 @@ class EspEfuses(base_fields.EspEfusesBase):
     def clear_pgm_registers(self):
         self.wait_efuse_idle()
         for r in range(
-            self.REGS.EFUSE_PGM_DATA0_REG, self.REGS.EFUSE_PGM_DATA0_REG + 32, 4
+            self.REGS.EFUSE_PGM_DATA0_REG, self.REGS.EFUSE_PGM_DATA0_REG + 44, 4
         ):
             self.write_reg(r, 0)
 
@@ -185,7 +188,7 @@ class EspEfuses(base_fields.EspEfusesBase):
                     )
                     log.print("DIS_DOWNLOAD_MODE is enabled.")
                     log.print("Successful.")
-                    exit(0)  # finish without errors
+                    sys.exit(0)  # finish without errors
                 raise
 
             log.print("Established a connection with the chip.")
@@ -199,19 +202,12 @@ class EspEfuses(base_fields.EspEfusesBase):
                     )
                     log.print("ENABLE_SECURITY_DOWNLOAD is enabled.")
                     log.print("Successful.")
-                    exit(0)  # finish without errors
+                    sys.exit(0)  # finish without errors
             raise
 
     def set_efuse_timing(self):
         """Set timing registers for burning efuses"""
-        # Configure clock
-        apb_freq = self.get_crystal_freq()
-        if apb_freq != 32:
-            raise esptool.FatalError(
-                f"The eFuse supports only xtal=32M (xtal was {apb_freq}"
-            )
-
-        # TODO: [ESP32S31] IDF-12268
+        # Use default timing parameters
 
     def get_coding_scheme_warnings(self, silent=False):
         """Check if the coding scheme has detected any errors."""
@@ -222,7 +218,7 @@ class EspEfuses(base_fields.EspEfusesBase):
             if block.id == 0:
                 words = [
                     self.read_reg(self.REGS.EFUSE_RD_REPEAT_ERR0_REG + offs * 4)
-                    for offs in range(5)
+                    for offs in range(block.len - 1)
                 ]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
@@ -280,18 +276,19 @@ class EfuseMacField(base_fields.EfuseMacFieldBase, EfuseField):
 
 
 class EfuseWafer(base_fields.EfuseWaferBase, EfuseField):
-    def get(self, from_read=True):
-        # TODO: [ESP32S31] IDF-12268
-        return 0
+    pass
 
 
 class EfuseKeyPurposeField(base_fields.EfuseKeyPurposeFieldBase, EfuseField):
+    key_purpose_len = 5  # bits for key purpose
     # fmt: off
-    # TODO: [ESP32S31] IDF-12268 need check
     KEY_PURPOSES = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
-        ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key
-        ("XTS_AES_128_KEY",              4,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_128_KEY (flash/PSRAM encryption)
+        ("ECDSA_KEY_P256",               1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key P-256
+        ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # Alias for ECDSA_KEY_P256
+        ("XTS_AES_256_KEY_1",            2,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256 flash key 1
+        ("XTS_AES_256_KEY_2",            3,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_256 flash key 2
+        ("XTS_AES_128_KEY",              4,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_128 flash key
         ("HMAC_DOWN_ALL",                5,  None,       None,      "need_rd_protect"),      # HMAC Downstream mode
         ("HMAC_DOWN_JTAG",               6,  None,       None,      "need_rd_protect"),      # JTAG soft enable key (uses HMAC Downstream mode)
         ("HMAC_DOWN_DIGITAL_SIGNATURE",  7,  None,       None,      "need_rd_protect"),      # Digital Signature peripheral key (uses HMAC Downstream mode)
@@ -300,5 +297,15 @@ class EfuseKeyPurposeField(base_fields.EfuseKeyPurposeFieldBase, EfuseField):
         ("SECURE_BOOT_DIGEST1",          10, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST1 (Secure Boot key digest)
         ("SECURE_BOOT_DIGEST2",          11, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST2 (Secure Boot key digest)
         ("KM_INIT_KEY",                  12, None,       None,      "need_rd_protect"),      # init key that is used for the generation of AES/ECDSA key
+        ("XTS_AES_256_PSRAM_KEY_1",      13, None,       "Reverse", "need_rd_protect"),      # XTS_AES_256 PSRAM key 1
+        ("XTS_AES_256_PSRAM_KEY_2",      14, None,       "Reverse", "need_rd_protect"),      # XTS_AES_256 PSRAM key 2
+        ("XTS_AES_128_PSRAM_KEY",        15, None,       "Reverse", "need_rd_protect"),      # XTS_AES_128 PSRAM key
+        ("ECDSA_KEY_P192",               16, None,       "Reverse", "need_rd_protect"),      # ECDSA key P-192
+        ("ECDSA_KEY_P384_L",             17, None,       "Reverse", "need_rd_protect"),      # ECDSA key P-384 low part
+        ("ECDSA_KEY_P384_H",             18, None,       "Reverse", "need_rd_protect"),      # ECDSA key P-384 high part
+        ("SDC_KEY_DIGEST",               19, None,       None,      "need_rd_protect"),      # SDC key digest
+        ("XTS_AES_256_KEY",              -1, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
+        ("XTS_AES_256_PSRAM_KEY",        -2, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_PSRAM_KEY_1 and XTS_AES_256_PSRAM_KEY_2
+        ("ECDSA_KEY_P384",               -3, "VIRTUAL",  None,      "need_rd_protect"),      # Virtual purpose splits to ECDSA_KEY_P384_L and ECDSA_KEY_P384_H
     ]
     # fmt: on
