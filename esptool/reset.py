@@ -186,12 +186,12 @@ class HardReset(ResetStrategy):
             self._setRTS(True)  # EN->LOW
             time.sleep(0.1)
             self._setDTR(True)
+            time.sleep(0.1)
+            self._setRTS(False)
             if not has_hupcl:
                 # Windows has no HUPCL equivalent. Release RTS first while
                 # DTR is still asserted, then release DTR to leave the reset
                 # circuit idle before close.
-                time.sleep(0.1)
-                self._setRTS(False)
                 self._setDTR(False)
         else:
             self._setRTS(True)  # EN->LOW
