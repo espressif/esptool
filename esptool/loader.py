@@ -793,15 +793,15 @@ class ESPLoader:
         # USB-to-Serial bridge
         if os.name != "nt" and not self._port.name.startswith("rfc2217:"):
             return (
-                UnixTightReset(self._port, delay, flow_control=flow_control),
-                UnixTightReset(self._port, extra_delay, flow_control=flow_control),
-                ClassicReset(self._port, delay, flow_control=flow_control),
-                ClassicReset(self._port, extra_delay, flow_control=flow_control),
+                UnixTightReset(self._port, delay, flow_control),
+                UnixTightReset(self._port, extra_delay, flow_control),
+                ClassicReset(self._port, delay, flow_control),
+                ClassicReset(self._port, extra_delay, flow_control),
             )
 
         return (
-            ClassicReset(self._port, delay, flow_control=flow_control),
-            ClassicReset(self._port, extra_delay, flow_control=flow_control),
+            ClassicReset(self._port, delay, flow_control),
+            ClassicReset(self._port, extra_delay, flow_control),
         )
 
     def connect(

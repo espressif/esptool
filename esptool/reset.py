@@ -25,7 +25,7 @@ if os.name != "nt":
     TIOCM_RTS = getattr(termios, "TIOCM_RTS", 0x004)
 
 DEFAULT_RESET_DELAY = 0.05  # default time to wait before releasing boot pin after reset
-FLOW_CONTROL_HOLD_TIME = 1.5
+FLOW_CONTROL_HARD_RESET_HOLD_TIME = 1.5
 
 
 class ResetStrategy:
@@ -91,6 +91,17 @@ class ResetStrategy:
             status &= ~TIOCM_RTS
         fcntl.ioctl(self.port.fileno(), TIOCMSET, struct.pack("I", status))
 
+    def _setHUPCL(self, enabled):
+        if os.name == "nt" or not hasattr(termios, "HUPCL"):
+            return False
+        attrs = termios.tcgetattr(self.port.fileno())
+        if enabled:
+            attrs[2] |= termios.HUPCL
+        else:
+            attrs[2] &= ~termios.HUPCL
+        termios.tcsetattr(self.port.fileno(), termios.TCSANOW, attrs)
+        return True
+
 
 class ClassicReset(ResetStrategy):
     """
@@ -105,8 +116,9 @@ class ClassicReset(ResetStrategy):
         self._setRTS(False)  # EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
         if not self.flow_control:
-            # Flow control: Keep DTR high so that RTS toggling doesn't cause
-            # RESET (assuming standard reset circuitry).
+            # We usually want to put IO0 back high here, but we can't do that with
+            # some hardware-flow control enabled adapters (like the CP2102C),
+            # as they will otherwise pull RTS low when receiving data from the ESP32.
             self._setDTR(False)  # IO0=HIGH, done
 
 
@@ -124,8 +136,9 @@ class UnixTightReset(ResetStrategy):
         self._setDTRandRTS(True, False)  # IO0=LOW & EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
         if not self.flow_control:
-            # Flow control: Keep DTR high so that RTS toggling doesn't cause
-            # RESET (assuming standard reset circuitry).
+            # We usually want to put IO0 back high here, but we can't do that with
+            # some hardware-flow control enabled adapters (like the CP2102C),
+            # as they will otherwise pull RTS low when receiving data from the ESP32.
             self._setDTRandRTS(False, False)  # IO0=HIGH, done
             self._setDTR(False)  # Needed in some environments to ensure IO0=HIGH
 
@@ -164,7 +177,19 @@ class HardReset(ResetStrategy):
         self.uses_usb = uses_usb
 
     def reset(self):
-        if not self.flow_control:
+        if self.flow_control:
+            # Hardware flow control-enabled adapters (like the CP2102C) can pull
+            # the device back into reset when closing.
+            # Keep DTR asserted across close so RTS flow-control changes can't reset
+            # the chip during boot chatter.
+            preserves_lines_on_close = self._setHUPCL(False)
+            self._setDTR(False)  # IO0=HIGH
+            self._setRTS(True)  # EN->LOW
+            time.sleep(0.1)
+            self._setDTR(True)
+            if not preserves_lines_on_close:
+                time.sleep(FLOW_CONTROL_HARD_RESET_HOLD_TIME)
+        else:
             self._setRTS(True)  # EN->LOW
             if self.uses_usb:
                 # Give the chip some time to come out of reset,
@@ -175,15 +200,6 @@ class HardReset(ResetStrategy):
             else:
                 time.sleep(0.1)
                 self._setRTS(False)
-        else:
-            self._setDTR(False)
-            self._setRTS(True)
-            time.sleep(0.1)
-            self._setRTS(True)
-            self._setDTR(True)
-            # Give the target time to emit enough data so RTS doesn't toggle
-            # back during the most fragile part of boot.
-            time.sleep(FLOW_CONTROL_HOLD_TIME)
 
 
 class CustomReset(ResetStrategy):
