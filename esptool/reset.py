@@ -25,7 +25,6 @@ if os.name != "nt":
     TIOCM_RTS = getattr(termios, "TIOCM_RTS", 0x004)
 
 DEFAULT_RESET_DELAY = 0.05  # default time to wait before releasing boot pin after reset
-FLOW_CONTROL_HARD_RESET_HOLD_TIME = 1.5
 
 
 class ResetStrategy:
@@ -182,13 +181,18 @@ class HardReset(ResetStrategy):
             # the device back into reset when closing.
             # Keep DTR asserted across close so RTS flow-control changes can't reset
             # the chip during boot chatter.
-            preserves_lines_on_close = self._setHUPCL(False)
+            has_hupcl = self._setHUPCL(False)
             self._setDTR(False)  # IO0=HIGH
             self._setRTS(True)  # EN->LOW
             time.sleep(0.1)
             self._setDTR(True)
-            if not preserves_lines_on_close:
-                time.sleep(FLOW_CONTROL_HARD_RESET_HOLD_TIME)
+            if not has_hupcl:
+                # Windows has no HUPCL equivalent. Release RTS first while
+                # DTR is still asserted, then release DTR to leave the reset
+                # circuit idle before close.
+                time.sleep(0.1)
+                self._setRTS(False)
+                self._setDTR(False)
         else:
             self._setRTS(True)  # EN->LOW
             if self.uses_usb:
