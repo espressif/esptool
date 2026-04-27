@@ -2052,7 +2052,7 @@ class ESPLoader:
             CustomReset(self._port, cfg_custom_hard_reset_sequence)()
         else:
             flow_control = self._get_pid() in self.HARDWARE_FLOW_CONTROL_PIDS
-            HardReset(self._port, uses_usb, flow_control)()
+            HardReset(self._port, uses_usb, flow_control=flow_control)()
 
     def soft_reset(self, stay_in_bootloader):
         if not self.IS_STUB:
