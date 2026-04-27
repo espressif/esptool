@@ -373,6 +373,9 @@ class ESPLoader:
     ESPRESSIF_VID = 0x303A
 
     USB_JTAG_SERIAL_PID = 0x1001
+    HARDWARE_FLOW_CONTROL_PIDS = [
+        0xEA64,  # SiLabs CP2102C USB to UART Bridge Controller
+    ]
 
     # Chip IDs that are no longer supported by esptool
     UNSUPPORTED_CHIPS = {
@@ -812,18 +815,22 @@ class ESPLoader:
         if mode == "usb-reset" or self.get_usb_vid_pid()[1] == self.USB_JTAG_SERIAL_PID:
             return (USBJTAGSerialReset(self._port),)
 
+        # Some chips have hardware flow control that cannot be disabled,
+        # and this can interfere with reset if esptool doesn't know about it.
+        flow_control = self._get_pid() in self.HARDWARE_FLOW_CONTROL_PIDS
+
         # USB-to-Serial bridge
         if os.name != "nt" and not self._port.name.startswith("rfc2217:"):
             return (
-                UnixTightReset(self._port, delay),
-                UnixTightReset(self._port, extra_delay),
-                ClassicReset(self._port, delay),
-                ClassicReset(self._port, extra_delay),
+                UnixTightReset(self._port, delay, flow_control),
+                UnixTightReset(self._port, extra_delay, flow_control),
+                ClassicReset(self._port, delay, flow_control),
+                ClassicReset(self._port, extra_delay, flow_control),
             )
 
         return (
-            ClassicReset(self._port, delay),
-            ClassicReset(self._port, extra_delay),
+            ClassicReset(self._port, delay, flow_control),
+            ClassicReset(self._port, extra_delay, flow_control),
         )
 
     def connect(
@@ -2044,7 +2051,8 @@ class ESPLoader:
         if cfg_custom_hard_reset_sequence is not None:
             CustomReset(self._port, cfg_custom_hard_reset_sequence)()
         else:
-            HardReset(self._port, uses_usb)()
+            flow_control = self._get_pid() in self.HARDWARE_FLOW_CONTROL_PIDS
+            HardReset(self._port, uses_usb, flow_control=flow_control)()
 
     def soft_reset(self, stay_in_bootloader):
         if not self.IS_STUB:
