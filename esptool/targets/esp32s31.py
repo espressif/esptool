@@ -25,8 +25,8 @@ class ESP32S31ROM(ESP32C5ROM):
     UART_DATE_REG_ADDR = 0x2038A000 + 0x8C
 
     EFUSE_BASE = 0x20715000
-    EFUSE_BLOCK1_ADDR = EFUSE_BASE + 0x044
-    MAC_EFUSE_REG = EFUSE_BASE + 0x044
+    EFUSE_BLOCK1_ADDR = EFUSE_BASE + 0x050
+    MAC_EFUSE_REG = EFUSE_BASE + 0x050
 
     SPI_REG_BASE = 0x20501000
     SPI_USR_OFFS = 0x18
@@ -44,20 +44,19 @@ class ESP32S31ROM(ESP32C5ROM):
     RTC_CNTL_WDTWPROTECT_REG = DR_REG_LP_WDT_BASE + 0x18
     RTC_CNTL_WDT_WKEY = 0x50D83AA1
 
-    EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # BLOCK0 read base address
+    EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # EFUSE_RD_REPEAT_DATA0_REG
 
-    EFUSE_PURPOSE_KEY0_REG = EFUSE_BASE + 0x34
-    EFUSE_PURPOSE_KEY0_SHIFT = 24
-    EFUSE_PURPOSE_KEY1_REG = EFUSE_BASE + 0x34
-    EFUSE_PURPOSE_KEY1_SHIFT = 28
+    # KEY_PURPOSE_0..4 live in EFUSE_RD_REPEAT_DATA2_REG
+    EFUSE_PURPOSE_KEY0_REG = EFUSE_BASE + 0x38
+    EFUSE_PURPOSE_KEY0_SHIFT = 0
+    EFUSE_PURPOSE_KEY1_REG = EFUSE_BASE + 0x38
+    EFUSE_PURPOSE_KEY1_SHIFT = 5
     EFUSE_PURPOSE_KEY2_REG = EFUSE_BASE + 0x38
-    EFUSE_PURPOSE_KEY2_SHIFT = 0
+    EFUSE_PURPOSE_KEY2_SHIFT = 10
     EFUSE_PURPOSE_KEY3_REG = EFUSE_BASE + 0x38
-    EFUSE_PURPOSE_KEY3_SHIFT = 4
+    EFUSE_PURPOSE_KEY3_SHIFT = 15
     EFUSE_PURPOSE_KEY4_REG = EFUSE_BASE + 0x38
-    EFUSE_PURPOSE_KEY4_SHIFT = 8
-    EFUSE_PURPOSE_KEY5_REG = EFUSE_BASE + 0x38
-    EFUSE_PURPOSE_KEY5_SHIFT = 12
+    EFUSE_PURPOSE_KEY4_SHIFT = 20
 
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT_REG = EFUSE_RD_REG_BASE
     EFUSE_DIS_DOWNLOAD_MANUAL_ENCRYPT = 1 << 20
@@ -95,7 +94,7 @@ class ESP32S31ROM(ESP32C5ROM):
 
     USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
 
-    EFUSE_MAX_KEY = 5
+    EFUSE_MAX_KEY = 4
     KEY_PURPOSES: dict[int, str] = {
         0: "USER/EMPTY",
         1: "ECDSA_KEY",  # ECDSA_KEY_P256 (NIST P-256)
@@ -116,20 +115,20 @@ class ESP32S31ROM(ESP32C5ROM):
         16: "ECDSA_KEY_P192",
         17: "ECDSA_KEY_P384_L",
         18: "ECDSA_KEY_P384_H",
-        19: "RMA_SG_HASH_256",
+        19: "SDC_KEY_DIGEST",
     }
 
     def get_pkg_version(self):
-        num_word = 2
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 20) & 0x07
+        num_word = 4  # EFUSE_RD_MAC_SYS4_REG
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 6) & 0x03
 
     def get_minor_chip_version(self):
-        num_word = 2
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 0) & 0x0F
+        num_word = 3  # EFUSE_RD_MAC_SYS3_REG
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 18) & 0x0F
 
     def get_major_chip_version(self):
-        num_word = 2
-        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 4) & 0x03
+        num_word = 3  # EFUSE_RD_MAC_SYS3_REG
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 22) & 0x03
 
     def get_chip_description(self):
         chip_name = {
@@ -190,9 +189,8 @@ class ESP32S31ROM(ESP32C5ROM):
             (self.EFUSE_PURPOSE_KEY2_REG, self.EFUSE_PURPOSE_KEY2_SHIFT),
             (self.EFUSE_PURPOSE_KEY3_REG, self.EFUSE_PURPOSE_KEY3_SHIFT),
             (self.EFUSE_PURPOSE_KEY4_REG, self.EFUSE_PURPOSE_KEY4_SHIFT),
-            (self.EFUSE_PURPOSE_KEY5_REG, self.EFUSE_PURPOSE_KEY5_SHIFT),
         ][key_block]
-        return (self.read_reg(reg) >> shift) & 0xF
+        return (self.read_reg(reg) >> shift) & 0x1F
 
     def uses_key_manager_for_flash_encryption(self):
         return bool(
