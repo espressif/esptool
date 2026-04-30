@@ -373,6 +373,9 @@ class ESPLoader:
     ESPRESSIF_VID = 0x303A
 
     USB_JTAG_SERIAL_PID = 0x1001
+    HARDWARE_FLOW_CONTROL_VID_PIDS = [
+        (0x10C4, 0xEA64),  # SiLabs CP2102C USB to UART Bridge Controller
+    ]
 
     # Chip IDs that are no longer supported by esptool
     UNSUPPORTED_CHIPS = {
@@ -812,18 +815,20 @@ class ESPLoader:
         if mode == "usb-reset" or self.get_usb_vid_pid()[1] == self.USB_JTAG_SERIAL_PID:
             return (USBJTAGSerialReset(self._port),)
 
+        flow_control = self.uses_hardware_flow_control()
+
         # USB-to-Serial bridge
         if os.name != "nt" and not self._port.name.startswith("rfc2217:"):
             return (
-                UnixTightReset(self._port, delay),
-                UnixTightReset(self._port, extra_delay),
-                ClassicReset(self._port, delay),
-                ClassicReset(self._port, extra_delay),
+                UnixTightReset(self._port, delay, flow_control),
+                UnixTightReset(self._port, extra_delay, flow_control),
+                ClassicReset(self._port, delay, flow_control),
+                ClassicReset(self._port, extra_delay, flow_control),
             )
 
         return (
-            ClassicReset(self._port, delay),
-            ClassicReset(self._port, extra_delay),
+            ClassicReset(self._port, delay, flow_control),
+            ClassicReset(self._port, extra_delay, flow_control),
         )
 
     def connect(
@@ -1241,6 +1246,13 @@ class ESPLoader:
         True if the host sees this port as Espressif USB-OTG (VID/PID match).
         """
         return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
+
+    def uses_hardware_flow_control(self):
+        """
+        True if the chip has always-enabled hardware flow control that esptool needs to know about for resetting.
+        This is determined by checking if the USB PID matches known PIDs with hardware flow control.
+        """
+        return self.get_usb_vid_pid() in self.HARDWARE_FLOW_CONTROL_VID_PIDS
 
     def get_usb_mode(self):
         """
@@ -2044,7 +2056,9 @@ class ESPLoader:
         if cfg_custom_hard_reset_sequence is not None:
             CustomReset(self._port, cfg_custom_hard_reset_sequence)()
         else:
-            HardReset(self._port, uses_usb)()
+            HardReset(
+                self._port, uses_usb, flow_control=self.uses_hardware_flow_control()
+            )()
 
     def soft_reset(self, stay_in_bootloader):
         if not self.IS_STUB:

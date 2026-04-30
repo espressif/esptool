@@ -30,9 +30,10 @@ DEFAULT_RESET_DELAY = 0.05  # default time to wait before releasing boot pin aft
 class ResetStrategy:
     print_once = PrintOnce(log.warning)
 
-    def __init__(self, port, reset_delay=DEFAULT_RESET_DELAY):
+    def __init__(self, port, reset_delay=DEFAULT_RESET_DELAY, flow_control=False):
         self.port = port
         self.reset_delay = reset_delay
+        self.flow_control = flow_control
 
     def __call__(self):
         """
@@ -89,6 +90,17 @@ class ResetStrategy:
             status &= ~TIOCM_RTS
         fcntl.ioctl(self.port.fileno(), TIOCMSET, struct.pack("I", status))
 
+    def _setHUPCL(self, enabled):
+        if os.name == "nt" or not hasattr(termios, "HUPCL"):
+            return False
+        attrs = termios.tcgetattr(self.port.fileno())
+        if enabled:
+            attrs[2] |= termios.HUPCL
+        else:
+            attrs[2] &= ~termios.HUPCL
+        termios.tcsetattr(self.port.fileno(), termios.TCSANOW, attrs)
+        return True
+
 
 class ClassicReset(ResetStrategy):
     """
@@ -102,7 +114,11 @@ class ClassicReset(ResetStrategy):
         self._setDTR(True)  # IO0=LOW
         self._setRTS(False)  # EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
-        self._setDTR(False)  # IO0=HIGH, done
+        if not self.flow_control:
+            # We usually want to put IO0 back high here, but we can't do that with
+            # some hardware-flow control enabled adapters (like the CP2102C),
+            # as they will otherwise pull RTS low when receiving data from the ESP32.
+            self._setDTR(False)  # IO0=HIGH, done
 
 
 class UnixTightReset(ResetStrategy):
@@ -118,8 +134,12 @@ class UnixTightReset(ResetStrategy):
         time.sleep(0.1)
         self._setDTRandRTS(True, False)  # IO0=LOW & EN=HIGH, chip out of reset
         time.sleep(self.reset_delay)
-        self._setDTRandRTS(False, False)  # IO0=HIGH, done
-        self._setDTR(False)  # Needed in some environments to ensure IO0=HIGH
+        if not self.flow_control:
+            # We usually want to put IO0 back high here, but we can't do that with
+            # some hardware-flow control enabled adapters (like the CP2102C),
+            # as they will otherwise pull RTS low when receiving data from the ESP32.
+            self._setDTRandRTS(False, False)  # IO0=HIGH, done
+            self._setDTR(False)  # Needed in some environments to ensure IO0=HIGH
 
 
 class USBJTAGSerialReset(ResetStrategy):
@@ -149,21 +169,41 @@ class HardReset(ResetStrategy):
     Can be used to reset out of the bootloader or to restart a running app.
     """
 
-    def __init__(self, port, uses_usb=False):
-        super().__init__(port)
+    def __init__(
+        self, port, uses_usb=False, reset_delay=DEFAULT_RESET_DELAY, flow_control=False
+    ):
+        super().__init__(port, reset_delay, flow_control)
         self.uses_usb = uses_usb
 
     def reset(self):
-        self._setRTS(True)  # EN->LOW
-        if self.uses_usb:
-            # Give the chip some time to come out of reset,
-            # to be able to handle further DTR/RTS transitions
-            time.sleep(0.2)
-            self._setRTS(False)
-            time.sleep(0.2)
-        else:
+        if self.flow_control:
+            # Hardware flow control-enabled adapters (like the CP2102C) can pull
+            # the device back into reset when closing.
+            # Keep DTR asserted across close so RTS flow-control changes can't reset
+            # the chip during boot chatter.
+            has_hupcl = self._setHUPCL(False)
+            self._setDTR(False)  # IO0=HIGH
+            self._setRTS(True)  # EN->LOW
+            time.sleep(0.1)
+            self._setDTR(True)
             time.sleep(0.1)
             self._setRTS(False)
+            if not has_hupcl:
+                # Windows has no HUPCL equivalent. Release RTS first while
+                # DTR is still asserted, then release DTR to leave the reset
+                # circuit idle before close.
+                self._setDTR(False)
+        else:
+            self._setRTS(True)  # EN->LOW
+            if self.uses_usb:
+                # Give the chip some time to come out of reset,
+                # to be able to handle further DTR/RTS transitions
+                time.sleep(0.2)
+                self._setRTS(False)
+                time.sleep(0.2)
+            else:
+                time.sleep(0.1)
+                self._setRTS(False)
 
 
 class CustomReset(ResetStrategy):
