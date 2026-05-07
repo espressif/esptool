@@ -632,10 +632,12 @@ def write_flash(esp, args):
                     # Decompress the compressed binary a block at a time,
                     # to dynamically calculate the timeout based on the real write size
                     decompress = zlib.decompressobj()
-                    blocks = esp.flash_defl_begin(uncsize, len(image), address)
+                    blocks = esp.flash_defl_begin(
+                        uncsize, len(image), address, encrypted_write=encrypted
+                    )
                 else:
                     blocks = esp.flash_begin(
-                        uncsize, address, begin_rom_encrypted=encrypted
+                        uncsize, address, encrypted_write=encrypted
                     )
                 argfile.seek(0)  # in case we need it again
                 seq = 0
@@ -673,10 +675,7 @@ def write_flash(esp, args):
                     else:
                         # Pad the last block
                         block = block + b"\xff" * (esp.FLASH_WRITE_SIZE - len(block))
-                        if encrypted:
-                            esp.flash_encrypt_block(block, seq)
-                        else:
-                            esp.flash_block(block, seq)
+                        esp.flash_block(block, seq, encrypted=encrypted)
                         bytes_written += len(block)
                     bytes_sent += len(block)
                     image = image[esp.FLASH_WRITE_SIZE :]
