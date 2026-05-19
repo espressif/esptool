@@ -144,7 +144,7 @@ class ESP32C5ROM(ESP32C6ROM):
 
     def change_baud(self, baud):
         if self.secure_download_mode:  # ESPTOOL-1231
-            log.warning(
+            log.warn(
                 "Baud rate change is not supported in secure download mode. "
                 "Keeping 115200 baud."
             )
@@ -217,7 +217,7 @@ class ESP32C5ROM(ESP32C6ROM):
         if not set(spi_connection).issubset(set(range(0, 29))):
             raise FatalError("SPI Pin numbers must be in the range 0-28.")
         if any([v for v in spi_connection if v in [13, 14]]):
-            log.warning(
+            log.warn(
                 "GPIO pins 13 and 14 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )

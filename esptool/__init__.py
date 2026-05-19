@@ -45,25 +45,23 @@ from itertools import chain, cycle, repeat
 
 import rich_click as click
 import serial
+from esp_pylib.cli_options import MutuallyExclusiveOption, OptionEatAll
+from esp_pylib.cli_types import AnyIntType, AutoSizeType, BaudRateType, SerialPortType
+from esp_pylib.excepthook import install_exception_reporting
+from esp_pylib.logger import EspLog
+from esp_pylib.serial_ports import get_port_names, parse_port_filters
+from rich.markup import escape
 
 from esptool.cli_util import (
     AddrFilenameArg,
     AddrFilenamePairType,
-    AnyIntType,
     AutoChunkSizeType,
     AutoHex2BinType,
-    AutoSizeType,
-    BaudRateType,
     ChipType,
     DiffWithType,
-    Group,
-    MutuallyExclusiveOption,
-    OptionEatAll,
+    EsptoolGroup,
     ResetModeType,
-    SerialPortType,
     SpiConnectionType,
-    get_port_list,
-    parse_port_filters,
     parse_size_arg,
 )
 from esptool.cmds import (
@@ -114,6 +112,9 @@ from esptool.util import (
     check_deprecated_py_suffix,
     flash_size_bytes,
 )
+
+# Backward compatibility for ESP-IDF
+get_port_list = get_port_names
 
 # Show arguments in the help output, this was default in argparse
 click.rich_click.SHOW_ARGUMENTS = True
@@ -359,7 +360,7 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
 
 
 @click.group(
-    cls=Group,
+    cls=EsptoolGroup,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
     help=f"esptool v{__version__} - serial utility for flashing, provisioning, "
@@ -495,9 +496,15 @@ def prepare_esp_object(ctx):
     # 1) Get the ESP object
     #######################
 
-    # Disable output stage collapsing, colors, and overwriting in trace mode
+    # Disable output stage collapsing, colors, and overwriting in trace mode.
+    # Must touch ``EspLog.instance`` (what the ``log`` proxy reads), not
+    # ``EsptoolLogger()`` — the subclass ctor cache can diverge after
+    # ``set_logger`` or test harness resets.
     if ctx.obj["trace"]:
-        log._smart_features = False
+        inst = EspLog.instance
+        if inst is not None and hasattr(inst, "_smart_features"):
+            inst._smart_features = False
+        log.set_verbosity("verbose")
 
     log.stage()
 
@@ -509,8 +516,10 @@ def prepare_esp_object(ctx):
         initial_baud = ctx.obj["baud"]
 
     if ctx.obj["port"] is None:
-        filters = parse_port_filters(ctx.obj["port_filter"])
-        ser_list = get_port_list(*filters)
+        try:
+            ser_list = get_port_names(**parse_port_filters(ctx.obj["port_filter"]))
+        except ValueError as exc:
+            raise FatalError(str(exc)) from exc
         log.print(f"Found {len(ser_list)} serial ports...")
     else:
         ser_list = [ctx.obj["port"]]
@@ -520,13 +529,13 @@ def prepare_esp_object(ctx):
     try:
         open_port_attempts = int(open_port_attempts)
     except ValueError:
-        raise SystemExit("Invalid value for ESPTOOL_OPEN_PORT_ATTEMPTS.")
+        raise FatalError("Invalid value for ESPTOOL_OPEN_PORT_ATTEMPTS.")
 
     esp = ctx.obj.get("esp", None)
     ctx.obj["external_esp"] = esp is not None
     if open_port_attempts != 1:
         if ctx.obj["port"] is None or ctx.obj["chip"] == "auto":
-            log.warning(
+            log.warn(
                 "The ESPTOOL_OPEN_PORT_ATTEMPTS (open_port_attempts) option "
                 "can only be used with --port and --chip arguments."
             )
@@ -556,7 +565,7 @@ def prepare_esp_object(ctx):
         )
 
     log.stage(finish=True)
-    log.print(f"Connected to {esp.CHIP_NAME} on {esp._port.port}:")
+    log.print(f"Connected to {esp.CHIP_NAME} on {escape(str(esp._port.port))}:")
 
     # 2) Print the chip info
     ########################
@@ -602,7 +611,7 @@ def prepare_esp_object(ctx):
         try:
             esp.change_baud(ctx.obj["baud"])
         except NotImplementedInROMError:
-            log.warning(
+            log.warn(
                 f"ROM doesn't support changing baud rate. "
                 f"Keeping initial baud rate {initial_baud}."
             )
@@ -1278,7 +1287,7 @@ def expand_file_arguments(argv: list[str]) -> list[str]:
         else:
             new_args.append(arg)
     if expanded:
-        log.print(f"esptool {' '.join(new_args)}")
+        log.print(f"esptool {escape(' '.join(new_args))}")
         return new_args
     return argv
 
@@ -1293,7 +1302,7 @@ def connect_loop(
 ):
     chip_class = CHIP_DEFS[chip]
     esp = None
-    log.print(f"Serial port {port}:")
+    log.print(f"Serial port {escape(str(port))}:")
 
     first = True
     ten_cycle = cycle(chain(repeat(False, 9), (True,)))
@@ -1314,7 +1323,7 @@ def connect_loop(
                 esp._port.close()
             esp = None
             if first:
-                log.print(err)
+                log.print(escape(str(err)))
                 log.print("Retrying failed connection", end="", flush=True)
                 first = False
             if last:
@@ -1335,8 +1344,8 @@ def get_default_connected_device(
     before: str = "default-reset",
 ):
     _esp = None
-    for each_port in reversed(serial_list):
-        log.print(f"Serial port {each_port}:")
+    for each_port in serial_list:
+        log.print(f"Serial port {escape(str(each_port))}:")
         try:
             if chip == "auto":
                 _esp = detect_chip(
@@ -1350,7 +1359,7 @@ def get_default_connected_device(
         except (FatalError, OSError) as err:
             if port is not None:
                 raise
-            log.error(f"{each_port} failed to connect: {err}")
+            log.err(f"{escape(str(each_port))} failed to connect: {escape(str(err))}")
             if _esp and _esp._port:
                 _esp._port.close()
             _esp = None
@@ -1358,28 +1367,33 @@ def get_default_connected_device(
 
 
 def _main():
+    # Chain the esp-pylib exception hook so uncaught errors are forwarded to
+    # the IDE WebSocket (when ``ESPRESSIF_IDE_WS`` is set). Safe to call
+    # multiple times — the hook chains to whatever was already installed.
+    install_exception_reporting()
     check_deprecated_py_suffix(__name__)
     try:
         main()
     except FatalError as e:
-        log.error(f"\nA fatal error occurred: {e}")
-        sys.exit(2)
+        log.print("")
+        log.die(f"A fatal error occurred: {escape(str(e))}", exit_code=2)
     except serial.serialutil.SerialException as e:
-        log.error(f"\nA serial exception error occurred: {e}")
-        log.error(
+        log.print("")
+        log.die(
+            f"A serial exception error occurred: {escape(str(e))}\n"
             "Note: This error originates from pySerial. "
             "It is likely not a problem with esptool, "
-            "but with the hardware connection or drivers."
+            "but with the hardware connection or drivers.\n"
+            f"For troubleshooting steps visit: {TROUBLESHOOTING_GUIDE_URL}"
         )
-        log.error(f"For troubleshooting steps visit: {TROUBLESHOOTING_GUIDE_URL}")
-        sys.exit(1)
     except StopIteration:
-        log.error(traceback.format_exc())
-        log.error("A fatal error occurred: The chip stopped responding.")
-        sys.exit(2)
+        log.die(
+            escape(traceback.format_exc()),
+            "\nA fatal error occurred: The chip stopped responding.",
+            exit_code=2,
+        )
     except KeyboardInterrupt:
-        log.error("KeyboardInterrupt: Run cancelled by user.")
-        sys.exit(2)
+        log.die("KeyboardInterrupt: Run cancelled by user.", exit_code=2)
 
 
 if __name__ == "__main__":

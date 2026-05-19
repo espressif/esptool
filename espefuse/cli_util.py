@@ -14,7 +14,7 @@ from espefuse.efuse_interface import (
     SUPPORTED_READ_COMMANDS,
     init_commands,
 )
-from esptool.cli_util import Group as EsptoolGroup
+from esptool.cli_util import EsptoolGroup
 from esptool.logger import log
 
 click.rich_click.USE_CLICK_SHORT_HELP = True
@@ -145,7 +145,7 @@ class ChainingCommand(click.RichCommand, click.Command):
         return parser
 
 
-class Group(EsptoolGroup):
+class EspefuseGroup(EsptoolGroup):
     DEPRECATED_OPTIONS = {
         "--file_name": "--file-name",
     }

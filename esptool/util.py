@@ -9,6 +9,8 @@ import re
 import struct
 from typing import IO, TypeAlias
 
+from esp_pylib.errors import FatalError as _PylibFatalError
+
 # Define a custom type for the input
 ImageSource: TypeAlias = str | bytes | IO[bytes]
 
@@ -136,7 +138,7 @@ def check_deprecated_py_suffix(module_name: str) -> None:
 
     script_name = sys.argv[0] if sys.argv else ""
     if script_name.endswith(module_name + ".py"):
-        log.warning(
+        log.warn(
             f"DEPRECATED: '{module_name}.py' is deprecated. Please use '{module_name}' "
             "instead. The '.py' suffix will be removed in a future major release."
         )
@@ -157,14 +159,15 @@ class PrintOnce:
             self.already_printed = True
 
 
-class FatalError(RuntimeError):
+class FatalError(_PylibFatalError):
     """
     Wrapper class for runtime errors that aren't caused by internal bugs, but by
     ESP ROM responses or input content.
-    """
 
-    def __init__(self, message):
-        RuntimeError.__init__(self, message)
+    Extends `esp_pylib.errors.FatalError` (itself a ``RuntimeError``) so
+    existing ``except FatalError`` / ``except RuntimeError`` blocks in esptool
+    and downstream tools (espefuse, espsecure) keep working unchanged.
+    """
 
     @staticmethod
     def WithResult(message, result):

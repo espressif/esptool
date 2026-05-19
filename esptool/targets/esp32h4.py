@@ -234,7 +234,7 @@ class ESP32H4ROM(ESP32C3ROM):
         if not set(spi_connection).issubset(set(range(0, 40))):
             raise FatalError("SPI Pin numbers must be in the range 0-39.")
         if any([v for v in spi_connection if v in [13, 14]]):
-            log.warning(
+            log.warn(
                 "GPIO pins 13 and 14 are used by USB-Serial/JTAG, "
                 "consider using other pins for SPI flash connection."
             )

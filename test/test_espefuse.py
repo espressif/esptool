@@ -2336,7 +2336,7 @@ class TestMultipleCommands(EfuseTestCase):
             summary"
         )
         assert (
-            "Warning: Deprecated: Command 'burn_bit' is deprecated. "
+            "WARNING: Deprecated: Command 'burn_bit' is deprecated. "
             "Use 'burn-bit' instead." in output
         )
         output = self.espefuse_py("-d summary")

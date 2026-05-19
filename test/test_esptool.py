@@ -2158,7 +2158,7 @@ class TestConfigFile(EsptoolTestCase):
         with self.ConfigFile(config_file_path, self.dummy_config):
             output = self.run_esptool("version")
             assert f"Loaded custom configuration from {config_file_path}" in output
-            assert "Ignoring unknown config file option" not in output
+            assert "Ignoring unknown config option" not in output
             assert "Ignoring invalid config file" not in output
 
         # Test invalid files are ignored
@@ -2177,11 +2177,11 @@ class TestConfigFile(EsptoolTestCase):
                 in output
             )
 
-        # Correct header, unknown option (or a typo)
+        # Correct header, unknown option (or a typo).
         faulty_config = "[esptool]\nconnect_attempts = 9\ntimoout = 2\nbits = 2"
         with self.ConfigFile(config_file_path, faulty_config):
             output = self.run_esptool("version")
-            assert "Ignoring unknown config file options: bits, timoout" in output
+            assert "Ignoring unknown config options: bits, timoout" in output
 
         # Test other config files (setup.cfg, tox.ini) are loaded
         config_file_path = os.path.join(os.getcwd(), "tox.ini")
@@ -2435,29 +2435,29 @@ class TestESPObjectOperations(EsptoolTestCase):
 
 @pytest.mark.host_test
 class TestOldScripts:
+    def _run_old_script_help(self, script: str) -> str:
+        output = subprocess.check_output([script, "-h"], stderr=subprocess.STDOUT)
+        return output.decode("utf-8")
+
     def test_esptool_py(self):
-        output = subprocess.check_output(["esptool.py", "-h"])
-        decoded = output.decode("utf-8")
-        assert "esptool.py" in decoded
-        assert "DEPRECATED" in decoded
+        output = self._run_old_script_help("esptool.py")
+        assert "esptool.py" in output
+        assert "DEPRECATED" in output
 
     def test_espefuse_py(self):
-        output = subprocess.check_output(["espefuse.py", "-h"])
-        decoded = output.decode("utf-8")
-        assert "espefuse.py" in decoded
-        assert "DEPRECATED" in decoded
+        output = self._run_old_script_help("espefuse.py")
+        assert "espefuse.py" in output
+        assert "DEPRECATED" in output
 
     def test_espsecure_py(self):
-        output = subprocess.check_output(["espsecure.py", "-h"])
-        decoded = output.decode("utf-8")
-        assert "espsecure.py" in decoded
-        assert "DEPRECATED" in decoded
+        output = self._run_old_script_help("espsecure.py")
+        assert "espsecure.py" in output
+        assert "DEPRECATED" in output
 
     def test_esp_rfc2217_server_py(self):
-        output = subprocess.check_output(["esp_rfc2217_server.py", "-h"])
-        decoded = output.decode("utf-8")
-        assert "esp_rfc2217_server.py" in decoded
-        assert "DEPRECATED" in decoded
+        output = self._run_old_script_help("esp_rfc2217_server.py")
+        assert "esp_rfc2217_server.py" in output
+        assert "DEPRECATED" in output
 
 
 @pytest.mark.host_test
@@ -2468,7 +2468,7 @@ class TestPortFilter(EsptoolTestCase):
             "--port-filter name=NonExistentChip flash-id", port=None
         )
         # The command should fail due to no device found, not due to parsing error
-        assert "Option --port-filter argument key not recognized" not in output
+        assert "Unknown port filter key" not in output
         # Should fail with device connection error instead
         assert "Found 0 serial ports..." in output
 
@@ -2477,12 +2477,12 @@ class TestPortFilter(EsptoolTestCase):
         output = self.run_esptool_error(
             "--port-filter invalidkey=123 flash-id", port=None
         )
-        assert "Option --port-filter argument key not recognized" in output
+        assert "Unknown port filter key" in output
 
     def test_port_filter_missing_equal_sign(self):
         """Test CLI with missing equal sign in --port-filter option"""
         output = self.run_esptool_error("--port-filter name123 flash-id", port=None)
-        assert "Option --port-filter argument must consist of key=value." in output
+        assert "Expected key=value" in output
 
 
 @pytest.mark.host_test

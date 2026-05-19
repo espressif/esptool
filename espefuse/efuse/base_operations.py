@@ -14,6 +14,7 @@ from typing import Any, BinaryIO, TextIO, cast
 
 import rich_click as click
 from bitstring import BitStream
+from rich.markup import escape
 
 import espsecure
 import esptool
@@ -680,7 +681,7 @@ class BaseCommands(ABC):
         json_efuse = {}
         summary_efuse = []
         if file != sys.stdout:
-            log.print("Saving eFuse values to " + file.name)
+            log.print("Saving eFuse values to " + escape(file.name))
         if human_output and not value_only:
             summary_efuse.append(
                 ROW_FORMAT.replace("-50", "-12")
@@ -786,7 +787,7 @@ class BaseCommands(ABC):
                 )
         if human_output:
             for line in summary_efuse:
-                log.print(line, file=file)
+                log.print(escape(line), file=file)
             if file != sys.stdout:
                 file.close()
                 log.print("Done")
@@ -836,7 +837,7 @@ class BaseCommands(ABC):
                 if not to_console:
                     fname, fextension = os.path.splitext(file_name)  # type: ignore
                     file_dump_name = f"{fname}{block.id}{fextension}"
-                    log.print(f"Dump eFuse block{block.id} -> {file_dump_name}")
+                    log.print(f"Dump eFuse block{block.id} -> {escape(file_dump_name)}")
                     dump_file = open(file_dump_name, "wb")
                 output_block_to_file(block, dump_file, to_console)
                 if not to_console:
@@ -844,7 +845,7 @@ class BaseCommands(ABC):
         elif format == "joint":
             # all eFuse blocks are stored in one file
             if not to_console:
-                log.print(f"Dump eFuse blocks -> {file_name}")
+                log.print(f"Dump eFuse blocks -> {escape(str(file_name))}")
                 dump_file = open(file_name, "wb")  # type: ignore
             for block in self.efuses.blocks:
                 output_block_to_file(block, dump_file, to_console)
@@ -907,7 +908,7 @@ class BaseCommands(ABC):
         log.print(f"\nBurning eFuses{attention}:")
         for efuse, new_value in zip(burn_efuses_list, new_value_list):
             log.print(
-                f"    - '{efuse.name}' ({efuse.description}) "
+                f"    - '{efuse.name}' ({escape(str(efuse.description))}) "
                 f"{efuse.get_bitstring()} -> {efuse.convert_to_bitstring(new_value)}"
             )
             efuse.save(new_value)

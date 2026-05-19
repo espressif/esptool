@@ -19,9 +19,12 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, utils
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.utils import int_to_bytes
+from esp_pylib.cli_options import OptionEatAll
+from esp_pylib.cli_types import AnyIntType
+from esp_pylib.excepthook import install_exception_reporting
+from rich.markup import escape
 
 import esptool
-from esptool.cli_util import OptionEatAll
 from esptool.logger import log
 from esptool.util import check_deprecated_py_suffix
 
@@ -117,7 +120,7 @@ def digest_secure_bootloader(
     _check_output_is_not_input(image, output)
     _check_output_is_not_input(iv_file, output)
     if iv_file is not None:
-        log.warning("--iv argument is for TESTING PURPOSES ONLY")
+        log.warn("--iv argument is for TESTING PURPOSES ONLY")
         iv = iv_file.read(128)
     else:
         iv = os.urandom(128)
@@ -170,7 +173,7 @@ def digest_secure_bootloader(
             f.write(word[::-1])  # swap word order in the result
         f.write(b"\xff" * (0x1000 - f.tell()))  # pad to 0x1000
         f.write(plaintext_image)
-    log.print(f'Digest + image written to "{output}"')
+    log.print(f'Digest + image written to "{escape(str(output))}"')
 
 
 def _generate_ecdsa_signing_key(curve_id: ec.EllipticCurve, keyfile: str):
@@ -202,7 +205,10 @@ def generate_signing_key(version: int, scheme: str | None, keyfile: str):
         Generate an ECDSA signing key for signing secure boot images (post-bootloader)
         """
         _generate_ecdsa_signing_key(ec.SECP256R1, keyfile)
-        log.print(f'ECDSA NIST256p private key in PEM format written to "{keyfile}".')
+        log.print(
+            f"ECDSA NIST256p private key in PEM format written to "
+            f'"{escape(str(keyfile))}".'
+        )
     elif version == "2":
         if scheme == "rsa3072" or scheme is None:
             """Generate a RSA 3072 signing key for signing secure boot images"""
@@ -215,24 +221,30 @@ def generate_signing_key(version: int, scheme: str | None, keyfile: str):
             )
             with open(keyfile, "wb") as f:
                 f.write(private_key)
-            log.print(f'RSA 3072 private key in PEM format written to "{keyfile}".')
+            log.print(
+                f"RSA 3072 private key in PEM format written to "
+                f'"{escape(str(keyfile))}".'
+            )
         elif scheme == "ecdsa192":
             """Generate a ECDSA 192 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ec.SECP192R1, keyfile)
             log.print(
-                f'ECDSA NIST192p private key in PEM format written to "{keyfile}".'
+                f"ECDSA NIST192p private key in PEM format written to "
+                f'"{escape(str(keyfile))}".'
             )
         elif scheme == "ecdsa256":
             """Generate a ECDSA 256 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ec.SECP256R1, keyfile)
             log.print(
-                f'ECDSA NIST256p private key in PEM format written to "{keyfile}".'
+                f"ECDSA NIST256p private key in PEM format written to "
+                f'"{escape(str(keyfile))}".'
             )
         elif scheme == "ecdsa384":
             """Generate a ECDSA 384 signing key for signing secure boot images"""
             _generate_ecdsa_signing_key(ec.SECP384R1, keyfile)
             log.print(
-                f'ECDSA NIST384p private key in PEM format written to "{keyfile}".'
+                f"ECDSA NIST384p private key in PEM format written to "
+                f'"{escape(str(keyfile))}".'
             )
         else:
             raise esptool.FatalError(f"ERROR: Unsupported signing scheme {scheme}.")
@@ -489,7 +501,10 @@ def sign_secure_boot_v1(
     )  # Version indicator, allow for different curves/formats later
     outfile.write(signature)
     outfile.close()
-    log.print(f'Signed {len(binary_content)} bytes of data from "{datafile.name}".')
+    log.print(
+        f"Signed {len(binary_content)} bytes of data from "
+        f'"{escape(str(datafile.name))}".'
+    )
 
 
 def sign_secure_boot_v2(
@@ -636,7 +651,7 @@ def sign_secure_boot_v2(
     with open(output, "wb") as f:
         f.write(contents + signature_sector)
     log.print(
-        f'Signed {len(contents)} bytes of data from "{datafile.name}". '
+        f'Signed {len(contents)} bytes of data from "{escape(str(datafile.name))}". '
         f"Signature sector now has {total_sig_blocks} signature blocks."
     )
 
@@ -1093,7 +1108,10 @@ def extract_public_key(version: str, keyfile: IO, public_keyfile: IO):
             format=serialization.PublicFormat.SubjectPublicKeyInfo,
         )
     public_keyfile.write(vk)
-    log.print(f'"{keyfile.name}" public key extracted to "{public_keyfile.name}".')
+    log.print(
+        f'"{escape(str(keyfile.name))}" public key extracted to '
+        f'"{escape(str(public_keyfile.name))}".'
+    )
 
 
 def extract_pubkey_from_hsm(config: configparser.SectionProxy) -> list[IO]:
@@ -1237,7 +1255,10 @@ def digest_sbv2_public_key(keyfile: IO, output: str):
     _check_output_is_not_input(keyfile, output)
     public_key_digest = _digest_sbv2_public_key(keyfile)
     with open(output, "wb") as f:
-        log.print(f'Writing the public key digest of "{keyfile.name}" to "{output}".')
+        log.print(
+            f'Writing the public key digest of "{escape(str(keyfile.name))}" '
+            f'to "{escape(str(output))}".'
+        )
         f.write(public_key_digest)
 
 
@@ -1257,8 +1278,8 @@ def digest_private_key(keyfile: IO, keylen: int, digest_file: IO):
     digest_file.write(result)
     len_msg = "" if keylen == 256 else " (truncated to 192 bits)"
     log.print(
-        f'SHA-256 digest of private key "{keyfile.name}"{len_msg} '
-        f'written to "{digest_file.name}".'
+        f'SHA-256 digest of private key "{escape(str(keyfile.name))}"{len_msg} '
+        f'written to "{escape(str(digest_file.name))}".'
     )
 
 
@@ -1363,7 +1384,7 @@ def _flash_encryption_operation_esp32(
         )
 
     if flash_crypt_conf == 0:
-        log.warning("Setting FLASH_CRYPT_CONF to zero is not recommended.")
+        log.warn("Setting FLASH_CRYPT_CONF to zero is not recommended.")
 
     tweak_range = _flash_encryption_tweak_range_bits(flash_crypt_conf)
     key = int.from_bytes(key, byteorder="big", signed=False)
@@ -1586,7 +1607,7 @@ def _check_output_is_not_input(
         )
 
 
-class Group(esptool.cli_util.Group):
+class EspsecureGroup(esptool.cli_util.EsptoolGroup):
     DEPRECATED_OPTIONS = {
         "--aes_xts": "--aes-xts",
         "--flash_crypt_conf": "--flash-crypt-conf",
@@ -1595,7 +1616,7 @@ class Group(esptool.cli_util.Group):
 
 
 @click.group(
-    cls=Group,
+    cls=EspsecureGroup,
     no_args_is_help=True,
     context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
     help=f"espsecure v{esptool.__version__} - ESP32 Secure Boot & Flash Encryption "
@@ -1891,7 +1912,9 @@ def digest_private_key_cli(keyfile, keylen, digest_file):
 @click.argument("key-file", type=click.File("wb", lazy=True))
 def generate_flash_encryption_key(keylen: int, key_file: IO):
     """Generate a development-use flash encryption key with random data."""
-    log.print(f'Writing {keylen} random bits to key file "{key_file.name}".')
+    log.print(
+        f'Writing {keylen} random bits to key file "{escape(str(key_file.name))}".'
+    )
     key_file.write(os.urandom(keylen // 8))
 
 
@@ -1913,13 +1936,13 @@ def generate_flash_encryption_key(keylen: int, key_file: IO):
 @click.option(
     "--address",
     "-a",
-    type=esptool.cli_util.AnyIntType(),
+    type=AnyIntType(),
     required=True,
     help="Address offset in flash that file was read from.",
 )
 @click.option(
     "--flash-crypt-conf",
-    type=esptool.cli_util.AnyIntType(),
+    type=AnyIntType(),
     default=0xF,
     help="Override FLASH_CRYPT_CONF eFuse value (default is 0xF) (applicable only for "
     "ESP32).",
@@ -1958,13 +1981,13 @@ def decrypt_flash_data_cli(
 @click.option(
     "--address",
     "-a",
-    type=esptool.cli_util.AnyIntType(),
+    type=AnyIntType(),
     help="Address offset in flash where file will be flashed.",
     required=True,
 )
 @click.option(
     "--flash-crypt-conf",
-    type=esptool.cli_util.AnyIntType(),
+    type=AnyIntType(),
     default=0xF,
     help="Override FLASH_CRYPT_CONF eFuse value (default is 0xF) (applicable only for "
     "ESP32).",
@@ -2002,16 +2025,19 @@ def main(argv: list[str] | None = None):
 
 
 def _main():
+    # Chain the esp-pylib exception hook so uncaught errors are forwarded to
+    # the IDE WebSocket (when ``ESPRESSIF_IDE_WS`` is set). Safe to call
+    # multiple times — the hook chains to whatever was already installed.
+    install_exception_reporting()
     check_deprecated_py_suffix(__name__)
     try:
         main()
     except esptool.FatalError as e:
-        log.error(f"\nA fatal error occurred: {e}")
-        sys.exit(2)
+        log.die(f"\nA fatal error occurred: {escape(str(e))}", exit_code=2)
     except ValueError as e:
         try:
             if [arg for arg in e.args if "Could not deserialize key data." in arg]:
-                log.error(
+                log.err(
                     "Note: This error originates from the cryptography module. "
                     "It is likely not a problem with espsecure, "
                     "please make sure you are using a compatible OpenSSL backend."
@@ -2019,8 +2045,7 @@ def _main():
         finally:
             raise
     except KeyboardInterrupt:
-        log.error("KeyboardInterrupt: Run cancelled by user.")
-        sys.exit(2)
+        log.die("KeyboardInterrupt: Run cancelled by user.", exit_code=2)
 
 
 if __name__ == "__main__":
