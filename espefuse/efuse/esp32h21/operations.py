@@ -229,15 +229,6 @@ class ESP32H21Commands(BaseCommands):
                 if self.efuses[block.key_purpose_name].is_writeable():
                     disable_wr_protect_key_purpose = True
 
-            if keypurpose == "ECDSA_KEY":
-                if self.efuses["ECDSA_FORCE_USE_HARDWARE_K"].get() == 0:
-                    # For ECDSA key purpose block permanently enable
-                    # the hardware TRNG supplied k mode (most secure mode)
-                    log.print("\tECDSA_FORCE_USE_HARDWARE_K: 0 -> 1")
-                    self.efuses["ECDSA_FORCE_USE_HARDWARE_K"].save(1)
-                else:
-                    log.print("\tECDSA_FORCE_USE_HARDWARE_K is already '1'")
-
             if disable_wr_protect_key_purpose:
                 log.print(f"\tDisabling write to '{block.key_purpose_name}'...")
                 self.efuses[block.key_purpose_name].disable_write()
