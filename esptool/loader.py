@@ -164,7 +164,7 @@ def stub_and_esp32_function_only(func):
 class StubFlasher:
     STUB_DIR = os.path.join(os.path.dirname(__file__), "targets", "stub_flasher")
     # directories will be searched in the order of STUB_SUBDIRS
-    STUB_SUBDIRS = ["1", "2"]
+    STUB_SUBDIRS = ["2", "1"]
     STUB_VERSION_EXPLICIT = False
 
     def __init__(self, target, plugins=None):
@@ -236,8 +236,8 @@ class StubFlasher:
                         f"{chip_name} stub version {self.STUB_SUBDIRS[0]} doesn't "
                         f"exist, using {subdir} instead."
                     )
-                if subdir == "2":  # TODO: Remove this after legacy stub deprecation
-                    log.print("Using the new stub flasher.")
+                if subdir == "1":  # TODO: Remove this after legacy stub deprecation
+                    log.print("Using the legacy stub flasher.")
                 return json_path
         else:
             raise FatalError(
