@@ -870,7 +870,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
                 # reversing to match the same section order from linker script
                 flash_segments.reverse()
                 for segment in flash_segments:
-                    pad_len = get_alignment_data_needed(segment)
+                    # Pad data length so that, once the pad header and the
+                    # next flash segment header are written, the file
+                    # position matches the flash segment's alignment.
+                    pad_len = (
+                        segment.addr - f.tell() - 2 * self.SEG_HEADER_LEN
+                    ) % self.IROM_ALIGN
                     # Some chips have a non-zero load offset (eg. 0x1000)
                     # therefore we shift the ROM segments "-load_offset"
                     # so it will be aligned properly after it is flashed

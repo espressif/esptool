@@ -9,12 +9,14 @@ import sys
 
 import pytest
 from conftest import need_to_install_package_err
+from elf_builder import build_elf
 from elftools.elf.elffile import ELFFile
 
 TEST_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "elf2image")
 
 try:
     import esptool
+    import esptool.targets
 except ImportError:
     need_to_install_package_err()
 
@@ -778,3 +780,253 @@ class TestMMUPageSize(BaseTestCase):
         finally:
             self._change_appdesc_mmu_page_size(ELF, 0)
             try_delete(BIN)
+
+
+# One chip per (BOOTLOADER_FLASH_OFFSET, arch) equivalence group, since that
+# pair drives the pad-length math in ESP32FirmwareImage.save(). esp32 is also
+# kept for the <0x24 tail-pad workaround in save_flash_segment(), which is
+# gated on CHIP_NAME == "ESP32". The arch picks the ELF e_machine value.
+RAM_ONLY_HEADER_ARCH = {
+    "esp32": "xtensa",
+    "esp32s3": "xtensa",
+    "esp32c3": "riscv",
+    "esp32c5": "riscv",
+}
+
+
+def dram_addr(chip):
+    cls = esptool.targets.CHIP_DEFS[chip]
+    for start, _end, label in cls.MEMORY_MAP:
+        if label == "DRAM":
+            return start
+    raise RuntimeError(f"No DRAM region in {chip} MEMORY_MAP")
+
+
+def ram_only_header_layouts(chip):
+    cls = esptool.targets.CHIP_DEFS[chip]
+    irom = cls.IROM_MAP_START
+    dram = dram_addr(chip)
+    return {
+        "single_aligned": [
+            (".dram0.data", dram, 0x100, "rw"),
+            (".flash.text", irom + 0x20, 0x2000, "rx"),
+        ],
+        # 0xFF8 / 0xFFF8 sizes land the file cursor 8 bytes short of an
+        # IROM_ALIGN boundary, which used to trip the "already aligned"
+        # short-circuit in get_alignment_data_needed() and produce an
+        # off-by-8 pad. See fix in ESP32FirmwareImage.save().
+        "single_off_by_8": [
+            (".dram0.data", dram, 0x100, "rw"),
+            (".flash.text", irom + 0x20, 0xFF8, "rx"),
+        ],
+        "multi_off_by_8": [
+            (".dram0.data", dram, 0x40, "rw"),
+            (".flash.text", irom, 0xFF8, "rx"),
+            (".flash.rodata", irom + 0x10000, 0xFFF8, "ro"),
+        ],
+        "multi_far_apart": [
+            (".dram0.data", dram, 0x80, "rw"),
+            (".flash.text", irom + 0x20, 0x800, "rx"),
+            (".flash.rodata", irom + 0x40000 + 0x20, 0x800, "ro"),
+        ],
+        "multi_three_segs": [
+            (".dram0.data", dram, 0x100, "rw"),
+            (".flash.text", irom + 0x20, 0x1234, "rx"),
+            (".flash.rodata", irom + 0x10000 + 0x20, 0x5678, "ro"),
+            (".flash.text2", irom + 0x20000 + 0x20, 0x100, "rx"),
+        ],
+        "large_ram_segment": [
+            (".dram0.data", dram, 0x4000, "rw"),
+            (".flash.text", irom + 0x20, 0xFFF8, "rx"),
+            (".flash.rodata", irom + 0x10000 + 0x20, 0xFFF8, "ro"),
+        ],
+    }
+
+
+class TestRamOnlyHeader(BaseTestCase):
+    """Cover the `--ram-only-header` codepath across chips with different
+    BOOTLOADER_FLASH_OFFSET values and across flash-segment size combinations
+    that historically broke the pad-length math."""
+
+    @pytest.mark.parametrize("chip", sorted(RAM_ONLY_HEADER_ARCH.keys()))
+    @pytest.mark.parametrize(
+        "scenario",
+        [
+            "single_aligned",
+            "single_off_by_8",
+            "multi_off_by_8",
+            "multi_far_apart",
+            "multi_three_segs",
+            "large_ram_segment",
+        ],
+    )
+    def test_layout(self, chip, scenario):
+        sections = ram_only_header_layouts(chip)[scenario]
+        dram = dram_addr(chip)
+        elf = f"{chip}-{scenario}.elf"
+        binp = f"{chip}-{scenario}.bin"
+
+        try:
+            build_elf(elf, RAM_ONLY_HEADER_ARCH[chip], sections)
+            self.run_elf2image(chip, elf, extra_args=["--ram-only-header"])
+            image = esptool.bin_image.LoadFirmwareImage(chip, binp)
+            ram_sections = [s for s in sections if s[1] == dram]
+            assert len(image.segments) == len(ram_sections)
+            for seg in image.segments:
+                assert seg.addr == dram
+            self.assertImageInfo(binp, chip)
+        finally:
+            try_delete(elf)
+            try_delete(binp)
+
+    @pytest.mark.parametrize("chip", sorted(RAM_ONLY_HEADER_ARCH.keys()))
+    def test_no_sha256(self, chip):
+        sections = ram_only_header_layouts(chip)["multi_three_segs"]
+        elf = f"{chip}-nosha.elf"
+        binp = f"{chip}-nosha.bin"
+
+        try:
+            build_elf(elf, RAM_ONLY_HEADER_ARCH[chip], sections)
+            self.run_elf2image(chip, elf, extra_args=["--ram-only-header"])
+            image = esptool.bin_image.LoadFirmwareImage(chip, binp)
+            assert image.append_digest is False, (
+                "Ram-only image must declare append_digest=0 in extended header"
+            )
+        finally:
+            try_delete(elf)
+            try_delete(binp)
+
+    @pytest.mark.parametrize("chip", sorted(RAM_ONLY_HEADER_ARCH.keys()))
+    def test_segment_count(self, chip):
+        sections = ram_only_header_layouts(chip)["multi_three_segs"]
+        dram = dram_addr(chip)
+        elf = f"{chip}-segcount.elf"
+        binp = f"{chip}-segcount.bin"
+
+        try:
+            build_elf(elf, RAM_ONLY_HEADER_ARCH[chip], sections)
+            self.run_elf2image(chip, elf, extra_args=["--ram-only-header"])
+            with open(binp, "rb") as f:
+                header = f.read(2)
+            assert header[0] == esptool.ESPLoader.ESP_IMAGE_MAGIC
+            ram_section_count = sum(1 for s in sections if s[1] == dram)
+            assert header[1] == ram_section_count, (
+                f"Header segment count = {header[1]}, "
+                f"expected {ram_section_count} (RAM segments only)"
+            )
+        finally:
+            try_delete(elf)
+            try_delete(binp)
+
+    @pytest.mark.parametrize("chip", sorted(RAM_ONLY_HEADER_ARCH.keys()))
+    @pytest.mark.parametrize(
+        "scenario",
+        [
+            "single_off_by_8",
+            "multi_off_by_8",
+            "multi_far_apart",
+            "multi_three_segs",
+            "large_ram_segment",
+        ],
+    )
+    def test_flash_segments_present(self, chip, scenario):
+        """Walk the image byte-by-byte and verify every flash segment lands
+        page-aligned with its ELF payload intact. LoadFirmwareImage only
+        surfaces RAM segments in ram-only mode, so we parse the raw bytes."""
+        sections = ram_only_header_layouts(chip)[scenario]
+        cls = esptool.targets.CHIP_DEFS[chip]
+        dram = dram_addr(chip)
+        irom_align = esptool.bin_image.ESP32FirmwareImage.IROM_ALIGN
+        bootloader_offset = cls.BOOTLOADER_FLASH_OFFSET
+        elf = f"{chip}-flashpresent-{scenario}.elf"
+        binp = f"{chip}-flashpresent-{scenario}.bin"
+
+        try:
+            build_elf(elf, RAM_ONLY_HEADER_ARCH[chip], sections)
+            self.run_elf2image(chip, elf, extra_args=["--ram-only-header"])
+            with open(binp, "rb") as f:
+                data = f.read()
+
+            indexed = list(enumerate(sections))
+            input_flash = sorted(
+                [(i, s) for i, s in indexed if s[1] != dram], key=lambda x: x[1][1]
+            )
+            input_flash.reverse()  # save() reverses flash_segments
+
+            pos = self._skip_image_and_extended_header()
+            ram_count = sum(1 for s in sections if s[1] == dram)
+            pos = self._skip_ram_segments(data, pos, ram_count, dram)
+            pos = self._skip_ram_checksum(pos)
+
+            for orig_idx, (name, vaddr, size, _flags) in input_flash:
+                pos = self._verify_pad_segment(data, pos)
+                pos = self._verify_flash_segment(
+                    data,
+                    pos,
+                    name,
+                    vaddr,
+                    size,
+                    orig_idx,
+                    irom_align,
+                    bootloader_offset,
+                )
+        finally:
+            try_delete(elf)
+            try_delete(binp)
+
+    @staticmethod
+    def _skip_image_and_extended_header():
+        """Image header (8 bytes) + extended header (16 bytes)."""
+        return 8 + 16
+
+    @staticmethod
+    def _skip_ram_segments(data, pos, ram_count, dram):
+        for _ in range(ram_count):
+            addr, size = struct.unpack("<II", data[pos : pos + 8])
+            assert addr == dram, f"Expected RAM segment at {dram:#x}, got {addr:#x}"
+            pos += 8 + size
+        return pos
+
+    @staticmethod
+    def _skip_ram_checksum(pos):
+        """append_checksum pads to a 16-byte boundary, writes one checksum
+        byte, then aligns to 16 again before flash segments begin."""
+        pos = (pos + 15) & ~15
+        pos += 1
+        pos = (pos + 15) & ~15
+        return pos
+
+    @staticmethod
+    def _verify_pad_segment(data, pos):
+        pad_addr, pad_size = struct.unpack("<II", data[pos : pos + 8])
+        assert pad_addr == 0, f"Expected pad segment, got addr={pad_addr:#x}"
+        return pos + 8 + pad_size
+
+    @staticmethod
+    def _verify_flash_segment(
+        data,
+        pos,
+        name,
+        vaddr,
+        size,
+        orig_idx,
+        irom_align,
+        bootloader_offset,
+    ):
+        flash_addr, flash_size = struct.unpack("<II", data[pos : pos + 8])
+        assert flash_addr == vaddr, (
+            f"Flash segment addr {flash_addr:#x} != ELF section {name} at {vaddr:#x}"
+        )
+        data_offset = pos + 8
+        actual_align = (data_offset + bootloader_offset) % irom_align
+        expected_align = vaddr % irom_align
+        assert actual_align == expected_align, (
+            f"Flash segment {name} not page-aligned: "
+            f"data_offset={data_offset:#x} (with bootloader offset "
+            f"{bootloader_offset:#x}), vaddr={vaddr:#x}"
+        )
+        expected_data = bytes((vaddr + orig_idx + j) & 0xFF for j in range(size))
+        assert data[pos + 8 : pos + 8 + size] == expected_data, (
+            f"Flash segment {name} data mismatch"
+        )
+        return pos + 8 + flash_size
