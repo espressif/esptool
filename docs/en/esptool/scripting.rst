@@ -97,6 +97,29 @@ The following example demonstrates running a series of flash memory operations i
 
 ------------
 
+``connect_esp()`` is a higher-level wrapper that mirrors how the ``esptool`` CLI establishes a connection. It can auto-discover serial ports, auto-detect the chip, retry failed connections, and accepts the same connection options exposed on the command line (``--before``, ``--port-filter``, ``--connect-attempts``, etc.). Use it when you want the full CLI connection behavior from Python in a single call:
+
+.. code-block:: python
+
+    from esptool.cmds import connect_esp, attach_flash, reset_chip, run_stub, write_flash
+
+    FIRMWARE = "firmware.bin"
+
+    # Auto-discover the port and auto-detect the chip
+    with connect_esp() as esp:
+        esp.change_baud(921600)   # Upgrade to a faster operational baud rate
+        esp = run_stub(esp)       # Optional: upload the stub flasher
+        attach_flash(esp)
+        with open(FIRMWARE, "rb") as fw:
+            write_flash(esp, [(0x10000, fw)])
+        reset_chip(esp, "hard-reset")
+
+- Pass ``port="/dev/ttyACM0"`` to target a specific port instead of auto-discovering.
+- ``initial_baud`` is the rate the serial port is opened at for the initial sync, not an operational rate. ROM bootloaders typically require 115200 (the default), and ``connect_esp()`` does not upgrade to a faster rate on its own — call ``esp.change_baud()`` on the returned object afterward (as shown in the example above).
+- ``connect_esp()`` raises ``esptool.FatalError`` if no device can be reached.
+
+------------
+
 The Public API implements a custom ``ImageSource`` input type, which expands to ``str | bytes | IO[bytes]`` - a path to the firmware image file, an opened file-like object, or the image data as bytes.
 
 As output, the API returns a ``bytes`` object representing the binary image or writes the image to a file if the ``output`` parameter is provided.
@@ -135,6 +158,8 @@ The following example converts an ELF file to a flashable binary, prints the ima
 
 Chip Control Operations
 """""""""""""""""""""""
+
+.. autofunction:: esptool.cmds.connect_esp
 
 .. autofunction:: esptool.cmds.detect_chip
 

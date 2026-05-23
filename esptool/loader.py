@@ -498,6 +498,10 @@ class ESPLoader:
                 f"Failed to set baud rate {baud}. The driver may not support this rate."
             )
 
+    def get_baud(self):
+        """Return the current serial port baud rate."""
+        return self._port.baudrate
+
     def read(self):
         """Read a SLIP packet from the serial port"""
         return next(self._slip_reader)

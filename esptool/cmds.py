@@ -13,6 +13,7 @@ import time
 import zlib
 from typing import cast
 
+import serial
 from intelhex import IntelHex
 from serial import SerialException
 
@@ -25,6 +26,7 @@ from .bin_image import (
 )
 from .loader import (
     DEFAULT_CONNECT_ATTEMPTS,
+    DEFAULT_OPEN_PORT_ATTEMPTS,
     DEFAULT_TIMEOUT,
     ERASE_WRITE_TIMEOUT_PER_MB,
     NAND_BLOCK_SIZE,
@@ -34,6 +36,7 @@ from .loader import (
     timeout_per_mb,
 )
 from .logger import log
+from .port_util import get_port_list, parse_port_filters
 from .targets import CHIP_DEFS, CHIP_LIST, ROM_LIST
 from .uf2_writer import UF2Writer
 from .util import (
@@ -106,6 +109,10 @@ FLASH_MODES = {
     "dio": 2,
     "dout": 3,
 }
+
+
+# Commands for obtaining an ESP object
+######################################
 
 
 def detect_chip(
@@ -213,6 +220,160 @@ def detect_chip(
         f"{err_msg} Failed to autodetect chip type."
         "\nProbably it is unsupported by this version of esptool."
     )
+
+
+def _connect_with_retries(
+    port: str,
+    initial_baud: int,
+    chip: str,
+    max_retries: int,
+    trace: bool = False,
+    before: str = "default-reset",
+) -> ESPLoader:
+    chip_class = CHIP_DEFS[chip]
+    esp = None
+    log.print(f"Serial port {port}:")
+
+    first = True
+    ten_cycle = itertools.cycle(itertools.chain(itertools.repeat(False, 9), (True,)))
+    retry_loop = itertools.chain(
+        itertools.repeat(False, max_retries - 1),
+        (True,) if max_retries else itertools.cycle((False,)),
+    )
+
+    for last, every_tenth in zip(retry_loop, ten_cycle):
+        try:
+            esp = chip_class(port, initial_baud, trace)
+            if not first:
+                # break the retrying line
+                log.print("")
+            esp.connect(before)
+            return esp
+        except (FatalError, serial.serialutil.SerialException, OSError) as err:
+            if esp and esp._port:
+                esp._port.close()
+            esp = None
+            if first:
+                log.print(err)
+                log.print("Retrying failed connection", end="", flush=True)
+                first = False
+            if last:
+                raise err
+            if every_tenth:
+                # print a dot every second
+                log.print(".", end="", flush=True)
+            time.sleep(0.1)
+
+    raise AssertionError("unreachable: retry loop should return or re-raise")
+
+
+def _connect_first_available(
+    serial_list: list[str],
+    port: str | None,
+    connect_attempts: int,
+    initial_baud: int,
+    chip: str = "auto",
+    trace: bool = False,
+    before: str = "default-reset",
+) -> ESPLoader | None:
+    esp = None
+    for each_port in reversed(serial_list):
+        log.print(f"Serial port {each_port}:")
+        try:
+            if chip == "auto":
+                esp = detect_chip(
+                    each_port, initial_baud, before, trace, connect_attempts
+                )
+            else:
+                chip_class = CHIP_DEFS[chip]
+                esp = chip_class(each_port, initial_baud, trace)
+                esp.connect(before, connect_attempts)
+            break
+        except (FatalError, OSError) as err:
+            if port is not None:
+                raise
+            log.error(f"{each_port} failed to connect: {err}")
+            if esp and esp._port:
+                esp._port.close()
+            esp = None
+    return esp
+
+
+def connect_esp(
+    port: str | None = None,
+    chip: str = "auto",
+    initial_baud: int = ESPLoader.ESP_ROM_BAUD,
+    port_filter: list[str] | None = None,
+    before: str = "default-reset",
+    trace: bool = False,
+    connect_attempts: int = DEFAULT_CONNECT_ATTEMPTS,
+    open_port_attempts: int = DEFAULT_OPEN_PORT_ATTEMPTS,
+) -> ESPLoader:
+    """
+    Connect to an Espressif device, mirroring how the esptool CLI
+    establishes a connection: auto-discover serial ports, auto-detect
+    the chip, and retry failed connections.
+
+    Args:
+        port: Specific serial port device to use, or ``None`` to
+            auto-discover ports via ``port_filter``.
+        chip: Target chip name (e.g. ``"esp32"``, ``"esp32s3"``),
+            or ``"auto"`` to detect.
+        initial_baud: The baud rate used when opening the port for the
+            initial sync (ROM bootloaders typically require 115200).
+        port_filter: Filters applied when auto-discovering ports, each
+            entry of the form ``"vid=NUMBER"``, ``"pid=NUMBER"``,
+            ``"name=SUBSTRING"`` or ``"serial=SUBSTRING"``.
+        before: The chip reset method to perform when connecting
+            (``"default-reset"``, ``"usb-reset"``,
+            ``"no-reset"``, ``"no-reset-no-sync"``).
+        trace: Enables or disables tracing for debugging purposes.
+        connect_attempts: Number of sync attempts per candidate port
+            before moving on (or giving up if ``port`` was set).
+        open_port_attempts: Number of times to retry opening ``port``
+            if it fails to open. ``1`` (default) means try once; only
+            meaningful when both ``port`` and a concrete ``chip`` are
+            specified.
+
+    Returns:
+        A connected ESPLoader instance.
+    """
+    if port is None:
+        filters = parse_port_filters(port_filter or [])
+        ser_list = get_port_list(*filters)
+        log.print(f"Found {len(ser_list)} serial ports...")
+    else:
+        ser_list = [port]
+
+    esp = None
+    if open_port_attempts != 1:
+        if port is None or chip == "auto":
+            log.warning(
+                "The ESPTOOL_OPEN_PORT_ATTEMPTS (open_port_attempts) option "
+                "can only be used with --port and --chip arguments."
+            )
+        else:
+            esp = _connect_with_retries(
+                port, initial_baud, chip, open_port_attempts, trace, before
+            )
+
+    esp = esp or _connect_first_available(
+        ser_list,
+        port=port,
+        connect_attempts=connect_attempts,
+        initial_baud=initial_baud,
+        chip=chip,
+        trace=trace,
+        before=before,
+    )
+
+    if esp is None:
+        raise FatalError(
+            "Could not connect to an Espressif device "
+            f"on any of the {len(ser_list)} available serial ports."
+        )
+
+    return esp
 
 
 # Commands that require an ESP object
