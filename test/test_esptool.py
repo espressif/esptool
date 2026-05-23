@@ -53,7 +53,6 @@ try:
     from esptool import FatalError
     from esptool.cmds import (
         attach_flash,
-        detect_chip,
         erase_flash,
         flash_id,
         image_info,
@@ -1291,8 +1290,11 @@ class TestSecurityInfo(EsptoolTestCase):
             assert "Key Purposes" in res
         if arg_chip != "esp32s2":
             try:
-                esp = esptool.get_default_connected_device(
-                    [arg_port], arg_port, 10, 115200, arg_chip
+                esp = esptool.connect_esp(
+                    port=arg_port,
+                    chip=arg_chip,
+                    initial_baud=115200,
+                    connect_attempts=10,
                 )
                 assert f"Chip ID: {esp.IMAGE_CHIP_ID}" in res
                 assert "API Version" in res
@@ -2039,8 +2041,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_write_memory_rom(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
             self._test_read_write(esp)
         finally:
@@ -2048,8 +2053,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_write_memory_stub(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
             esp = esp.run_stub()
             self._test_read_write(esp)
@@ -2071,8 +2079,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_chip_description(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
             chip = esp.get_chip_description()
             assert "unknown" not in chip.lower()
@@ -2081,8 +2092,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_get_chip_features(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
 
             if hasattr(esp, "get_flash_cap") and esp.get_flash_cap() == 0:
@@ -2302,8 +2316,7 @@ class TestESPObjectOperations(EsptoolTestCase):
     @pytest.mark.quick_test
     @capture_stdout
     def test_stub_run(self, fake_out):
-        with esptool.CHIP_DEFS[arg_chip](port=arg_port) as esp:
-            esp.connect()
+        with esptool.connect_esp(port=arg_port, chip=arg_chip) as esp:
             esp = esp.run_stub()
             read_mac(esp)
             reset_chip(esp, "hard-reset")
@@ -2313,7 +2326,7 @@ class TestESPObjectOperations(EsptoolTestCase):
 
     @capture_stdout
     def test_flash_operations(self, fake_out):
-        with detect_chip(port=arg_port) as esp:  # Test with chip autodetection
+        with esptool.connect_esp(port=arg_port) as esp:  # Test with chip autodetection
             esp = esp.run_stub()
             try:
                 attach_flash(esp)
@@ -2378,7 +2391,7 @@ class TestESPObjectOperations(EsptoolTestCase):
 
             addr = 0x10000
             # Use API directly to flash old file first
-            with detect_chip(port=arg_port) as esp:
+            with esptool.connect_esp(port=arg_port) as esp:
                 esp = esp.run_stub()
                 try:
                     attach_flash(esp)
@@ -2404,7 +2417,7 @@ class TestESPObjectOperations(EsptoolTestCase):
                     reset_chip(esp, "hard-reset")
 
             # Test with no_diff_verify=True
-            with detect_chip(port=arg_port) as esp:
+            with esptool.connect_esp(port=arg_port) as esp:
                 esp = esp.run_stub()
                 try:
                     attach_flash(esp)
@@ -2432,6 +2445,22 @@ class TestESPObjectOperations(EsptoolTestCase):
             os.unlink(old_bin.name)
             os.unlink(new_bin.name)
 
+    @pytest.mark.quick_test
+    @capture_stdout
+    def test_connect_esp_change_baud(self, fake_out):
+        # connect_esp() opens the port at the ROM sync rate; the documented
+        # follow-up is to run the stub and then esp.change_baud() to raise the
+        # operational rate (ESP8266 ROM can't change baud, only the stub can).
+        with esptool.connect_esp(port=arg_port, chip=arg_chip) as esp:
+            esp = esp.run_stub()
+            esp.change_baud(460800)
+            assert esp.get_baud() == 460800
+            read_mac(esp)  # Confirm the link still works at the new rate
+            reset_chip(esp, "hard-reset")
+        output = fake_out.getvalue()
+        assert "Changing baud rate to 460800" in output
+        assert "MAC:" in output
+
 
 @pytest.mark.host_test
 class TestOldScripts:
@@ -2458,6 +2487,26 @@ class TestOldScripts:
         output = self._run_old_script_help("esp_rfc2217_server.py")
         assert "esp_rfc2217_server.py" in output
         assert "DEPRECATED" in output
+
+
+@pytest.mark.host_test
+class TestDeprecatedAliases:
+    """The deprecated aliases must keep forwarding to their replacements so
+    downstream scripts don't break (no hardware required)."""
+
+    def test_connect_loop_forwards_to_connect_with_retries(self):
+        sentinel = object()
+        with patch("esptool.connect_with_retries", return_value=sentinel) as mocked:
+            result = esptool.connect_loop("port", 1, "esp32", 2, trace=True)
+        mocked.assert_called_once_with("port", 1, "esp32", 2, trace=True)
+        assert result is sentinel
+
+    def test_get_default_connected_device_forwards_to_connect_first_available(self):
+        sentinel = object()
+        with patch("esptool.connect_first_available", return_value=sentinel) as mocked:
+            result = esptool.get_default_connected_device(["port"], None, 2, 115200)
+        mocked.assert_called_once_with(["port"], None, 2, 115200)
+        assert result is sentinel
 
 
 @pytest.mark.host_test

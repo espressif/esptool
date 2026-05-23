@@ -30,7 +30,7 @@ For more control and custom integration, esptool exposes a public API - a set of
 
 Basic Workflow:
 
-1. **Detect and Connect**: Use ``detect_chip()`` to automatically identify the connected ESP chip and establish a connection, or manually create and instantiate a specific ``ESPLoader`` object (e.g. ``ESP32ROM``) and establish a connection in two steps.
+1. **Detect and Connect**: Use ``connect_esp()`` for a single call that mirrors the CLI - auto-discover the serial port, auto-detect the chip, and retry failed connections. Alternatively, manually create and instantiate a specific ``ESPLoader`` object (e.g. ``ESP32ROM``) and establish a connection in two steps.
 2. **Run Stub Flasher (Optional)**: Upload and execute the :ref:`stub flasher <stub>` which provides enhanced functionality and speed.
 3. **Perform Operations**: Utilize the chip object's methods or public API command functions to interact with the device.
 4. **Reset and Cleanup**: Ensure proper reset and resource cleanup using context managers.
@@ -41,13 +41,12 @@ This example demonstrates writing two binary files using high-level commands:
 
 .. code-block:: python
 
-    from esptool.cmds import detect_chip, attach_flash, reset_chip, run_stub, write_flash
+    from esptool.cmds import connect_esp, attach_flash, reset_chip, run_stub, write_flash
 
-    PORT = "/dev/ttyACM0"
     BOOTLOADER = "bootloader.bin"
     FIRMWARE = "firmware.bin"
 
-    with detect_chip(PORT) as esp:
+    with connect_esp() as esp:  # Auto-discover the port and detect the chip
         esp = run_stub(esp)  # Skip this line to avoid running the stub flasher
         attach_flash(esp)  # Attach the flash memory chip, required for flash operations
         with open(BOOTLOADER, "rb") as bl_file, open(FIRMWARE, "rb") as fw_file:
@@ -57,6 +56,7 @@ This example demonstrates writing two binary files using high-level commands:
 - The ``esp`` object has to be replaced with the stub flasher object returned by ``run_stub(esp)`` when the stub flasher is activated. This step can be skipped if the stub flasher is not needed.
 - Running ``attach_flash(esp)`` is required for any flash-memory-related operations to work.
 - Using the ``esp`` object in a context manager ensures the port gets closed properly after the block is executed.
+- ``connect_esp()`` auto-discovers the serial port and detects the chip; pass ``port="/dev/ttyACM0"`` to target a specific port. It accepts the same connection options as the CLI (``before``, ``port_filter``, ``connect_attempts``, etc.), and you can call ``esp.change_baud()`` on the returned object to raise the transfer speed.
 
 ------------
 
@@ -92,7 +92,7 @@ The following example demonstrates running a series of flash memory operations i
         read_flash(esp, 0x0, 0x2400, "output.bin")  # Read the flash memory into a file
         reset_chip(esp, "hard-reset")  # Reset the chip
 
-- This example doesn't use ``detect_chip()``, but instantiates a ``ESP32ROM`` class directly. This is useful when you know the target chip in advance. In this scenario ``esp.connect()`` is required to establish a connection with the device.
+- This example doesn't use ``connect_esp()``, but instantiates a ``ESP32ROM`` class directly. This is useful when you know the target chip in advance. In this scenario ``esp.connect()`` is required to establish a connection with the device.
 - Multiple operations can be chained together in a single context manager block.
 
 ------------
@@ -110,12 +110,12 @@ The following example converts an ELF file to a flashable binary, prints the ima
     # var 1 - Loading ELF from a file, not writing binary to a file
     bin_file = elf2image(ELF, "esp32c3")
     image_info(bin_file)
-    with detect_chip(PORT) as esp:
+    with connect_esp() as esp:
         attach_flash(esp)
         write_flash(esp, [(0, bin_file)])
 
     # var 2 - Loading ELF from an opened file object, not writing binary to a file
-    with open(ELF, "rb") as elf_file, detect_chip(PORT) as esp:
+    with open(ELF, "rb") as elf_file, connect_esp() as esp:
         bin_file = elf2image(elf_file, "esp32c3")
         image_info(bin_file)
         attach_flash(esp)
@@ -124,7 +124,7 @@ The following example converts an ELF file to a flashable binary, prints the ima
     # var 3 - Loading ELF from a file, writing binary to a file
     elf2image(ELF, "esp32c3", "image.bin")
     image_info("image.bin")
-    with detect_chip(PORT) as esp:
+    with connect_esp() as esp:
         attach_flash(esp)
         write_flash(esp, [(0, "image.bin")])
 
@@ -135,6 +135,12 @@ The following example converts an ELF file to a flashable binary, prints the ima
 
 Chip Control Operations
 """""""""""""""""""""""
+
+.. autofunction:: esptool.cmds.connect_esp
+
+.. autofunction:: esptool.cmds.connect_with_retries
+
+.. autofunction:: esptool.cmds.connect_first_available
 
 .. autofunction:: esptool.cmds.detect_chip
 
@@ -237,7 +243,7 @@ For granular control and more configuration freedom, you can directly access the
 
 .. code-block:: python
 
-    from esptool.cmds import detect_chip
+    from esptool.cmds import connect_esp
 
     # The port of the connected ESP
     PORT = "/dev/ttyACM0"
@@ -249,7 +255,7 @@ For granular control and more configuration freedom, you can directly access the
     def progress_callback(percent):
         print(f"Wrote: {int(percent)}%")
 
-    with detect_chip(PORT) as esp:
+    with connect_esp(port=PORT) as esp:
         description = esp.get_chip_description()
         features = esp.get_chip_features()
         print(f"Detected ESP on port {PORT}: {description}")
