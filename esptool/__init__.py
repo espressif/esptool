@@ -62,8 +62,6 @@ from esptool.cli_util import (
     ResetModeType,
     SerialPortType,
     SpiConnectionType,
-    get_port_list,
-    parse_port_filters,
     parse_size_arg,
 )
 from esptool.cmds import (
@@ -106,6 +104,7 @@ from esptool.loader import (
     StubFlasher,
 )
 from esptool.logger import log
+from esptool.port_util import get_port_list, parse_port_filters
 from esptool.targets import CHIP_DEFS, CHIP_LIST, ESP32ROM
 from esptool.util import (
     FatalError,
