@@ -28,10 +28,10 @@ jobs:
       EFUSE_DIR: ./espefuse/efuse_defs/
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         if: (matrix.platform != 'linux-armv7') || contains(github.ref_name, 'dev')
         with:
           python-version: "3.13"
@@ -76,7 +76,7 @@ jobs:
         run: mv LICENSE README.md ./${{ env.DISTPATH }}
 
       - name: Archive artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.DISTPATH }}
           path: ${{ env.DISTPATH }}
@@ -96,7 +96,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         shell: bash
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -107,7 +107,7 @@ jobs:
           cz changelog ${{ steps.get_version.outputs.VERSION }} --template ci/gh_changelog_template.md.j2 --file-name changelog_body.md
           cat changelog_body.md
       - name: Download built binaries
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v8
       - name: Compress and rename binaries
         run: |
           for dir in esptool-*; do
@@ -120,7 +120,7 @@ jobs:
           done
       - name: Create release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

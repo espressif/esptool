@@ -19,9 +19,9 @@ jobs:
       id-token: write
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v6
     - name: Set up Python 3.14
-      uses: actions/setup-python@master
+      uses: actions/setup-python@v6
       with:
         python-version: '3.14'
     - name: Install dependencies
