@@ -32,15 +32,9 @@ jobs:
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v6
-        if: (matrix.platform != 'linux-armv7') || contains(github.ref_name, 'dev')
+        if: matrix.platform != 'linux-armv7'
         with:
           python-version: "3.13"
-      - name: Patch version for dev releases
-        if: contains(github.ref_name, 'dev')
-        run: |
-          echo "Patching version for dev release: ${{ github.ref_name }}"
-          python ci/patch_dev_release.py --version ${{ github.ref_name }} esptool/__init__.py
-          git diff
       - name: Build with PyInstaller
         uses: espressif/python-binary-action@master
         with:
