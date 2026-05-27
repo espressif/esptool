@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import esptool
 from esptool import FatalError, connect_esp
 from esptool.loader import ESPLoader
 from esptool.logger import log
@@ -109,3 +110,10 @@ class TestConnectEsp:
         mock_parse.assert_called_once_with(["vid=0x303A"])
         mock_ports.assert_called_once()
         assert mock_default.call_args.args[0] == ["/dev/ttyUSB0", "/dev/ttyUSB1"]
+
+    def test_legacy_aliases_still_importable(self):
+        # Downstream projects (e.g. pytest-embedded) import these names from
+        # the esptool package directly; the regression to guard against is
+        # `from esptool import get_default_connected_device` breaking.
+        assert callable(esptool.connect_loop)
+        assert callable(esptool.get_default_connected_device)

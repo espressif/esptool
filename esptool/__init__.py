@@ -65,6 +65,8 @@ from esptool.cli_util import (
 )
 from esptool.cmds import (
     NAND_BLOCK_COUNT,
+    _connect_first_available,
+    _connect_with_retries,
     attach_flash,
     chip_id,
     connect_esp,
@@ -1250,6 +1252,14 @@ def expand_file_arguments(argv: list[str]) -> list[str]:
         log.print(f"esptool {' '.join(new_args)}")
         return new_args
     return argv
+
+
+def connect_loop(*args, **kwargs):
+    return _connect_with_retries(*args, **kwargs)
+
+
+def get_default_connected_device(*args, **kwargs):
+    return _connect_first_available(*args, **kwargs)
 
 
 def _main():
