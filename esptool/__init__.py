@@ -6,6 +6,8 @@
 __all__ = [
     "chip_id",
     "connect_esp",
+    "connect_first_available",
+    "connect_with_retries",
     "detect_chip",
     "dump_mem",
     "elf2image",
@@ -65,11 +67,11 @@ from esptool.cli_util import (
 )
 from esptool.cmds import (
     NAND_BLOCK_COUNT,
-    _connect_first_available,
-    _connect_with_retries,
     attach_flash,
     chip_id,
     connect_esp,
+    connect_first_available,
+    connect_with_retries,
     detect_chip,
     detect_flash_size,
     dump_bbm,
@@ -1255,11 +1257,11 @@ def expand_file_arguments(argv: list[str]) -> list[str]:
 
 
 def connect_loop(*args, **kwargs):
-    return _connect_with_retries(*args, **kwargs)
+    return connect_with_retries(*args, **kwargs)
 
 
 def get_default_connected_device(*args, **kwargs):
-    return _connect_first_available(*args, **kwargs)
+    return connect_first_available(*args, **kwargs)
 
 
 def _main():

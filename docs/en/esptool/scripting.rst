@@ -161,6 +161,10 @@ Chip Control Operations
 
 .. autofunction:: esptool.cmds.connect_esp
 
+.. autofunction:: esptool.cmds.connect_with_retries
+
+.. autofunction:: esptool.cmds.connect_first_available
+
 .. autofunction:: esptool.cmds.detect_chip
 
 .. autofunction:: esptool.cmds.run_stub

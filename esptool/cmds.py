@@ -222,7 +222,7 @@ def detect_chip(
     )
 
 
-def _connect_with_retries(
+def connect_with_retries(
     port: str,
     initial_baud: int,
     chip: str,
@@ -230,6 +230,27 @@ def _connect_with_retries(
     trace: bool = False,
     before: str = "default-reset",
 ) -> ESPLoader:
+    """
+    Repeatedly attempt to open a single, known port and sync with the chip,
+    retrying on failure. ``connect_esp()`` is the recommended entry point;
+    use this lower-level helper when driving the retry loop directly.
+
+    Args:
+        port: The serial port to open.
+        initial_baud: The baud rate used when opening the port for the
+            initial sync (ROM bootloaders typically require 115200).
+        chip: Target chip name (e.g. ``"esp32"``, ``"esp32s3"``).
+            Must be a concrete chip, not ``"auto"``.
+        max_retries: Number of attempts before giving up. ``0`` retries
+            forever until successful.
+        trace: Enables or disables tracing for debugging purposes.
+        before: The chip reset method to perform before each attempt
+            (``"default-reset"``, ``"usb-reset"``,
+            ``"no-reset"``, ``"no-reset-no-sync"``).
+
+    Returns:
+        A connected ESPLoader instance for the requested chip.
+    """
     chip_class = CHIP_DEFS[chip]
     esp = None
     log.print(f"Serial port {port}:")
@@ -267,7 +288,7 @@ def _connect_with_retries(
     raise AssertionError("unreachable: retry loop should return or re-raise")
 
 
-def _connect_first_available(
+def connect_first_available(
     serial_list: list[str],
     port: str | None,
     connect_attempts: int,
@@ -276,6 +297,30 @@ def _connect_first_available(
     trace: bool = False,
     before: str = "default-reset",
 ) -> ESPLoader | None:
+    """
+    Iterate ``serial_list`` and return the first port that connects
+    successfully. ``connect_esp()`` is the recommended entry point;
+    use this lower-level helper when driving port iteration directly.
+
+    Args:
+        serial_list: Candidate serial port devices to try (iterated in
+            reverse order, so the last entry is attempted first).
+        port: Original user-supplied port, or ``None`` if auto-discovering.
+            When set, the first connection error is re-raised instead of
+            being swallowed to move on to the next candidate.
+        connect_attempts: Number of sync attempts per candidate port.
+        initial_baud: The baud rate used when opening each port for the
+            initial sync (ROM bootloaders typically require 115200).
+        chip: Target chip name, or ``"auto"`` to detect.
+        trace: Enables or disables tracing for debugging purposes.
+        before: The chip reset method to perform when connecting
+            (``"default-reset"``, ``"usb-reset"``,
+            ``"no-reset"``, ``"no-reset-no-sync"``).
+
+    Returns:
+        A connected ESPLoader instance for the first reachable port,
+        or ``None`` if no candidate could be connected.
+    """
     esp = None
     for each_port in reversed(serial_list):
         log.print(f"Serial port {each_port}:")
@@ -353,11 +398,11 @@ def connect_esp(
                 "can only be used with --port and --chip arguments."
             )
         else:
-            esp = _connect_with_retries(
+            esp = connect_with_retries(
                 port, initial_baud, chip, open_port_attempts, trace, before
             )
 
-    esp = esp or _connect_first_available(
+    esp = esp or connect_first_available(
         ser_list,
         port=port,
         connect_attempts=connect_attempts,

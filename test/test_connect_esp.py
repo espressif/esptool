@@ -16,9 +16,9 @@ class TestConnectEsp:
     def test_uses_default_path(self):
         mock_esp = self._make_esp()
         with (
-            patch("esptool.cmds._connect_with_retries") as mock_loop,
+            patch("esptool.cmds.connect_with_retries") as mock_loop,
             patch(
-                "esptool.cmds._connect_first_available", return_value=mock_esp
+                "esptool.cmds.connect_first_available", return_value=mock_esp
             ) as mock_default,
             patch.object(log, "print"),
         ):
@@ -31,9 +31,9 @@ class TestConnectEsp:
         mock_esp = self._make_esp()
         with (
             patch(
-                "esptool.cmds._connect_with_retries", return_value=mock_esp
+                "esptool.cmds.connect_with_retries", return_value=mock_esp
             ) as mock_loop,
-            patch("esptool.cmds._connect_first_available") as mock_default,
+            patch("esptool.cmds.connect_first_available") as mock_default,
             patch.object(log, "print"),
         ):
             result = connect_esp(
@@ -48,8 +48,8 @@ class TestConnectEsp:
     def test_connect_with_retries_warning_no_port(self):
         mock_esp = self._make_esp()
         with (
-            patch("esptool.cmds._connect_with_retries") as mock_loop,
-            patch("esptool.cmds._connect_first_available", return_value=mock_esp),
+            patch("esptool.cmds.connect_with_retries") as mock_loop,
+            patch("esptool.cmds.connect_first_available", return_value=mock_esp),
             patch("esptool.cmds.get_port_list", return_value=["/dev/ttyUSB0"]),
             patch("esptool.cmds.parse_port_filters", return_value=[]),
             patch.object(log, "print"),
@@ -64,8 +64,8 @@ class TestConnectEsp:
     def test_connect_with_retries_warning_auto_chip(self):
         mock_esp = self._make_esp()
         with (
-            patch("esptool.cmds._connect_with_retries") as mock_loop,
-            patch("esptool.cmds._connect_first_available", return_value=mock_esp),
+            patch("esptool.cmds.connect_with_retries") as mock_loop,
+            patch("esptool.cmds.connect_first_available", return_value=mock_esp),
             patch.object(log, "print"),
             patch.object(log, "warning") as mock_warning,
         ):
@@ -76,7 +76,7 @@ class TestConnectEsp:
 
     def test_raises_fatal_error_no_device(self):
         with (
-            patch("esptool.cmds._connect_first_available", return_value=None),
+            patch("esptool.cmds.connect_first_available", return_value=None),
             patch.object(log, "print"),
         ):
             with pytest.raises(FatalError, match="Could not connect"):
@@ -86,7 +86,7 @@ class TestConnectEsp:
         mock_esp = self._make_esp()
         with (
             patch(
-                "esptool.cmds._connect_first_available", return_value=mock_esp
+                "esptool.cmds.connect_first_available", return_value=mock_esp
             ) as mock_default,
             patch.object(log, "print"),
         ):
@@ -102,7 +102,7 @@ class TestConnectEsp:
                 return_value=["/dev/ttyUSB0", "/dev/ttyUSB1"],
             ) as mock_ports,
             patch(
-                "esptool.cmds._connect_first_available", return_value=mock_esp
+                "esptool.cmds.connect_first_available", return_value=mock_esp
             ) as mock_default,
             patch.object(log, "print"),
         ):
