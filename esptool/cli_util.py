@@ -628,8 +628,23 @@ def parse_port_filters(
     return filterVids, filterPids, filterNames, filterSerials
 
 
-def parse_size_arg(esp: ESPLoader, size: int | str) -> int:
+def parse_size_arg(esp: ESPLoader, size: int | str, flash_type: str = "nor") -> int:
     """Parse the flash size argument and return the size in bytes"""
+    if flash_type == "sdmmc":
+        card_size: int = esp.sdmmc_get_info()["capacity_bytes"]
+        if isinstance(size, int):
+            if card_size and size > card_size:
+                raise FatalError(
+                    f"Specified size {size:#x} is greater than SD/MMC card size "
+                    f"{card_size:#x}.",
+                )
+            return size
+        if size.lower() != "all":
+            raise FatalError(f"Invalid size value: {size}. Use an integer or 'all'.")
+        if not card_size:
+            raise FatalError("Card capacity unknown. Set an exact size value.")
+        log.print(f"Detected card size: {card_size / (1024 * 1024):.1f} MiB")
+        return card_size
     if isinstance(size, int):
         if not esp.secure_download_mode:
             detected_size = flash_size_bytes(detect_flash_size(esp))

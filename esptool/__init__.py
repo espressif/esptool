@@ -25,6 +25,7 @@ __all__ = [
     "reset_chip",
     "run",
     "run_stub",
+    "sdmmc_info",
     "verify_flash",
     "version",
     "write_flash",
@@ -91,6 +92,7 @@ from esptool.cmds import (
     reset_chip,
     run,
     run_stub,
+    sdmmc_info,
     verify_flash,
     version,
     write_flash,
@@ -229,20 +231,38 @@ def nand_command(function):
     return wrapper
 
 
+def sdmmc_command(function):
+    """Decorator for hidden SDMMC-only commands.  Sets
+    ctx.obj["plugins"] = ["sdmmc"].  Unlike NAND, SDMMC doesn't need
+    --spi-connection (it routes through the GPIO matrix)."""
+    import functools
+
+    @functools.wraps(function)
+    @click.pass_context
+    def wrapper(ctx, *args, **kwargs):
+        ctx.ensure_object(dict)
+        ctx.obj["plugins"] = ["sdmmc"]
+        return function(ctx, *args, **kwargs)
+
+    return wrapper
+
+
 def add_flash_type_arg(function):
-    """Add flash type argument (NOR or NAND)"""
+    """Add flash type argument (NOR, NAND, or SDMMC)"""
 
     def _flash_type_callback(ctx: click.Context, _param: click.Parameter, value: str):
         ctx.ensure_object(dict)
         if value == "nand":
             ctx.obj["plugins"] = ["nand"]
+        elif value == "sdmmc":
+            ctx.obj["plugins"] = ["sdmmc"]
         return value
 
     function = click.option(
         "--flash-type",
         "-ft",
-        help="Flash type: nor (default) or nand.",
-        type=click.Choice(["nor", "nand"]),
+        help="Flash type: nor (default), nand, or sdmmc.",
+        type=click.Choice(["nor", "nand", "sdmmc"]),
         default="nor",
         hidden=True,
         is_eager=False,
@@ -250,6 +270,65 @@ def add_flash_type_arg(function):
         callback=_flash_type_callback,
     )(function)
     return function
+
+
+def add_sdmmc_options(function):
+    """Bundle optional SDMMC attach overrides; all default to stub defaults
+    (IDF SDMMC_SLOT_CONFIG_DEFAULT pinout for ESP32-S3, 4-bit, 20 MHz)."""
+    function = click.option(
+        "--sdmmc-slot",
+        type=click.IntRange(0, 1),
+        default=None,
+        help="SDMMC hardware slot (0 or 1).",
+    )(function)
+    function = click.option(
+        "--sdmmc-width",
+        type=click.Choice(["1", "4", "8"]),
+        default=None,
+        help="Bus width in bits.",
+    )(function)
+    function = click.option(
+        "--sdmmc-freq-khz",
+        type=int,
+        default=None,
+        help="Post-init bus frequency in kHz.",
+    )(function)
+    function = click.option(
+        "--sdmmc-pins",
+        type=str,
+        default=None,
+        help="Comma-separated GPIOs: CLK,CMD,D0,D1,D2,D3[,D4..D7].",
+    )(function)
+    return function
+
+
+def _pop_sdmmc_attach_kwargs(kwargs: dict) -> dict:
+    """Pop --sdmmc-* options out of kwargs and return them as attach kwargs."""
+    out = {}
+    slot = kwargs.pop("sdmmc_slot", None)
+    width = kwargs.pop("sdmmc_width", None)
+    freq = kwargs.pop("sdmmc_freq_khz", None)
+    pins = kwargs.pop("sdmmc_pins", None)
+    if slot is not None:
+        out["slot"] = slot
+    if width is not None:
+        out["width"] = int(width)
+    if freq is not None:
+        out["freq_khz"] = freq
+    if pins:
+        try:
+            pin_list = [int(p, 0) for p in pins.split(",")]
+        except ValueError:
+            raise click.UsageError("--sdmmc-pins must be comma-separated integers")
+        if len(pin_list) < 2:
+            raise click.UsageError(
+                "--sdmmc-pins needs at least CLK,CMD; D0..D7 are also accepted"
+            )
+        out["pin_clk"] = pin_list[0]
+        out["pin_cmd"] = pin_list[1]
+        d_list = pin_list[2:10]
+        out["pin_d"] = tuple(d_list + [0xFF] * (8 - len(d_list)))
+    return out
 
 
 def add_spi_flash_options(
@@ -782,6 +861,7 @@ def write_mem_cli(ctx, address, value, mask):
 @add_spi_flash_options(allow_keep=True, auto_detect=True)
 @add_flash_type_arg
 @add_spi_connection_arg
+@add_sdmmc_options
 @click.pass_context
 def write_flash_cli(ctx, addr_filename, **kwargs):
     """Write a binary blob to flash. The address is followed by binary filename,
@@ -818,11 +898,13 @@ def write_flash_cli(ctx, addr_filename, **kwargs):
 
     flash_type = kwargs.get("flash_type", "nor")
     _require_spi_connection_for_nand(flash_type, kwargs)
+    sdmmc_attach_kwargs = _pop_sdmmc_attach_kwargs(kwargs)
     prepare_esp_object(ctx)
     attach_flash(
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        sdmmc_attach_kwargs=sdmmc_attach_kwargs if flash_type == "sdmmc" else None,
     )
     write_flash(ctx.obj["esp"], addr_filename, **kwargs)
 
@@ -1023,18 +1105,21 @@ def write_flash_status_cli(ctx, value, bytes, **kwargs):
 @add_spi_flash_options(allow_keep=True, auto_detect=True, size_only=True)
 @add_flash_type_arg
 @add_spi_connection_arg
+@add_sdmmc_options
 @click.pass_context
 def read_flash_cli(ctx, address, size, output, **kwargs):
     """Read SPI flash memory content."""
     flash_type = kwargs.get("flash_type", "nor")
     _require_spi_connection_for_nand(flash_type, kwargs)
+    sdmmc_attach_kwargs = _pop_sdmmc_attach_kwargs(kwargs)
     prepare_esp_object(ctx)
     attach_flash(
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        sdmmc_attach_kwargs=sdmmc_attach_kwargs if flash_type == "sdmmc" else None,
     )
-    size = parse_size_arg(ctx.obj["esp"], size)
+    size = parse_size_arg(ctx.obj["esp"], size, flash_type=flash_type)
     if flash_type == "nor":
         check_flash_size(ctx.obj["esp"], address, size)
     read_flash(ctx.obj["esp"], address, size, output, **kwargs)
@@ -1102,16 +1187,19 @@ def dump_bbm_cli(ctx, output, block_count, **kwargs):
 @add_spi_flash_options(allow_keep=True, auto_detect=True)
 @add_flash_type_arg
 @add_spi_connection_arg
+@add_sdmmc_options
 @click.pass_context
 def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
     """Verify a binary blob against the flash memory content."""
     flash_type = kwargs.pop("flash_type", "nor")
     _require_spi_connection_for_nand(flash_type, kwargs)
+    sdmmc_attach_kwargs = _pop_sdmmc_attach_kwargs(kwargs)
     prepare_esp_object(ctx)
     attach_flash(
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        sdmmc_attach_kwargs=sdmmc_attach_kwargs if flash_type == "sdmmc" else None,
     )
     verify_flash(
         ctx.obj["esp"], addr_filename, diff=diff, flash_type=flash_type, **kwargs
@@ -1126,15 +1214,18 @@ def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
 )
 @add_flash_type_arg
 @add_spi_connection_arg
+@add_sdmmc_options
 @click.pass_context
 def erase_flash_cli(ctx, force, flash_type, **kwargs):
     """Erase the SPI flash memory."""
     _require_spi_connection_for_nand(flash_type, kwargs)
+    sdmmc_attach_kwargs = _pop_sdmmc_attach_kwargs(kwargs)
     prepare_esp_object(ctx)
     attach_flash(
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        sdmmc_attach_kwargs=sdmmc_attach_kwargs if flash_type == "sdmmc" else None,
     )
     erase_flash(ctx.obj["esp"], force, flash_type=flash_type)
 
@@ -1149,20 +1240,40 @@ def erase_flash_cli(ctx, force, flash_type, **kwargs):
 @click.argument("size", type=AutoSizeType())
 @add_flash_type_arg
 @add_spi_connection_arg
+@add_sdmmc_options
 @click.pass_context
 def erase_region_cli(ctx, address, size, force, flash_type, **kwargs):
     """Erase a region of the SPI flash memory."""
     _require_spi_connection_for_nand(flash_type, kwargs)
+    sdmmc_attach_kwargs = _pop_sdmmc_attach_kwargs(kwargs)
     prepare_esp_object(ctx)
     attach_flash(
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        sdmmc_attach_kwargs=sdmmc_attach_kwargs if flash_type == "sdmmc" else None,
     )
-    size = parse_size_arg(ctx.obj["esp"], size)
-    if flash_type != "nand":
+    size = parse_size_arg(ctx.obj["esp"], size, flash_type=flash_type)
+    if flash_type not in ("nand", "sdmmc"):
         check_flash_size(ctx.obj["esp"], address, size)
     erase_region(ctx.obj["esp"], address, size, force, flash_type=flash_type)
+
+
+@cli.command("sdmmc-info", hidden=True)
+@add_sdmmc_options
+@sdmmc_command
+def sdmmc_info_cli(ctx, **kwargs):
+    """Attach an SD/MMC card via the SDMMC host and print its identity (CID,
+    OCR, capacity).  Useful as a smoke test before attempting reads/writes."""
+    sdmmc_attach_kwargs = _pop_sdmmc_attach_kwargs(kwargs)
+    prepare_esp_object(ctx)
+    attach_flash(
+        ctx.obj["esp"],
+        spi_connection=None,
+        flash_type="sdmmc",
+        sdmmc_attach_kwargs=sdmmc_attach_kwargs,
+    )
+    sdmmc_info(ctx.obj["esp"])
 
 
 @cli.command("read-flash-sfdp")

@@ -29,6 +29,7 @@ from .loader import (
     ERASE_WRITE_TIMEOUT_PER_MB,
     NAND_BLOCK_SIZE,
     NAND_PAGES_PER_BLOCK,
+    SDMMC_SECTOR_SIZE,
     ESPLoader,
     StubFlasher,
     timeout_per_mb,
@@ -59,6 +60,11 @@ _NAND_EXPERIMENTAL_MSG = (
     "NAND flash support is experimental and may change without notice."
 )
 _warn_nand_experimental = PrintOnce(log.warning)
+
+_SDMMC_EXPERIMENTAL_MSG = (
+    "SDMMC card support is experimental and may change without notice."
+)
+_warn_sdmmc_experimental = PrintOnce(log.warning)
 
 
 # Vendors with different detection logic
@@ -867,6 +873,101 @@ def _write_flash_nand(
     log.print("Leaving...")
 
 
+def _write_flash_sdmmc(
+    esp: ESPLoader, addr_data: list[tuple[int, ImageSource]], **kwargs
+) -> None:
+    """Write data to an attached SDMMC card.  SD/eMMC handle wear and bad-block
+    remapping internally, so we just stream sector-aligned chunks.  Offsets and
+    image sizes must be multiples of SDMMC_SECTOR_SIZE; the stub pads any
+    trailing partial sector to 0xFF."""
+    _warn_sdmmc_experimental(_SDMMC_EXPERIMENTAL_MSG)
+    no_progress: bool = kwargs.get("no_progress", False)
+
+    norm_addr_data = [(addr, get_bytes(data)) for addr, data in addr_data]
+
+    for address, (image, name) in norm_addr_data:
+        if address % SDMMC_SECTOR_SIZE != 0:
+            raise FatalError(f"SDMMC writes must be a multiple of {SDMMC_SECTOR_SIZE}.")
+        if len(image) % SDMMC_SECTOR_SIZE != 0:
+            image = pad_to(image, SDMMC_SECTOR_SIZE, pad_character=b"\xff")
+
+        if len(image) == 0:
+            log.warning(
+                "Input image is empty." if name is None else f"'{name}' is empty."
+            )
+            continue
+
+        uncsize = len(image)
+        esp.write_flash_sdmmc_begin(uncsize, address)
+
+        t = time.time()
+        bytes_written = 0
+        seq = 0
+        try:
+            remaining = image
+            while remaining:
+                if not no_progress:
+                    log.progress_bar(
+                        cur_iter=uncsize - len(remaining),
+                        total_iters=uncsize,
+                        prefix=f"Writing at {address + bytes_written:#010x} ",
+                        suffix=f" {bytes_written}/{uncsize} bytes...",
+                    )
+                # Up to FLASH_WRITE_SIZE per block, padded only to sector size:
+                # padding all the way to FLASH_WRITE_SIZE would overflow the
+                # stub's total_remaining counter for images smaller than that.
+                block = remaining[: esp.FLASH_WRITE_SIZE]
+                tail = len(block) % SDMMC_SECTOR_SIZE
+                if tail:
+                    block = block + b"\xff" * (SDMMC_SECTOR_SIZE - tail)
+                esp.write_flash_sdmmc_block(block, seq)
+                bytes_written += len(block)
+                remaining = remaining[esp.FLASH_WRITE_SIZE :]
+                seq += 1
+            esp.write_flash_sdmmc_finish(reboot=False)
+        except Exception:
+            # Best-effort: clear the stub's session state so the next attempt
+            # starts clean.
+            try:
+                esp.write_flash_sdmmc_finish(reboot=False)
+            except Exception:
+                pass
+            raise
+
+        t = time.time() - t
+        speed_msg = f" ({bytes_written / t * 8 / 1000:.1f} kbit/s)" if t > 0.0 else ""
+        log.print(
+            f"Wrote {bytes_written} bytes at {address:#010x} "
+            f"in {t:.1f} seconds{speed_msg}."
+        )
+
+    log.print("Leaving...")
+
+
+def sdmmc_info(esp: ESPLoader):
+    """Query and pretty-print the attached card's metadata.  Must be called
+    after attach_flash(esp, flash_type="sdmmc") has brought up the card.
+    Returns the parsed info dict for programmatic callers."""
+    _warn_sdmmc_experimental(_SDMMC_EXPERIMENTAL_MSG)
+    info = esp.sdmmc_get_info()
+    kind = (
+        "eMMC"
+        if info["is_mmc"]
+        else ("SDHC/SDXC" if info["is_high_capacity"] else "SDSC")
+    )
+    log.print(f"Card type:    {kind}")
+    log.print(f"Bus width:    {info['bus_width']}-bit")
+    log.print(
+        f"Capacity:     {info['capacity_bytes'] / (1024 * 1024):.1f} MiB "
+        f"({info['capacity_sectors']} sectors × {SDMMC_SECTOR_SIZE} B)"
+    )
+    log.print(f"OCR:          {info['ocr']:#010x}")
+    log.print(f"RCA:          {info['rca']:#06x}")
+    if "cid" in info:
+        log.print("CID:          " + "".join(f"{w:08x}" for w in info["cid"]))
+    return info
+
+
 def write_flash(
     esp: ESPLoader,
     addr_data: list[tuple[int, ImageSource]],
@@ -918,6 +1019,8 @@ def write_flash(
     # Check if NAND flash mode is requested
     if flash_type == "nand":
         return _write_flash_nand(esp, addr_data, **kwargs)
+    if flash_type == "sdmmc":
+        return _write_flash_sdmmc(esp, addr_data, **kwargs)
 
     # Original NOR flash logic continues below
     # Normalize addr_data to use bytes
@@ -1651,6 +1754,7 @@ def attach_flash(
     esp: ESPLoader,
     spi_connection: (tuple[int, int, int, int, int] | str) | None = None,
     flash_type: str = "nor",
+    sdmmc_attach_kwargs: dict | None = None,
 ) -> None:
     """
     Configure and attach a SPI flash memory chip to the ESP device,
@@ -1664,8 +1768,26 @@ def attach_flash(
             ``(CLK, Q, D, HD, CS)`` for manual configuration
             or a string (``"SPI"`` or ``"HSPI"``) representing a pre-defined config.
             If not provided, the default flash connection is used.
-        flash_type: Type of flash - "nor" (default) or "nand".
+        flash_type: Type of flash - "nor" (default), "nand", or "sdmmc".
+        sdmmc_attach_kwargs: When ``flash_type == "sdmmc"``, kwargs forwarded
+            to :meth:`ESPLoader.sdmmc_attach` (slot, width, freq_khz, pins).
     """
+    # SDMMC uses its own GPIO matrix routing — skip the NOR/NAND attach path.
+    if flash_type == "sdmmc":
+        _warn_sdmmc_experimental(_SDMMC_EXPERIMENTAL_MSG)
+        log.print("Bringing up SDMMC card...")
+        info = esp.sdmmc_attach(**(sdmmc_attach_kwargs or {}))
+        kind = (
+            "eMMC"
+            if info["is_mmc"]
+            else ("SDHC/SDXC" if info["is_high_capacity"] else "SDSC")
+        )
+        log.print(
+            f"Detected {kind} card: "
+            f"{info['capacity_bytes'] / (1024 * 1024):.1f} MiB, "
+            f"{info['bus_width']}-bit bus"
+        )
+        return
 
     def _define_spi_conn(spi_connection):
         """Prepare SPI configuration string and value for flash_spi_attach()"""
@@ -1877,6 +1999,21 @@ def erase_flash(esp: ESPLoader, force: bool = False, flash_type: str = "nor") ->
         force: Bypass the security checks for flash encryption and secure boot.
         flash_type: "nor" or "nand".
     """
+    if flash_type == "sdmmc":
+        _warn_sdmmc_experimental(_SDMMC_EXPERIMENTAL_MSG)
+        info = esp.sdmmc_get_info()
+        total = info["capacity_bytes"]
+        if total == 0:
+            raise FatalError(
+                "SDMMC card reports zero capacity — cannot erase the whole card."
+            )
+        log.stage()
+        log.print(f"Erasing SDMMC card ({total // (1024 * 1024)} MiB, CMD32/33/38)...")
+        t = time.time()
+        esp.erase_sdmmc_region(0, total)
+        log.stage(finish=True)
+        log.print(f"SDMMC erase complete in {time.time() - t:.1f}s.")
+        return
     if flash_type == "nand":
         _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
         log.stage()
@@ -1944,6 +2081,22 @@ def erase_region(
         force: Bypass the security checks for flash encryption and secure boot.
         flash_type: "nor" or "nand".
     """
+    if flash_type == "sdmmc":
+        _warn_sdmmc_experimental(_SDMMC_EXPERIMENTAL_MSG)
+        if address % SDMMC_SECTOR_SIZE != 0 or size % SDMMC_SECTOR_SIZE != 0:
+            raise FatalError(
+                f"SDMMC erase offset/size must be sector-aligned "
+                f"(multiple of {SDMMC_SECTOR_SIZE})."
+            )
+        log.stage()
+        log.print(
+            f"Erasing SDMMC region [{address:#010x} .. {address + size:#010x})..."
+        )
+        t = time.time()
+        esp.erase_sdmmc_region(address, size)
+        log.stage(finish=True)
+        log.print(f"SDMMC erase complete in {time.time() - t:.1f}s.")
+        return
     if flash_type == "nand":
         _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
         if address % NAND_BLOCK_SIZE != 0:
@@ -2136,7 +2289,7 @@ def read_flash(
         The read flash data as bytes if output is None; otherwise,
         returns None after writing to file.
     """
-    if flash_type != "nand":
+    if flash_type not in ("nand", "sdmmc"):
         _set_flash_parameters(esp, flash_size)
 
     if no_progress:
@@ -2158,6 +2311,9 @@ def read_flash(
         data = _read_flash_nand_with_skip(
             esp, address, size, flash_progress, nand_end_address=nand_end_address
         )
+    elif flash_type == "sdmmc":
+        _warn_sdmmc_experimental(_SDMMC_EXPERIMENTAL_MSG)
+        data = esp.read_flash_sdmmc(address, size, flash_progress)
     else:
         data = esp.read_flash(address, size, flash_progress)
     t = time.time() - t

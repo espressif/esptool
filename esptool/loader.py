@@ -119,6 +119,75 @@ NAND_PAGES_PER_BLOCK = 64
 # Size of one NAND block in bytes (64 pages × 2 KB page = 128 KB).
 NAND_BLOCK_SIZE = 0x20000
 
+# SDMMC card sector size (SD/MMC/eMMC standard).
+SDMMC_SECTOR_SIZE = 512
+
+# Stub-side SDMMC_ERR_* return codes (see esp-stub-lib target/sdmmc.h).
+SDMMC_ERROR_NAMES = {
+    -1: "SDMMC_ERR_NOT_INITIALIZED",
+    -2: "SDMMC_ERR_NO_CARD",
+    -3: "SDMMC_ERR_TIMEOUT",
+    -4: "SDMMC_ERR_CMD_FAIL",
+    -5: "SDMMC_ERR_DATA_FAIL",
+    -6: "SDMMC_ERR_UNSUPPORTED",
+    -7: "SDMMC_ERR_BAD_ARG",
+    -8: "SDMMC_ERR_PIN_INVALID",
+}
+
+# Stage sentinels in the diagnostic word — see SDMMC_DIAG_STAGE_* in
+# target/sdmmc.h.  Real SD/MMC command indices are 0..63.
+_SDMMC_DIAG_STAGES = {
+    0xFF: "pre-command (peripheral / clock / pin setup)",
+    0xFE: "update_clk_reg",
+    0xFD: "post-CMD busy wait (R1b)",
+    0xFC: "data transfer (CMD17/24 + IDMAC)",
+}
+
+_SDMMC_RINTSTS_BITS = [
+    (0x8000, "EBE"),
+    (0x4000, "ACD"),
+    (0x2000, "SBE"),
+    (0x1000, "HLE"),
+    (0x0800, "FRUN"),
+    (0x0400, "HTO"),
+    (0x0200, "DRTO"),
+    (0x0100, "RTO"),
+    (0x0080, "DCRC"),
+    (0x0040, "RCRC"),
+    (0x0020, "RXDR"),
+    (0x0010, "TXDR"),
+    (0x0008, "DTO"),
+    (0x0004, "CMD_DONE"),
+    (0x0002, "RE"),
+    (0x0001, "CD"),
+]
+
+
+def _decode_sdmmc_diag(val):
+    """Unpack the SDMMC attach error word.
+
+    Returns (signed_err, err_name, stage_str, rintsts_str).  Layout
+    (set by sdmmc_plugin_attach):
+      bits[31:24] = stage  (SDMMC_DIAG_STAGE_* or SD/MMC CMD index)
+      bits[23:16] = (int8_t)err — signed SDMMC_ERR_* code
+      bits[15:0]  = lower 16 bits of controller RINTSTS
+    """
+    stage = (val >> 24) & 0xFF
+    err_u8 = (val >> 16) & 0xFF
+    rintsts = val & 0xFFFF
+    signed = err_u8 if err_u8 < 0x80 else err_u8 - 0x100
+
+    stage_str = _SDMMC_DIAG_STAGES.get(
+        stage, f"CMD{stage}" if stage <= 63 else f"stage 0x{stage:02x}"
+    )
+    bits = [name for mask, name in _SDMMC_RINTSTS_BITS if rintsts & mask]
+    rintsts_str = (
+        "RINTSTS=0 (no interrupt bits set)"
+        if rintsts == 0
+        else f"RINTSTS=0x{rintsts:04x} [{'|'.join(bits)}]"
+    )
+    return signed, SDMMC_ERROR_NAMES.get(signed), stage_str, rintsts_str
+
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
     """Scales timeouts which are size-specific"""
@@ -325,6 +394,15 @@ class ESPLoader:
         # Not used by esptool; defined here for completeness (stub-only command)
         "SPI_NAND_READ_PAGE_DEBUG": 0xDD,
         "SPI_NAND_WRITE_FLASH_END": 0xDE,
+        # SDMMC card commands (stub only, plugin "sdmmc").  Sector-addressed
+        # in units of SDMMC_SECTOR_SIZE.
+        "SPI_SDMMC_ATTACH": 0xDF,
+        "SPI_SDMMC_READ_FLASH": 0xE0,
+        "SPI_SDMMC_WRITE_FLASH_BEGIN": 0xE1,
+        "SPI_SDMMC_WRITE_FLASH_DATA": 0xE2,
+        "SPI_SDMMC_WRITE_FLASH_END": 0xE3,
+        "SPI_SDMMC_ERASE_REGION": 0xE4,
+        "SPI_SDMMC_GET_INFO": 0xE5,
     }
 
     # Response code(s) sent by ROM
@@ -1792,6 +1870,207 @@ class ESPLoader:
             struct.pack("<IB", page_number, is_bad),
         )
         return data
+
+    # ---- SDMMC plugin (opcodes 0xDF–0xE5) ---------------------------------- #
+    # All SDMMC methods require the stub with the "sdmmc" plugin loaded
+    # (StubFlasher(target, plugins=["sdmmc"])).  Offsets and sizes are byte
+    # units but must be multiples of SDMMC_SECTOR_SIZE.
+
+    def _sdmmc_parse_info_response(self, val, data):
+        # val = capacity in sectors; data layout (LE):
+        #   [0..3]   ocr (u32)
+        #   [4..7]   rca (u32)
+        #   [8..11]  flags: bit0=is_mmc, bit1=is_high_capacity, bits[7:4]=width
+        #   [12..27] CID (4×u32) — only present in get_info response
+        if len(data) < 12:
+            raise FatalError(
+                f"SDMMC response truncated: got {len(data)} bytes, need ≥12"
+            )
+        ocr, rca, flags = struct.unpack("<III", data[:12])
+        info = {
+            "capacity_sectors": val,
+            "capacity_bytes": val * SDMMC_SECTOR_SIZE,
+            "ocr": ocr,
+            "rca": rca,
+            "is_mmc": bool(flags & 0x1),
+            "is_high_capacity": bool(flags & 0x2),
+            "bus_width": (flags >> 4) & 0xF,
+        }
+        if len(data) >= 28:
+            info["cid"] = struct.unpack("<IIII", data[12:28])
+        return info
+
+    @stub_function_only
+    def sdmmc_attach(
+        self,
+        slot=0xFF,  # 0xFF = use stub default (slot 0)
+        width=0,  # 0 = use stub default (4-bit)
+        freq_khz=0,  # 0 = use stub default (20 MHz)
+        cd_pin=0xFF,  # 0xFF = no card-detect pin
+        wp_pin=0xFF,  # 0xFF = no write-protect pin
+        pin_clk=0,
+        pin_cmd=0,
+        pin_d=(0,) * 8,
+    ):
+        """Bring up the SDMMC host and initialise the inserted card.
+
+        With all defaults the stub uses the ESP-IDF v6.0 SDMMC_SLOT_CONFIG_DEFAULT
+        pin map for ESP32-S3 (CLK=14, CMD=15, D0=2, D1=4, D2=12, D3=13, D4=33,
+        D5=34, D6=35, D7=36, slot 0, 4-bit, 20 MHz).
+
+        Returns:
+            dict: card info — see :meth:`_sdmmc_parse_info_response`.
+        """
+        if len(pin_d) != 8:
+            raise FatalError("pin_d must be a sequence of 8 GPIO numbers")
+        if width not in (0, 1, 4, 8):
+            raise FatalError(f"Unsupported SDMMC bus width: {width}")
+        payload = struct.pack(
+            "<BBHBBBB" + "B" * 8,
+            slot & 0xFF,
+            width & 0xFF,
+            freq_khz & 0xFFFF,
+            cd_pin & 0xFF,
+            wp_pin & 0xFF,
+            pin_clk & 0xFF,
+            pin_cmd & 0xFF,
+            *(p & 0xFF for p in pin_d),
+        )
+        val, data = self.command(self.ESP_CMDS["SPI_SDMMC_ATTACH"], payload)
+        return self._sdmmc_finalise_response("attach", val, data)
+
+    @stub_function_only
+    def sdmmc_get_info(self):
+        """Return card info captured at attach time (includes CID)."""
+        val, data = self.command(self.ESP_CMDS["SPI_SDMMC_GET_INFO"], b"")
+        return self._sdmmc_finalise_response("get_info", val, data)
+
+    def _sdmmc_finalise_response(self, op_name, val, data):
+        # On error, val carries a packed {stage, err, rintsts} diagnostic —
+        # see _decode_sdmmc_diag.
+        if len(data) < 2:
+            raise FatalError(f"SDMMC {op_name}: short response ({len(data)} bytes)")
+        status_bytes = data[-2:]
+        if status_bytes[0] != 0:
+            signed, name, stage_str, rintsts_str = _decode_sdmmc_diag(val)
+            err_str = name if name else f"unknown ({signed})"
+            raise FatalError(
+                f"SDMMC {op_name} failed at {stage_str}: {err_str}; "
+                f"{rintsts_str}; stub status {hexify(status_bytes)}"
+            )
+        return self._sdmmc_parse_info_response(val, data[:-2])
+
+    @stub_function_only
+    def read_flash_sdmmc(self, offset, length, progress_fn=None) -> bytes:
+        """Streaming SDMMC read.  Wire protocol matches NOR/NAND read_flash:
+        initial RESPONSE_SUCCESS frame, then data frames each ACKed, then a
+        16-byte MD5 digest."""
+        if not self.IS_STUB:
+            raise FatalError("SDMMC read_flash requires the stub loader.")
+        if offset % SDMMC_SECTOR_SIZE != 0 or length % SDMMC_SECTOR_SIZE != 0:
+            raise FatalError(
+                f"SDMMC read offset/length must be a multiple of {SDMMC_SECTOR_SIZE}."
+            )
+        self.check_command(
+            "read SDMMC card",
+            self.ESP_CMDS["SPI_SDMMC_READ_FLASH"],
+            struct.pack("<IIII", offset, length, self.FLASH_SECTOR_SIZE, 1),
+        )
+        prev_timeout = self._port.timeout
+        self._port.timeout = 10
+        data = b""
+        try:
+            while len(data) < length:
+                p = self.read()
+                data += p
+                data_len = len(data)
+                if data_len < length and len(p) < self.FLASH_SECTOR_SIZE:
+                    raise FatalError(
+                        f"Corrupt data, expected {self.FLASH_SECTOR_SIZE:#x} "
+                        f"bytes but received {len(p):#x} bytes."
+                    )
+                self.write(struct.pack("<I", data_len))
+                if progress_fn and (data_len % 1024 == 0 or data_len == length):
+                    progress_fn(data_len, length, offset)
+            if len(data) > length:
+                raise FatalError("Read more than expected.")
+            digest_frame = self.read()
+            if len(digest_frame) != 16:
+                raise FatalError(f"Expected digest, got: {hexify(digest_frame)}")
+            expected_digest = hexify(digest_frame).upper()
+            digest = hashlib.md5(data).hexdigest().upper()
+            if digest != expected_digest:
+                raise FatalError(
+                    f"Digest mismatch: expected {expected_digest}, got {digest}"
+                )
+        finally:
+            self._port.timeout = prev_timeout
+        return data
+
+    @stub_function_only
+    def write_flash_sdmmc_begin(self, size, offset):
+        """Open an SDMMC write session.  Offset and size must be sector-aligned."""
+        if offset % SDMMC_SECTOR_SIZE != 0 or size % SDMMC_SECTOR_SIZE != 0:
+            raise FatalError(
+                f"SDMMC write offset/size must be a multiple of {SDMMC_SECTOR_SIZE}."
+            )
+        params = struct.pack(
+            "<IIII", offset, size, SDMMC_SECTOR_SIZE, self.FLASH_WRITE_SIZE
+        )
+        self.check_command(
+            "enter SDMMC download mode",
+            self.ESP_CMDS["SPI_SDMMC_WRITE_FLASH_BEGIN"],
+            params,
+        )
+
+    @stub_function_only
+    def write_flash_sdmmc_block(self, data, seq, timeout=DEFAULT_TIMEOUT):
+        """Write one block in an active SDMMC session.  Frame layout matches
+        NOR/NAND flash_data (16-byte header + payload)."""
+        for attempts_left in range(WRITE_BLOCK_ATTEMPTS - 1, -1, -1):
+            try:
+                self.check_command(
+                    f"write SDMMC after seq {seq}",
+                    self.ESP_CMDS["SPI_SDMMC_WRITE_FLASH_DATA"],
+                    struct.pack("<IIII", len(data), seq, 0, 0) + data,
+                    self.checksum(data),
+                    timeout=timeout,
+                )
+                break
+            except FatalError:
+                if attempts_left:
+                    self.trace(
+                        f"block write failed, "
+                        f"retrying with {attempts_left} attempts left...".capitalize()
+                    )
+                else:
+                    raise
+
+    @stub_function_only
+    def write_flash_sdmmc_finish(self, reboot=False, timeout=DEFAULT_TIMEOUT):
+        """End an SDMMC write session and flush any partial trailing sector."""
+        pkt = struct.pack("<I", int(not reboot))
+        self.check_command(
+            "leave SDMMC download mode",
+            self.ESP_CMDS["SPI_SDMMC_WRITE_FLASH_END"],
+            pkt,
+            timeout=timeout,
+        )
+
+    @stub_function_only
+    def erase_sdmmc_region(self, offset, size):
+        """Issue CMD32/33/38 to erase a sector-aligned LBA range."""
+        if offset % SDMMC_SECTOR_SIZE != 0 or size % SDMMC_SECTOR_SIZE != 0:
+            raise FatalError(
+                f"SDMMC erase offset/size must be a multiple of {SDMMC_SECTOR_SIZE}."
+            )
+        timeout = timeout_per_mb(ERASE_REGION_TIMEOUT_PER_MB, size)
+        self.check_command(
+            "erase SDMMC region",
+            self.ESP_CMDS["SPI_SDMMC_ERASE_REGION"],
+            struct.pack("<II", offset, size),
+            timeout=timeout,
+        )
 
     def flash_set_parameters(self, size):
         """Tell the ESP bootloader the parameters of the chip

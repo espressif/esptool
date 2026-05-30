@@ -48,6 +48,11 @@ def _load_stub_v2_with_nand():
     return StubFlasher(_make_target("esp32s3.json"), plugins=["nand"])
 
 
+def _load_stub_v2_with_sdmmc():
+    """Load StubFlasher with stub v2 + sdmmc plugin for esp32s3."""
+    return StubFlasher(_make_target("esp32s3.json"), plugins=["sdmmc"])
+
+
 @pytest.mark.host_test
 class TestStubFlasherWithoutPlugin:
     """Verify StubFlasher loads correctly without any plugin."""
@@ -218,6 +223,16 @@ class TestPluginChipSupport:
         """ESP32-S3 with NAND plugin loads without error (sanity check)."""
         stub = _load_stub_v2_with_nand()
         assert len(stub.plugin_segments) == 1
+
+    def test_esp32s3_sdmmc_succeeds(self, stub_v2_env):
+        """ESP32-S3 with SDMMC plugin loads without error (sanity check)."""
+        stub = _load_stub_v2_with_sdmmc()
+        assert len(stub.plugin_segments) == 1
+
+    def test_esp32s3_nand_and_sdmmc_succeeds(self, stub_v2_env):
+        """Both plugins can be loaded together (independent FPT slots)."""
+        stub = StubFlasher(_make_target("esp32s3.json"), plugins=["nand", "sdmmc"])
+        assert len(stub.plugin_segments) == 2
 
     def test_no_plugins_loads_fine_on_any_chip(self, stub_v2_env):
         """Without plugins, v2 stubs for any chip load without error."""
