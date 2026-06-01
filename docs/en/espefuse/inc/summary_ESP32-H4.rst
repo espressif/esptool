@@ -221,4 +221,3 @@
                                                        ion value of STG0 *4 2: Original threshold configu
                                                        ration value of STG0 *8 3: Original threshold conf
                                                        iguration value of STG0 *16
-
