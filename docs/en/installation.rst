@@ -101,6 +101,7 @@ You will likely have to restart or re-login for the autocompletion to start work
                eval "$(_ESPTOOL_COMPLETE=bash_source esptool)"
                eval "$(_ESPSECURE_COMPLETE=bash_source espsecure)"
                eval "$(_ESPEFUSE_COMPLETE=bash_source espefuse)"
+               eval "$(_ESP_RFC2217_SERVER_COMPLETE=bash_source esp_rfc2217_server)"
 
 
    .. group-tab:: Zsh
@@ -113,7 +114,7 @@ You will likely have to restart or re-login for the autocompletion to start work
          autoload -U compinit
          compinit
 
-      Afterwards you can enable completions for esptool, espsecure and espefuse:
+      Afterwards you can enable completions for esptool, espsecure, espefuse and esp_rfc2217_server:
 
 
       .. code-block:: bash
@@ -121,6 +122,7 @@ You will likely have to restart or re-login for the autocompletion to start work
          eval "$(_ESPTOOL_COMPLETE=zsh_source esptool)"
          eval "$(_ESPSECURE_COMPLETE=zsh_source espsecure)"
          eval "$(_ESPEFUSE_COMPLETE=zsh_source espefuse)"
+         eval "$(_ESP_RFC2217_SERVER_COMPLETE=zsh_source esp_rfc2217_server)"
 
 
    .. group-tab:: Fish
@@ -130,6 +132,7 @@ You will likely have to restart or re-login for the autocompletion to start work
          _ESPTOOL_COMPLETE=fish_source esptool | source
          _ESPSECURE_COMPLETE=fish_source espsecure | source
          _ESPEFUSE_COMPLETE=fish_source espefuse | source
+         _ESP_RFC2217_SERVER_COMPLETE=fish_source esp_rfc2217_server | source
 
 
 
