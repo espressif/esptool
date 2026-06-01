@@ -1,0 +1,85 @@
+.deploy_docs_template:
+  image: $PYTHON_IMAGE_LATEST
+  before_script:
+    - pip install --upgrade pip
+  stage: deploy_docs
+  tags:
+    - deploy
+  needs:
+    - build_docs
+  script:
+    - source ${CI_PROJECT_DIR}/docs/utils.sh
+    - add_doc_server_ssh_keys $DOCS_DEPLOY_PRIVATEKEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
+    - export GIT_VER=$(git describe --always)
+    - pip install ".[docs]" --prefer-binary
+    - deploy-docs
+
+build_docs:
+  image: $PYTHON_IMAGE_LATEST
+  before_script:
+    - pip install --upgrade pip
+  stage: build_docs
+  tags:
+    - build_docs
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - changes:
+      - "docs/**/*"
+      - ".gitlab/deploy_docs.yml"
+      - "CONTRIBUTING.rst"
+      - "esptool/cmds.py"
+  needs: []
+  artifacts:
+    when: always
+    paths:
+      - docs/_build/*/*/*.txt
+      - docs/_build/*/*/html/*
+    expire_in: 4 days
+  script:
+    - pip install ".[docs]" --prefer-binary
+    - cd docs
+    - build-docs -l en -t {esp8266,esp32,esp32s2,esp32c3,esp32s3,esp32c2,esp32c6,esp32h2,esp32p4,esp32c5,esp32c61,esp32h21,esp32h4}
+
+deploy_docs_preview:
+  extends:
+    - .deploy_docs_template
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - changes:
+      - "docs/**/*"
+      - ".gitlab/deploy_docs.yml"
+      - "CONTRIBUTING.rst"
+      - "esptool/cmds.py"
+  variables:
+    TYPE: "preview"
+    DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
+    DOCS_DEPLOY_PRIVATEKEY: "$DOCS_PREVIEW_DEPLOY_KEY"
+    DOCS_DEPLOY_SERVER: "$DOCS_PREVIEW_SERVER"
+    DOCS_DEPLOY_SERVER_USER: "$DOCS_PREVIEW_SERVER_USER"
+    DOCS_DEPLOY_PATH: "$DOCS_PREVIEW_PATH"
+    DOCS_DEPLOY_URL_BASE: "$DOCS_PREVIEW_URL_BASE"
+
+deploy_docs_production:
+  extends:
+    - .deploy_docs_template
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+      - "docs/**/*"
+      - ".gitlab/deploy_docs.yml"
+      - "CONTRIBUTING.rst"
+      - "esptool/cmds.py"
+  variables:
+    TYPE: "production"
+    DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
+    DOCS_DEPLOY_PRIVATEKEY: "$DOCS_PROD_DEPLOY_KEY"
+    DOCS_DEPLOY_SERVER: "$DOCS_PROD_SERVER"
+    DOCS_DEPLOY_SERVER_USER: "$DOCS_PROD_SERVER_USER"
+    DOCS_DEPLOY_PATH: "$DOCS_PROD_PATH"
+    DOCS_DEPLOY_URL_BASE: "https://docs.espressif.com/projects/esptool"

@@ -1,0 +1,75 @@
+.host_tests_template:
+  image: $PYTHON_IMAGE_MIN
+  before_script:
+    - pip install --upgrade pip
+    - pip install -e .[dev] --prefer-binary
+  stage: test
+  tags: [host_test]
+  artifacts:
+    when: always
+    paths:
+      - "**/.coverage*"
+      - ".coverage*"
+    expire_in: 1 week
+    reports:
+      junit: test/report.xml
+
+host_tests:
+  extends: .host_tests_template
+  variables:
+    PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+  before_script:
+    # SoftHSM2 for test_espsecure_hsm.py (python-pkcs11 / PKCS#11 signing)
+    - apt-get update && apt-get install -y softhsm2
+    - ./ci/setup_softhsm2.sh
+    - pip install --upgrade pip
+    - pip install -e .[dev,hsm] --prefer-binary
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test -m host_test --ignore=${CI_PROJECT_DIR}/test/test_espefuse.py
+    # some .coverage files in sub-directories are not collected on some runners, move them first
+    - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
+
+host_tests_espefuse:
+  extends: .host_tests_template
+  variables:
+    PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+  parallel:
+    matrix:
+      - TARGET:
+        - esp32
+        - esp32c2
+        - esp32c3
+        - esp32c5
+        - esp32c6
+        - esp32c61
+        - esp32h2
+        - esp32p4
+        - esp32s2
+        - esp32s3
+        - esp32h21
+        - esp32h4
+        - esp32e22
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip ${TARGET}
+    # some .coverage files in sub-directories are not collected on some runners, move them first
+    - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
+
+host_tests_latest_python:
+  extends: .host_tests_template
+  image: $PYTHON_IMAGE_LATEST
+  before_script:
+    # SoftHSM2 for test_espsecure_hsm.py (python-pkcs11 / PKCS#11 signing)
+    - apt-get update && apt-get install -y softhsm2
+    - ./ci/setup_softhsm2.sh
+    - pip install --upgrade pip
+    - pip install -e .[dev,hsm] --prefer-binary
+  script:
+    - pytest ${CI_PROJECT_DIR}/test -m host_test --chip esp32
+
+host_tests_windows:
+  extends: .windows_test
+  script:
+    # linux_host_test marker excludes Linux-only modules; they must be import-safe on Windows
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test -m "host_test and not linux_host_test"

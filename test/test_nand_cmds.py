@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.linux_host_test
+
 from esptool.loader import ESPLoader
 from esptool.util import FatalError, NANDEraseFailed, NANDProgramFailed
 

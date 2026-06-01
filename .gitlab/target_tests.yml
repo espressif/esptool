@@ -1,0 +1,203 @@
+.target_test:
+  image: $PYTHON_IMAGE_MIN
+  stage: test
+  tags: [host_test]
+  variables:
+    PYTHONPATH: "$PYTHONPATH:${CI_PROJECT_DIR}/test"
+    COVERAGE_PROCESS_START: "${CI_PROJECT_DIR}/test/.covconf"
+    TOOL: "test_esptool.py"
+    EXTRA_ARGS: ""
+  before_script:
+    - pip install -e .[dev] --prefer-binary
+    # libffi (needed for espsecure) version keeps changing in python docker images. Add a symlink to the installed version on Raspberry Pi
+    - if [ $(uname -m) = "armv7l" ]; then ln -sfn /usr/lib/arm-linux-gnueabihf/libffi.so.7.1.0 /usr/lib/arm-linux-gnueabihf/libffi.so.6; fi
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/${TOOL} --port /dev/serial_ports/${PORT} ${EXTRA_ARGS} --chip ${TARGET} --baud 115200 -m "not host_test"
+  artifacts:
+    reports:
+      junit: test/report.xml
+    when: always
+    paths:
+      - test/*.out
+      - "**/.coverage*"
+      - ".coverage*"
+    expire_in: 1 week
+
+target_esp8266:
+  extends: .target_test
+  variables:
+    PORT: esp8266
+    TARGET: esp8266
+  tags: [esptool-esp8266]
+
+target_esp32:
+  extends: .target_test
+  variables:
+    PORT: esp32
+    TARGET: esp32
+  tags: [esptool-esp32]
+
+target_esp32s2:
+  extends: .target_test
+  variables:
+    PORT: esp32s2
+    TARGET: esp32s2
+  tags: [esptool-esp32s2]
+
+target_esp32s2_otg:
+  extends: .target_test
+  variables:
+    PORT: esp32s2-otg
+    TARGET: esp32s2
+    ESPTOOL_TEST_USB_OTG: "1"
+  tags: [esptool-esp32s2-otg]
+
+target_esp32c3:
+  extends: .target_test
+  variables:
+    PORT: esp32c3
+    TARGET: esp32c3
+    ESPTOOL_TEST_SPI_CONN: "6,2,7,4,10"
+  tags: [esptool-esp32c3]
+
+target_esp32c3_usj:
+  extends: .target_test
+  variables:
+    PORT: esp32c3-usj
+    TARGET: esp32c3
+    EXTRA_ARGS: "--preload-port /dev/serial_ports/esp32c3-preload"
+  tags: [esptool-esp32c3-usj]
+
+target_esp32s3:
+  extends: .target_test
+  variables:
+    PORT: esp32s3
+    TARGET: esp32s3
+  tags: [esptool-esp32s3]
+
+target_esp32s3_32mb_octal:
+  extends: .target_test
+  variables:
+    PORT: esp32s3-32mb
+    TARGET: esp32s3
+    ESPTOOL_TEST_FLASH_SIZE: "32"
+  tags: [esptool-esp32s3-32mb-octal]
+
+target_esp32s3_32mb_quad:
+  extends: .target_test
+  variables:
+    PORT: esp32s3-32mb
+    TARGET: esp32s3
+    ESPTOOL_TEST_FLASH_SIZE: "32"
+  tags: [esptool-esp32s3-32mb-quad]
+
+target_esp32s3_otg:
+  extends: .target_test
+  variables:
+    PORT: esp32s3-otg
+    TARGET: esp32s3
+    ESPTOOL_TEST_USB_OTG: "1"
+  tags: [esptool-esp32s3-otg]
+
+target_esp32s3_usj:
+  extends: .target_test
+  variables:
+    PORT: esp32s3-usj
+    TARGET: esp32s3
+    EXTRA_ARGS: "--preload-port /dev/serial_ports/esp32s3-preload"
+    ESPTOOL_TEST_SPI_CONN: "12,13,11,9,10"
+  tags: [esptool-esp32s3-usj]
+
+target_esp32s3_sdm:
+  extends: .target_test
+  variables:
+    PORT: esp32s3-sdm
+    TARGET: esp32s3
+    TOOL: test_esptool_sdm.py
+  tags: [esptool-esp32s3-sdm]
+
+target_esp32c2_40mhz:
+  extends: .target_test
+  variables:
+    PORT: esp32c2-40mhz
+    TARGET: esp32c2
+  tags: [esptool-esp32c2-40mhz]
+
+target_esp32c2_26mhz:
+  extends: .target_test
+  variables:
+    PORT: esp32c2-26mhz
+    TARGET: esp32c2
+  tags: [esptool-esp32c2-26mhz]
+
+target_esp32c6:
+  extends: .target_test
+  variables:
+    PORT: esp32c6
+    TARGET: esp32c6
+  tags: [esptool-esp32c6]
+
+target_esp32c6_usj:
+  extends: .target_test
+  variables:
+    PORT: esp32c6-usj
+    TARGET: esp32c6
+    EXTRA_ARGS: "--preload-port /dev/serial_ports/esp32c6-preload"
+  tags: [esptool-esp32c6-usj]
+
+target_esp32h2:
+  extends: .target_test
+  variables:
+    PORT: esp32h2
+    TARGET: esp32h2
+  tags: [esptool-esp32h2]
+
+target_esp32h2_usj:
+  extends: .target_test
+  variables:
+    PORT: esp32h2-usj
+    TARGET: esp32h2
+    EXTRA_ARGS: "--preload-port /dev/serial_ports/esp32h2-preload"
+  tags: [esptool-esp32h2-usj]
+
+target_esp32p4:
+  extends: .target_test
+  variables:
+    PORT: esp32p4
+    TARGET: esp32p4
+    ESPTOOL_TEST_FLASH_SIZE: "32"
+  tags: [esptool-esp32p4]
+
+target_esp32c5:
+  extends: .target_test
+  variables:
+    PORT: esp32c5
+    TARGET: esp32c5
+  tags: [esptool-esp32c5]
+
+target_esp32c5_32mb:
+  extends: .target_test
+  variables:
+    PORT: esp32c5-32mb
+    TARGET: esp32c5
+    ESPTOOL_TEST_FLASH_SIZE: "32"
+  tags: [esptool-esp32c5-32mb]
+
+target_esp32c61:
+  extends: .target_test
+  variables:
+    PORT: esp32c61
+    TARGET: esp32c61
+  tags: [esptool-esp32c61]
+
+target_esp32h4:
+  extends: .target_test
+  variables:
+    PORT: esp32h4
+    TARGET: esp32h4
+  tags: [esptool-esp32h4]
+
+target_tests_windows:
+  extends: .windows_test
+  script:
+    - python -m coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port COM4 --chip esp32 --baud 115200 -m "quick_test and not host_test"

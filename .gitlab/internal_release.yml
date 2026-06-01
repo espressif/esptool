@@ -1,0 +1,75 @@
+# Internal development releases for branch internal/dev_release: build a preview
+# sdist, publish to the project PyPI registry (manual), then verify install.
+
+build_internal_sdist:
+  image: $PYTHON_IMAGE_LATEST
+  stage: deploy_development_package
+  tags:
+    - host_test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "internal/dev_release" && $CI_PIPELINE_SOURCE == "push"'
+  before_script:
+    - pip install --upgrade pip build commitizen czespressif
+  script:
+    - BASE=$(cz bump --get-next)
+    - SHORT_SHA=$(git rev-parse --short HEAD)
+    - VERSION="${BASE}.dev${CI_PIPELINE_IID}+preview.${SHORT_SHA}"
+    - echo "VERSION=${VERSION}" | tee build.env
+    - sed -i "s/^__version__ = .*/__version__ = \"${VERSION}\"/" esptool/__init__.py
+    - python -m build --sdist
+  artifacts:
+    paths:
+      - dist/*.tar.gz
+    reports:
+      dotenv: build.env
+    expire_in: 7 days
+
+publish_internal_sdist:
+  image: $PYTHON_IMAGE_LATEST
+  stage: deploy_development_package
+  tags:
+    - host_test
+  needs:
+    - job: build_internal_sdist
+      artifacts: true                                                 # pulls in dist/*.tar.gz + VERSION
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "internal/dev_release" && $CI_PIPELINE_SOURCE == "push"'
+      when: manual
+      allow_failure: false
+  before_script:
+    - pip install --upgrade pip twine
+  script:
+    - >
+      TWINE_USERNAME=gitlab-ci-token
+      TWINE_PASSWORD=${CI_JOB_TOKEN}
+      twine upload
+      --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi
+      dist/*.tar.gz
+
+verify_internal_sdist:
+  image: $PYTHON_IMAGE_LATEST
+  before_script:
+    - pip install --upgrade pip
+  stage: deploy_development_package
+  tags:
+    - host_test
+  needs:
+    - job: publish_internal_sdist
+      artifacts: false
+    - job: build_internal_sdist
+      artifacts: true                                                 # pulls VERSION via dotenv
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "internal/dev_release" && $CI_PIPELINE_SOURCE == "push"'
+  script:
+    - python -m venv /tmp/verify
+    - /tmp/verify/bin/pip install --upgrade pip
+    - >
+      /tmp/verify/bin/pip install
+      --pre
+      --index-url "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/api/v4/projects/${CI_PROJECT_ID}/packages/pypi/simple/"
+      --extra-index-url https://pypi.org/simple/
+      "esptool==${VERSION}"                                           # inherited from build via dotenv
+    # Assert `esptool version` prints the dev release ID (base + .dev<pipeline-iid> + +preview.<sha>).
+    # The grep -Fx forces an exact-line match; -F treats the version string as a literal,
+    # not a regex (the local-version segment contains `.` and `+` which are regex metacharacters).
+    - /tmp/verify/bin/esptool version | grep -Fx "esptool v${VERSION}"

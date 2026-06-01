@@ -1,0 +1,111 @@
+.check_template:
+  image: $PYTHON_IMAGE_MIN
+  before_script:
+    - pip install --upgrade pip
+    - pip install -e .[dev] --prefer-binary
+  stage: check
+  tags: [host_test]
+
+.run_esptool_template:
+  extends: .check_template
+  script:
+    - esptool.py --help
+    - espefuse.py --help
+    - espsecure.py --help
+    - esp_rfc2217_server.py --help
+    - esptool --help
+    - espefuse --help
+    - espsecure --help
+    - esp_rfc2217_server --help
+    - python esptool.py --help
+    - python espefuse.py --help
+    - python espsecure.py --help
+    - python esp_rfc2217_server.py --help
+    - python -m esptool --help
+    - python -m espefuse --help
+    - python -m espsecure --help
+    - python -m esp_rfc2217_server --help
+
+version_check:
+  extends: .check_template
+  rules:
+    - if: $CI_COMMIT_TAG != null
+  script:
+    - VERSION=$(esptool version | head -n 1)
+    - |
+      if [[ "$VERSION" != *"$CI_COMMIT_TAG" ]]
+      then
+        echo "Version number and git tag do not match!"
+        exit 1
+      fi
+
+check_install_coverage:
+  extends: .check_template
+  artifacts:
+    when: always
+    paths:
+      - "**/.coverage*"
+      - ".coverage*"
+    expire_in: 1 week
+  script:
+    - coverage run --parallel-mode esptool.py --help
+    - coverage run --parallel-mode espefuse.py --help
+    - coverage run --parallel-mode espsecure.py --help
+    - coverage run --parallel-mode esp_rfc2217_server.py --help
+
+check_install:
+  extends: .run_esptool_template
+  before_script:
+    - pip install .
+
+check_install_editable:
+  extends: .run_esptool_template
+  before_script:
+    - pip install -e .
+
+check_install_system:
+  extends: .check_template
+  before_script:
+    - pip install --user .
+  script:
+    - python esptool.py --help
+    - python espefuse.py --help
+    - python espsecure.py --help
+    - python esp_rfc2217_server.py --help
+    - python -m esptool --help
+    - python -m espefuse --help
+    - python -m espsecure --help
+    - python -m esp_rfc2217_server --help
+
+check_install_venv:
+  extends: .run_esptool_template
+  before_script:
+    - python -m venv test_env
+    - source test_env/bin/activate
+    - python -m pip install .
+
+check_stub_build:
+  extends: .check_template
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: on_success
+  script:
+    - ./ci/download_flasher_stubs.py
+    - git diff --exit-code
+
+check_uf2_ids:
+  extends: .check_template
+  allow_failure: true
+  variables:
+    COVERAGE_PROCESS_START: ${CI_PROJECT_DIR}/test/.covconf
+  artifacts:
+    when: always
+    paths:
+      - "**/.coverage*"
+      - ".coverage*"
+    expire_in: 1 week
+    reports:
+      junit: test/report.xml
+  script:
+    - coverage run -m pytest ${CI_PROJECT_DIR}/test/test_uf2_ids.py

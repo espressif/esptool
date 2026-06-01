@@ -12,6 +12,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+pytestmark = pytest.mark.linux_host_test
+
 from esptool.loader import StubFlasher
 
 STUB_DIR = os.path.join(

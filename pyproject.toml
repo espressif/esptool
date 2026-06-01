@@ -154,3 +154,6 @@
     quote-style = "double"
     indent-style = "space"
     docstring-code-format = true
+
+[tool.pytest.ini_options]
+addopts = "-sv --junitxml=test/report.xml --color=yes"
