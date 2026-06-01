@@ -1,3 +1,58 @@
+## v5.3.0 (2026-06-01)
+
+### ✨ New Features
+
+- **reset**: support hardware flow control adapters *(Jeija - 9ea2c5c)*
+- **espefuse**: Update efuse table for ESP32-H21 *(Konstantin Kondrashov - 93ef664)*
+- **flasher_stub**: Support USB-Serial/JTAG on ESP32-S31, prevent crashes during clock init *(Radim Karniš - 7a7a3c3)*
+- **test**: Unit tests non-encrypted binaries to encrypted device *(Jakub Kocka - 5d7c203)*
+- **espefuse**: Update efuses for ESP32S31 *(Konstantin Kondrashov - ffbd13f)*
+- **espefuse**: add raw_value to JSON summary output *(Peter Dragun - 905896a)*
+- **esp32s31**: Add stub flasher support *(Radim Karniš - 6e14f2e)*
+- **espefuse**: Add calib efuse fields for ESP32C5 *(Konstantin Kondrashov - 66c472b)*
+- **esptool**: Adds efuse version and pkg efuses for ESP32H4 *(Konstantin Kondrashov - bc55336)*
+- **espefuse**: Update efuse table for ESP32H4 *(Konstantin Kondrashov - c6ef00c)*
+- **esptool**: Disallow erasing key recovery info sectors when FE using KM is enabled *(harshal.patil - f55cf25)*
+- **esp32-p4**: Support ECO7 (rev3.2) *(Radim Karniš - 27463b2)*
+- **stub_flasher**: Print a message when the new stub flasher is being used *(Radim Karniš - 6b812b2)*
+- **esp32c61**: Add large flash support *(Jaroslav Burian - 29aef6a)*
+- **stub_flasher**: Bump new stub to v0.3.0 with ESP32-C2 fixes and ESP32-C61 large flash *(Radim Karniš - d8bc5bd)*
+- **write-flash**: Log which file is being flashed when multiple files are given *(Radim Karniš - dc457d1)*
+- **write-flash**: Fully reflash all data when fast reflash verification fails *(Radim Karniš - 1c16a59)*
+- **espefuse**: Add --after option to reset the chip after the operation is finished *(Peter Dragun - 1b8436f)*
+- Use vid pid detection instead of UARTDEV_BUF_NO *(Vojtech Piroch - 0a5fe5c)*
+- Add support for plugin system for optionally loading stub features *(Roland Dobai - e6697e4)*
+- improve flash connection verification with SFDP register check *(Jan Beran - 3821d83)*
+
+### 🐛 Bug Fixes
+
+- **stub_flasher**: Fix C900 compressed upload error + writing to non-4-byte aligned offsets *(Radim Karniš - 73308b8)*
+- **elf2image**: Correct pad length for ram-only-header flash segments *(Sylvio Alves - c637749)*
+- **esptool**: Use correct address for reading efuses in ESP32-S31 *(Konstantin Kondrashov - 9376b9d)*
+- **stub_flasher**: Print an explanatory error if the stub flasher files are missing *(Radim Karniš - 95b87ea)*
+- **usb_mode_detection**: Enable USB mode detection in Secure Download Mode *(Radim Karniš - 3714d1b)*
+- **esp32h4**: make flash could run at 64MHz since 2nd stage bootloader *(Song Ruo Jing - 974d975)*
+- **espefuse**: Remove the value description of the efuse for ESP32-C5 *(Peter Dragun - f6722ad)*
+- **esp32**: Decode VDD_SDIO eFuse voltage like espefuse summary *(Radim Karniš - 825ad97)*
+- **logger**: declare singleton instance as ClassVar for mypy *(Radim Karniš - 48e4450)*
+- **esp32-s31**: Fix configurable MMU page size support *(armando - 2806d84)*
+- **esp32-p4**: Fix ECO7 early guru meditation errors during boot up *(Radim Karniš - 3f6cb59)*
+- **esp32-s31**: Fix flash manipulation commands *(Radim Karniš - 1d51f72)*
+- **esptool**: Fix incorrect efuse bit mask for SPI_BOOT_CRYPT_CNT_MASK *(harshal.patil - 2a2b86d)*
+- **esp32-c61**: Warn if encryption druring download is disabled *(Radim Karniš - 86c4f71)*
+- **espefuse**: Add checks for efuse names in read and write protect commands *(Peter Dragun - 118fbdb)*
+- security efuse layout for C2/C5/S31 *(Mahavir Jain - 97c20ec)*
+
+### 🔧 Code Refactoring
+
+- **espefuse/fields**: Move MAC field logic to base_fields.py *(Peter Dragun - a3dc123)*
+- **espefuse/fields**: Move common code of EspEfuses to base class *(Peter Dragun - 5e903ce)*
+- **espefuse/fields**: Create EfuseKeyPurposeFieldBase and unite implementations *(Peter Dragun - 889a3ff)*
+- **espefuse/fields**: Move common fields to base_fields.py *(Peter Dragun - 4a2bed1)*
+- **espefuse/fields**: Add type hints and fix formatting *(Peter Dragun - cfafe84)*
+- Add missing ABCs to base classes *(Peter Dragun - 47a43b3)*
+
+
 ## v5.2.0 (2026-02-18)
 
 ### ✨ New Features
