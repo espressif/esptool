@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Build with PyInstaller
-        uses: espressif/python-binary-action@master
+        uses: espressif/python-binary-action@fix/mac_os_signing
         with:
           scripts: 'esptool.py espefuse.py espsecure.py esp_rfc2217_server.py'
           output-dir: ./${{ env.DISTPATH }}
