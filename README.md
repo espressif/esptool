@@ -9,6 +9,10 @@ A Python-based, open-source, platform-independent serial utility for flashing, p
 
 Visit the [documentation](https://docs.espressif.com/projects/esptool/) or run `esptool -h`.
 
+## Flasher Stub
+
+esptool uploads a small [flasher stub](https://docs.espressif.com/projects/esptool/en/latest/esptool/flasher-stub.html) program to the chip to improve flashing performance and work around ROM bootloader limitations. The stub is developed in the [esp-flasher-stub](https://github.com/espressif/esp-flasher-stub) repository. Prebuilt binaries are bundled with esptool releases.
+
 ## Contribute
 
 If you're interested in contributing to esptool, please check the [contributions guide](https://docs.espressif.com/projects/esptool/en/latest/contributing.html).

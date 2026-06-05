@@ -174,7 +174,7 @@ The whole test suite (without the tests needing an actual hardware or installati
 Pull Request Process
 --------------------
 
-If you would like to contribute to the flasher stub, please see the `Flasher stub repository <https://github.com/espressif/esptool-legacy-flasher-stub>`_.
+If you would like to contribute to the flasher stub, please see the `esp-flasher-stub repository <https://github.com/espressif/esp-flasher-stub>`_.
 
 After you open the Pull Request, there will probably be some discussion in the comments field of the request itself.
 
