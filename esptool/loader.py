@@ -236,8 +236,11 @@ class StubFlasher:
                         f"{chip_name} stub version {self.STUB_SUBDIRS[0]} doesn't "
                         f"exist, using {subdir} instead."
                     )
-                if subdir == "1":  # TODO: Remove this after legacy stub deprecation
-                    log.print("Using the legacy stub flasher.")
+                if subdir == "1":
+                    log.note(
+                        "Using the deprecated legacy stub flasher. "
+                        "Support for this stub will be removed in a future release."
+                    )
                 return json_path
         else:
             raise FatalError(
