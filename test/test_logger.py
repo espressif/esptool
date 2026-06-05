@@ -141,6 +141,14 @@ class TestLogger:
         ):
             logger.set_logger(CustomLoggerIncomplete())
 
+    def test_set_logger_none(self, logger):
+        with pytest.raises(
+            TypeError,
+            match="New logger must implement the TemplateLogger interface, "
+            "got 'NoneType'",
+        ):
+            logger.set_logger(None)
+
     def test_set_logger(self, logger):
         # Original logger
         with patch("sys.stdout", new=StringIO()) as fake_out:
