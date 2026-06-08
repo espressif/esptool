@@ -64,7 +64,8 @@ jobs:
           notarization-password: ${{ secrets.MACOS_CS_APP_SPECIFIC_PASSWORD }}
           notarization-team-id: ${{ secrets.MACOS_CS_APPLE_TEAM_ID }}
           # bitstring 4.4+ loads implementation modules dynamically; bundle the whole package (see bitstring#362).
-          additional-args: "--collect-submodules=rich._unicode_data --collect-submodules=bitstring"
+          # pyserial URL handlers (socket://, rfc2217://, …) are loaded via importlib at runtime.
+          additional-args: "--collect-submodules=rich._unicode_data --collect-submodules=bitstring --collect-submodules=serial.urlhandler"
       - name: Add license and readme
         shell: bash
         run: mv LICENSE README.md ./${{ env.DISTPATH }}
