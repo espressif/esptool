@@ -189,7 +189,7 @@ host_tests_hsm:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espsecure_hsm.py
 
 run_pre_commit_hooks:
-  stage: test
+  stage: pre-check
   image: python:3.14-trixie
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $STUB_CANARY == "1"'
@@ -197,6 +197,8 @@ run_pre_commit_hooks:
     - when: on_success
   tags:
     - host_test
+  before_script:
+    - pip install --upgrade pip
   script:
     - pip install -e .[dev] --prefer-binary
     - pre-commit run --all-files
