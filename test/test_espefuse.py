@@ -361,6 +361,25 @@ class TestReadProtectionCommands(EfuseTestCase):
                    BLOCK_KEY3 \
                    BLOCK_KEY4"
             count_protects = 5
+        elif arg_chip == "esp32c61":
+            # ESP32-C61 does not support HMAC, use other read-protected purposes
+            self.espefuse_py(
+                "burn-efuse \
+                KEY_PURPOSE_0 XTS_AES_128_KEY \
+                KEY_PURPOSE_1 XTS_AES_128_KEY \
+                KEY_PURPOSE_2 XTS_AES_128_KEY \
+                KEY_PURPOSE_3 ECDSA_KEY \
+                KEY_PURPOSE_4 ECDSA_KEY \
+                KEY_PURPOSE_5 ECDSA_KEY"
+            )
+            cmd = "read-protect-efuse \
+                   BLOCK_KEY0 \
+                   BLOCK_KEY1 \
+                   BLOCK_KEY2 \
+                   BLOCK_KEY3 \
+                   BLOCK_KEY4 \
+                   BLOCK_KEY5"
+            count_protects = 6
         else:
             self.espefuse_py(
                 "burn-efuse \
@@ -443,6 +462,10 @@ class TestReadProtectionCommands(EfuseTestCase):
                 or not has_block_key5
                 else "RESERVED"
             )
+            # ESP32-C61 does not support HMAC, use another read-protected purpose
+            read_protected_purpose = (
+                "XTS_AES_128_KEY" if arg_chip == "esp32c61" else "HMAC_UP"
+            )
             burn_key_cmd = f"burn-key BLOCK_KEY0 {IMAGES_DIR}/256bit USER \
                 BLOCK_KEY1 {IMAGES_DIR}/256bit {key1_purpose} \
                 BLOCK_KEY2 {IMAGES_DIR}/256bit SECURE_BOOT_DIGEST0 \
@@ -450,10 +473,11 @@ class TestReadProtectionCommands(EfuseTestCase):
                 BLOCK_KEY4 {IMAGES_DIR}/256bit "
             if has_block_key5:
                 burn_key_cmd += (
-                    f"SECURE_BOOT_DIGEST2 BLOCK_KEY5 {IMAGES_DIR}/256bit HMAC_UP"
+                    f"SECURE_BOOT_DIGEST2 BLOCK_KEY5 "
+                    f"{IMAGES_DIR}/256bit {read_protected_purpose}"
                 )
             else:
-                burn_key_cmd += "HMAC_UP"
+                burn_key_cmd += read_protected_purpose
             self.espefuse_py(burn_key_cmd)
             self.espefuse_py(
                 "read-protect-efuse BLOCK_KEY0",
