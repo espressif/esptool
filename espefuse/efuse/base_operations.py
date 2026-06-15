@@ -52,7 +52,9 @@ class EfuseValuePairType(click.ParamType):
         self.efuse_choices = efuse_choices
         self.efuses = efuses
 
-    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context):
+    def convert(
+        self, value: list[str], param: click.Parameter | None, ctx: click.Context | None
+    ):
         def check_efuse_name(efuse_name: str):
             if efuse_name not in self.efuse_choices:
                 raise click.BadParameter(
@@ -91,7 +93,11 @@ class EfuseValuePairType(click.ParamType):
 class CustomMACType(click.ParamType):
     name = "custom_mac"
 
-    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context):
+    def convert(
+        self, value: str, param: click.Parameter | None, ctx: click.Context | None
+    ):
+        if ctx is None:
+            raise click.BadParameter("Internal error: missing click context.")
         return base_fields.CheckArgValue(ctx.obj["efuses"], "CUSTOM_MAC")(value)
 
 
@@ -100,7 +106,7 @@ class TupleParameter(EfuseArgument):
         self.max_arity = kwargs.pop("max_arity", None)
         super().__init__(*args, **kwargs)
 
-    def make_metavar(self, ctx=None) -> str:
+    def make_metavar(self, ctx: click.Context | None = None) -> str:
         if self.nargs == 1:
             return super().make_metavar(ctx)  # type: ignore
         if self.max_arity is None:

@@ -5,7 +5,7 @@
 from typing import Any
 
 import rich_click as click
-from click.parser import OptionParser, ParsingState, _unpack_args
+from click.parser import OptionParser, _unpack_args
 
 from espefuse.efuse_interface import (
     DEPRECATED_COMMANDS,
@@ -14,7 +14,7 @@ from espefuse.efuse_interface import (
     SUPPORTED_READ_COMMANDS,
     init_commands,
 )
-from esptool.cli_util import EsptoolGroup
+from esptool.cli_util import EsptoolCommand, EsptoolContext, EsptoolGroup
 from esptool.logger import log
 
 click.rich_click.USE_CLICK_SHORT_HELP = True
@@ -32,14 +32,14 @@ click.rich_click.COMMAND_GROUPS = {
 }
 
 
-class ChainParser(OptionParser):
+class ChainParser(OptionParser):  # type: ignore[misc,valid-type]
     """
     This is a modified version of the OptionParser class from click.parser.
     It allows for the processing of arguments and options in interspersed order
     together with chaining commands.
     """
 
-    def _process_args_for_options(self, state: ParsingState) -> None:
+    def _process_args_for_options(self, state: Any) -> None:
         while state.rargs:
             arg = state.rargs.pop(0)
             arglen = len(arg)
@@ -59,7 +59,7 @@ class ChainParser(OptionParser):
                 state.rargs.insert(0, arg)
                 return
 
-    def _process_args_for_args(self, state: ParsingState) -> None:
+    def _process_args_for_args(self, state: Any) -> None:
         pargs, args = _unpack_args(
             state.largs + state.rargs, [x.nargs for x in self._args]
         )
@@ -73,7 +73,7 @@ class ChainParser(OptionParser):
         state.rargs = []
 
 
-class EfuseContext(click.RichContext):
+class EfuseContext(EsptoolContext):
     @property
     def show_sensitive_info(self) -> bool:
         self.ensure_object(dict)
@@ -83,7 +83,7 @@ class EfuseContext(click.RichContext):
         return value
 
 
-class ChainingCommand(click.RichCommand, click.Command):
+class ChainingCommand(EsptoolCommand, click.Command):
     context_class = EfuseContext
 
     def __init__(self, *args, **kwargs):
@@ -136,7 +136,7 @@ class ChainingCommand(click.RichCommand, click.Command):
             param.nargs = -1
         return ret
 
-    def make_parser(self, ctx: click.Context) -> OptionParser:
+    def make_parser(self, ctx: click.Context) -> OptionParser:  # type: ignore[valid-type]
         """Creates the underlying option parser for this command."""
         parser = ChainParser(ctx)
         parser.allow_interspersed_args = True

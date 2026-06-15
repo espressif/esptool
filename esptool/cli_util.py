@@ -17,11 +17,21 @@ from esptool.util import FatalError, flash_size_bytes, strip_chip_name
 ################################ Custom types #################################
 
 
+class EsptoolContext(click.RichContext):
+    """Click context extended with esptool-specific attributes."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._open_files: list[IO[bytes]] = []
+        self._diff_with_hex_splits: dict[IO[bytes], list[IO[bytes]]] = {}
+        self.esp: ESPLoader | None = None
+
+
 class ChipType(click.Choice):
     """Custom type to accept chip names in any case and with or without hyphen"""
 
     def convert(
-        self, value: str, param: click.Parameter | None, ctx: click.Context
+        self, value: str, param: click.Parameter | None, ctx: click.Context | None
     ) -> Any:
         value = strip_chip_name(value)
         return super().convert(value, param, ctx)
@@ -31,13 +41,16 @@ class ResetModeType(click.Choice):
     """Custom type to accept reset mode names with underscores as separators
     for compatibility with v4"""
 
-    def convert(self, value: str, param: click.Parameter, ctx: click.Context) -> Any:
+    def convert(
+        self, value: str, param: click.Parameter | None, ctx: click.Context | None
+    ) -> Any:
         if "_" in value:
             new_value = value.replace("_", "-")
             if new_value not in self.choices:
                 raise click.BadParameter(f"{value} is not a valid reset mode.")
             log.warn(
-                f"Deprecated: Choice '{value}' for option '--{param.name}' is "
+                f"Deprecated: Choice '{value}' for option "
+                f"'--{param.name if param else 'unknown'}' is "
                 f"deprecated. Use '{new_value}' instead."
             )
             return new_value
@@ -50,7 +63,7 @@ class AutoChunkSizeType(AnyIntType):
     name = "integer"
 
     def convert(
-        self, value: str | int, param: click.Parameter | None, ctx: click.Context
+        self, value: str | int, param: click.Parameter | None, ctx: click.Context | None
     ) -> int:
         num = cast(int, super().convert(value, param, ctx))
         if num & 3 != 0:
@@ -67,7 +80,7 @@ class SpiConnectionType(click.ParamType):
     name = "spi-connection"
 
     def convert(
-        self, value: str, param: click.Parameter | None, ctx: click.Context
+        self, value: str, param: click.Parameter | None, ctx: click.Context | None
     ) -> str | tuple[int, int, int, int, int]:
         if value.upper() in ["SPI", "HSPI"]:
             return value.upper()
@@ -98,8 +111,11 @@ class AutoHex2BinType(click.Path):
     def __init__(self, exists=True):
         super().__init__(exists=exists)
 
-    def convert(
-        self, value: str, param: click.Parameter | None, ctx: click.Context
+    def convert(  # type: ignore[override]
+        self,
+        value: str | os.PathLike[str],
+        param: click.Parameter | None,
+        ctx: click.Context | None,
     ) -> list[tuple[int | None, IO[bytes]]]:
         try:
             with open(value, "rb") as f:
@@ -120,19 +136,23 @@ class AddrFilenamePairType(click.Path):
     ):
         return "<address> <filename>"
 
-    def convert(
+    def convert(  # type: ignore[override]
         self,
         value: list[str],
         param: click.Parameter | None,
-        ctx: click.Context,
-    ):
+        ctx: click.Context | None,
+    ) -> list[tuple[int, IO[bytes]]]:
         if len(value) % 2 != 0:
             raise click.BadParameter(
                 "Must be pairs of an address and the binary filename to write there.",
             )
         if len(value) == 0:
-            return value
+            return []
 
+        if ctx is None:
+            raise click.BadParameter("Internal error: missing click context.")
+
+        esptool_ctx = cast(EsptoolContext, ctx)
         pairs: list[tuple[int, IO[bytes]]] = []
         for i in range(0, len(value), 2):
             try:
@@ -141,10 +161,8 @@ class AddrFilenamePairType(click.Path):
                 raise click.BadParameter(f'Address "{value[i]}" must be a number.')
             try:
                 # Store file handle in context for later cleanup
-                if not hasattr(ctx, "_open_files"):
-                    ctx._open_files = []
                 argfile_f = open(value[i + 1], "rb")
-                ctx._open_files.append(argfile_f)
+                esptool_ctx._open_files.append(argfile_f)
             except OSError as e:
                 raise click.BadParameter(str(e))
             # check for intel hex files and convert them to bin
@@ -186,11 +204,11 @@ class DiffWithType(click.Path):
     ):
         return "<filename(s)> or 'skip'"
 
-    def convert(
+    def convert(  # type: ignore[override]
         self,
         value: str,
         param: click.Parameter | None,
-        ctx: click.Context,
+        ctx: click.Context | None,
     ) -> IO[bytes] | None:
         # Handle special "skip" string
         if value.lower() == "skip":
@@ -202,14 +220,13 @@ class DiffWithType(click.Path):
                 )
             return None
 
+        if ctx is None:
+            raise click.BadParameter("Internal error: missing click context.")
+
+        esptool_ctx = cast(EsptoolContext, ctx)
         # Validate path using parent class
         validated_path = super().convert(value, param, ctx)
         # Open file and store handle in context for cleanup
-        if not hasattr(ctx, "_open_files"):
-            ctx._open_files = []
-        # Initialize dict to map HEX file first split to all splits
-        if not hasattr(ctx, "_diff_with_hex_splits"):
-            ctx._diff_with_hex_splits = {}
         try:
             file_handle = open(validated_path, "rb")
             # Use intel_hex_to_bin to handle HEX file conversion and splitting
@@ -219,10 +236,10 @@ class DiffWithType(click.Path):
             split_files = [f for _, f in hex_converted]
             # Store all file handles for cleanup
             for f in split_files:
-                ctx._open_files.append(f)
+                esptool_ctx._open_files.append(f)
             # If HEX file was split into multiple files, store mapping for expansion
             if len(split_files) > 1:
-                ctx._diff_with_hex_splits[split_files[0]] = split_files
+                esptool_ctx._diff_with_hex_splits[split_files[0]] = split_files
             # Return first file (or only file if binary)
             return split_files[0] if split_files else None
         except OSError as e:
@@ -232,7 +249,16 @@ class DiffWithType(click.Path):
 ########################### Custom option/argument ############################
 
 
+class EsptoolCommand(click.RichCommand):
+    """Subcommand class that uses EsptoolContext for argument parsing."""
+
+    context_class = EsptoolContext
+
+
 class EsptoolGroup(EspRichGroup):
+    context_class = EsptoolContext
+    command_class = EsptoolCommand
+
     DEPRECATED_OPTIONS = {
         "--flash_size": "--flash-size",
         "--flash_freq": "--flash-freq",
@@ -268,7 +294,7 @@ class EsptoolGroup(EspRichGroup):
 
     def parse_args(self, ctx: click.Context, args: list[str]):
         """Set a flag if --help is used to skip the main"""
-        ctx.esp = self._esp
+        cast(EsptoolContext, ctx).esp = self._esp
         args = self._replace_deprecated_args(args)
         return super().parse_args(ctx, args)
 
