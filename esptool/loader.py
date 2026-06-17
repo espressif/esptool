@@ -705,6 +705,8 @@ class ESPLoader:
                 "COM and /dev/ serial ports."
             )
             return None, None
+
+        symlink_port = active_port
         # Return the real path if the active port is a symlink
         if active_port.startswith("/dev/") and os.path.islink(active_port):
             active_port = os.path.realpath(active_port)
@@ -720,6 +722,17 @@ class ESPLoader:
                 self.cache["usb_vid"] = p.vid
                 self.cache["usb_pid"] = p.pid
                 return p.vid, p.pid
+
+        if symlink_port != active_port:
+            symlink_ports = [symlink_port]
+            if sys.platform == "darwin" and "tty" in symlink_port:
+                symlink_ports.append(symlink_port.replace("tty", "cu"))
+            for p in ports:
+                if p.device in symlink_ports:
+                    self.cache["usb_vid"] = p.vid
+                    self.cache["usb_pid"] = p.pid
+                    return p.vid, p.pid
+
         log.print(
             f"\nFailed to get VID/PID of a device on {active_port}, "
             "using standard reset sequence."
