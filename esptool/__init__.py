@@ -102,6 +102,7 @@ from esptool.config import load_config_file
 from esptool.loader import (
     DEFAULT_CONNECT_ATTEMPTS,
     DEFAULT_OPEN_PORT_ATTEMPTS,
+    TROUBLESHOOTING_GUIDE_URL,
     ESPLoader,
     StubFlasher,
 )
@@ -1370,10 +1371,7 @@ def _main():
             "It is likely not a problem with esptool, "
             "but with the hardware connection or drivers."
         )
-        log.error(
-            "For troubleshooting steps visit: "
-            "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html"
-        )
+        log.error(f"For troubleshooting steps visit: {TROUBLESHOOTING_GUIDE_URL}")
         sys.exit(1)
     except StopIteration:
         log.error(traceback.format_exc())
