@@ -119,6 +119,11 @@ NAND_PAGES_PER_BLOCK = 64
 # Size of one NAND block in bytes (64 pages × 2 KB page = 128 KB).
 NAND_BLOCK_SIZE = 0x20000
 
+# Documentation page linked from connection/serial error messages.
+TROUBLESHOOTING_GUIDE_URL = (
+    "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html"
+)
+
 
 def timeout_per_mb(seconds_per_mb, size_bytes):
     """Scales timeouts which are size-specific"""
@@ -503,7 +508,20 @@ class ESPLoader:
 
     def read(self):
         """Read a SLIP packet from the serial port"""
-        return next(self._slip_reader)
+        try:
+            return next(self._slip_reader)
+        except StopIteration:
+            # slip_reader only ever exits by raising (never returns), so a
+            # StopIteration here means the generator was already exhausted by an
+            # earlier serial-stream failure. Without this guard the bare
+            # StopIteration becomes an opaque "RuntimeError: generator raised
+            # StopIteration" (PEP 479) once it crosses a caller's generator,
+            # hiding the real cause. Re-raise something actionable instead.
+            raise FatalError(
+                "No more data to read from the serial port. This can have "
+                "many causes, for troubleshooting steps visit: "
+                f"{TROUBLESHOOTING_GUIDE_URL}"
+            ) from None
 
     def write(self, packet):
         """Write bytes to the serial port while performing SLIP escaping"""
@@ -882,12 +900,9 @@ class ESPLoader:
                 )
             self._port.close()
             raise FatalError(
-                "Failed to connect to {}: {}"
+                f"Failed to connect to {self.CHIP_NAME}: {last_error}"
                 f"{additional_msg}"
-                "\nFor troubleshooting steps visit: "
-                "https://docs.espressif.com/projects/esptool/en/latest/troubleshooting.html".format(  # noqa E501
-                    self.CHIP_NAME, last_error
-                )
+                f"\nFor troubleshooting steps visit: {TROUBLESHOOTING_GUIDE_URL}"
             )
 
         if not detecting:
@@ -1387,12 +1402,15 @@ class ESPLoader:
 
         try:
             p = self.read()
-        except StopIteration:
+        except FatalError as e:
+            # A read failure here means the stub never sent its OHAI greeting
+            # (a frequent occurrence during stub development). Surface the
+            # stub-start context; the serial-level cause stays available via the
+            # `from e` chain.
             raise FatalError(
-                "Failed to start stub flasher. There was no response."
-                "\nTry increasing timeouts, for more information see: "
-                "https://docs.espressif.com/projects/esptool/en/latest/esptool/configuration-file.html"  # noqa E501
-            )
+                "Failed to start stub flasher. There was no response.\n"
+                f"For troubleshooting steps visit: {TROUBLESHOOTING_GUIDE_URL}"
+            ) from e
 
         if p != b"OHAI":
             raise FatalError(f"Failed to start stub flasher. Unexpected response: {p}")

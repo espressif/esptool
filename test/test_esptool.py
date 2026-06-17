@@ -64,6 +64,7 @@ try:
         version,
         write_flash,
     )
+    from esptool.loader import TROUBLESHOOTING_GUIDE_URL, ESPLoader
 except ImportError:
     need_to_install_package_err()
 
@@ -2478,3 +2479,93 @@ class TestPortFilter(EsptoolTestCase):
         """Test CLI with missing equal sign in --port-filter option"""
         output = self.run_esptool_error("--port-filter name123 flash-id", port=None)
         assert "Option --port-filter argument must consist of key=value." in output
+
+
+@pytest.mark.host_test
+class TestSlipReaderRead:
+    """Host-level unit tests for ESPLoader.read() (no hardware required)."""
+
+    @staticmethod
+    def _make_esp():
+        """Return a bare ESPLoader whose only wired-up attribute is a stand-in
+        slip_reader generator.
+
+        ``read()`` only touches ``self._slip_reader``, so no port or hardware is
+        needed and the instance can be built without running ``__init__``.
+        """
+        esp = ESPLoader.__new__(ESPLoader)
+
+        def fake_slip_reader():
+            # Mirror the real slip_reader: it never returns, it only ever exits
+            # by raising. After the raise the generator is exhausted, so a
+            # subsequent next() would yield a bare StopIteration. The yield
+            # below is unreachable but makes this a generator function.
+            raise FatalError("No serial data received.")
+            yield  # unreachable; only present to make this a generator function
+
+        esp._slip_reader = fake_slip_reader()
+        return esp
+
+    def test_read_on_exhausted_slip_reader_raises_fatalerror(self):
+        """The first read() surfaces the generator's own FatalError; the second
+        read() (generator now exhausted) must also raise FatalError, not the
+        bare StopIteration that next() would otherwise produce.
+        """
+        esp = self._make_esp()
+
+        # First read(): propagates the generator's descriptive FatalError.
+        with pytest.raises(FatalError):
+            esp.read()
+
+        # Second read(): the generator is exhausted. Without the guard this
+        # would be a bare StopIteration; with it, an actionable FatalError.
+        with pytest.raises(FatalError):
+            esp.read()
+
+    def test_read_does_not_leak_stopiteration_through_generator(self):
+        """Calling the exhausted read() from inside a caller generator must
+        raise FatalError, proving the PEP 479 "RuntimeError: generator raised
+        StopIteration" is gone (this reproduces the exact CI failure).
+        """
+        esp = self._make_esp()
+
+        # Drain the reader so the next read() hits the exhausted generator.
+        with pytest.raises(FatalError):
+            esp.read()
+
+        def caller():
+            # If read() leaked a bare StopIteration, crossing this generator
+            # boundary would turn it into RuntimeError (PEP 479), not FatalError.
+            yield esp.read()
+
+        with pytest.raises(FatalError):
+            next(caller())
+
+    def test_run_stub_failure_links_troubleshooting_guide_once(self):
+        """When the stub never sends its OHAI greeting, run_stub() must raise a
+        FatalError that names the stub-start failure and links the
+        troubleshooting guide exactly once (the read() failure is chained, not
+        embedded into the message).
+        """
+        esp = self._make_esp()
+        # Drain the reader so the OHAI read inside run_stub() hits the exhausted
+        # generator, mirroring mem_finish() having swallowed the MEM_END timeout.
+        with pytest.raises(FatalError):
+            esp.read()
+
+        esp.CHIP_NAME = "ESP32"  # avoid the ESP32-S3 secure-boot branch
+        esp.sync_stub_detected = False
+        esp.STUB_CLASS = None
+        esp.mem_finish = MagicMock()  # upload is done; don't touch the port
+
+        stub = MagicMock()
+        stub.text = stub.data = None  # nothing to upload
+        stub.plugin_segments = []
+        stub.entry = 0
+
+        with pytest.raises(FatalError) as excinfo:
+            esp.run_stub(stub)
+
+        message = str(excinfo.value)
+        assert message.startswith("Failed to start stub flasher")
+        assert message.count(TROUBLESHOOTING_GUIDE_URL) == 1
