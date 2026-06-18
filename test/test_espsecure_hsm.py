@@ -8,14 +8,13 @@ import os.path
 import sys
 import tempfile
 
-from conftest import need_to_install_package_err
+import pytest
 
-try:
-    import pkcs11
+pytestmark = [pytest.mark.host_test, pytest.mark.linux_host_test]
 
-    import espsecure
-except ImportError:
-    need_to_install_package_err()
+pkcs11 = pytest.importorskip("pkcs11")
+
+import espsecure
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 

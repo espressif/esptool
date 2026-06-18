@@ -47,9 +47,7 @@ jobs:
         esp_rfc2217_server --help
 
     - name: Test esptool and components
-      run: |
-        pytest -m host_test
-        pytest test/test_espsecure_hsm.py
+      run: pytest -m host_test
 
   check_stubs:
       runs-on: ubuntu-latest

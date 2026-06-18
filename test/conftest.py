@@ -54,6 +54,12 @@ def pytest_configure(config):
         "quick_test: mark esptool tests checking basic functionality.",
     )
 
+    config.addinivalue_line(
+        "markers",
+        "linux_host_test: host tests not run on Windows CI "
+        "(hardware, SoftHSM, or not validated on Windows).",
+    )
+
 
 def need_to_install_package_err():
     pytest.exit(

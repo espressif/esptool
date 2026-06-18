@@ -1,0 +1,223 @@
+# Canary pipeline — runs only when $CI_PIPELINE_SOURCE == "schedule" &&
+# $STUB_CANARY == "1". Checks whether the latest esp-stub-lib master is
+# compatible with esptool by building fresh v2 stubs and running the full
+# test suite against them.
+#
+# Attribution scope: the canary tracks esp-stub-lib only. esp-flasher-stub is
+# rebuilt from its current master on every run; if a failure is caused by
+# esp-flasher-stub drift rather than esp-stub-lib, the issue title will still
+# blame esp-stub-lib. This is accepted because the canary only runs nightly,
+# both SHAs are recorded in the issue body, and esp-flasher-stub is maintained
+# by the same team as esptool.
+#
+# Quiet-night behaviour: when LAST_TESTED_STUB_LIB_SHA is unchanged,
+# canary_poll calls the GitLab API to cancel the running pipeline
+# (POST /projects/:id/pipelines/:id/cancel). canary_prep is the first stage
+# and every later stage runs only after canary_prep completes, so the cancel propagates before canary_build_stubs and the
+# test suite are dispatched. The pipeline ends in state 'canceled';
+# canary_on_failure (when: on_failure) does not react to a cancel, so no
+# spurious issues are opened. canary_record does not run on quiet nights —
+# there is no new stub-lib SHA to record.
+#
+# Required CI/CD variables (set under Settings → CI/CD → Variables unless noted):
+#   - STUB_CANARY=1            (set on the nightly schedule, not project-wide)
+#   - LAST_TESTED_STUB_LIB_SHA (auto-created by canary_record on first success)
+#   - GITLAB_API_TOKEN         (scope: api; role: Maintainer or higher —
+#                               used by canary_poll to cancel the pipeline on
+#                               no-op nights, and by canary_record to write
+#                               project variables)
+#   - MAINTAINERS              (optional, space-separated GitLab usernames;
+#                               if unset, issues are opened unassigned)
+#
+# All jobs use $CANARY_IMAGE (ubuntu:24.04). See also .gitlab/README.md.
+
+canary_poll:
+  stage: canary_prep
+  image: $CANARY_IMAGE
+  tags: [host_test]
+  retry: 2
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $STUB_CANARY == "1"'
+  before_script:
+    - apt-get update && apt-get install -y git curl
+  variables:
+    ESP_STUB_LIB_REPO: "https://github.com/espressif/esp-stub-lib"
+  script:
+    - |
+      HTTP=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+        -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/variables?per_page=1")
+      case "$HTTP" in
+        200) echo "GITLAB_API_TOKEN preflight OK (api scope + Maintainer+ role)" ;;
+        401) echo "ERROR: GITLAB_API_TOKEN invalid or expired"; exit 1 ;;
+        403) echo "ERROR: GITLAB_API_TOKEN lacks Maintainer role on project (or 'api' scope)"; exit 1 ;;
+        *)   echo "ERROR: unexpected HTTP $HTTP from preflight"; exit 1 ;;
+      esac
+    - SHA_NEW=$(git ls-remote "$ESP_STUB_LIB_REPO" HEAD | awk '{print $1}')
+    - '[ -n "$SHA_NEW" ] || { echo "Failed to resolve esp-stub-lib HEAD"; exit 1; }'
+    - echo "STUB_LIB_SHA=$SHA_NEW" > canary.env
+    - |
+      if [ "$SHA_NEW" = "$LAST_TESTED_STUB_LIB_SHA" ]; then
+        echo "No new esp-stub-lib commits since $LAST_TESTED_STUB_LIB_SHA — cancelling pipeline."
+        CANCEL_CODE=$(curl --silent --output /tmp/cancel.json --write-out "%{http_code}" \
+          --request POST \
+          --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/cancel")
+        if [ "$CANCEL_CODE" != "200" ]; then
+          echo "ERROR: pipeline cancel returned HTTP $CANCEL_CODE"
+          cat /tmp/cancel.json || true
+          exit 1
+        fi
+        echo "Cancel API call accepted; waiting for runner SIGTERM."
+        sleep 300
+        echo "WARNING: cancel did not propagate within 5 minutes — exiting clean."
+        exit 0
+      fi
+  artifacts:
+    reports:
+      dotenv: canary.env
+
+canary_build_stubs:
+  stage: canary_prep
+  image: $CANARY_IMAGE
+  tags: [host_test]
+  retry: 2
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $STUB_CANARY == "1"'
+  needs: [canary_poll]
+  variables:
+    FLASHER_STUB_REPO: "https://github.com/espressif/esp-flasher-stub.git"
+  before_script:
+    - apt-get update
+    - apt-get install -y git python3 python3-pyelftools wget xz-utils build-essential cmake ninja-build
+  script:
+    - echo "CANARY_PHASE=build" > canary_build.env
+    - git clone --depth 1 --recurse-submodules "$FLASHER_STUB_REPO" esp-flasher-stub
+    - git -C esp-flasher-stub rev-parse HEAD | awk '{print "FLASHER_STUB_SHA=" $1}' >> canary_build.env
+    - cd esp-flasher-stub/esp-stub-lib
+    - git fetch --depth 1 origin "$STUB_LIB_SHA"
+    - git checkout "$STUB_LIB_SHA"
+    - cd ..
+    - mkdir -p toolchains && pushd toolchains && ../tools/setup_toolchains.sh && popd
+    - source ./tools/export_toolchains.sh
+    - ./tools/build_all_chips.sh
+  artifacts:
+    when: always
+    paths:
+      - "esp-flasher-stub/build*/esp*.json"
+    exclude:
+      - "esp-flasher-stub/build*/*.base.json"
+    expire_in: 1 week
+    reports:
+      dotenv: canary_build.env
+
+canary_patch:
+  stage: canary_prep
+  image: $CANARY_IMAGE
+  tags: [host_test]
+  retry: 2
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $STUB_CANARY == "1"'
+  needs: [canary_build_stubs]
+  before_script:
+    - apt-get update && apt-get install -y git
+  script:
+    - rm -f esptool/targets/stub_flasher/2/esp*.json
+    - mkdir -p esptool/targets/stub_flasher/2
+    - |
+      jsons=$(find esp-flasher-stub -maxdepth 2 -name 'esp*.json' \
+                                    -not -name '*.base.json')
+      if [ -z "$jsons" ]; then
+        echo "ERROR: canary_build_stubs produced no stub artifacts"
+        exit 1
+      fi
+      cp $jsons esptool/targets/stub_flasher/2/
+    - count=$(ls esptool/targets/stub_flasher/2/esp*.json | wc -l)
+    - echo "Copied $count stub artifact(s) from esp-flasher-stub into v2/"
+    - ls -la esptool/targets/stub_flasher/2/
+    - echo "=== Stub set diff against committed v2 stubs ==="
+    - git diff --stat -- esptool/targets/stub_flasher/2/
+    - echo "CANARY_PHASE=test" > canary_patch.env
+  artifacts:
+    when: on_success
+    paths:
+      - "esptool/targets/stub_flasher/2/*.json"
+    expire_in: 1 week
+    reports:
+      dotenv: canary_patch.env
+
+canary_record:
+  stage: canary_post
+  image: $CANARY_IMAGE
+  tags: [host_test]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $STUB_CANARY == "1"'
+  before_script:
+    - apt-get update && apt-get install -y curl
+  script:
+    - echo "CANARY_PHASE=record" > canary_record.env
+    - |
+      if [ -z "$GITLAB_API_TOKEN" ]; then
+        echo "ERROR: GITLAB_API_TOKEN is not available in this pipeline."
+        echo "       The variable is likely marked 'Protected' in GitLab CI/CD"
+        echo "       Variables and this pipeline is running on an unprotected"
+        echo "       branch ($CI_COMMIT_REF_NAME). LAST_TESTED_STUB_LIB_SHA"
+        echo "       cannot be recorded."
+        exit 1
+      fi
+    - |
+      HTTP_CODE=$(curl --silent --output /tmp/resp.json --write-out "%{http_code}" \
+        --request POST \
+        --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
+        --data-urlencode "key=LAST_TESTED_STUB_LIB_SHA" \
+        --data-urlencode "value=$STUB_LIB_SHA" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/variables")
+      if [ "$HTTP_CODE" = "201" ]; then
+        echo "Created LAST_TESTED_STUB_LIB_SHA=$STUB_LIB_SHA"
+      elif [ "$HTTP_CODE" = "400" ] && grep -q "has already been taken" /tmp/resp.json; then
+        echo "Variable already exists — updating via PUT"
+        PUT_CODE=$(curl --silent --output /tmp/put_resp.json --write-out "%{http_code}" \
+          --request PUT \
+          --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
+          --data-urlencode "value=$STUB_LIB_SHA" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/variables/LAST_TESTED_STUB_LIB_SHA")
+        if [ "$PUT_CODE" != "200" ]; then
+          echo "PUT /variables/LAST_TESTED_STUB_LIB_SHA failed: HTTP $PUT_CODE"
+          cat /tmp/put_resp.json || true
+          exit 1
+        fi
+        echo "Updated LAST_TESTED_STUB_LIB_SHA=$STUB_LIB_SHA"
+      else
+        echo "Unexpected response from POST variables: HTTP $HTTP_CODE"
+        cat /tmp/resp.json || true
+        exit 1
+      fi
+  artifacts:
+    reports:
+      dotenv: canary_record.env
+
+canary_on_failure:
+  stage: canary_post
+  image: $CANARY_IMAGE
+  tags: [host_test]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $STUB_CANARY == "1"'
+      when: on_failure
+  # Optional needs: run even when upstream jobs fail; fetch dotenv for the issue.
+  needs:
+    - job: canary_poll
+      artifacts: true
+      optional: true
+    - job: canary_build_stubs
+      artifacts: true
+      optional: true
+    - job: canary_patch
+      artifacts: true
+      optional: true
+    - job: canary_record
+      artifacts: true
+      optional: true
+  before_script:
+    - apt-get update && apt-get install -y python3
+  script:
+    - python3 ci/canary_open_issue.py

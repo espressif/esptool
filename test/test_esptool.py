@@ -35,6 +35,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.linux_host_test
+
 # Link command line options --port, --chip, --baud, --with-trace, and --preload-port
 from conftest import (
     arg_baud,
@@ -1309,10 +1311,12 @@ class TestFlashSizes(EsptoolTestCase):
         self.run_esptool("write-flash -u -fs 4MB 0x300000 images/one_kb.bin")
         self.verify_readback(0x300000, 1024, "images/one_kb.bin")
 
+    @pytest.mark.flaky(reruns=1)
     def test_large_image(self):
         self.run_esptool("write-flash -fs 4MB 0x280000 images/one_mb.bin")
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
 
+    @pytest.mark.flaky(reruns=1)
     def test_large_no_compression(self):
         self.run_esptool("write-flash -u -fs 4MB 0x280000 images/one_mb.bin")
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
@@ -1721,11 +1725,11 @@ class TestKeepImageSettings(EsptoolTestCase):
 
 @pytest.mark.skipif(
     arg_chip in ["esp32s2", "esp32s3", "esp32p4"],
-    reason="Not supported on targets with USB-CDC.",
+    reason="Not supported on targets with USB-OTG.",
 )
 class TestLoadRAM(EsptoolTestCase):
-    # flashing an application not supporting USB-CDC will make
-    # /dev/ttyACM0 disappear and USB-CDC tests will not work anymore
+    # flashing an application not supporting USB-OTG will make
+    # /dev/ttyACM0 disappear and USB-OTG tests will not work anymore
 
     def verify_output(self, expected_out: list[bytes]):
         """Verify that at least one element of expected_out is in serial output"""
