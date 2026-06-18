@@ -1291,8 +1291,11 @@ class TestSecurityInfo(EsptoolTestCase):
             assert "Key Purposes" in res
         if arg_chip != "esp32s2":
             try:
-                esp = esptool.get_default_connected_device(
-                    [arg_port], arg_port, 10, 115200, arg_chip
+                esp = esptool.connect_esp(
+                    port=arg_port,
+                    chip=arg_chip,
+                    initial_baud=115200,
+                    connect_attempts=10,
                 )
                 assert f"Chip ID: {esp.IMAGE_CHIP_ID}" in res
                 assert "API Version" in res
@@ -2039,8 +2042,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_write_memory_rom(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
             self._test_read_write(esp)
         finally:
@@ -2048,8 +2054,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_write_memory_stub(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
             esp = esp.run_stub()
             self._test_read_write(esp)
@@ -2071,8 +2080,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_chip_description(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
             chip = esp.get_chip_description()
             assert "unknown" not in chip.lower()
@@ -2081,8 +2093,11 @@ class TestReadWriteMemory(EsptoolTestCase):
 
     def test_read_get_chip_features(self):
         try:
-            esp = esptool.get_default_connected_device(
-                [arg_port], arg_port, 10, 115200, arg_chip
+            esp = esptool.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
             )
 
             if hasattr(esp, "get_flash_cap") and esp.get_flash_cap() == 0:
