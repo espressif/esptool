@@ -141,6 +141,44 @@ class ESPRFC2217Server(object):
         self.p.terminate()
 
 
+@pytest.mark.host_test
+class TestGetPID:
+    class FakePort:
+        def __init__(self, device, pid):
+            self.device = device
+            self.pid = pid
+
+    class FakeSerialPort:
+        def __init__(self, port):
+            self.port = port
+
+    def _loader_for_port(self, port):
+        esp = esptool.ESPLoader.__new__(esptool.ESPLoader)
+        esp.cache = {"usb_pid": None}
+        esp._port = self.FakeSerialPort(port)
+        return esp
+
+    def test_matches_absolute_path_by_realpath(self, monkeypatch):
+        fake_ports = [self.FakePort("/dev/ttyUSB0", 0x1001)]
+        realpaths = {
+            "/dev/ttyUSB0": "/dev/ttyUSB0",
+            "/host_dev/ttyUSB0": "/dev/ttyUSB0",
+        }
+
+        monkeypatch.setattr(esptool.list_ports, "comports", lambda: fake_ports)
+        monkeypatch.setattr(os.path, "realpath", lambda path: realpaths[path])
+
+        assert self._loader_for_port("/host_dev/ttyUSB0")._get_pid() == 0x1001
+
+    def test_keeps_dev_path_when_realpath_leaves_dev(self, monkeypatch):
+        fake_ports = [self.FakePort("/dev/ttyUSB0", 0x1001)]
+
+        monkeypatch.setattr(esptool.list_ports, "comports", lambda: fake_ports)
+        monkeypatch.setattr(os.path, "realpath", lambda path: "/host_dev/ttyUSB0")
+
+        assert self._loader_for_port("/dev/ttyUSB0")._get_pid() == 0x1001
+
+
 # Re-run all tests at least once if failure happens in USB-JTAG/Serial
 @pytest.mark.flaky(reruns=1, condition=arg_preload_port is not False)
 class EsptoolTestCase:

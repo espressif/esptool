@@ -615,21 +615,22 @@ class ESPLoader(object):
         active_port = self._port.port
 
         # Pyserial only identifies regular ports, URL handlers are not supported
-        if not active_port.lower().startswith(("com", "/dev/")):
+        if not active_port.lower().startswith("com") and not os.path.isabs(active_port):
             print(
                 "\nDevice PID identification is only supported on "
-                "COM and /dev/ serial ports."
+                "COM and absolute serial ports."
             )
             return
-        # Return the real path if the active port is a symlink
-        if active_port.startswith("/dev/") and os.path.islink(active_port):
-            active_port = os.path.realpath(active_port)
 
         active_ports = [active_port]
+        if os.path.isabs(active_port):
+            active_ports.append(os.path.realpath(active_port))
 
         # The "cu" (call-up) device has to be used for outgoing communication on MacOS
-        if sys.platform == "darwin" and "tty" in active_port:
-            active_ports.append(active_port.replace("tty", "cu"))
+        if sys.platform == "darwin":
+            for port in active_ports[:]:
+                if "tty" in port:
+                    active_ports.append(port.replace("tty", "cu"))
         ports = list_ports.comports()
         for p in ports:
             if p.device in active_ports:
