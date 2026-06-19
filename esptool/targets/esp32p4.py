@@ -242,9 +242,9 @@ class ESP32P4ROM(ESP32ROM):
     def _post_connect(self):
         if self.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
-        if not self.sync_stub_detected:  # Don't run if stub is reused
-            self.disable_watchdogs()
         if not self.secure_download_mode:
+            if not self.sync_stub_detected:  # Don't run if stub is reused
+                self.disable_watchdogs()
             self.power_on_flash()  # Needs to be powered on before attach_flash()
 
     def disable_watchdogs(self):

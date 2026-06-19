@@ -328,7 +328,8 @@ class ESP32S3ROM(ESP32ROM):
     def _post_connect(self):
         if self.uses_usb_otg():
             self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
-        if not self.sync_stub_detected:  # Don't run if stub is reused
+        if not self.secure_download_mode and not self.sync_stub_detected:
+            # Don't run if stub is reused
             self.disable_watchdogs()
 
     def watchdog_reset(self):
