@@ -717,27 +717,37 @@ class ESPLoader:
         active_port = self._port.port
 
         # Pyserial only identifies regular ports, URL handlers are not supported
-        if not active_port.lower().startswith(("com", "/dev/")):
+        if not active_port.lower().startswith("com") and not os.path.isabs(active_port):
             log.print(
                 "\nDevice VID/PID identification is only supported on "
-                "COM and /dev/ serial ports."
+                "COM and absolute device paths."
             )
             return None, None
-        # Return the real path if the active port is a symlink
-        if active_port.startswith("/dev/") and os.path.islink(active_port):
-            active_port = os.path.realpath(active_port)
-
         active_ports = [active_port]
 
+        # Prefer the real path if the active port is a symlink, but keep the
+        # original name as a fallback for environments where pyserial lists it.
+        if os.path.islink(active_port):
+            resolved_port = os.path.realpath(active_port)
+            if os.path.exists(resolved_port) and resolved_port != active_port:
+                active_ports.insert(0, resolved_port)
+
         # The "cu" (call-up) device has to be used for outgoing communication on MacOS
-        if sys.platform == "darwin" and "tty" in active_port:
-            active_ports.append(active_port.replace("tty", "cu"))
+        if sys.platform == "darwin":
+            active_ports += [p.replace("tty", "cu") for p in active_ports if "tty" in p]
         ports = list_ports.comports()
-        for p in ports:
-            if p.device in active_ports:
-                self.cache["usb_vid"] = p.vid
-                self.cache["usb_pid"] = p.pid
-                return p.vid, p.pid
+        found_without_ids = False
+        for lookup_port in active_ports:
+            for p in ports:
+                if p.device != lookup_port:
+                    continue
+                if p.vid is not None and p.pid is not None:
+                    self.cache["usb_vid"] = p.vid
+                    self.cache["usb_pid"] = p.pid
+                    return p.vid, p.pid
+                found_without_ids = True
+        if found_without_ids:
+            return None, None
         log.print(
             f"\nFailed to get VID/PID of a device on {active_port}, "
             "using standard reset sequence."
