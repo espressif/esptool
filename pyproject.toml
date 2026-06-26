@@ -34,6 +34,7 @@
     dependencies = [
         "bitstring>=3.1.6,!=4.2.0",
         "cryptography>=43.0.0",
+        "cryptography<49.0.0; platform_system == 'Darwin' and platform_machine == 'x86_64'",
         "pyserial>=3.3",
         "reedsolo>=1.5.3,<1.8",
         "PyYAML>=5.1",
