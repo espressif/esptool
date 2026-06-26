@@ -80,7 +80,7 @@
 
 [tool.commitizen]
     name = "czespressif"
-    version = "5.3.0"
+    version = "5.3.1"
     update_changelog_on_bump = true
     tag_format = "v$version"
     changelog_start_rev = "v4.2.1"
