@@ -623,8 +623,10 @@ class ESPLoader(object):
             return
 
         active_ports = [active_port]
-        if os.path.isabs(active_port):
-            active_ports.append(os.path.realpath(active_port))
+        if os.path.islink(active_port):
+            resolved = os.path.realpath(active_port)
+            if os.path.exists(resolved) and resolved != active_port:
+                active_ports.insert(0, resolved)
 
         # The "cu" (call-up) device has to be used for outgoing communication on MacOS
         if sys.platform == "darwin":
@@ -632,8 +634,10 @@ class ESPLoader(object):
                 if "tty" in port:
                     active_ports.append(port.replace("tty", "cu"))
         ports = list_ports.comports()
-        for p in ports:
-            if p.device in active_ports:
+        for active_port_candidate in active_ports:
+            for p in ports:
+                if p.device != active_port_candidate or p.pid is None:
+                    continue
                 self.cache["usb_pid"] = p.pid
                 return p.pid
         print(
