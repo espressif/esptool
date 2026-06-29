@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from bitstring import BitStream
+from esp_pylib.constants import USB_JTAG_SERIAL_PID
 
 from espefuse.efuse.mem_definition_base import (
     BlockDefinition,
@@ -29,7 +30,9 @@ class EmulateEfuseControllerBase(ABC):
     Blocks: type[EfuseBlocksBase]
     Fields: EfuseFieldsBase
     REGS: type[EfuseRegistersBase]
-    USB_JTAG_SERIAL_PID: int = 0x1001
+    # Aliased from esp_pylib.constants (matches ESPLoader.USB_JTAG_SERIAL_PID) so the
+    # host-test emulation mirrors the real loader's value from a single source.
+    USB_JTAG_SERIAL_PID: int = USB_JTAG_SERIAL_PID
 
     def __init__(self, efuse_file: str | None = None, debug: bool = False):
         self.debug = debug

@@ -119,7 +119,7 @@ class ESP32C2ROM(ESP32C3ROM):
 
     def change_baud(self, baud):
         if self.secure_download_mode:  # ESPTOOL-1231
-            log.warning(
+            log.warn(
                 "Baud rate change is not supported in secure download mode. "
                 "Keeping 115200 baud."
             )

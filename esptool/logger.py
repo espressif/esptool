@@ -2,13 +2,58 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import os
-import sys
+"""Esptool logger.
+
+`EsptoolLogger` is a thin subclass over `esp_pylib.logger.EspLog` with
+esptool-specific collapsible-stage gating (``_smart_features``, ``--trace``,
+``compact`` / ``auto`` verbosity). Collapsible stages themselves are
+implemented in esp-pylib; this module only overrides `_stage_can_collapse`
+and `print` where esptool behaviour diverges from the shared default.
+
+Internal code should call `warn` / `err` (esp-pylib canonical API,
+including optional IDE ``suggestion``). `warning` / `error` remain
+as backward-compatible aliases on `EsptoolLogger`.
+
+`TemplateLogger` is a **standalone** ABC (it does not subclass
+`EspLogBase`) so the documented scripting recipe keeps a stable,
+seven-method contract even as esp-pylib evolves. `set_logger` wraps
+legacy instances in `_LegacyLoggerAdapter`, which implements
+`EspLogBase` and delegates to the template while inheriting esp-pylib
+helpers such as `die` and `progress`.
+
+``log`` is re-exported from `esp_pylib.logger` (same proxy object
+that reads ``EspLog.instance``) after installing `EsptoolLogger`.
+"""
+
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import Any
+
+from esp_pylib.logger import EspLog, EspLogBase, Verbosity, log
+
+__all__ = [
+    "EsptoolLogger",
+    "TemplateLogger",
+    "log",
+]
 
 
 class TemplateLogger(ABC):
+    """Legacy abstract interface for custom loggers used with ``log.set_logger``.
+
+    Preserved for the documented "Custom Logger" scripting recipe (and
+    third-party integrations following it). Intentionally **not** a subclass
+    of `esp_pylib.logger.EspLogBase` so esp-pylib 1.x interface growth
+    (``hint``, ``progress``, signature tweaks) does not break subclasses
+    that only implement the seven historical methods.
+
+    New integrations should subclass `EspLogBase` and call
+    ``log.set_logger(...)`` with that instance directly.
+
+    Default `warn` / `err` forward to ``warning`` / ``error``; ``debug`` is
+    a no-op so esptool can call the esp-pylib names on installed legacy
+    loggers without requiring extra methods on the subclass.
+    """
+
     @abstractmethod
     def print(self, *args, **kwargs):
         """
@@ -65,160 +110,69 @@ class TemplateLogger(ABC):
         """
         pass
 
+    def warn(self, message: str, suggestion: str | None = None) -> None:
+        """Forward to `warning` for legacy custom loggers.
 
-class EsptoolLogger(TemplateLogger):
-    instance: ClassVar["EsptoolLogger | None"] = None
-
-    ansi_red: str = ""
-    ansi_yellow: str = ""
-    ansi_blue: str = ""
-    ansi_normal: str = ""
-    ansi_clear: str = ""
-    ansi_line_up: str = ""
-    ansi_line_clear: str = ""
-
-    _stage_active: bool = False
-    _newline_count: int = 0
-    _kept_lines: list[str] = []
-
-    _smart_features: bool = False
-    _verbosity: str | None = None
-    _print_anyway: bool = False
-
-    def __new__(cls):
+        ``suggestion`` is accepted for API compatibility with esp-pylib but
+        is not passed through — legacy integrators only implement
+        `warning(message)`.
         """
-        Singleton to ensure only one instance of the logger exists.
-        """
-        if cls.instance is None:
-            cls.instance = super().__new__(cls)
-            cls.instance.set_verbosity("auto")
-        return cls.instance
+        self.warning(message)
 
-    @classmethod
-    def _del(cls) -> None:
-        cls.instance = None
+    def err(self, message: str, suggestion: str | None = None) -> None:
+        """Forward to `error` for legacy custom loggers."""
+        self.error(message)
 
-    @classmethod
-    def _set_smart_features(cls, override: bool | None = None):
-        inst = cls.instance
-        assert inst is not None
-        # Check for smart terminal and color support
-        if override is not None:
-            inst._smart_features = override
-        else:
-            is_tty = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
-            term_supports_color = os.getenv("TERM", "").lower() in (
-                "xterm",
-                "xterm-256color",
-                "screen",
-                "screen-256color",
-                "linux",
-                "vt100",
-            )
-            no_color = os.getenv("NO_COLOR", "").strip().lower() in ("1", "true", "yes")
+    def debug(self, *args: Any) -> None:
+        """Fallback to `print` for legacy custom loggers."""
+        self.print("".join(str(a) for a in args))
 
-            # Determine if colors should be enabled
-            inst._smart_features = is_tty or term_supports_color and not no_color
-            # Handle Windows specifically
-            if sys.platform == "win32" and inst._smart_features:
-                try:
-                    from colorama import init
 
-                    init()  # Enable ANSI support on Windows
-                except ImportError:
-                    inst._smart_features = False
+class _LegacyLoggerAdapter(EspLogBase):
+    """`EspLogBase` facade installed when ``set_logger`` receives a `TemplateLogger`.
 
-        if inst._smart_features:
-            inst.ansi_red = "\033[1;31m"
-            inst.ansi_yellow = "\033[0;33m"
-            inst.ansi_blue = "\033[1;36m"
-            inst.ansi_normal = "\033[0m"
-            inst.ansi_clear = "\033[K"
-            inst.ansi_line_up = "\033[1A"
-            inst.ansi_line_clear = "\x1b[2K"
-        else:
-            inst.ansi_red = ""
-            inst.ansi_yellow = ""
-            inst.ansi_blue = ""
-            inst.ansi_normal = ""
-            inst.ansi_clear = ""
-            inst.ansi_line_up = ""
-            inst.ansi_line_clear = ""
+    Delegates the seven legacy hooks to the wrapped logger. Inherits
+    esp-pylib's default ``die``, ``progress``, and ``counter`` so internal
+    callers can use the full pylib API without extending the public
+    `TemplateLogger` contract. Exposes ``warning`` / ``error`` aliases
+    (matching `EsptoolLogger`) so esptool can keep calling those names
+    after a legacy logger is installed. ``hint`` is a no-op because legacy
+    loggers have no corresponding hook.
+    """
 
-    def print(self, *args, **kwargs):
-        """
-        Log a plain message. Count newlines if in a collapsing stage.
-        """
-        if self._verbosity == "silent" and not self._print_anyway:
-            return
-        if self._stage_active:
-            # Count the number of newlines in the message
-            message = "".join(map(str, args))
-            self._newline_count += message.count("\n")
-            if kwargs.get("end", "\n") == "\n":
-                self._newline_count += 1
-            # Flush output in stage mode to ensure output is always shown immediately
-            kwargs["flush"] = True
-        print(*args, **kwargs)
-        self._print_anyway = False
+    __slots__ = ("_legacy",)
 
-    def note(self, message: str):
-        """
-        Log a Note: message in blue and white.
-        """
-        formatted_message = f"{self.ansi_blue}Note:{self.ansi_normal} {message}"
-        if self._stage_active:
-            self._kept_lines.append(formatted_message)
-        self.print(formatted_message)
+    def __init__(self, legacy: TemplateLogger) -> None:
+        self._legacy = legacy
 
-    def warning(self, message: str):
-        """
-        Log a Warning: message in yellow and white.
-        """
-        formatted_message = f"{self.ansi_yellow}Warning:{self.ansi_normal} {message}"
-        if self._stage_active:
-            self._kept_lines.append(formatted_message)
-        self.print(formatted_message)
+    def print(self, *args, **kwargs) -> None:
+        self._legacy.print(*args, **kwargs)
 
-    def error(self, message: str):
-        """
-        Log an error message in red to stderr.
-        """
-        formatted_message = f"{self.ansi_red}{message}{self.ansi_normal}"
-        self._print_anyway = True
-        self.print(formatted_message, file=sys.stderr)
+    def note(self, message: str) -> None:
+        self._legacy.note(message)
 
-    def stage(self, finish: bool = False):
-        """
-        Start or finish a collapsible stage.
-        Any log messages printed between the start and finish will be deleted
-        when the stage is successfully finished.
-        Warnings and notes will be saved and printed at the end of the stage.
-        If terminal doesn't support ANSI escape codes, no collapsing happens.
-        """
-        if finish:
-            if not self._stage_active:
-                return
-            # Deactivate stage to stop collecting input
-            self._stage_active = False
+    def warn(self, *args: Any, suggestion: str | None = None) -> None:
+        self._legacy.warn(" ".join(str(a) for a in args), suggestion=suggestion)
 
-            if self._smart_features:
-                # Delete printed lines
-                self.print(
-                    f"{self.ansi_line_up}{self.ansi_line_clear}"
-                    * (self._newline_count),
-                    end="",
-                    flush=True,
-                )
-                # Print saved warnings and notes
-                for line in self._kept_lines:
-                    self.print(line)
+    def err(self, *args: Any, suggestion: str | None = None) -> None:
+        self._legacy.err(" ".join(str(a) for a in args), suggestion=suggestion)
 
-            # Clean the buffers for next stage
-            self._kept_lines.clear()
-            self._newline_count = 0
-        else:
-            self._stage_active = True
+    def warning(self, message: str, suggestion: str | None = None) -> None:
+        """Backward-compatible alias used by esptool and scripting docs."""
+        self.warn(message, suggestion=suggestion)
+
+    def error(self, message: str, suggestion: str | None = None) -> None:
+        """Backward-compatible alias used by esptool and scripting docs."""
+        self.err(message, suggestion=suggestion)
+
+    def debug(self, *args: Any) -> None:
+        self._legacy.debug("".join(str(a) for a in args))
+
+    def hint(self, message: str) -> None:
+        self.print(message)
+
+    def stage(self, finish: bool = False) -> None:
+        self._legacy.stage(finish=finish)
 
     def progress_bar(
         self,
@@ -227,56 +181,146 @@ class EsptoolLogger(TemplateLogger):
         prefix: str = "",
         suffix: str = "",
         bar_length: int = 30,
-    ):
-        """
-        Call in a loop to print a progress bar overwriting itself in place.
-        If terminal doesn't support ANSI escape codes, no overwriting happens.
-        """
-        filled = int(bar_length * cur_iter // total_iters)
-        if filled == bar_length:
-            bar = "=" * bar_length
-        elif filled == 0:
-            bar = " " * bar_length
-        else:
-            bar = f"{'=' * (filled - 1)}>{' ' * (bar_length - filled)}"
-
-        percent = f"{100 * (cur_iter / float(total_iters)):.1f}"
-        self.print(
-            f"\r{self.ansi_clear}{prefix}[{bar}] {percent:>5}%{suffix} ",
-            end="\n" if not self._smart_features or cur_iter == total_iters else "",
-            flush=True,
+    ) -> None:
+        self._legacy.progress_bar(
+            cur_iter,
+            total_iters,
+            prefix=prefix,
+            suffix=suffix,
+            bar_length=bar_length,
         )
 
-    def set_logger(self, new_logger):
-        if not isinstance(new_logger, TemplateLogger):
+    def set_verbosity(self, mode: int | str) -> None:
+        self._legacy.set_verbosity(mode)  # type: ignore[arg-type]
+
+
+# Legacy CLI / scripting strings mapped onto `Verbosity`. ``verbose``
+# uses `Verbosity.VERBOSE` so ``--verbose`` matches esp-pylib (``debug()``
+# output, non-collapsing progress bars). Stage collapsing is disabled for
+# VERBOSE via `EsptoolLogger._stage_can_collapse` (and for ``--trace``
+# via ``_smart_features`` in `esptool.__init__`).
+_VERBOSITY_LEVEL_MAP = {
+    "auto": Verbosity.NORMAL,
+    "verbose": Verbosity.VERBOSE,
+    "silent": Verbosity.SILENT,
+    "compact": Verbosity.NORMAL,
+}
+
+
+class EsptoolLogger(EspLog):
+    """Esptool's default logger.
+
+    Subclasses `esp_pylib.logger.EspLog` so Rich rendering, IDE
+    WebSocket forwarding, collapsible stages, and ``--silent`` gating are
+    shared with the rest of the Espressif tools, while keeping esptool-specific
+    behaviour:
+
+    * `_stage_can_collapse` honours ``_smart_features``: ``auto`` defers to
+      esp-pylib's TTY detection, ``compact`` forces collapsing on, and
+      ``--trace`` forces it off.
+    * `print` keeps historical builtin-``print`` semantics (``flush``,
+      ``soft_wrap``, lazy ``sys.stdout``).
+    * `warn` / `err` are inherited from `EspLog` (canonical).
+    * `warning` / `error` forward to them for backward compatibility.
+    """
+
+    instance: EspLogBase | None = None
+
+    # Tri-state compatibility override for collapsible stages, consumed by
+    # `_stage_can_collapse`:
+    #   * ``None``  — auto: fallback to esp-pylib's detection
+    #   * ``True``  — force collapsing on (``compact`` mode).
+    #   * ``False`` — force collapsing off, set by the CLI in trace mode
+    _smart_features: bool | None = None
+
+    def _stage_can_collapse(self) -> bool:
+        """Whether `stage` may rewind transient output.
+
+        In ``auto`` mode (``_smart_features is None``) this defers to
+        esp-pylib's default (normal verbosity + interactive stdout).
+        ``compact`` (``True``) and ``--trace`` (``False``) force the
+        decision instead.
+        """
+        if self._smart_features is None:
+            return super()._stage_can_collapse()  # type: ignore[no-any-return]
+        return self._smart_features and self._verbosity == Verbosity.NORMAL
+
+    # ------------------------------------------------------------------
+    # Backward-compatible aliases
+    # ------------------------------------------------------------------
+
+    def warning(self, message: str, suggestion: str | None = None) -> None:
+        """Backward-compatible alias for `warn`."""
+        self.warn(message, suggestion=suggestion)
+
+    def error(self, message: str, suggestion: str | None = None) -> None:
+        """Backward-compatible alias for `err`."""
+        self.err(message, suggestion=suggestion)
+
+    # ------------------------------------------------------------------
+    # Verbosity + custom logger swap
+    # ------------------------------------------------------------------
+
+    def set_verbosity(self, verbosity):  # type: ignore[override]
+        """Accept esptool's CLI verbosity strings + esp-pylib levels.
+
+        Historical values (``auto``, ``verbose``, ``silent``, ``compact``) map
+        onto `Verbosity`. ``verbose`` is :data:`Verbosity.VERBOSE` so
+        it enables `debug` and full progress-bar lines like other
+        esp-pylib tools. ``compact`` / ``auto`` only adjust stage collapsing
+        (``_smart_features``); ``silent`` is :data:`Verbosity.SILENT`.
+        """
+        if isinstance(verbosity, str):
+            key = verbosity.lower()
+            if key in _VERBOSITY_LEVEL_MAP:
+                super().set_verbosity(_VERBOSITY_LEVEL_MAP[key])
+                if key == "compact":
+                    self._smart_features = True
+                elif key == "auto":
+                    # Defer to esp-pylib's TTY-based detection.
+                    self._smart_features = None
+                return
+        super().set_verbosity(verbosity)
+
+    def set_logger(self, new_logger):  # type: ignore[override]
+        """Install a custom logger instance as the active singleton.
+
+        Accepts a `TemplateLogger` (wrapped for esp-pylib) or any
+        `EspLogBase` implementation. Assignment goes to ``EspLog.instance``,
+        which the shared ``log`` proxy reads.
+        """
+        if isinstance(new_logger, EspLogBase):
+            instance: EspLogBase = new_logger
+        elif isinstance(new_logger, TemplateLogger):
+            instance = _LegacyLoggerAdapter(new_logger)
+        else:
             raise TypeError(
                 f"New logger must implement the TemplateLogger interface, "
                 f"got {type(new_logger).__name__!r}"
             )
-        self.__class__ = new_logger.__class__
+        EspLog.instance = instance
 
-    def set_verbosity(self, verbosity: str):
+    # ------------------------------------------------------------------
+    # Print — esptool-specific stdout semantics only
+    # ------------------------------------------------------------------
+
+    def print(self, *args, **kwargs) -> None:  # type: ignore[override]
+        """Plain output with esptool's historical ``print`` semantics.
+
+        ``soft_wrap=True`` is the default so Rich does not break long lines
+        at the console width. A ``flush=True`` kwarg some callers pass is
+        stripped here: Rich's ``Console.print`` already flushes the
+        underlying stream once per call (the consoles are never used in a
+        buffering context) and rejects an explicit ``flush`` argument.
+
+        Following a reassigned ``sys.stdout`` (e.g. ``redirect_stdout``) and
+        stage newline accounting are both handled by `EspLog.print`.
         """
-        Set the verbosity level to one of the following:
-        - "auto": Enable smart terminal features and colors if supported by the terminal
-        - "verbose": Enable verbose output (no collapsing output)
-        - "silent": Disable all output except errors
-        - "compact": Enable smart terminal features and colors even if not supported
-        """
-        if verbosity == self._verbosity:
-            return
-
-        self._verbosity = verbosity
-        if verbosity == "auto":
-            self._set_smart_features()
-        elif verbosity == "verbose":
-            self._set_smart_features(override=False)
-        elif verbosity == "silent":
-            pass
-        elif verbosity == "compact":
-            self._set_smart_features(override=True)
-        else:
-            raise ValueError(f"Invalid verbosity level: {verbosity}")
+        kwargs.pop("flush", None)
+        kwargs.setdefault("soft_wrap", True)
+        super().print(*args, **kwargs)
 
 
-log = EsptoolLogger()
+# Wire esptool's subclass into the shared singleton before anything imports
+# ``log`` (re-exported from esp-pylib; it delegates to ``EspLog.instance``).
+EspLog.instance = EsptoolLogger()

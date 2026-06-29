@@ -377,7 +377,7 @@ class ESP32S3ROM(ESP32ROM):
         if spi_connection[3] > 46:  # hd_gpio_num must be <= SPI_GPIO_NUM_LIMIT (46)
             raise FatalError("SPI HD Pin number must be <= 46.")
         if any([v for v in spi_connection if v in [19, 20]]):
-            log.warning(
+            log.warn(
                 "GPIO pins 19 and 20 are used by USB-Serial/JTAG and USB-OTG, "
                 "consider using other pins for SPI flash connection."
             )

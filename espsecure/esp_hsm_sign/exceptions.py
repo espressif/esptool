@@ -14,6 +14,7 @@ from pkcs11.exceptions import (
     OperationNotInitialized,
     SessionClosed,
 )
+from rich.markup import escape
 
 from esptool.logger import log
 
@@ -28,33 +29,36 @@ except ImportError:
 def handle_exceptions(e, info=""):
     exception_type = e.__class__
     if exception_type == MechanismInvalid:
-        log.error(f"The External HSM does not support the given mechanism: {info}")
+        log.err(
+            f"The External HSM does not support the given mechanism: "
+            f"{escape(str(info))}"
+        )
     elif exception_type == FunctionFailed:
-        log.error(
+        log.err(
             "Please ensure proper configuration, privileges and environment variables."
         )
     elif exception_type == AlreadyInitialized:
-        log.error("pkcs11 is already initialized with another library.")
+        log.err("pkcs11 is already initialized with another library.")
     elif exception_type == AnotherUserAlreadyLoggedIn:
-        log.error("Another User has been already logged in.")
+        log.err("Another User has been already logged in.")
     elif exception_type == ArgumentsBad:
-        log.error("Please check the arguments supplied to the function.")
+        log.err("Please check the arguments supplied to the function.")
     elif exception_type == DomainParamsInvalid:
-        log.error(
+        log.err(
             "Invalid or unsupported domain parameters were supplied to the function."
         )
     elif exception_type == DeviceRemoved:
-        log.error(
+        log.err(
             "The token has been removed from its slot during "
             "the execution of the function."
         )
     elif exception_type == NoSuchToken:
-        log.error("No such token found.")
+        log.err("No such token found.")
     elif exception_type == NoSuchKey:
-        log.error("No such key found.")
+        log.err("No such key found.")
     elif exception_type == OperationNotInitialized:
-        log.error("Operation not initialized.")
+        log.err("Operation not initialized.")
     elif exception_type == SessionClosed:
-        log.error("Session already closed.")
+        log.err("Session already closed.")
     else:
-        log.error(f"{e.__class__}: {info}")
+        log.err(f"{e.__class__}: {escape(str(info))}")

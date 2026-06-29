@@ -211,7 +211,7 @@ class ESP32E22ROM(ESP32ROM):
         if not set(spi_connection).issubset(set(range(0, 53))):
             raise FatalError("SPI Pin numbers must be in the range 0-52.")
         if any([v for v in spi_connection if v in [18, 19]]):
-            log.warning(
+            log.warn(
                 "GPIO pins 18 and 19 are used by USB-OTG, "
                 "consider using other pins for SPI flash connection."
             )

@@ -429,7 +429,7 @@ class TestFlashSpiNandAttach:
 
         warnings = []
         with patch("esptool.loader.log") as mock_log:
-            mock_log.warning.side_effect = warnings.append
+            mock_log.warn.side_effect = warnings.append
             ESPLoader.flash_spi_nand_attach(esp, 0)
 
         assert any("prot" in w.lower() for w in warnings)

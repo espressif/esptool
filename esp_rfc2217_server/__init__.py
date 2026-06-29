@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2009-2015 Chris Liechti
-# SPDX-FileContributor: 2020-2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileContributor: 2020-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # Redirect data from a TCP/IP connection to a serial port and vice versa using RFC 2217.
@@ -14,85 +14,81 @@
 
 import logging
 import socket
-import sys
 
+import rich_click as click
 import serial
+from esp_pylib.cli_types import SerialPortType
+from rich.markup import escape
 
 from esp_rfc2217_server.redirector import Redirector
+from esptool.logger import log
 from esptool.util import check_deprecated_py_suffix
 
 
-def main():
-    check_deprecated_py_suffix("esp_rfc2217_server")
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="RFC 2217 Serial to Network (TCP/IP) redirector.",
-        epilog="NOTE: no security measures are implemented. "
-        "Anyone can remotely connect to this service over the network.\n"
-        "Only one connection at once is supported. "
-        "When the connection is terminated it waits for the next connect.",
-    )
-
-    parser.add_argument("SERIALPORT")
-
-    parser.add_argument(
-        "-p",
-        "--localport",
-        type=int,
-        help="local TCP port, default: %(default)s",
-        metavar="TCPPORT",
-        default=2217,
-    )
-
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        dest="verbosity",
-        action="count",
-        help="print more diagnostic messages (option can be given multiple times)",
-        default=0,
-    )
-
-    parser.add_argument(
-        "--r0",
-        help="Use delays necessary for ESP32 revision 0 chips",
-        action="store_true",
-    )
-
-    args = parser.parse_args()
-
-    if args.verbosity > 3:
-        args.verbosity = 3
-    level = (logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)[
-        args.verbosity
-    ]
+@click.command(
+    no_args_is_help=True,
+    context_settings=dict(help_option_names=["-h", "--help"], max_content_width=120),
+    help="RFC 2217 Serial to Network (TCP/IP) redirector.",
+    epilog="NOTE: no security measures are implemented. "
+    "Anyone can remotely connect to this service over the network. "
+    "Only one connection at once is supported. "
+    "When the connection is terminated it waits for the next connect.",
+)
+@click.argument("serialport", metavar="SERIALPORT", type=SerialPortType())
+@click.option(
+    "--localport",
+    "-p",
+    type=int,
+    metavar="TCPPORT",
+    default=2217,
+    show_default=True,
+    help="Local TCP port.",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    "verbosity",
+    count=True,
+    help="Print more diagnostic messages (option can be given multiple times).",
+)
+@click.option(
+    "--r0",
+    is_flag=True,
+    help="Use delays necessary for ESP32 revision 0 chips.",
+)
+def cli(serialport: str, localport: int, verbosity: int, r0: bool):
+    if verbosity > 3:
+        verbosity = 3
+    # The ``-v`` count only tunes pyserial's RFC2217 ``PortManager``, which
+    # logs through the stdlib ``logging`` module (it expects a
+    # ``logging.Logger``). The server's own status/error output below goes
+    # through the shared esptool/esp-pylib logger instead.
+    level = (logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)[verbosity]
     logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
     logging.getLogger("rfc2217").setLevel(level)
 
     # connect to serial port
-    ser = serial.serial_for_url(args.SERIALPORT, do_not_open=True, exclusive=True)
+    ser = serial.serial_for_url(serialport, do_not_open=True, exclusive=True)
     ser.timeout = 3  # required so that the reader thread can exit
     # reset control line as no _remote_ "terminal" has been connected yet
     ser.dtr = False
     ser.rts = False
 
-    logging.info("RFC 2217 TCP/IP to Serial redirector - type Ctrl-C / BREAK to quit")
+    log.print("RFC 2217 TCP/IP to Serial redirector - type Ctrl-C / BREAK to quit")
 
     try:
         ser.open()
     except serial.SerialException as e:
-        logging.error(f"Could not open serial port {ser.name}: {e}")
-        sys.exit(1)
+        log.die(f"Could not open serial port {escape(str(ser.name))}: {escape(str(e))}")
 
-    logging.info(f"Serving serial port: {ser.name}")
+    log.print(f"Serving serial port: {ser.name}")
     settings = ser.get_settings()
 
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(("", args.localport))
+    srv.bind(("", localport))
     srv.listen(1)
-    logging.info(f"TCP/IP port: {args.localport}")
+    log.print(f"TCP/IP port: {localport}")
 
     try:
         host_ip = socket.gethostbyname(socket.gethostname())
@@ -102,9 +98,9 @@ def main():
         host_ip = "127.0.0.1"
     wait_msg = (
         "Waiting for connection ... use the 'rfc2217://"
-        f"{host_ip}:{args.localport}?ign_set_control' as a PORT"
+        f"{host_ip}:{localport}?ign_set_control' as a PORT"
     )
-    logging.info(wait_msg)
+    log.print(wait_msg)
 
     while True:
         srv.settimeout(5)
@@ -117,19 +113,19 @@ def main():
                     print(".", end="", flush=True)
         except KeyboardInterrupt:
             print("")  # resetting inline print
-            logging.info("Exited with keyboard interrupt")
+            log.print("Exited with keyboard interrupt")
             break
         try:
-            logging.info(f"Connected by {addr[0]}:{addr[1]}")
+            log.print(f"Connected by {addr[0]}:{addr[1]}")
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             ser.rts = True
             ser.dtr = True
             # enter network <-> serial loop
-            r = Redirector(ser, client_socket, args.verbosity > 0, args.r0)
+            r = Redirector(ser, client_socket, verbosity > 0, r0)
             try:
                 r.shortcircuit()
             finally:
-                logging.info("Disconnected")
+                log.print("Disconnected")
                 r.stop()
                 client_socket.close()
                 ser.dtr = False
@@ -141,9 +137,19 @@ def main():
             print(flush=True)
             break
         except OSError as msg:
-            logging.error(str(msg))
+            log.err(str(msg))
 
-    logging.info("--- exit ---")
+    log.print("--- exit ---")
+
+
+def main(argv: list[str] | None = None):
+    """Entry point for the ``esp_rfc2217_server`` console script.
+
+    ``argv`` is an optional override for ``sys.argv`` (a list of argument
+    strings) to ease programmatic invocation and testing.
+    """
+    check_deprecated_py_suffix("esp_rfc2217_server")
+    cli.main(args=argv)
 
 
 if __name__ == "__main__":

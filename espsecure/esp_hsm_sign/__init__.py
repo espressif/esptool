@@ -6,9 +6,10 @@ import binascii
 import configparser
 import hashlib
 import os
-import sys
 from getpass import getpass
 from typing import IO
+
+from rich.markup import escape
 
 from esptool.logger import log
 
@@ -56,8 +57,7 @@ def establish_session(config: configparser.SectionProxy) -> pkcs11.Session:
         if os.path.exists(config["pkcs11_lib"]):
             lib = pkcs11.lib(config["pkcs11_lib"])
         else:
-            log.error(f'LIB file does not exist at "{config["pkcs11_lib"]}".')
-            sys.exit(1)
+            log.die(f'LIB file does not exist at "{escape(config["pkcs11_lib"])}".')
         for slot in lib.get_slots(token_present=True):
             if slot.slot_id == int(config["slot"]):
                 break
@@ -69,8 +69,7 @@ def establish_session(config: configparser.SectionProxy) -> pkcs11.Session:
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        log.error("Session establishment failed.")
-        sys.exit(1)
+        log.die("Session establishment failed.")
 
 
 def get_privkey_info(
@@ -80,13 +79,12 @@ def get_privkey_info(
         private_key = session.get_key(
             object_class=pkcs11.constants.ObjectClass.PRIVATE_KEY, label=config["label"]
         )
-        log.print(f"Got private key metadata with label {config['label']}.")
+        log.print(f"Got private key metadata with label {escape(config['label'])}.")
         return private_key
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        log.error("Failed to get the private key.")
-        sys.exit(1)
+        log.die("Failed to get the private key.")
 
 
 def get_pubkey(
@@ -131,16 +129,14 @@ def get_pubkey(
             )
 
         else:
-            log.error("Incorrect public key algorithm.")
-            sys.exit(1)
+            log.die("Incorrect public key algorithm.")
 
-        log.print(f"Got public key with label {public_key_label}.")
+        log.print(f"Got public key with label {escape(str(public_key_label))}.")
         return public_key
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        log.error("Failed to extract the public key.")
-        sys.exit(1)
+        log.die("Failed to extract the public key.")
 
 
 def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
@@ -167,8 +163,7 @@ def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
 
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e, mechanism)
-        log.error("Payload signing failed.")
-        sys.exit(1)
+        log.die("Payload signing failed.")
 
 
 def get_mechanism(
@@ -183,8 +178,7 @@ def get_mechanism(
     elif key_type == pkcs11.mechanisms.KeyType.EC:
         return pkcs11.mechanisms.Mechanism.ECDSA, None
     else:
-        log.error("Invalid signing key mechanism.")
-        sys.exit(1)
+        log.die("Invalid signing key mechanism.")
 
 
 def close_connection(session: pkcs11.Session):
@@ -193,5 +187,4 @@ def close_connection(session: pkcs11.Session):
         log.print("Connection closed successfully.")
     except pkcs11.exceptions.PKCS11Error as e:
         handle_exceptions(e)
-        log.error("Failed to close the HSM session.")
-        sys.exit(1)
+        log.die("Failed to close the HSM session.")

@@ -14,6 +14,7 @@ from typing import Any, BinaryIO, TextIO, cast
 
 import rich_click as click
 from bitstring import BitStream
+from rich.markup import escape
 
 import espsecure
 import esptool
@@ -51,7 +52,9 @@ class EfuseValuePairType(click.ParamType):
         self.efuse_choices = efuse_choices
         self.efuses = efuses
 
-    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context):
+    def convert(
+        self, value: list[str], param: click.Parameter | None, ctx: click.Context | None
+    ):
         def check_efuse_name(efuse_name: str):
             if efuse_name not in self.efuse_choices:
                 raise click.BadParameter(
@@ -90,7 +93,11 @@ class EfuseValuePairType(click.ParamType):
 class CustomMACType(click.ParamType):
     name = "custom_mac"
 
-    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context):
+    def convert(
+        self, value: str, param: click.Parameter | None, ctx: click.Context | None
+    ):
+        if ctx is None:
+            raise click.BadParameter("Internal error: missing click context.")
         return base_fields.CheckArgValue(ctx.obj["efuses"], "CUSTOM_MAC")(value)
 
 
@@ -99,7 +106,7 @@ class TupleParameter(EfuseArgument):
         self.max_arity = kwargs.pop("max_arity", None)
         super().__init__(*args, **kwargs)
 
-    def make_metavar(self, ctx=None) -> str:
+    def make_metavar(self, ctx: click.Context | None = None) -> str:
         if self.nargs == 1:
             return super().make_metavar(ctx)  # type: ignore
         if self.max_arity is None:
@@ -680,7 +687,7 @@ class BaseCommands(ABC):
         json_efuse = {}
         summary_efuse = []
         if file != sys.stdout:
-            log.print("Saving eFuse values to " + file.name)
+            log.print("Saving eFuse values to " + escape(file.name))
         if human_output and not value_only:
             summary_efuse.append(
                 ROW_FORMAT.replace("-50", "-12")
@@ -786,7 +793,7 @@ class BaseCommands(ABC):
                 )
         if human_output:
             for line in summary_efuse:
-                log.print(line, file=file)
+                log.print(escape(line), file=file)
             if file != sys.stdout:
                 file.close()
                 log.print("Done")
@@ -836,7 +843,7 @@ class BaseCommands(ABC):
                 if not to_console:
                     fname, fextension = os.path.splitext(file_name)  # type: ignore
                     file_dump_name = f"{fname}{block.id}{fextension}"
-                    log.print(f"Dump eFuse block{block.id} -> {file_dump_name}")
+                    log.print(f"Dump eFuse block{block.id} -> {escape(file_dump_name)}")
                     dump_file = open(file_dump_name, "wb")
                 output_block_to_file(block, dump_file, to_console)
                 if not to_console:
@@ -844,7 +851,7 @@ class BaseCommands(ABC):
         elif format == "joint":
             # all eFuse blocks are stored in one file
             if not to_console:
-                log.print(f"Dump eFuse blocks -> {file_name}")
+                log.print(f"Dump eFuse blocks -> {escape(str(file_name))}")
                 dump_file = open(file_name, "wb")  # type: ignore
             for block in self.efuses.blocks:
                 output_block_to_file(block, dump_file, to_console)
@@ -907,7 +914,7 @@ class BaseCommands(ABC):
         log.print(f"\nBurning eFuses{attention}:")
         for efuse, new_value in zip(burn_efuses_list, new_value_list):
             log.print(
-                f"    - '{efuse.name}' ({efuse.description}) "
+                f"    - '{efuse.name}' ({escape(str(efuse.description))}) "
                 f"{efuse.get_bitstring()} -> {efuse.convert_to_bitstring(new_value)}"
             )
             efuse.save(new_value)

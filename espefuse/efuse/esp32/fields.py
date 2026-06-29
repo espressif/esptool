@@ -7,6 +7,8 @@
 import struct
 import time
 
+from rich.markup import escape
+
 import esptool
 from esptool import log
 
@@ -265,7 +267,8 @@ class EfuseMacField(base_fields.EfuseMacFieldBase, EfuseField):
     def save(self, new_value):
         def print_field(e, new_value):
             log.print(
-                f"    - '{e.name}' ({e.description}) {e.get_bitstring()} -> {new_value}"
+                f"    - '{e.name}' ({escape(str(e.description))}) "
+                f"{e.get_bitstring()} -> {new_value}"
             )
 
         if self.name == "CUSTOM_MAC":
