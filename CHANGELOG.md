@@ -1,3 +1,18 @@
+## v5.3.1 (2026-06-26)
+
+### 🐛 Bug Fixes
+
+- **espefuse**: Remove non-existent HMAC key purposes for ESP32-C61 *(harshal.patil - ec4fc2a)*
+- **pyinstaller**: Bundle pyserial URL handlers *(Lucas Saavedra Vaz - 1044f3c)*
+- Preserve VID/PID lookup for symlinked ports *(Jaroslav Burian - aea67cd)*
+- Fix operations over USB-Serial/JTAG transport in Secure Download Mode *(Radim Karniš - 6c9ad54)*
+- Raise FatalError instead of leaking StopIteration *(Roland Dobai - 2b5bc8b)*
+
+### 📖 Documentation
+
+- **stub_flasher**: Document esp-flasher-stub and announce legacy stub deprecation *(Radim Karniš - ff37ef7)*
+
+
 ## v5.3.0 (2026-06-01)
 
 ### ✨ New Features
