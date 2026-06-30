@@ -15,6 +15,10 @@ Positional arguments:
 
 - ``voltage`` - Voltage selection ['1.8V', '3.3V', 'OFF'].
 
+Optional arguments:
+
+- ``--show-token``. Display the eFuse token dump for the write operation before the confirmation prompt. This produces an ``EFSW`` token. If the goal is only to obtain the token, press ENTER to abort (no burning will occur). See :ref:`Token Dump <token>` section for more details on token formats and usage.
+
 .. only:: not esp32 and not esp32s2 and not esp32s3
 
     .. note::

@@ -24,19 +24,55 @@ class EmulateEfuseController(EmulateEfuseControllerBase):
     Fields: EfuseDefineFields
     REGS: type[EfuseDefineRegisters]
 
-    def __init__(self, efuse_file: str | None = None, debug: bool = False):
+    def __init__(
+        self,
+        efuse_file: str | None = None,
+        debug: bool = False,
+        token_dump: str | None = None,
+    ):
         self.Blocks = EfuseDefineBlocks
         self.Fields = EfuseDefineFields(None)
         self.REGS = EfuseDefineRegisters
-        super().__init__(efuse_file, debug)
+        super().__init__(efuse_file, debug, token_dump=token_dump)
+
+    def set_major_chip_version(self, version):
+        # Determine required efuse bits for rev_bit0 (word 3 bit 15) and
+        # rev_bit1 (word 5 bit 20). rev_bit2 comes from APB register.
+        if version == 0:
+            need_b0, need_b1 = 0, 0
+        elif version == 1:
+            need_b0, need_b1 = 1, 0
+        else:  # version 2 or 3
+            need_b0, need_b1 = 1, 1
+
+        if need_b0:
+            self.direct_write_efuse(3, 1 << 15, block=0)
+        if need_b1:
+            self.direct_write_efuse(5, 1 << 20, block=0)
+
+    def set_minor_chip_version(self, version):
+        version &= 0x3
+        if version:
+            self.direct_write_efuse(5, version << 24, block=0)
 
     """ esptool method start >> """
 
     def get_major_chip_version(self) -> int:
-        return 3
+        rev_bit0 = (self.read_efuse(3, block=0) >> 15) & 0x1
+        rev_bit1 = (self.read_efuse(5, block=0) >> 20) & 0x1
+        rev_bit2 = True  # From APB_CTL_DATE_ADDR register bit #31
+        combine_value = (rev_bit2 << 2) | (rev_bit1 << 1) | rev_bit0
+
+        revision = {
+            0: 0,
+            1: 1,
+            3: 2,
+            7: 3,
+        }.get(combine_value, 0)
+        return revision
 
     def get_minor_chip_version(self) -> int:
-        return 0
+        return (self.read_efuse(5, block=0) >> 24) & 0x3
 
     def get_crystal_freq(self) -> int:
         return 40  # MHz (common for all chips)

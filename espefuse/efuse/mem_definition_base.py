@@ -16,6 +16,7 @@ from .csv_table_parser import CSVFuseTable
 class EfuseRegistersBase:
     EFUSE_MEM_SIZE: int
     DR_REG_EFUSE_BASE: int
+    ERRORS: list[int] = []
 
     # Coding Scheme values
     CODING_SCHEME_NONE = 0
@@ -207,7 +208,7 @@ class EfuseFieldsBase:
                 if name == "ADC_VREF":
                     efuse.class_type = "vref"
                     return
-                if includes(name, ["ADC", "LDO", "DBIAS", "_HVT"]):
+                if includes(name, ["ADC1_TP", "ADC2_TP"]):
                     efuse.class_type = "adc_tp"
                 elif name == "TEMP_CALIB":
                     efuse.class_type = "t_sensor"

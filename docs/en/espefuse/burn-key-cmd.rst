@@ -39,6 +39,7 @@ Optional arguments:
     :not esp32: - ``--no-read-protect``. Disable read-protecting of the key. The key remains readable software. The key with keypurpose [USER, RESERVED and .._DIGEST] will remain readable anyway, but for the rest keypurposes the read-protection will be defined by this option (Read-protect by default).
     - ``--force-write-always``. Write the eFuse key even if it looks like it is already been written, or is write protected. Note that this option can't disable write protection, or clear any bit which has already been set.
     - ``--show-sensitive-info``. Show data to be burned (may expose sensitive data). Enabled if --debug is used. Use this option to see the byte order of the data being written.
+    - ``--show-token``. Display the eFuse token dump for the write operation before the confirmation prompt. This produces an ``EFSW`` token. If the goal is only to obtain the token, press ENTER to abort (no burning will occur). See :ref:`Token Dump <token>` section for more details on token formats and usage. Be aware that this may expose sensitive data.
 
 .. only:: esp32
 

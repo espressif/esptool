@@ -13,6 +13,7 @@ Positional arguments:
 Optional arguments:
 
 * ``--force``. Suppress an error to burn eFuses. The tool checks for incompatible eFuse states to prevent them from burning and potentially **bricking the chip**. Use this flag only if you are sure. This will suppress the eFuse incompatibility error.
+* ``--show-token``. Display the eFuse token dump for the write operation before the confirmation prompt. This produces an ``EFSW`` token. If the goal is only to obtain the token, press ENTER to abort (no burning will occur). See :ref:`Token Dump <token>` section for more details on token formats and usage.
 
 It can be list of eFuse names and values (like EFUSE_NAME1 1 EFUSE_NAME2 7 EFUSE_NAME3 10 etc.).
 
