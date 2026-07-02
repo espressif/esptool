@@ -31,6 +31,7 @@ include:
   - local: /.gitlab/deploy_docs.yml
   - local: /.gitlab/canary.yml
   - local: /.gitlab/internal_release.yml
+  - local: /.gitlab/sync_to_internal.yml
 run-danger-mr-linter:
   stage: pre-check
   rules:

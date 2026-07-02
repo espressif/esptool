@@ -1,0 +1,46 @@
+# open_sync_mr — on every merge to master, offer a review MR bringing
+# internal/dev_release up to master (or comment the conflict on the merged MR).
+# The bot never writes to internal/dev_release. Full design: .gitlab/README.md.
+#
+# CI/CD variables:
+#   GITLAB_API_TOKEN  required; api scope. Reuses the canary token, but needs only
+#                     the Developer role — every action is an API call or a push to
+#                     the UNPROTECTED bot/sync-master branch.
+#   MAINTAINERS       optional; MR reviewers / conflict cc.
+#   SYNC_DRY_RUN      optional "1"; log the intended actions, perform none.
+
+open_sync_mr:
+  stage: check                     # rides the master push pipeline; opens an MR, not a gate
+  image: $PYTHON_IMAGE_LATEST      # python:3.14-trixie ships git + python3
+  tags: [host_test]
+  retry: 2
+  allow_failure: true              # an API/network blip never reddens the master pipeline
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "master"'
+  variables:
+    GIT_DEPTH: 0                    # full history so the merge works
+  before_script:
+    - git fetch --no-tags origin master internal/dev_release
+    # Populate the remote-tracking ref so the later `git push --force-with-lease`
+    # has a real lease. Missing it, the CAS derives the lease from an absent ref
+    # and is rejected with "stale info" on every cycle once the branch exists.
+    # `|| true` tolerates the first run, before the branch is on the remote.
+    - git fetch --no-tags origin '+refs/heads/bot/sync-master:refs/remotes/origin/bot/sync-master' || true
+    # Token preflight (mirrors canary_poll): fail loud if the protected var is missing.
+    - |
+      HTTP=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+        -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests?per_page=1")
+      case "$HTTP" in
+        200) echo "GITLAB_API_TOKEN preflight OK (api scope + Developer+ role)" ;;
+        401) echo "ERROR: GITLAB_API_TOKEN invalid/expired (or empty on unprotected ref)"; exit 1 ;;
+        403) echo "ERROR: GITLAB_API_TOKEN lacks api scope / role"; exit 1 ;;
+        *)   echo "ERROR: unexpected HTTP $HTTP from preflight"; exit 1 ;;
+      esac
+    # Push identity + token in the remote. Must be the PAT, NOT CI_JOB_TOKEN: a
+    # CI_JOB_TOKEN push triggers no pipeline, and the sync MR's pipeline is the point.
+    - git config user.email "$GITLAB_USER_EMAIL"
+    - git config user.name "esptool sync bot"
+    - git remote set-url --push origin "https://oauth2:${GITLAB_API_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/${CI_PROJECT_PATH}.git"
+  script:
+    - python3 ci/sync_to_internal.py

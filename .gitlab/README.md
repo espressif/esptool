@@ -32,6 +32,7 @@ Canary adds `canary_prep` before and `canary_post` after.
 | `canary.yml` | Nightly stub compatibility |
 | `deploy_docs.yml` | Docs build and deploy |
 | `internal_release.yml` | Internal preview sdist |
+| `sync_to_internal.yml` | On each merge to `master`, open/refresh the review MR syncing `master` → `internal/dev_release` (see [Sync to internal](#sync-to-internal)) |
 
 Python images: `PYTHON_IMAGE_MIN` and `PYTHON_IMAGE_LATEST` in `.gitlab-ci.yml`. Canary jobs use `CANARY_IMAGE` (`ubuntu:24.04`).
 
@@ -59,6 +60,17 @@ Nightly job that builds fresh v2 stubs from **esp-stub-lib** and runs the full t
 **Attribution:** only esp-stub-lib is tracked across runs; esp-flasher-stub is rebuilt from master each night. Issue titles blame esp-stub-lib, but both SHAs appear in the issue body.
 
 **CI variables:** `STUB_CANARY` (on the schedule, not project-wide), `LAST_TESTED_STUB_LIB_SHA` (auto-created by `canary_record`), `GITLAB_API_TOKEN` (api scope, Maintainer+ — cancel on quiet nights and record SHA), optional `MAINTAINERS`.
+
+## Sync to internal
+
+`open_sync_mr` (in `sync_to_internal.yml`) runs on every push to `master` — i.e. each MR merge. It keeps a single rolling review MR that brings `internal/dev_release` up to `master`:
+
+- **Clean merge** — prepares the `master` → `internal/dev_release` merge on the unprotected `bot/sync-master` branch, then find-or-creates ONE MR into `internal/dev_release` with `$MAINTAINERS` as reviewers, and links it back on the just-merged `master` MR. A maintainer checks the MR's pipeline and merges it — the only write to `internal/dev_release`.
+- **Conflict** — no MR is opened (it would only sit unmergeable); the bot comments on the original `master` MR naming the conflicting files with a bounded hunk preview and cc'ing `$MAINTAINERS`.
+
+The bot never merges the sync MR or pushes to `internal/dev_release`. `bot/sync-master` stays unprotected so it never reaches the GitHub mirror. Logic lives in `ci/sync_to_internal.py`; `SYNC_DRY_RUN=1` logs the intended actions without performing them.
+
+**CI variables:** `GITLAB_API_TOKEN` (api scope; reuses the shared canary token, but every action here — API calls plus the push to the unprotected `bot/sync-master` — needs only the **Developer** role), optional `MAINTAINERS`, optional `SYNC_DRY_RUN`.
 
 ## Runners
 
