@@ -22,9 +22,11 @@ workflow:
     - if: $CI_COMMIT_BRANCH
 
 include:
-  - project: espressif/shared-ci-dangerjs
-    ref: master
-    file: danger.yaml
+  # Danger MR linter, isolated so it can be skipped on bot/sync-master via
+  # include:rules. See .gitlab/README.md (Sync to internal) for why.
+  - local: /.gitlab/danger.yml
+    rules:
+      - if: $CI_COMMIT_REF_NAME != "bot/sync-master"
   - local: /.gitlab/checks.yml
   - local: /.gitlab/host_tests.yml
   - local: /.gitlab/target_tests.yml
@@ -32,15 +34,6 @@ include:
   - local: /.gitlab/canary.yml
   - local: /.gitlab/internal_release.yml
   - local: /.gitlab/sync_to_internal.yml
-run-danger-mr-linter:
-  stage: pre-check
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - when: on_success
-  tags: [dangerjs]
-  variables:
-    ENABLE_CHECK_UPDATED_CHANGELOG: 'false'
 # cache the pip download directory in all jobs
 variables:
   PIP_CACHE_DIR: $CI_PROJECT_DIR/.cache/pip

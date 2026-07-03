@@ -1,0 +1,18 @@
+# DangerJS MR linter: the internal espressif/shared-ci-dangerjs include plus its
+# run-danger-mr-linter override, kept together so .gitlab-ci.yml can skip the
+# whole file on bot/sync-master via include:rules.
+# See .gitlab/README.md (Sync to internal) for why.
+include:
+  - project: espressif/shared-ci-dangerjs
+    ref: master
+    file: danger.yaml
+
+run-danger-mr-linter:
+  stage: pre-check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: on_success
+  tags: [dangerjs]
+  variables:
+    ENABLE_CHECK_UPDATED_CHANGELOG: 'false'
