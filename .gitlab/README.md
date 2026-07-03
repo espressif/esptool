@@ -26,6 +26,7 @@ Canary adds `canary_prep` before and `canary_post` after.
 
 | File | Purpose |
 |------|---------|
+| `danger.yml` | Danger MR linter (internal `shared-ci-dangerjs` include + its job override); skipped on `bot/sync-master` (see [Sync to internal](#sync-to-internal)) |
 | `checks.yml` | Install smoke tests, stub freshness |
 | `host_tests.yml` | Linux + Windows host pytest jobs |
 | `target_tests.yml` | Hardware tests per board (`target_<chip>` jobs), Windows smoke on `COM4` |
@@ -69,6 +70,8 @@ Nightly job that builds fresh v2 stubs from **esp-stub-lib** and runs the full t
 - **Conflict** — no MR is opened (it would only sit unmergeable); the bot comments on the original `master` MR naming the conflicting files with a bounded hunk preview and cc'ing `$MAINTAINERS`.
 
 The bot never merges the sync MR or pushes to `internal/dev_release`. `bot/sync-master` stays unprotected so it never reaches the GitHub mirror. Logic lives in `ci/sync_to_internal.py`; `SYNC_DRY_RUN=1` logs the intended actions without performing them.
+
+**Danger on the sync MR:** the `danger.yml` include is guarded by `include:rules` and skipped on `bot/sync-master`. That pipeline runs under the sync bot's project access token, which can't read the *internal* `shared-ci-dangerjs` project; resolving the cross-project include under it fails config compilation (`config_error`, 0 jobs). The include and its `run-danger-mr-linter` override live together in `danger.yml` so `include:rules` can skip both at once — guarding only the include would leave the override as a scriptless job (its `script` comes from the include), itself a `config_error`. The guard keys on `CI_COMMIT_REF_NAME` (the source branch on both push and merge-request pipelines, and one of the few variables allowed in `include:rules`). The trade-off is that the sync MR's pipeline no longer runs the Danger linter — acceptable, since it only mirrors already-reviewed `master` MRs.
 
 **CI variables:** `GITLAB_API_TOKEN` (api scope; reuses the shared canary token, but every action here — API calls plus the push to the unprotected `bot/sync-master` — needs only the **Developer** role), optional `MAINTAINERS`, optional `SYNC_DRY_RUN`.
 
