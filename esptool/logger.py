@@ -323,4 +323,10 @@ class EsptoolLogger(EspLog):
 
 # Wire esptool's subclass into the shared singleton before anything imports
 # ``log`` (re-exported from esp-pylib; it delegates to ``EspLog.instance``).
-EspLog.instance = EsptoolLogger()
+#
+# Only install when no logger has been set yet, so that importing esptool as a
+# library does not hijack a consumer tool's already-installed logger. When esptool
+# is the top-level application, nothing has touched ``log`` yet, so ``EspLog.instance``
+# is ``None`` here and esptool gets its own logger as before.
+if EspLog.instance is None:
+    EspLog.instance = EsptoolLogger()
