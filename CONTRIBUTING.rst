@@ -70,6 +70,19 @@ Before sending us a Pull Request, please consider this list of points:
 
 * If you're unsure about any of these points, please open the Pull Request anyhow and then ask us for feedback.
 
+Reusing Shared Code (esp-pylib)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Python tools in this repository depend on `esp-pylib <https://github.com/espressif/esp-pylib>`_ for shared utilities so they behave consistently across Espressif's tooling.
+
+When adding or modifying Python code, prefer esp-pylib (or this repo's thin wrappers around it) over reimplementing common behaviour:
+
+* Emit output through ``esptool.logger.log`` rather than ``print()`` or stdlib ``logging``.
+* Raise ``FatalError`` from ``esptool.util`` rather than defining local error types.
+* Reuse ``esp_pylib.cli_types`` and ``esp_pylib.cli_options`` for CLI parsing and options.
+
+If a helper would be useful across multiple Espressif Python tools, consider contributing it to esp-pylib rather than adding it here. Refer to the `esp-pylib README <https://github.com/espressif/esp-pylib>`_ for available modules and usage.
+
 Code Style & Static Analysis
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
