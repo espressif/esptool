@@ -264,6 +264,12 @@ def merged_mr_for_commit(gl: GitLabAPI, sha: str) -> dict | None:
     Handles both merge-commit and squash strategies; an empty result means the
     push was a direct push to master (not an MR merge) — the caller then still
     refreshes the sync MR but skips the origin-MR link/comment.
+
+    Only MRs targeting ``master`` count: the endpoint lists *every* MR that
+    contains the commit, and because ``bot/sync-master`` merges all of master,
+    each carried commit also belongs to the open sync MR — which GitLab returns
+    first. Without the target filter that sync MR would shadow the real master
+    MR (e.g. list itself instead of the change it carries).
     """
     try:
         mrs = gl.commit_merge_requests(sha)
@@ -271,7 +277,7 @@ def merged_mr_for_commit(gl: GitLabAPI, sha: str) -> dict | None:
         _log(f"WARNING: could not resolve MR for commit {sha[:8]}: {exc}")
         return None
     for mr in mrs:
-        if isinstance(mr, dict):
+        if isinstance(mr, dict) and mr.get("target_branch") == SOURCE_BRANCH:
             return _mr_summary(mr)
     return None
 
