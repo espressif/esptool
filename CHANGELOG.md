@@ -1,3 +1,23 @@
+## v4.12.0 (2026-07-13)
+
+### New Features
+
+- **esp32-p4**: Support ECO7 (rev3.2)
+- **stub_flasher**: Adopt new flasher stub
+- **espefuse**: add raw_value to JSON summary output
+- **spi_flash**: add flash reset when detecting chip
+
+### Bug Fixes
+
+- refine symlinked port PID lookup
+- resolve symlinked paths in get_usb_vid_pid
+- Use FLASH_BEGIN flag to flash encrypted data instead of separate command
+- **espefuse**: Add WAFER_VERSION_HI efuse for esp32p4 revisions less than v3.0
+- **stub_flasher**: Print an explanatory error if the stub flasher files are missing
+- **esp32h4**: make flash could run at 64MHz since 2nd stage bootloader
+- **espefuse**: Remove the value description of the efuse for ESP32-C5
+- Security eFuse layout for C2/C5/C61
+
 ## v4.11.0 (2026-01-27)
 
 ### New Features
