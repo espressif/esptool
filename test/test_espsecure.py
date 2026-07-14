@@ -3,12 +3,16 @@
 # Assumes openssl binary is in the PATH
 
 import binascii
+import hashlib
 import io
+import json
 import os
 import os.path
+import struct
 import subprocess
 import sys
 import tempfile
+import zlib
 
 import pytest
 from conftest import need_to_install_package_err
@@ -968,3 +972,627 @@ class TestDigest(EspSecureTestCase):
             self.run_espsecure(f"digest-private-key --keyfile {fname} {fname}")
         output = capsys.readouterr().out
         assert "should not be the same!" in output
+
+
+class TestSDCCertificate(EspSecureTestCase):
+    def test_generate_sdc_cert(self):
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            # Generate ECDSA P-256 key
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {keyfile_name}"
+            )
+
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} "
+                f"--output {output_file} "
+                "--mac 00:11:22:33:44:55 --enable-jtag"
+            )
+
+            assert os.path.exists(output_file)
+            # Header (20) + Body (416) + Nonce (32) = 468 bytes
+            assert os.path.getsize(output_file) == 468
+
+    def test_generate_sdc_cert_missing_args(self):
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {keyfile_name}"
+            )
+            # Test missing required --mac argument (when --chip-info is not provided)
+            with pytest.raises(subprocess.CalledProcessError):
+                self.run_espsecure(
+                    f"generate-sdc-certificate --keyfile {keyfile_name}"
+                )  # Missing --mac (required when --chip-info is not provided)
+
+    def test_digest_sdc_public_key_from_private_key(self):
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            digest_file = os.path.join(keydir, "sdc_pub_key_digest.bin")
+            # Generate ECDSA P-256 key
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {keyfile_name}"
+            )
+
+            # Generate public key digest from private key
+            self.run_espsecure(
+                f"digest-sdc-public-key --keyfile {keyfile_name} -o {digest_file}"
+            )
+
+            assert os.path.exists(digest_file)
+            # SDC public key digest should be 32 bytes (SHA-256 hash)
+            assert os.path.getsize(digest_file) == 32
+
+    def test_digest_sdc_public_key_from_public_key(self):
+        with tempfile.TemporaryDirectory() as keydir:
+            private_keyfile = os.path.join(keydir, "sdc_key.pem")
+            public_keyfile = os.path.join(keydir, "sdc_pub_key.pem")
+            digest_file = os.path.join(keydir, "sdc_pub_key_digest.bin")
+            # Generate ECDSA P-256 key
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {private_keyfile}"
+            )
+
+            # Extract public key
+            self.run_espsecure(
+                f"extract-public-key --version 2 --keyfile {private_keyfile} "
+                f"{public_keyfile}"
+            )
+
+            # Generate public key digest from public key
+            self.run_espsecure(
+                f"digest-sdc-public-key --pub-key {public_keyfile} -o {digest_file}"
+            )
+
+            assert os.path.exists(digest_file)
+            # SDC public key digest should be 32 bytes (SHA-256 hash)
+            assert os.path.getsize(digest_file) == 32
+
+    def test_digest_sdc_public_key_default_output(self):
+        # The digest is written to the default path (sdc_pub_key_digest.bin in the
+        # working directory, which is TEST_DIR for run_espsecure) when -o is omitted.
+        default_digest_file = os.path.join(TEST_DIR, "sdc_pub_key_digest.bin")
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            # Generate ECDSA P-256 key
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {keyfile_name}"
+            )
+
+            try:
+                # Generate public key digest without -o to exercise the default path
+                self.run_espsecure(f"digest-sdc-public-key --keyfile {keyfile_name}")
+
+                assert os.path.exists(default_digest_file)
+                assert os.path.getsize(default_digest_file) == 32
+            finally:
+                if os.path.exists(default_digest_file):
+                    os.unlink(default_digest_file)
+
+    def test_digest_sdc_public_key_consistency(self):
+        """Test that generating digest multiple times from same key produces same
+        result."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            digest_file1 = os.path.join(keydir, "digest1.bin")
+            digest_file2 = os.path.join(keydir, "digest2.bin")
+            # Generate ECDSA P-256 key
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {keyfile_name}"
+            )
+
+            # Generate digest twice from same key
+            self.run_espsecure(
+                f"digest-sdc-public-key --keyfile {keyfile_name} -o {digest_file1}"
+            )
+            self.run_espsecure(
+                f"digest-sdc-public-key --keyfile {keyfile_name} -o {digest_file2}"
+            )
+
+            # Both digests should exist and be identical
+            assert os.path.exists(digest_file1)
+            assert os.path.exists(digest_file2)
+            with open(digest_file1, "rb") as f1, open(digest_file2, "rb") as f2:
+                assert f1.read() == f2.read()
+
+    def test_digest_sdc_public_key_private_matches_public(self):
+        """Digest from a private key must match the digest from its own public
+        key - both paths hash the same public point."""
+        with tempfile.TemporaryDirectory() as keydir:
+            private_keyfile = os.path.join(keydir, "sdc_key.pem")
+            public_keyfile = os.path.join(keydir, "sdc_pub_key.pem")
+            digest_from_priv = os.path.join(keydir, "digest_priv.bin")
+            digest_from_pub = os.path.join(keydir, "digest_pub.bin")
+            # Generate ECDSA P-256 key and extract its public key
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {private_keyfile}"
+            )
+            self.run_espsecure(
+                f"extract-public-key --version 2 --keyfile {private_keyfile} "
+                f"{public_keyfile}"
+            )
+
+            self.run_espsecure(
+                "digest-sdc-public-key "
+                f"--keyfile {private_keyfile} "
+                f"-o {digest_from_priv}"
+            )
+            self.run_espsecure(
+                f"digest-sdc-public-key --pub-key {public_keyfile} -o {digest_from_pub}"
+            )
+
+            with open(digest_from_priv, "rb") as f1, open(digest_from_pub, "rb") as f2:
+                assert f1.read() == f2.read()
+
+    def test_generate_sdc_cert_download_reuse(self):
+        """The --enable-download-reuse flag produces a valid 468-byte cert."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self.run_espsecure(
+                f"generate-signing-key --version 2 --scheme ecdsa256 {keyfile_name}"
+            )
+
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} "
+                f"--output {output_file} "
+                "--mac 00:11:22:33:44:55 --enable-download-reuse"
+            )
+
+            assert os.path.exists(output_file)
+            # Header (20) + Body (416) + Nonce (32) = 468 bytes
+            assert os.path.getsize(output_file) == 468
+
+    # --- Helpers -----------------------------------------------------------
+
+    def _gen_key(self, path, scheme="ecdsa256"):
+        self.run_espsecure(f"generate-signing-key --version 2 --scheme {scheme} {path}")
+
+    @staticmethod
+    def _parse_sdc_cert(cert_bytes):
+        """Unpack the on-wire SDC cert into its fields for structural checks.
+
+        Layout: header(20) + body[usc(256)+pubkey(64)+r(32)+s(32)+hash(32)=416]
+        + nonce(32) = 468 bytes. Mirrors espsecure.esp_sdc constants exactly so a
+        silent format/packing regression is caught.
+        """
+        assert len(cert_bytes) == 468
+        header = cert_bytes[:20]
+        body = cert_bytes[20:436]
+        nonce = cert_bytes[436:468]
+        magic, version, _r1, usc_len, length, _r2, crc32, _r3 = struct.unpack(
+            "<IBBHHHII", header
+        )
+        return {
+            "magic": magic,
+            "version": version,
+            "usc_len": usc_len,
+            "length": length,
+            "crc32": crc32,
+            "body": body,
+            "usc_first_word": int.from_bytes(body[0:4], "big"),
+            "nonce": nonce,
+        }
+
+    # --- Structural / correctness corner cases -----------------------------
+
+    def test_generate_sdc_cert_structure_and_crc(self):
+        """Minutely validate the generated certificate's binary structure:
+        magic, version, declared lengths, body CRC32, and that the requested USC
+        config bits (and only those) are set."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            # Enable JTAG (bit 0) and force-spi-boot (bit 2); leave reuse (bit 1) off
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} "
+                "--mac 00:11:22:33:44:55 --enable-jtag --enable-force-spi-boot"
+            )
+            with open(output_file, "rb") as f:
+                cert = f.read()
+
+            fields = self._parse_sdc_cert(cert)
+            assert fields["magic"] == 0x524D4143  # "RMAC"
+            assert fields["version"] == 0x01
+            assert fields["usc_len"] == 256
+            assert fields["length"] == 436  # header + body, excludes nonce
+            # CRC32 in header must match a fresh CRC of the body (ROM crc32_le init)
+            expected_crc = zlib.crc32(fields["body"], 0xFFFFFFFF) & 0xFFFFFFFF
+            assert fields["crc32"] == expected_crc
+            # USC config bits: JTAG=bit0, download_reuse=bit1, force_spi_boot=bit2
+            assert fields["usc_first_word"] & (1 << 0)  # JTAG on
+            assert not fields["usc_first_word"] & (1 << 1)  # reuse off
+            assert fields["usc_first_word"] & (1 << 2)  # force SPI boot on
+
+    def test_generate_sdc_cert_no_flags_has_zero_usc(self):
+        """With no --enable-* flags the USC config word must be all zeros."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} "
+                "--mac 00:11:22:33:44:55"
+            )
+            with open(output_file, "rb") as f:
+                fields = self._parse_sdc_cert(f.read())
+            assert fields["usc_first_word"] == 0
+
+    def test_generate_sdc_digest_value_is_reversed_sha256(self):
+        """The digest must be the byte-reversed SHA-256 of the 64-byte (x||y)
+        public key - this is what gets burned to eFuse, so the exact bytes and
+        byte order matter, not just the length."""
+        from cryptography.hazmat.primitives import serialization
+
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            digest_file = os.path.join(keydir, "digest.bin")
+            self._gen_key(keyfile_name)
+            self.run_espsecure(
+                f"digest-sdc-public-key --keyfile {keyfile_name} -o {digest_file}"
+            )
+
+            with open(keyfile_name, "rb") as f:
+                priv = serialization.load_pem_private_key(f.read(), password=None)
+            nums = priv.public_key().public_numbers()
+            pubkey_bytes = nums.x.to_bytes(32, "big") + nums.y.to_bytes(32, "big")
+            expected = hashlib.sha256(pubkey_bytes).digest()[::-1]
+
+            with open(digest_file, "rb") as f:
+                assert f.read() == expected
+
+    # --- chip-info file path (the link to esptool read-sdc-chip-info) ---
+
+    def test_generate_sdc_cert_from_chip_info_file(self):
+        """--chip-info accepts the 64-byte (chip_info||nonce) file that
+        `esptool read-sdc-chip-info` produces; the cert's trailing nonce must
+        equal the file's last 32 bytes."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            chip_info_file = os.path.join(keydir, "chip_info.bin")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+
+            chip_info = bytes(range(32))
+            nonce = bytes(range(32, 64))
+            with open(chip_info_file, "wb") as f:
+                f.write(chip_info + nonce)
+
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} "
+                f"--chip-info {chip_info_file}"
+            )
+            with open(output_file, "rb") as f:
+                fields = self._parse_sdc_cert(f.read())
+            # The nonce trailing the cert is taken verbatim from the chip-info file
+            assert fields["nonce"] == nonce
+
+    def test_generate_sdc_cert_chip_info_wrong_size(self):
+        """A chip-info file that isn't exactly 64 bytes must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            chip_info_file = os.path.join(keydir, "chip_info.bin")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            with open(chip_info_file, "wb") as f:
+                f.write(bytes(63))  # one byte short
+
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    f"--chip-info {chip_info_file}"
+                )
+            assert "Invalid chip_info file size" in exc.value.output.decode()
+
+    # --- MAC parsing corner cases ------------------------------------------
+
+    @pytest.mark.parametrize(
+        "mac",
+        ["00:11:22:33:44:55", "00-11-22-33-44-55", "001122334455"],
+    )
+    def test_generate_sdc_cert_mac_formats(self, mac):
+        """colon / dash / continuous MAC formats are all accepted."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} --mac {mac}"
+            )
+            assert os.path.getsize(output_file) == 468
+
+    def test_generate_sdc_cert_bad_mac_length(self):
+        """A MAC that isn't 6 bytes must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    "--mac 00:11:22:33:44"  # only 5 bytes
+                )
+            out = exc.value.output.decode()
+            assert "MAC" in out and "hex characters" in out
+
+    # SDC_SESSION_COUNTER is a 3-bit write-only eFuse whose bits burn 0->1, so it
+    # can only ever hold 0, 1, 3 or 7. 2/4/5/6 are in the 3-bit range but are
+    # unreachable under monotonic burning; 8+ is out of range entirely.
+    @pytest.mark.parametrize("counter", [2, 4, 5, 6, 8, 256])
+    def test_generate_sdc_cert_session_counter_invalid(self, counter):
+        """Only 0, 1, 3, 7 are valid; everything else must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    f"--mac 00:11:22:33:44:55 --sdc-session-counter {counter}"
+                )
+            assert "session counter" in exc.value.output.decode()
+
+    @pytest.mark.parametrize("counter", [0, 1, 3, 7])
+    def test_generate_sdc_cert_session_counter_valid(self, counter):
+        """The 4 monotonic-reachable counter values all produce a valid cert."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} "
+                f"--mac 00:11:22:33:44:55 --sdc-session-counter {counter}"
+            )
+            assert os.path.getsize(output_file) == 468
+
+    # --- Wrong key type / curve (negative) ---------------------------------
+
+    def test_generate_sdc_cert_rejects_rsa_key(self):
+        """RSA keys are not valid for SDC certificates."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "rsa_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name, scheme="rsa3072")
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    "--mac 00:11:22:33:44:55"
+                )
+            assert "ECDSA" in exc.value.output.decode()
+
+    @pytest.mark.parametrize("scheme", ["ecdsa192", "ecdsa384"])
+    def test_generate_sdc_cert_rejects_wrong_curve(self, scheme):
+        """Only SECP256R1 (P-256) keys are valid; other curves must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "ec_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name, scheme=scheme)
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    "--mac 00:11:22:33:44:55"
+                )
+            out = exc.value.output.decode()
+            assert "SECP256R1" in out or "Unsupported curve" in out
+
+    def test_generate_sdc_digest_rejects_rsa_key(self):
+        """The digest command must also reject non-ECDSA keys."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "rsa_key.pem")
+            digest_file = os.path.join(keydir, "digest.bin")
+            self._gen_key(keyfile_name, scheme="rsa3072")
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    f"digest-sdc-public-key --keyfile {keyfile_name} -o {digest_file}"
+                )
+            assert "ECDSA" in exc.value.output.decode()
+
+    # --- USC JSON config (positive + negative) -----------------------------
+
+    def test_generate_sdc_cert_usc_json_overrides_flags(self):
+        """A --usc JSON file drives the USC config bits."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            usc_file = os.path.join(keydir, "usc.json")
+            self._gen_key(keyfile_name)
+            with open(usc_file, "w") as f:
+                json.dump(
+                    {
+                        "version": 1,
+                        "groups": [
+                            {
+                                "group": "config_flags",
+                                "entries": [
+                                    {"key": "enable_jtag", "value": True},
+                                    {
+                                        "key": "enable_download_reuse",
+                                        "value": True,
+                                    },
+                                    {
+                                        "key": "enable_force_spi_boot",
+                                        "value": False,
+                                    },
+                                ],
+                            }
+                        ],
+                    },
+                    f,
+                )
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} "
+                f"--mac 00:11:22:33:44:55 --usc {usc_file}"
+            )
+            with open(output_file, "rb") as f:
+                fields = self._parse_sdc_cert(f.read())
+            assert fields["usc_first_word"] & (1 << 0)  # JTAG
+            assert fields["usc_first_word"] & (1 << 1)  # download reuse
+            assert not fields["usc_first_word"] & (1 << 2)  # force SPI boot off
+
+    def test_generate_sdc_cert_usc_json_invalid(self):
+        """Malformed USC JSON must be reported, not silently ignored."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            usc_file = os.path.join(keydir, "usc.json")
+            self._gen_key(keyfile_name)
+            with open(usc_file, "w") as f:
+                f.write("{ this is not valid json ")
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    f"--mac 00:11:22:33:44:55 --usc {usc_file}"
+                )
+            assert "JSON" in exc.value.output.decode()
+
+    def test_generate_sdc_cert_usc_json_bad_boolean(self):
+        """Non-boolean config flag values must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            usc_file = os.path.join(keydir, "usc.json")
+            self._gen_key(keyfile_name)
+            with open(usc_file, "w") as f:
+                json.dump(
+                    {
+                        "version": 1,
+                        "groups": [
+                            {
+                                "group": "config_flags",
+                                "entries": [{"key": "enable_jtag", "value": "yes"}],
+                            }
+                        ],
+                    },
+                    f,
+                )
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    f"--mac 00:11:22:33:44:55 --usc {usc_file}"
+                )
+            assert "boolean" in exc.value.output.decode()
+
+    def test_generate_sdc_cert_usc_json_wrong_version(self):
+        """A USC JSON file without the supported version must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            usc_file = os.path.join(keydir, "usc.json")
+            self._gen_key(keyfile_name)
+            with open(usc_file, "w") as f:
+                # Old, unversioned layout is no longer accepted.
+                json.dump({"config_flags": {"enable_jtag": True}}, f)
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} "
+                    f"--mac 00:11:22:33:44:55 --usc {usc_file}"
+                )
+            assert "version" in exc.value.output.decode()
+
+    # --- Mutually-exclusive / missing-input guards -------------------------
+
+    def test_generate_sdc_digest_no_input(self):
+        """The digest command requires at least one key source."""
+        with tempfile.TemporaryDirectory() as keydir:
+            digest_file = os.path.join(keydir, "digest.bin")
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(f"digest-sdc-public-key -o {digest_file}")
+            # Assert the specific guard fired (not just any failure). The click
+            # error is rendered in a Rich box and line-wrapped, so match only a
+            # short contiguous fragment that survives wrapping at any width.
+            assert "must be provided" in exc.value.output.decode()
+
+    def test_generate_sdc_digest_multiple_inputs(self):
+        """Supplying both --keyfile and --pub-key must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            public_keyfile = os.path.join(keydir, "sdc_pub_key.pem")
+            digest_file = os.path.join(keydir, "digest.bin")
+            self._gen_key(keyfile_name)
+            self.run_espsecure(
+                f"extract-public-key --version 2 --keyfile {keyfile_name} "
+                f"{public_keyfile}"
+            )
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "digest-sdc-public-key "
+                    f"--keyfile {keyfile_name} --pub-key {public_keyfile} "
+                    f"-o {digest_file}"
+                )
+            # Short fragment to survive Rich-box line wrapping (see no_input test).
+            assert "can be provided" in exc.value.output.decode()
+
+    # --- MAC supplied as a file (_parse_input_data file-path branch) --------
+
+    def test_generate_sdc_cert_mac_from_bin_file(self):
+        """--mac accepts a 6-byte binary (.bin) file (file-path branch of
+        _parse_input_data), producing a valid 468-byte certificate."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            mac_file = os.path.join(keydir, "mac.bin")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            with open(mac_file, "wb") as f:
+                f.write(bytes([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]))
+
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} --mac {mac_file}"
+            )
+            with open(output_file, "rb") as f:
+                # Structurally valid cert (also asserts the 468-byte length)
+                self._parse_sdc_cert(f.read())
+
+    def test_generate_sdc_cert_mac_from_hex_file(self):
+        """--mac accepts a hex-text (.hex) file (file-path branch of
+        _parse_input_data), producing a valid 468-byte certificate."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            mac_file = os.path.join(keydir, "mac.hex")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            with open(mac_file, "w") as f:
+                f.write("00:11:22:33:44:55\n")  # separators exercise normalization
+
+            self.run_espsecure(
+                "generate-sdc-certificate "
+                f"--keyfile {keyfile_name} --output {output_file} --mac {mac_file}"
+            )
+            with open(output_file, "rb") as f:
+                self._parse_sdc_cert(f.read())
+
+    def test_generate_sdc_cert_mac_bin_file_wrong_size(self):
+        """A binary MAC file that isn't exactly 6 bytes must be rejected."""
+        with tempfile.TemporaryDirectory() as keydir:
+            keyfile_name = os.path.join(keydir, "sdc_key.pem")
+            mac_file = os.path.join(keydir, "mac.bin")
+            output_file = os.path.join(keydir, "sdc_cert.bin")
+            self._gen_key(keyfile_name)
+            with open(mac_file, "wb") as f:
+                f.write(bytes(5))  # one byte short
+
+            with pytest.raises(subprocess.CalledProcessError) as exc:
+                self.run_espsecure(
+                    "generate-sdc-certificate "
+                    f"--keyfile {keyfile_name} --output {output_file} --mac {mac_file}"
+                )
+            out = exc.value.output.decode()
+            assert "MAC" in out and "file size" in out

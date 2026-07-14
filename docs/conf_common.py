@@ -15,6 +15,7 @@ idf_targets = [
     "esp32c5",
     "esp32c61",
     "esp32h21",
+    "esp32s31",
 ]
 
 # link roles config
@@ -57,6 +58,7 @@ conditional_include_dict = {
     "esp32c5": ESP32_DOCS,
     "esp32c61": ESP32_DOCS,
     "esp32h21": ESP32_DOCS,
+    "esp32s31": ESP32_DOCS,
 }
 
 # Extra options required by sphinx_idf_theme

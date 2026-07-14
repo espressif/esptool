@@ -13,3 +13,5 @@ softhsm2-util --init-token --label softhsm-test-token --pin 1234 --so-pin 123456
 softhsm2-util --init-token --label softhsm-test-token-1 --pin 1234 --so-pin 123456 --slot 1
 softhsm2-util --init-token --label softhsm-test-token-2 --pin 1234 --so-pin 123456 --slot 2
 softhsm2-util --init-token --label softhsm-test-token-3 --pin 1234 --so-pin 123456 --slot 3
+# Token for SDC certificate generation and public key digest generation tests
+softhsm2-util --init-token --label softhsm-sdc-token --pin 1234 --so-pin 123456 --slot 4

@@ -462,6 +462,8 @@ The following commands are less commonly used, or only of interest to advanced u
     *  :ref:`read-flash-status`
     *  :ref:`write-flash-status`
     *  :ref:`read-flash-sfdp`
+    :esp32s31: *  :ref:`verify-sdc-certificate`
+    :esp32s31: *  :ref:`read-sdc-chip-info`
     :esp8266: *  :ref:`chip-id`
     :esp8266: *  :ref:`run`
     :not esp8266 and not esp32: *  :ref:`get-security-info`

@@ -148,6 +148,41 @@ This will read 4 bytes from SFDP address 16.
 
         esptool get_security_info
 
+.. only:: esp32s31
+
+    .. _verify-sdc-certificate:
+
+    Verify SDC Certificate: ``verify-sdc-certificate``
+    ---------------------------------------------------
+
+    The ``verify-sdc-certificate`` command verifies a Secure Debug Controller (SDC) certificate file against the connected ESP device. After successful verification, the Secure Debug Controller opens relevant debug interfaces as per the certificate.
+
+    ::
+
+        esptool -p $PORT --no-stub verify-sdc-certificate sdc_certificate.bin
+
+    This command works with the ROM bootloader and must be run with ``--no-stub``: a locked SDC device only accepts ROM bootloader commands and rejects the flasher stub upload. If ``--no-stub`` is omitted, esptool stops with an error asking you to add it. The command automatically skips chip version checks and operates in SDC mode to avoid communication issues.
+
+    .. note::
+
+        The chip must be connected and in download mode for this command to work. This command is typically used as part of the secure debug access control workflow.
+
+    .. _read-sdc-chip-info:
+
+    Read SDC Chip Info: ``read-sdc-chip-info``
+    ---------------------------------------------------
+
+    The ``read-sdc-chip-info`` command communicates with the connected ESP32 device to obtain chip-specific information required for Secure Debug Controller (SDC) certificate generation.
+
+    ::
+
+        esptool -p $PORT --no-stub read-sdc-chip-info
+
+    This command works with the ROM bootloader and must be run with ``--no-stub``: a locked SDC device only accepts ROM bootloader commands and rejects the flasher stub upload. If ``--no-stub`` is omitted, esptool stops with an error asking you to add it. By default the chip info is written to ``chip_info.bin`` (run ``esptool read-sdc-chip-info -h`` for options). The command automatically skips chip version checks and operates in SDC mode to avoid communication issues.
+
+    .. note::
+
+        The chip must be connected and in download mode for this command to work. The generated chip info file is typically used as input for creating SDC certificates. When using verbose mode (``-v``), the command will display the generated chip information values.
 
 .. only:: esp8266
 
