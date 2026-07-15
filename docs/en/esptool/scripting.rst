@@ -284,7 +284,9 @@ For more information, refer to the methods of the ``ESPLoader`` class  in `espto
 Redirecting Output with a Custom Logger
 ---------------------------------------
 
-Esptool allows redirecting output by implementing a custom logger class. This can be useful when integrating esptool with graphical user interfaces or other systems where the default console output is not appropriate. Below is an example demonstrating how to create and use a custom logger:
+Esptool allows redirecting output by implementing a custom logger class. This can be useful when integrating esptool with graphical user interfaces or other systems where the default console output is not appropriate. When running esptool from a terminal, colors are disabled automatically if the ``NO_COLOR`` environment variable is set; see :ref:`disabling_color_output` for details.
+
+Below is an example demonstrating how to create and use a custom logger:
 
 .. code-block:: python
 

@@ -72,7 +72,7 @@ The esptool ``v5`` release introduces a centralized logging mechanism to improve
 **Key Changes:**
 
 - All esptool output is now routed through an ``EsptoolLogger`` class.
-- The output can include ANSI color codes for better readability.
+- The output can include ANSI color codes for better readability. To disable colors, set the ``NO_COLOR`` environment variable; see :ref:`disabling_color_output` for details.
 - Custom loggers can be implemented to redirect output to files or other destinations.
 
 **Migration Steps:**
