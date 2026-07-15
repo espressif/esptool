@@ -5,6 +5,9 @@
 
 __all__ = [
     "chip_id",
+    "connect_esp",
+    "connect_first_available",
+    "connect_with_retries",
     "detect_chip",
     "dump_mem",
     "elf2image",
@@ -40,10 +43,8 @@ __version__ = "5.3.1"
 import os
 import shlex
 import sys
-import time
 import traceback
 import typing as t
-from itertools import chain, cycle, repeat
 
 import rich_click as click
 import serial
@@ -70,6 +71,9 @@ from esptool.cmds import (
     NAND_BLOCK_COUNT,
     attach_flash,
     chip_id,
+    connect_esp,
+    connect_first_available,
+    connect_with_retries,
     detect_chip,
     detect_flash_size,
     dump_bbm,
@@ -518,23 +522,6 @@ def prepare_esp_object(ctx):
             inst._smart_features = False
         log.set_verbosity("verbose")
 
-    log.stage()
-
-    if ctx.obj["before"] != "no-reset-no-sync":
-        initial_baud = min(
-            ESPLoader.ESP_ROM_BAUD, ctx.obj["baud"]
-        )  # don't sync faster than the default baud rate
-    else:
-        initial_baud = ctx.obj["baud"]
-
-    if ctx.obj["port"] is None:
-        try:
-            ser_list = get_port_names(**parse_port_filters(ctx.obj["port_filter"]))
-        except ValueError as exc:
-            raise FatalError(str(exc)) from exc
-        log.print(f"Found {len(ser_list)} serial ports...")
-    else:
-        ser_list = [ctx.obj["port"]]
     open_port_attempts = os.environ.get(
         "ESPTOOL_OPEN_PORT_ATTEMPTS", DEFAULT_OPEN_PORT_ATTEMPTS
     )
@@ -543,40 +530,29 @@ def prepare_esp_object(ctx):
     except ValueError:
         raise FatalError("Invalid value for ESPTOOL_OPEN_PORT_ATTEMPTS.")
 
+    if ctx.obj["before"] != "no-reset-no-sync":
+        initial_baud = min(
+            ESPLoader.ESP_ROM_BAUD, ctx.obj["baud"]
+        )  # don't sync faster than the default baud rate
+    else:
+        initial_baud = ctx.obj["baud"]
+
     esp = ctx.obj.get("esp", None)
     ctx.obj["external_esp"] = esp is not None
-    if open_port_attempts != 1:
-        if ctx.obj["port"] is None or ctx.obj["chip"] == "auto":
-            log.warn(
-                "The ESPTOOL_OPEN_PORT_ATTEMPTS (open_port_attempts) option "
-                "can only be used with --port and --chip arguments."
-            )
-        else:
-            esp = esp or connect_loop(
-                ctx.obj["port"],
-                initial_baud,
-                ctx.obj["chip"],
-                open_port_attempts,
-                ctx.obj["trace"],
-                ctx.obj["before"],
-            )
-    esp = esp or get_default_connected_device(
-        ser_list,
-        port=ctx.obj["port"],
-        connect_attempts=ctx.obj["connect_attempts"],
-        initial_baud=initial_baud,
-        chip=ctx.obj["chip"],
-        trace=ctx.obj["trace"],
-        before=ctx.obj["before"],
-    )
-
-    if esp is None:
-        raise FatalError(
-            "Could not connect to an Espressif device "
-            f"on any of the {len(ser_list)} available serial ports."
+    if not ctx.obj["external_esp"]:
+        log.stage()
+        esp = connect_esp(
+            port=ctx.obj["port"],
+            chip=ctx.obj["chip"],
+            initial_baud=initial_baud,
+            port_filter=ctx.obj["port_filter"],
+            before=ctx.obj["before"],
+            trace=ctx.obj["trace"],
+            connect_attempts=ctx.obj["connect_attempts"],
+            open_port_attempts=open_port_attempts,
         )
+        log.stage(finish=True)
 
-    log.stage(finish=True)
     log.print(f"Connected to {esp.CHIP_NAME} on {escape(str(esp._port.port))}:")
 
     # 2) Print the chip info
@@ -1332,8 +1308,7 @@ def main(argv: list[str] | None = None, esp: ESPLoader | None = None):
     need to be added as individual items to the list
     e.g. "-b 115200" thus becomes ['-b', '115200'].
 
-    esp - Optional override of the connected device previously
-    returned by get_default_connected_device()
+    esp - Optional override of the connected device object.
     """
     args = expand_file_arguments(argv or sys.argv[1:])
     try:
@@ -1366,78 +1341,18 @@ def expand_file_arguments(argv: list[str]) -> list[str]:
     return argv
 
 
-def connect_loop(
-    port: str,
-    initial_baud: int,
-    chip: str,
-    max_retries: int,
-    trace: bool = False,
-    before: str = "default-reset",
-):
-    chip_class = CHIP_DEFS[chip]
-    esp = None
-    log.print(f"Serial port {escape(str(port))}:")
-
-    first = True
-    ten_cycle = cycle(chain(repeat(False, 9), (True,)))
-    retry_loop = chain(
-        repeat(False, max_retries - 1), (True,) if max_retries else cycle((False,))
-    )
-
-    for last, every_tenth in zip(retry_loop, ten_cycle):
-        try:
-            esp = chip_class(port, initial_baud, trace)
-            if not first:
-                # break the retrying line
-                log.print("")
-            esp.connect(before)
-            return esp
-        except (FatalError, serial.serialutil.SerialException, OSError) as err:
-            if esp and esp._port:
-                esp._port.close()
-            esp = None
-            if first:
-                log.print(escape(str(err)))
-                log.print("Retrying failed connection", end="", flush=True)
-                first = False
-            if last:
-                raise err
-            if every_tenth:
-                # print a dot every second
-                log.print(".", end="", flush=True)
-            time.sleep(0.1)
+def connect_loop(*args, **kwargs):
+    """Deprecated alias for :func:`esptool.connect_with_retries`, kept for
+    backwards compatibility with downstream scripts. Prefer
+    :func:`esptool.connect_esp` for new code."""
+    return connect_with_retries(*args, **kwargs)
 
 
-def get_default_connected_device(
-    serial_list: list[str],
-    port: str,
-    connect_attempts: int,
-    initial_baud: int,
-    chip: str = "auto",
-    trace: bool = False,
-    before: str = "default-reset",
-):
-    _esp = None
-    for each_port in serial_list:
-        log.print(f"Serial port {escape(str(each_port))}:")
-        try:
-            if chip == "auto":
-                _esp = detect_chip(
-                    each_port, initial_baud, before, trace, connect_attempts
-                )
-            else:
-                chip_class = CHIP_DEFS[chip]
-                _esp = chip_class(each_port, initial_baud, trace)
-                _esp.connect(before, connect_attempts)
-            break
-        except (FatalError, OSError) as err:
-            if port is not None:
-                raise
-            log.err(f"{escape(str(each_port))} failed to connect: {escape(str(err))}")
-            if _esp and _esp._port:
-                _esp._port.close()
-            _esp = None
-    return _esp
+def get_default_connected_device(*args, **kwargs):
+    """Deprecated alias for :func:`esptool.connect_first_available`, kept for
+    backwards compatibility with downstream scripts. Prefer
+    :func:`esptool.connect_esp` for new code."""
+    return connect_first_available(*args, **kwargs)
 
 
 def _main():

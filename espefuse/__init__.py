@@ -233,7 +233,7 @@ def main(argv: list[str] | None = None, esp: esptool.ESPLoader | None = None):
     e.g. "--port /dev/ttyUSB1" thus becomes ['--port', '/dev/ttyUSB1'].
 
     esp - Optional override of the connected device previously
-    returned by esptool.get_default_connected_device()
+    returned by esptool.connect_esp()
     """
     args = esptool.expand_file_arguments(argv or sys.argv[1:])
     try:
