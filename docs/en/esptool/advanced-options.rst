@@ -165,12 +165,12 @@ at least one FilterValue for each specified FilterType to be considered. Example
 
 See also the `Espressif USB customer-allocated PID repository <https://github.com/espressif/usb-pids>`_
 
-Output Verbosity
-----------------
+Output and CLI Appearance
+-------------------------
 
 Output verbosity can be controlled using the ``--verbose`` and ``--silent`` flags.
 
-Verbose output: ``--verbose``, ``-v``
+Verbose Output: ``--verbose``, ``-v``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. _verbose:
 
@@ -182,7 +182,7 @@ The ``--verbose``, ``-v`` flag can be used to show all output without any overwr
 
 See :ref:`the trace option <tracing-communications>` if you want to dump all serial interactions to the standard output for debugging purposes.
 
-Silent output: ``--silent``, ``-s``
+Silent Output: ``--silent``, ``-s``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. _silent:
 
@@ -191,3 +191,41 @@ The ``--silent``, ``-s`` flag can be used to limit the output to errors only:
 .. code-block:: bash
 
     esptool -s write-flash 0x0 image.bin
+
+.. _disabling_color_output:
+
+Disabling Color Output
+^^^^^^^^^^^^^^^^^^^^^^
+
+Esptool may emit ANSI color codes in terminal output (for example, errors in red).
+If this causes problems when redirecting output or parsing logs, set the ``NO_COLOR``
+environment variable before running esptool:
+
+.. code-block:: bash
+
+    NO_COLOR=1 esptool flash-id
+
+Any non-empty value disables color output. This follows the `NO_COLOR <https://no-color.org/>`__
+convention and applies to ``esptool``, ``espefuse``, ``espsecure`` and ``esp_rfc2217_server``.
+
+CLI Help Themes
+^^^^^^^^^^^^^^^
+
+If the default ``--help`` styling is hard to read in your terminal (for example on
+a light or non-standard background), you can choose a different theme with the
+``RICH_CLICK_THEME`` environment variable:
+
+.. code-block:: bash
+
+    RICH_CLICK_THEME=solarized-slim esptool -h
+
+To keep the setting for the rest of the shell session, export it instead:
+
+.. code-block:: bash
+
+    export RICH_CLICK_THEME=solarized-slim
+
+See the `rich-click themes documentation
+<https://ewels.github.io/rich-click/latest/documentation/themes/>`__ for available
+themes and further options. ``RICH_CLICK_THEME`` customizes ``--help`` styling only;
+to disable colors in all terminal output (including help), use ``NO_COLOR`` instead.
