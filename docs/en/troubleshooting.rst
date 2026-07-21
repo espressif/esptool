@@ -28,6 +28,13 @@ If flashing fails with random errors part way through, retry with a lower baud r
 
 Power stability problems may also cause this (see `Insufficient Power`_.)
 
+Slow Flashing with a Merged Binary
+----------------------------------
+
+If flashing a file created with :ref:`merge-bin <merge-bin>` is slow, or erases flash between the original images, the file was probably created in the default raw format. Raw format pads gaps with ``0xFF``, so those padding bytes are sent over the serial link and written to flash. That slows flashing and erases the sectors in between.
+
+Re-run ``merge-bin`` on the original input files with ``--format hex`` (do not convert an already merged raw binary), or flash the original files individually.
+
 Writing to Flash Succeeds but Program Doesn't Run
 -------------------------------------------------
 

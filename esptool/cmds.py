@@ -3305,6 +3305,10 @@ def merge_bin(
         )
 
     elif format == "raw":
+        log.hint(
+            "Consider using --format hex to avoid flashing unused 0xFF padding "
+            "between input regions."
+        )
         of = io.BytesIO() if output is None else open(output, "wb")
         try:
 
