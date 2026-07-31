@@ -265,6 +265,18 @@ class TestReadCommands(EfuseTestCase):
     def test_summary_json(self):
         self.espefuse_py("summary --format json")
 
+    def test_summary_json_to_file(self):
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        tmp_file.close()
+        self.espefuse_py(f"summary --format json --file {tmp_file.name}")
+        with open(tmp_file.name) as f:
+            try:
+                summary = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"JSON summary was not written to the file: {e}")
+            assert summary, "JSON summary is empty"
+        os.unlink(tmp_file.name)
+
     def test_summary_json_raw_value(self):
         output = self.espefuse_py("summary --format json")
         start = output.find("{")
@@ -2068,6 +2080,22 @@ class TestPublicAPI(EfuseTestCase):
         }
         args.update(kwargs)
         return init_commands(**args)
+
+    def test_public_api_summary_json_to_file(self):
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        tmp_file.close()
+        with self._init_commands() as espefuse:
+            file = open(tmp_file.name, "w")
+            espefuse.summary(format="json", file=file)
+            # The summary has to be on the disk, not left in the write buffer
+            with open(tmp_file.name) as f:
+                try:
+                    summary = json.load(f)
+                except json.JSONDecodeError as e:
+                    pytest.fail(f"JSON summary was not written to the file: {e}")
+                assert summary, "JSON summary is empty"
+            file.close()
+        os.unlink(tmp_file.name)
 
     @pytest.mark.skipif(arg_chip != "esp32", reason="This test is only for esp32")
     def test_public_api_batch_mode(self):

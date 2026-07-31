@@ -839,12 +839,12 @@ class BaseCommands(ABC):
         if human_output:
             for line in summary_efuse:
                 log.print(escape(line), file=file)
-            if file != sys.stdout:
-                file.close()
-                log.print("Done")
         elif format == "json":
             json.dump(json_efuse, file, sort_keys=True, indent=4)
             log.print("")
+        if file != sys.stdout:
+            file.close()
+            log.print("Done")
 
     def dump(self, format: str = "default", file_name: str | None = None):
         """
