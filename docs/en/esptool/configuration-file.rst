@@ -93,7 +93,7 @@ Complete list of configurable options:
 +------------------------------+-----------------------------------------------------------+----------+
 | md5_timeout_per_mb           | Timeout (per megabyte) for calculating md5sum             | 8 s      |
 +------------------------------+-----------------------------------------------------------+----------+
-| erase_region_timeout_per_mb  | Timeout (per megabyte) for erasing a region               | 30 s     |
+| erase_region_timeout_per_mb  | Timeout (per megabyte) for erasing a region               | 40 s     |
 +------------------------------+-----------------------------------------------------------+----------+
 | erase_write_timeout_per_mb   | Timeout (per megabyte) for erasing and writing data       | 40 s     |
 +------------------------------+-----------------------------------------------------------+----------+

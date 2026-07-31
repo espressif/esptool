@@ -87,7 +87,7 @@ SYNC_TIMEOUT = cfg.getfloat("sync_timeout", 0.1)
 # Timeout (per megabyte) for calculating md5sum
 MD5_TIMEOUT_PER_MB = cfg.getfloat("md5_timeout_per_mb", 8)
 # Timeout (per megabyte) for erasing a region
-ERASE_REGION_TIMEOUT_PER_MB = cfg.getfloat("erase_region_timeout_per_mb", 30)
+ERASE_REGION_TIMEOUT_PER_MB = cfg.getfloat("erase_region_timeout_per_mb", 40)
 # Timeout (per megabyte) for erasing and writing data
 ERASE_WRITE_TIMEOUT_PER_MB = cfg.getfloat("erase_write_timeout_per_mb", 40)
 # Short timeout for ESP_MEM_END, as it may never respond
