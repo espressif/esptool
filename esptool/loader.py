@@ -781,7 +781,7 @@ class ESPLoader:
                 self.sync()
                 return None
             except FatalError as e:
-                log.print(".", end="", flush=True)
+                log.print(".", end="")
                 time.sleep(0.05)
                 last_error = e
 
@@ -876,7 +876,7 @@ class ESPLoader:
                 "reset the chip manually."
             )
 
-        log.print("Connecting...", end="", flush=True)
+        log.print("Connecting...", end="")
         last_error = None
 
         reset_sequence = self._construct_reset_strategy_sequence(mode)

@@ -160,7 +160,7 @@ def detect_chip(
     This way we use one memory read and compare it to the magic number for each chip.
     """
     try:
-        log.print("Detecting chip type...", end="", flush=True)
+        log.print("Detecting chip type...", end="")
         chip_id = detect_port.get_chip_id()
         for cls in ROM_LIST:
             # cmd not supported on ESP8266 and ESP32 + ESP32-S2 doesn't return chip-id
@@ -198,7 +198,7 @@ def detect_chip(
             detect_port.connect(
                 connect_mode, connect_attempts, detecting=True, warnings=False
             )
-            log.print("Detecting chip type...", end="", flush=True)
+            log.print("Detecting chip type...", end="")
             chip_magic_value = detect_port.read_reg(
                 ESPLoader.CHIP_DETECT_MAGIC_REG_ADDR
             )
@@ -277,13 +277,13 @@ def connect_with_retries(
             esp = None
             if first:
                 log.print(escape(str(err)))
-                log.print("Retrying failed connection", end="", flush=True)
+                log.print("Retrying failed connection", end="")
                 first = False
             if last:
                 raise err
             if every_tenth:
                 # print a dot every second
-                log.print(".", end="", flush=True)
+                log.print(".", end="")
             time.sleep(0.1)
 
     raise AssertionError("unreachable: retry loop should return or re-raise")
@@ -1840,7 +1840,7 @@ def write_flash(
                                 image = original_image
                                 break
                             except SerialException:
-                                log.print(".", end="", flush=True)
+                                log.print(".", end="")
                         else:
                             raise  # Reconnect limit reached
 
