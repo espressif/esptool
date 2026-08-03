@@ -3,7 +3,7 @@ var DOCUMENTATION_VERSIONS = {
                 supported_targets: [ "esp32" ]
               },
     VERSIONS: [
-       { name: "latest", old: false, pre_release: false, supported_targets: [ "esp8266", "esp32", "esp32s2", "esp32s3", "esp32c3", "esp32c2", "esp32c6", "esp32p4", "esp32h2", "esp32c5", "esp32c61", "esp32h21", "esp32h4" ] },
+       { name: "latest", old: false, pre_release: false, supported_targets: [ "esp8266", "esp32", "esp32s2", "esp32s3", "esp32c3", "esp32c2", "esp32c6", "esp32p4", "esp32h2", "esp32c5", "esp32c61", "esp32h21", "esp32h4", "esp32s31" ] },
        { name: "release-v4", old: false, pre_release: false, supported_targets: [ "esp8266", "esp32", "esp32s2", "esp32s3", "esp32c3", "esp32c2", "esp32c6", "esp32p4", "esp32h2", "esp32c5", "esp32c61", "esp32h21", "esp32h4" ] },
     ],
     IDF_TARGETS: [
@@ -19,6 +19,7 @@ var DOCUMENTATION_VERSIONS = {
        { text: "ESP32-P4", value: "esp32p4" },
        { text: "ESP32-S2", value: "esp32s2" },
        { text: "ESP32-S3", value: "esp32s3" },
+       { text: "ESP32-S31", value: "esp32s31" },
        { text: "ESP8266", value: "esp8266" },
     ]
 };
