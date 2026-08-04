@@ -63,7 +63,7 @@
     ]
     hsm = ["python-pkcs11"]
     docs = [
-        "esp-docs~=2.1",
+        "esp-docs>=2.1.4,<3",
         "sphinx-tabs",
     ]
 

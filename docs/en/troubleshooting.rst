@@ -1,4 +1,4 @@
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000"}
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32s31="0x2000"}
 
 .. _troubleshooting:
 
@@ -281,7 +281,7 @@ esptool has the following limitations when working with external flash and memor
 - Accessing flash chip areas beyond 16MB (32-bit addressing) is supported only if **all** of the following conditions are met:
 
    - The :ref:`flasher stub <stub>` is used, as the ROM bootloader does not support 32-bit addressing.
-   - The target chip is ESP32-S3, ESP32-C5, or ESP32-P4.
+   - The target chip is ESP32-S3, ESP32-C5, ESP32-P4, or ESP32-C61.
    - The flash chip is one of the following supported models:
 
       - W25Q256

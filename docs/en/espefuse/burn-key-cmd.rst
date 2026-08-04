@@ -64,14 +64,14 @@ Optional arguments:
 
         - USER.
         - RESERVED.
-        :esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY_1. The first 256 bits of 512bit flash encryption key.
-        :esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY_2. The second 256 bits of 512bit flash encryption key.
-        :esp32c5 or esp32c61 or esp32h2 or esp32h21 or esp32h4 or esp32p4: - ECDSA_KEY. It can be ECDSA private keys based on NIST192p or NIST256p curve. The private key is extracted from the given file and written into a eFuse block with write and read protection enabled. This private key shall be used by ECDSA accelerator for the signing purpose.
-        :esp32c5: - ECDSA_KEY_P192. ECDSA private keys based on NIST192p curve.
-        :esp32c5: - ECDSA_KEY_P256. ECDSA private keys based on NIST256p curve.
-        :esp32c5: - ECDSA_KEY_P384. ECDSA private keys based on NIST384p curve. This allows you to write a whole 48-byte key into two blocks with ``ECDSA_KEY_P384_H`` and ``ECDSA_KEY_P384_L`` purposes.
-        :esp32c5: - ECDSA_KEY_P384_H. Upper 32 bytes of the 48-byte ECDSA_P384 key (last 16 bytes of key + 16 padding bytes).
-        :esp32c5: - ECDSA_KEY_P384_L. Lower 32 bytes of the 48-byte ECDSA_P384 key.
+        :esp32p4 or esp32s2 or esp32s3 or esp32s31: - XTS_AES_256_KEY_1. The first 256 bits of 512bit flash encryption key.
+        :esp32p4 or esp32s2 or esp32s3 or esp32s31: - XTS_AES_256_KEY_2. The second 256 bits of 512bit flash encryption key.
+        :esp32c5 or esp32c61 or esp32h2 or esp32h21 or esp32h4 or esp32p4 or esp32s31: - ECDSA_KEY. It can be ECDSA private keys based on NIST192p or NIST256p curve. The private key is extracted from the given file and written into a eFuse block with write and read protection enabled. This private key shall be used by ECDSA accelerator for the signing purpose.
+        :esp32c5 or esp32s31: - ECDSA_KEY_P192. ECDSA private keys based on NIST192p curve.
+        :esp32c5 or esp32s31: - ECDSA_KEY_P256. ECDSA private keys based on NIST256p curve.
+        :esp32c5 or esp32s31: - ECDSA_KEY_P384. ECDSA private keys based on NIST384p curve. This allows you to write a whole 48-byte key into two blocks with ``ECDSA_KEY_P384_H`` and ``ECDSA_KEY_P384_L`` purposes.
+        :esp32c5 or esp32s31: - ECDSA_KEY_P384_H. Upper 32 bytes of the 48-byte ECDSA_P384 key (last 16 bytes of key + 16 padding bytes).
+        :esp32c5 or esp32s31: - ECDSA_KEY_P384_L. Lower 32 bytes of the 48-byte ECDSA_P384 key.
         - XTS_AES_128_KEY. 256 bit flash encryption key.
         :not esp32c61: - HMAC_DOWN_ALL.
         :not esp32c61: - HMAC_DOWN_JTAG.
@@ -80,10 +80,15 @@ Optional arguments:
         - SECURE_BOOT_DIGEST0. 1 secure boot key.
         - SECURE_BOOT_DIGEST1. 2 secure boot key.
         - SECURE_BOOT_DIGEST2. 3 secure boot key.
-        :esp32p4 or esp32s2 or esp32s3: - XTS_AES_256_KEY. This is a virtual key purpose for flash encryption key. This allows you to write a whole 512-bit key into two blocks with ``XTS_AES_256_KEY_1`` and ``XTS_AES_256_KEY_2`` purposes without splitting the key file.
-        :esp32c5 or esp32h4 or esp32p4: - KM_INIT_KEY. This is a key that is used for the generation of AES/ECDSA keys by the key manager.
+        :esp32p4 or esp32s2 or esp32s3 or esp32s31: - XTS_AES_256_KEY. This is a virtual key purpose for flash encryption key. This allows you to write a whole 512-bit key into two blocks with ``XTS_AES_256_KEY_1`` and ``XTS_AES_256_KEY_2`` purposes without splitting the key file.
+        :esp32c5 or esp32h4 or esp32p4 or esp32s31: - KM_INIT_KEY. This is a key that is used for the generation of AES/ECDSA keys by the key manager.
+        :esp32s31: - XTS_AES_256_PSRAM_KEY_1. The first 256 bits of 512bit PSRAM encryption key.
+        :esp32s31: - XTS_AES_256_PSRAM_KEY_2. The second 256 bits of 512bit PSRAM encryption key.
+        :esp32s31: - XTS_AES_128_PSRAM_KEY. 256 bit PSRAM encryption key.
+        :esp32s31: - XTS_AES_256_PSRAM_KEY. This is a virtual key purpose for PSRAM encryption key. This allows you to write a whole 512-bit key into two blocks with ``XTS_AES_256_PSRAM_KEY_1`` and ``XTS_AES_256_PSRAM_KEY_2`` purposes without splitting the key file.
+        :esp32s31: - SDC_KEY_DIGEST. Secure Debug Controller public key digest.
 
-.. only:: esp32c5 or esp32c61 or esp32h2 or esp32h21 or esp32h4 or esp32p4
+.. only:: esp32c5 or esp32c61 or esp32h2 or esp32h21 or esp32h4 or esp32p4 or esp32s31
 
     {IDF_TARGET_NAME} has the ECDSA accelerator for signature purposes and supports private keys based on the NIST192p or NIST256p curve (some chips support NIST384p). These two commands below can be used to generate such keys (``PEM`` file). The ``burn-key`` command with the ``ECDSA_KEY`` purpose takes the ``PEM`` file and writes the private key into a eFuse block. The key is written to the block in reverse byte order.
 
@@ -355,11 +360,11 @@ Usage
         BURN BLOCK0  - OK (write block == read block)
         Reading updated efuses...
 
-.. only:: esp32c5
+.. only:: esp32c5 or esp32s31
 
     .. code-block:: none
 
-        > espefuse -c esp32c2  BLOCK_KEY0 secure_images/ecdsa384_secure_boot_signing_key.pem ECDSA_KEY_P384 --no-read-protect --show-sensitive-info
+        > espefuse -c {IDF_TARGET_PATH_NAME} burn-key BLOCK_KEY0 secure_images/ecdsa384_secure_boot_signing_key.pem ECDSA_KEY_P384 --no-read-protect --show-sensitive-info
 
         === Run "burn-key" command ===
         Burn keys to blocks:

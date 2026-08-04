@@ -1,12 +1,12 @@
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32h2="0x0", esp32h21="0x0", esp32h4="0x2000"}
+{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32h2="0x0", esp32h21="0x0", esp32h4="0x2000", esp32s31="0x2000"}
 
 {IDF_TARGET_FLASH_FREQ_F:default="80", esp32c2="60", esp32h2="48", esp32h21="48", esp32h4="48"}
 
 {IDF_TARGET_FLASH_FREQ_0:default="40", esp32c2="30", esp32h2="24", esp32h21="24", esp32h4="24"}
 
-{IDF_TARGET_FLASH_FREQ:default="``40m``, ``26m``, ``20m``, ``80m``", esp32c2="``30m``, ``20m``, ``15m``, ``60m``", esp32h2="``24m``, ``16m``, ``12m``, ``48m``", esp32c6="``40m``, ``20m``, ``80m``, esp32c5="``40m``, ``20m``, ``80m``, esp32c61="``40m``, ``20m``, ``80m``", esp32h21="``24m``, ``16m``, ``12m``, ``48m``", esp32h4="``24m``, ``16m``, ``12m``, ``48m``"}
+{IDF_TARGET_FLASH_FREQ:default="``40m``, ``26m``, ``20m``, ``80m``", esp32c2="``30m``, ``20m``, ``15m``, ``60m``", esp32h2="``24m``, ``16m``, ``12m``, ``48m``", esp32c6="``40m``, ``20m``, ``80m``", esp32c5="``40m``, ``20m``, ``80m``", esp32c61="``40m``, ``20m``, ``80m``", esp32h21="``24m``, ``16m``, ``12m``, ``48m``", esp32h4="``24m``, ``16m``, ``12m``, ``48m``", esp32s31="``40m``, ``20m``, ``80m``"}
 
-{IDF_TARGET_FLASH_SIZE_EXTRA:default="", esp32s2=", ``32MB``, ``64MB``, ``128MB``", esp32s3=", ``32MB``, ``64MB``, ``128MB``", esp32c5=", ``32MB``", esp32c61=", ``32MB``", esp32p4=", ``32MB``, ``64MB``", esp32h4=", ``32MB``"}
+{IDF_TARGET_FLASH_SIZE_EXTRA:default="", esp32s2=", ``32MB``, ``64MB``, ``128MB``", esp32s3=", ``32MB``, ``64MB``, ``128MB``", esp32c5=", ``32MB``", esp32c61=", ``32MB``", esp32p4=", ``32MB``, ``64MB``", esp32h4=", ``32MB``", esp32s31=", ``32MB``, ``64MB``, ``128MB``"}
 
 
 .. _flash-modes:
