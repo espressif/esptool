@@ -312,6 +312,8 @@ class EsptoolLogger(EspLog):
         stripped here: Rich's ``Console.print`` already flushes the
         underlying stream once per call (the consoles are never used in a
         buffering context) and rejects an explicit ``flush`` argument.
+        Flush is kept for compatibility with legacy code, to avoid breaking changes,
+        it should not be used in new code.
 
         Following a reassigned ``sys.stdout`` (e.g. ``redirect_stdout``) and
         stage newline accounting are both handled by `EspLog.print`.

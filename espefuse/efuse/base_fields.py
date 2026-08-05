@@ -746,7 +746,7 @@ class EspEfusesBase(ABC):
             )
         )
         if not do_not_confirm:
-            log.print("Type 'BURN' (all capitals) to continue.", flush=True)
+            log.print("Type 'BURN' (all capitals) to continue.")
             # Flush required for Pythons which disable line buffering,
             # ie mingw in mintty
             yes = input()
