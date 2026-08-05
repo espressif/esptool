@@ -355,6 +355,23 @@ def _update_image_flash_params(esp, address, args, image):
     return image
 
 
+def _get_flash_defl_block_timeout(esp, uncompressed_size):
+    """Calculate a compressed-block timeout.
+
+    The stub starts one flash-block erase before decompression and one more for
+    every deflate-buffer cycle, so include all of these erases in its timeout.
+    """
+    STUB_DEFLATE_BUFFER_SIZE = 32 * 1024
+    FLASH_BLOCK_SIZE = 64 * 1024
+
+    size_for_timeout = uncompressed_size
+    if esp.IS_STUB:
+        num_erases = div_roundup(uncompressed_size, STUB_DEFLATE_BUFFER_SIZE) + 1
+        size_for_timeout += num_erases * FLASH_BLOCK_SIZE
+
+    return timeout_per_mb(ERASE_WRITE_TIMEOUT_PER_MB, size_for_timeout)
+
+
 def write_flash(esp, args):
     # set args.compress based on default behaviour:
     # -> if either --compress or --no-compress is set, honour that
@@ -659,19 +676,17 @@ def write_flash(esp, args):
                         # see block-by-block how much will be written
                         block_uncompressed = len(decompress.decompress(block))
                         bytes_written += block_uncompressed
-                        block_timeout = max(
-                            DEFAULT_TIMEOUT,
-                            timeout_per_mb(
-                                ERASE_WRITE_TIMEOUT_PER_MB, block_uncompressed
-                            ),
-                        )
                         if not esp.IS_STUB:
-                            timeout = block_timeout  # ROM code writes block to flash before ACKing
+                            timeout = _get_flash_defl_block_timeout(
+                                esp, block_uncompressed
+                            )
                         esp.flash_defl_block(block, seq, timeout=timeout)
                         if esp.IS_STUB:
-                            # Stub ACKs when block is received,
-                            # then writes to flash while receiving the block after it
-                            timeout = block_timeout
+                            # The stub ACKs this block immediately, then
+                            # processes it while receiving the next one.
+                            timeout = _get_flash_defl_block_timeout(
+                                esp, block_uncompressed
+                            )
                     else:
                         # Pad the last block
                         block = block + b"\xff" * (esp.FLASH_WRITE_SIZE - len(block))
