@@ -350,7 +350,8 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
         not (
             esp.IS_STUB
             # keep this in sync with docs - troubleshooting.rst
-            and esp.CHIP_NAME in ["ESP32-S3", "ESP32-P4", "ESP32-C5", "ESP32-C61"]
+            and esp.CHIP_NAME
+            in ["ESP32-S3", "ESP32-P4", "ESP32-C5", "ESP32-C61", "ESP32-S31"]
         )
         and address + size > 0x1000000
     ):
