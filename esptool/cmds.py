@@ -1198,6 +1198,28 @@ def _write_flash_nand(
     log.print("Leaving...")
 
 
+def _get_flash_defl_block_timeout(esp: ESPLoader, uncompressed_size: int) -> float:
+    """Calculate a compressed-block timeout.
+
+    The stub starts one flash-block erase before decompression and one more for
+    every deflate-buffer cycle, so include all of these erases in its timeout.
+    """
+    STUB_DEFLATE_BUFFER_SIZE = 32 * 1024
+    FLASH_BLOCK_SIZE = 64 * 1024
+
+    size_for_timeout = uncompressed_size
+    if esp.IS_STUB:
+        num_erases = div_roundup(uncompressed_size, STUB_DEFLATE_BUFFER_SIZE) + 1
+        size_for_timeout += num_erases * FLASH_BLOCK_SIZE
+
+    return float(
+        timeout_per_mb(
+            ERASE_WRITE_TIMEOUT_PER_MB,
+            size_for_timeout,
+        )
+    )
+
+
 def write_flash(
     esp: ESPLoader,
     addr_data: list[tuple[int, ImageSource]],
@@ -1781,23 +1803,19 @@ def write_flash(
                                     block_uncompressed = len(
                                         decompress.decompress(block)
                                     )
-                                    block_timeout = max(
-                                        DEFAULT_TIMEOUT,
-                                        timeout_per_mb(
-                                            ERASE_WRITE_TIMEOUT_PER_MB,
-                                            block_uncompressed,
-                                        ),
-                                    )
                                     if not esp.IS_STUB:
-                                        # ROM code writes block to flash before ACKing
-                                        timeout = block_timeout
+                                        timeout = _get_flash_defl_block_timeout(
+                                            esp, block_uncompressed
+                                        )
                                     # For compressed data, encryption is handled
                                     # via encrypted_write flag
                                     esp.flash_defl_block(block, seq, timeout=timeout)
                                     if esp.IS_STUB:
-                                        # Stub ACKs when block is received, then writes
-                                        # to flash while receiving the block after it
-                                        timeout = block_timeout
+                                        # The stub ACKs this block immediately, then
+                                        # processes it while receiving the next one.
+                                        timeout = _get_flash_defl_block_timeout(
+                                            esp, block_uncompressed
+                                        )
                                     bytes_written += block_uncompressed
                                 else:
                                     # Pad the last block
