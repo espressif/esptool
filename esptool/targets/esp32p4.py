@@ -95,6 +95,8 @@ class ESP32P4ROM(ESP32ROM):
     PMU_0P1A_TARGET0_0 = 0xFF << 23
     PMU_0P1A_FORCE_TIEH_SEL_0 = 1 << 7
     PMU_DATE_REG = DR_REG_PMU_BASE + 0x3FC
+    # Flash “force on” (XPD) control bits inside PMU_DATE_REG
+    PMU_DATE_FLASH_FORCE_ON = 0x3
 
     MEMORY_MAP = [
         [0x00000000, 0x00010000, "PADDING"],
@@ -315,9 +317,12 @@ class ESP32P4ROM(ESP32ROM):
             # path. That path is not safe to run twice while flash is already on,
             # so the second attach/download can fail.
             #
-            # Clear PMU_DATE_REG so the “flash force on” state from the power-up
-            # sequence is released before the loader proceeds to SPI flash attach.
-            self.write_reg(self.PMU_DATE_REG, 0)
+            # Clear the flash force-on bits in PMU_DATE_REG so the “flash force on”
+            # state from the power-up sequence is released before the loader
+            # proceeds to SPI flash attach. Leave the rest of the register intact.
+            date = self.read_reg(self.PMU_DATE_REG)
+            if (date & self.PMU_DATE_FLASH_FORCE_ON) == self.PMU_DATE_FLASH_FORCE_ON:
+                self.write_reg(self.PMU_DATE_REG, date & ~self.PMU_DATE_FLASH_FORCE_ON)
             return
 
         # Power up pad group
@@ -334,7 +339,10 @@ class ESP32P4ROM(ESP32ROM):
             self.read_reg(self.PMU_EXT_LDO_P0_0P1A_REG)
             | self.PMU_0P1A_FORCE_TIEH_SEL_0,
         )
-        self.write_reg(self.PMU_DATE_REG, self.read_reg(self.PMU_DATE_REG) | (3 << 0))
+        self.write_reg(
+            self.PMU_DATE_REG,
+            self.read_reg(self.PMU_DATE_REG) | self.PMU_DATE_FLASH_FORCE_ON,
+        )
         sleep(0.00005)
         self.write_reg(
             self.PMU_EXT_LDO_P0_0P1A_ANA_REG,
