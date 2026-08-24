@@ -12,6 +12,8 @@ from .csv_table_parser import CSVFuseTable
 
 
 class EfuseRegistersBase(object):
+    BLOCK0_ERRORS: List[int] = []
+
     # Coding Scheme values
     CODING_SCHEME_NONE = 0
     CODING_SCHEME_34 = 1
