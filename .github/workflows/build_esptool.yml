@@ -103,9 +103,27 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --user -e ".[dev]"
-      - name: Generate changelog
+      - name: Generate release notes
         run: |
-          cz changelog ${{ steps.get_version.outputs.VERSION }} --template ci/gh_changelog_template.md.j2 --file-name changelog_body.md
+          # Commitizen picks the previous tag by date, not ancestry,
+          # which breaks when two release branches are active.
+          # See https://github.com/commitizen-tools/commitizen/issues/2083
+          CZ_ARGS=()
+          if PREVIOUS_TAG="$(git describe \
+            --tags \
+            --abbrev=0 \
+            HEAD^ \
+            --match 'v[0-9]*.[0-9]*.[0-9]*' \
+            --exclude '*.dev*' 2>/dev/null)"; then
+            CZ_ARGS=(--start-rev "${PREVIOUS_TAG}")
+          fi
+          cz changelog \
+            "${CZ_ARGS[@]}" \
+            --file-name changelog_body.md
+          cat >> changelog_body.md <<'EOF'
+
+          Thanks to all contributors!
+          EOF
           cat changelog_body.md
       - name: Download built binaries
         uses: actions/download-artifact@master
