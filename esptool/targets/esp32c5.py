@@ -21,6 +21,7 @@ class ESP32C5ROM(ESP32C6ROM):
     USB_SERIAL_JTAG_SUPPORTED = True
     WATCHDOG_RESET_SUPPORTED = True
     SECURITY_INFO_SUPPORTED = True
+    CUSTOM_SPI_FLASH_PINS_SUPPORTED = False
     USES_MAGIC_VALUE = False
 
     BOOTLOADER_FLASH_OFFSET = 0x2000
@@ -218,15 +219,6 @@ class ESP32C5ROM(ESP32C6ROM):
             return True
 
         return self.uses_key_manager_for_flash_encryption()
-
-    def check_spi_connection(self, spi_connection):
-        if not set(spi_connection).issubset(set(range(0, 29))):
-            raise FatalError("SPI Pin numbers must be in the range 0-28.")
-        if any([v for v in spi_connection if v in [13, 14]]):
-            log.warn(
-                "GPIO pins 13 and 14 are used by USB-Serial/JTAG, "
-                "consider using other pins for SPI flash connection."
-            )
 
     def watchdog_reset(self):
         # Watchdog reset disabled in parent (ESP32-C6) ROM, re-enable it

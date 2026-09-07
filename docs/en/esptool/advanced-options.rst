@@ -84,14 +84,14 @@ The ``--no-stub`` option disables uploading of a software "stub loader" that man
 
 Passing ``--no-stub`` will disable certain options, as not all options are implemented in every chip's ROM loader.
 
-.. only:: not esp8266
+.. only:: CUSTOM_SPI_FLASH_PINS_SUPPORTED
 
     Overriding SPI Flash Connections: ``--spi-connection``
     ------------------------------------------------------
 
     The optional ``--spi-connection`` argument overrides the SPI flash connection configuration on {IDF_TARGET_NAME}. This means that the SPI flash can be connected to other pins, or esptool can be used to communicate with a different SPI flash chip to the default.
 
-    Supply the ``--spi-connection`` argument after the ``esptool`` command, ie ``esptool flash-id --spi-connection HSPI``.
+    Supply the ``--spi-connection`` argument after the ``esptool`` command. A custom pin mapping uses the form ``esptool flash-id --spi-connection <CLK>,<Q>,<D>,<HD>,<CS>``.
 
     .. note::
 
@@ -100,9 +100,9 @@ Passing ``--no-stub`` will disable certain options, as not all options are imple
     Default Behavior
     ^^^^^^^^^^^^^^^^
 
-    If the ``--spi-connection`` argument is not provided, the SPI flash is configured to use :ref:`pin numbers set in eFuse <espefuse-spi-flash-pins>`. These are the same SPI flash pins that are used during a normal boot.
+    If the ``--spi-connection`` argument is not provided, the SPI flash uses the same pins that are used during a normal boot.
 
-    The only exception to this is if the ``--no-stub`` option is also provided. In this case, eFuse values are ignored and ``--spi-connection`` will default to ``--spi-connection SPI`` unless set to a different value.
+    These pins can be configured using :ref:`SPI pad eFuses <espefuse-spi-flash-pins>`.
 
     .. only:: esp32
 
@@ -142,8 +142,6 @@ Passing ``--no-stub`` will disable certain options, as not all options are imple
     .. only:: esp32
 
         For example, ``--spi-connection 6,17,8,11,16`` sets an identical configuration to the factory eFuse configuration for ESP32s with embedded flash.
-
-        When setting a custom pin configuration, the SPI peripheral (not HSPI) will be used unless the ``CLK`` pin value is set to 14 (HSPI CLK), in which case the HSPI peripheral will be used.
 
     .. note::
 

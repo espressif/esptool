@@ -4,8 +4,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from ..loader import StubMixin
-from ..logger import log
-from ..util import FatalError
 from .esp32h2 import ESP32H2ROM
 
 
@@ -17,6 +15,7 @@ class ESP32H21ROM(ESP32H2ROM):
     USB_SERIAL_JTAG_SUPPORTED = True
     WATCHDOG_RESET_SUPPORTED = False
     SECURITY_INFO_SUPPORTED = True
+    CUSTOM_SPI_FLASH_PINS_SUPPORTED = False
     USES_MAGIC_VALUE = False
 
     UF2_FAMILY_ID = 0xB6DD00AF
@@ -98,15 +97,6 @@ class ESP32H21ROM(ESP32H2ROM):
     def get_crystal_freq(self):
         # ESP32H21 XTAL is fixed to 32MHz
         return 32
-
-    def check_spi_connection(self, spi_connection):
-        if not set(spi_connection).issubset(set(range(0, 28))):
-            raise FatalError("SPI Pin numbers must be in the range 0-27.")
-        if any([v for v in spi_connection if v in [26, 27]]):
-            log.warn(
-                "GPIO pins 26 and 27 are used by USB-Serial/JTAG, "
-                "consider using other pins for SPI flash connection."
-            )
 
 
 class ESP32H21StubLoader(StubMixin, ESP32H21ROM):

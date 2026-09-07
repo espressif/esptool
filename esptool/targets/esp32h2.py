@@ -4,8 +4,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from ..loader import ESPLoader, StubMixin
-from ..logger import log
-from ..util import FatalError
 from .esp32c6 import ESP32C6ROM
 
 
@@ -17,6 +15,7 @@ class ESP32H2ROM(ESP32C6ROM):
     USB_SERIAL_JTAG_SUPPORTED = True
     WATCHDOG_RESET_SUPPORTED = False
     SECURITY_INFO_SUPPORTED = True
+    CUSTOM_SPI_FLASH_PINS_SUPPORTED = False
     USES_MAGIC_VALUE = False
 
     DR_REG_LP_WDT_BASE = 0x600B1C00
@@ -83,15 +82,6 @@ class ESP32H2ROM(ESP32C6ROM):
     # Watchdog reset is not supported on ESP32-H2
     def watchdog_reset(self):
         ESPLoader.watchdog_reset(self)
-
-    def check_spi_connection(self, spi_connection):
-        if not set(spi_connection).issubset(set(range(0, 28))):
-            raise FatalError("SPI Pin numbers must be in the range 0-27.")
-        if any([v for v in spi_connection if v in [26, 27]]):
-            log.warn(
-                "GPIO pins 26 and 27 are used by USB-Serial/JTAG, "
-                "consider using other pins for SPI flash connection."
-            )
 
 
 class ESP32H2StubLoader(StubMixin, ESP32H2ROM):

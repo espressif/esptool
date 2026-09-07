@@ -6,7 +6,6 @@
 import struct
 
 from ..loader import ESPLoader, StubMixin
-from ..logger import log
 from ..util import FatalError, NotSupportedError
 from .esp32 import ESP32ROM
 
@@ -19,6 +18,7 @@ class ESP32E22ROM(ESP32ROM):
     USB_SERIAL_JTAG_SUPPORTED = False
     WATCHDOG_RESET_SUPPORTED = False
     SECURITY_INFO_SUPPORTED = True
+    CUSTOM_SPI_FLASH_PINS_SUPPORTED = False
     USES_MAGIC_VALUE = False
 
     IROM_MAP_START = 0x3C000000
@@ -208,15 +208,6 @@ class ESP32E22ROM(ESP32ROM):
 
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)
-
-    def check_spi_connection(self, spi_connection):  # TODO: Check pins
-        if not set(spi_connection).issubset(set(range(0, 53))):
-            raise FatalError("SPI Pin numbers must be in the range 0-52.")
-        if any([v for v in spi_connection if v in [18, 19]]):
-            log.warn(
-                "GPIO pins 18 and 19 are used by USB-OTG, "
-                "consider using other pins for SPI flash connection."
-            )
 
     # Watchdog reset is not supported on ESP32-E22
     def watchdog_reset(self):

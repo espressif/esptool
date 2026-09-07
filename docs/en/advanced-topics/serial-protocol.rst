@@ -462,45 +462,39 @@ SPI Configuration Commands
 SPI Attach Command
 """"""""""""""""""
 
-The SPI_ATTACH command enables the SPI flash interface. It takes a 32-bit data payload which is used to determine which SPI peripheral and pins should be used to connect to SPI flash.
+The SPI_ATTACH command enables the SPI flash interface. The first 32-bit word of the request selects the SPI flash connection.
 
 .. only:: esp8266
 
-    On the ESP8266 stub loader sending this command before interacting with SPI flash is optional. On ESP8266 ROM loader this command is not supported (SPI flash is enabled when the FLASH_BEGIN command is sent).
-
-    +------------------+----------------------------------------------------------------------------------------------------------------------------------+
-    | Value            | Meaning                                                                                                                          |
-    +==================+==================================================================================================================================+
-    | 0                | Default SPI flash interface                                                                                                      |
-    +------------------+----------------------------------------------------------------------------------------------------------------------------------+
-    | 1                | HSPI interface                                                                                                                   |
-    +------------------+----------------------------------------------------------------------------------------------------------------------------------+
+    The ESP8266 ROM loader does not support this command; it enables SPI flash when it receives FLASH_BEGIN. The ESP8266 stub loader accepts a 4-byte request, but ignores the connection value and always uses the default SPI flash pins. Sending the command to the stub before interacting with SPI flash is optional.
 
 .. only:: not esp8266
 
     On the {IDF_TARGET_NAME} stub loader sending this command before interacting with SPI flash is optional. On {IDF_TARGET_NAME} ROM loader, it is required to send this command before interacting with SPI flash.
 
-    +------------------+----------------------------------------------------------------------------------------------------------------------------------+
-    | Value            | Meaning                                                                                                                          |
-    +==================+==================================================================================================================================+
-    | 0                | Default SPI flash interface                                                                                                      |
-    +------------------+----------------------------------------------------------------------------------------------------------------------------------+
-    | 1                | HSPI interface                                                                                                                   |
-    +------------------+----------------------------------------------------------------------------------------------------------------------------------+
-    | (other values)   |  Pin numbers as 6-bit values, packed into a 30-bit value. Order (from MSB): HD pin, Q pin, D pin, CS pin, CLK pin.               |
-    +------------------+----------------------------------------------------------------------------------------------------------------------------------+
+    .. only:: CUSTOM_SPI_FLASH_PINS_SUPPORTED
 
-    The "Default SPI flash interface" uses pins configured via the ``SPI_PAD_CONFIG_xxx`` eFuses (if unset, these eFuses are all zero and the default SPI flash pins given in the datasheet are used.)
-
-    When writing the values of each pin as 6-bit numbers packed into the data word, each 6-bit value uses the following representation:
+        A connection value of ``0`` uses the pin mapping from the :ref:`SPI pad eFuses <espefuse-spi-flash-pins>`, or the default pins if these eFuses are unset.
 
     .. only:: esp32
 
-        * Pin numbers 0 through 30 are represented as themselves.
-        * Pin numbers 32 & 33 are represented as values 30 & 31.
-        * It is not possible to represent pins 30 & 31 or pins higher than 33. This is the same 6-bit representation used by the ``SPI_PAD_CONFIG_xxx`` eFuses.
+        The connection value has the following meaning:
 
-    On {IDF_TARGET_NAME} ROM loader only, there is an additional 4 bytes in the data payload of this command. These bytes should all be set to zero.
+        * ``0`` selects the default SPI peripheral and pin mapping described above.
+        * ``1`` selects the HSPI peripheral and its fixed pins.
+        * Other values select custom pin numbers, packed as 6-bit values into a 30-bit word. The order from most significant to least significant value is HD, CS, D, Q, CLK.
+
+        Pin numbers 0 through 30 are represented as themselves. Pin numbers 32 and 33 are represented as values 30 and 31. It is not possible to represent pins 30 and 31 or pins higher than 33. This is the same 6-bit representation used by the ``SPI_PAD_CONFIG_xxx`` eFuses.
+
+    .. only:: CUSTOM_SPI_FLASH_PINS_SUPPORTED and not esp32
+
+        Custom pin numbers are packed as 6-bit values into a 30-bit word. The order from most significant to least significant value is HD, CS, D, Q, CLK.
+
+    .. only:: not CUSTOM_SPI_FLASH_PINS_SUPPORTED
+
+        On chips that do not support configurable SPI flash pins, the connection value is ignored and the default SPI flash interface and pins are used.
+
+    The ROM loader request is 8 bytes long. Its second 32-bit word is a legacy flash mode flag; this is normally set to zero. The stub loader request contains only the 4-byte connection value and always disables legacy mode.
 
 SPI Set Parameters
 """"""""""""""""""
