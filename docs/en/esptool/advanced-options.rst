@@ -39,6 +39,8 @@ The ``--after`` argument allows you to specify whether the chip should be reset 
     * ``--after no-reset-stub`` leaves the chip in the stub bootloader, no reset is performed.
     :WATCHDOG_RESET_SUPPORTED: * ``--after watchdog-reset`` hard-resets the chip by triggering an internal watchdog. See :ref:`Watchdog Reset Limitations <wdt-reset-limitations>`.
 
+If a :ref:`custom hard reset sequence <custom-reset-sequences>` is defined in the configuration file, it replaces the sequence used by ``--after hard-reset``. Esptool reports the executed sequence, so the output always shows which one was used.
+
 .. only:: USB_SERIAL_JTAG_SUPPORTED
 
     With USB-Serial/JTAG, the peripheral interprets the RTS serial control
@@ -53,7 +55,9 @@ The ``--after`` argument allows you to specify whether the chip should be reset 
 .. only:: USB_OTG_SUPPORTED and WATCHDOG_RESET_SUPPORTED
 
     When USB-OTG is detected, ``--after hard-reset`` may automatically use an
-    internal watchdog reset where required and supported.
+    internal watchdog reset where required and supported. A custom hard reset
+    sequence is not used in that case, because no serial control lines are
+    involved.
 
 Connect Loop
 ------------
