@@ -454,6 +454,16 @@ class ESP32ROM(ESPLoader):
 class ESP32StubLoader(StubMixin, ESP32ROM):
     """Stub loader for ESP32, runs on top of ROM."""
 
+    def get_crystal_freq(self):
+        # The general clock frequency algorithm (guessing from UART baud rate)
+        # does not work properly when the stub is running, because the stub
+        # switches the APB bus frequency to a fixed value derived from the
+        # PLL, decoupling it from the crystal. Use the ROM-calculated crystal
+        # frequency instead, which is unaffected by that clock switch.
+        rom_cal_freq_mhz = self.get_rom_cal_crystal_freq() / 1e6
+        # same thresholds as in ESPLoader.get_crystal_freq()
+        return 40 if rom_cal_freq_mhz > 33 else 26
+
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)
 
