@@ -11,7 +11,6 @@ CC0 1.0 Universal
 The following source directories are dedicated to the public domain under
 CC0 1.0 Universal:
 
-  images/ram_helloworld/source/
   elf2image/esp32c6-appdesc/
   elf2image/esp32-too-many-sections/
 
@@ -51,5 +50,7 @@ ESP-IDF / SDK regression goldens without in-tree sources (for example
 not this list. Header stubs (`images/esp32c3_header_min_rev.bin`,
 `images/esp32s3_header.bin`) and `images/partitions_singleapp.bin` have
 rebuild notes in `images/README.md`. Authored sources listed under CC0 above
-cover the matching `ram_helloworld` / `esp32c6-appdesc` /
-`esp32-too-many-sections` build products.
+cover the matching `esp32c6-appdesc` / `esp32-too-many-sections` build
+products. The `images/ram_helloworld/` images are not committed; they are
+assembled at test time by `ram_helloworld_builder.py`, which is
+GPL-2.0-or-later like the rest of the suite.

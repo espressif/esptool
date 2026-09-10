@@ -116,7 +116,7 @@ class TestImageInfo:
         # ESP32, with and without detection
         out = self.run_image_info("auto", "bootloader_esp32.bin")
         assert "Detected image type: ESP32" in out
-        out = self.run_image_info("auto", "ram_helloworld/helloworld-esp32_edit.bin")
+        out = self.run_image_info("auto", "ram_helloworld/helloworld-esp32.bin")
         assert "Detected image type: ESP32" in out
         out = self.run_image_info("esp32", "bootloader_esp32.bin")
         assert "Detected image type: ESP32" not in out

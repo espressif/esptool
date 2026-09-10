@@ -51,7 +51,7 @@ The ``load-ram`` command allows the loading of an executable binary image (creat
 
 ::
 
-    esptool --no-stub load-ram ./test/images/helloworld-esp8266.bin
+    esptool --no-stub load-ram my_esp_app.bin
 
 .. note::
 
