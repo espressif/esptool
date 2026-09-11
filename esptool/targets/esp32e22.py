@@ -71,7 +71,7 @@ class ESP32E22ROM(ESP32ROM):
 
     USES_MAGIC_VALUE = False
 
-    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
+    USB_OTG_SUPPORTED = True
 
     GPIO_STRAP_REG = 0xC310D000
     GPIO_STRAP_SPI_BOOT_MASK = 1 << 3  # Not download mode
@@ -238,12 +238,6 @@ class ESP32E22ROM(ESP32ROM):
 
 class ESP32E22StubLoader(StubMixin, ESP32E22ROM):
     """Stub loader for ESP32-E22, runs on top of ROM."""
-
-    def __init__(self, rom_loader):
-        super().__init__(rom_loader)  # Initialize the mixin
-        if rom_loader.uses_usb_otg():
-            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
-            self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
 
 
 ESP32E22ROM.STUB_CLASS = ESP32E22StubLoader

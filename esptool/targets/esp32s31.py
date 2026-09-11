@@ -92,7 +92,7 @@ class ESP32S31ROM(ESP32C5ROM):
 
     UF2_FAMILY_ID = 0x3101F7C1
 
-    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
+    USB_OTG_SUPPORTED = True
 
     EFUSE_MAX_KEY = 4
     KEY_PURPOSES: dict[int, str] = {
@@ -220,10 +220,6 @@ class ESP32S31ROM(ESP32C5ROM):
     def change_baud(self, baud):
         ESPLoader.change_baud(self, baud)
 
-    def _post_connect(self):
-        if self.uses_usb_otg():
-            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
-
     def check_spi_connection(self, spi_connection):
         if not set(spi_connection).issubset(set(range(0, 61))):
             raise FatalError("SPI Pin numbers must be in the range 0-60.")
@@ -243,12 +239,6 @@ class ESP32S31ROM(ESP32C5ROM):
 
 class ESP32S31StubLoader(StubMixin, ESP32S31ROM):
     """Stub loader for ESP32-S31, runs on top of ROM."""
-
-    def __init__(self, rom_loader):
-        super().__init__(rom_loader)  # Initialize the mixin
-        if rom_loader.uses_usb_otg():
-            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
-            self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
 
 
 ESP32S31ROM.STUB_CLASS = ESP32S31StubLoader

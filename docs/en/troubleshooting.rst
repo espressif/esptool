@@ -125,6 +125,31 @@ Early Stage Crash
    On boards with two USB ports (usually marked as USB and UART), you can use the USB port for flashing while listening on the UART port for debugging purposes. This setup is useful for retrieving core dumps or the reset reason in the event of a crash. To implement this, connect the UART port to another instance of any of the `serial terminal programs`_, while repeating the failing action over the USB port. You'll be able to monitor the crash log without interference from the USB port used for communication or it disappearing due to a firmware crash.
    If your devkit doesn't have a dedicated USB port connected to an on-board USB-to-UART bridge, you can use a separate adapter to connect to the UART pins on the board.
 
+   Ports Without USB Descriptors (Containers and Virtual Machines)
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   Esptool tells native USB interfaces apart from USB-to-UART bridges by the USB vendor and product ID (VID/PID) of the serial device, which it reads through pySerial. If the port has no USB descriptors, esptool reports a note ``Failed to get VID/PID of a device on ...`` and cannot detect which interface is in use.
+
+   In that case, the standard reset sequence is used. If the chip is connected through the USB-Serial/JTAG peripheral, add ``--before usb-reset`` to use its reset sequence.
+
+   It is better to fix the environment so the descriptors are available, because then all connection settings are selected correctly.
+
+   To read the descriptors, pySerial needs the port to be a real USB serial device of the operating system running esptool. Verify what is visible where esptool runs:
+
+   .. code-block:: bash
+
+      python -c "import serial.tools.list_ports as l; print([(p.device, p.vid, p.pid) for p in l.comports()])"
+
+   An empty list means no port can be identified. This typically happens when a hypervisor forwards a serial stream from the host instead of the USB device itself, when a ``socat`` bridge is used, or when the device is renamed on the way into a container. Depending on the environment, it can be avoided:
+
+   .. list::
+
+      * **Docker**: pass the device through with ``docker run --device /dev/ttyACM0 ...`` and keep the same name on both sides. Renaming it (``--device /dev/ttyACM0:/dev/esp0``) hides it from pySerial. The host ``sysfs`` is shared with the container, so the descriptors resolve.
+      * **WSL 2 on Windows**: for instructions on how to pass the device through, see the `Developer Portal article <https://developer.espressif.com/blog/espressif-devkits-with-wsl2/>`_.
+      * **Virtual machines**: use USB device passthrough rather than a forwarded serial port or a network serial bridge.
+
+   If the runtime cannot pass USB devices through at all, run esptool directly on the host instead.
+
 Serial Terminal Programs
 ------------------------
 

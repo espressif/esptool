@@ -88,7 +88,7 @@ class ESP32S3ROM(ESP32ROM):
     RTC_CNTL_WDTWPROTECT_REG = RTCCNTL_BASE_REG + 0x00B0
     RTC_CNTL_WDT_WKEY = 0x50D83AA1
 
-    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
+    USB_OTG_SUPPORTED = True
 
     GPIO_STRAP_REG = 0x60004038
     GPIO_STRAP_SPI_BOOT_MASK = 1 << 3  # Not download mode
@@ -326,8 +326,7 @@ class ESP32S3ROM(ESP32ROM):
             self.write_reg(self.RTC_CNTL_SWD_WPROTECT_REG, 0)
 
     def _post_connect(self):
-        if self.uses_usb_otg():
-            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
+        super()._post_connect()
         if not self.secure_download_mode and not self.sync_stub_detected:
             # Don't run if stub is reused
             self.disable_watchdogs()
@@ -385,12 +384,6 @@ class ESP32S3ROM(ESP32ROM):
 
 class ESP32S3StubLoader(StubMixin, ESP32S3ROM):
     """Stub loader for ESP32-S3, runs on top of ROM."""
-
-    def __init__(self, rom_loader):
-        super().__init__(rom_loader)  # Initialize the mixin
-        if rom_loader.uses_usb_otg():
-            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
-            self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
 
 
 ESP32S3ROM.STUB_CLASS = ESP32S3StubLoader
