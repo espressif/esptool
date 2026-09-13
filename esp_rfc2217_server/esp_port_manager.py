@@ -9,12 +9,12 @@ import serial
 import serial.rfc2217
 from serial.rfc2217 import (
     COM_PORT_OPTION,
+    SERVER_SET_CONTROL,
     SET_CONTROL,
     SET_CONTROL_DTR_OFF,
     SET_CONTROL_DTR_ON,
     SET_CONTROL_RTS_OFF,
     SET_CONTROL_RTS_ON,
-    SERVER_SET_CONTROL,
 )
 
 from esptool.config import load_config_file
