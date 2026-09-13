@@ -56,7 +56,12 @@ from esptool.util import check_deprecated_py_suffix
     is_flag=True,
     help="Use delays necessary for ESP32 revision 0 chips.",
 )
-def cli(serialport: str, localport: int, verbosity: int, r0: bool):
+@click.option(
+    "--no-reset",
+    is_flag=True,
+    help="Forward control lines without applying esptool reset sequences.",
+)
+def cli(serialport: str, localport: int, verbosity: int, r0: bool, no_reset: bool):
     if verbosity > 3:
         verbosity = 3
     # The ``-v`` count only tunes pyserial's RFC2217 ``PortManager``, which
@@ -118,10 +123,11 @@ def cli(serialport: str, localport: int, verbosity: int, r0: bool):
         try:
             log.print(f"Connected by {addr[0]}:{addr[1]}")
             client_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            ser.rts = True
-            ser.dtr = True
+            if not no_reset:
+                ser.rts = True
+                ser.dtr = True
             # enter network <-> serial loop
-            r = Redirector(ser, client_socket, verbosity > 0, r0)
+            r = Redirector(ser, client_socket, verbosity > 0, r0, no_reset)
             try:
                 r.shortcircuit()
             finally:
