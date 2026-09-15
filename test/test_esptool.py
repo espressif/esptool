@@ -49,6 +49,8 @@ from conftest import (
 )
 
 try:
+    from esp_pylib.errors import PortVidPidNotFoundError
+
     import espefuse
     import esptool
     from esptool import FatalError
@@ -2628,3 +2630,122 @@ class TestSlipReaderRead:
         message = str(excinfo.value)
         assert message.startswith("Failed to start stub flasher")
         assert message.count(TROUBLESHOOTING_GUIDE_URL) == 1
+
+
+@pytest.mark.host_test
+class TestMissingUsbDescriptors(EsptoolTestCase):
+    """A pty is a real port that pySerial cannot resolve a VID/PID for, so it
+    exercises the fallback decision without any hardware or mocking."""
+
+    @pytest.fixture
+    def pty_port(self):
+        import pty
+
+        master_fd, slave_fd = pty.openpty()
+        yield os.ttyname(slave_fd)
+        os.close(master_fd)
+        os.close(slave_fd)
+
+    def _mocked_chip(self, chip, monkeypatch, vid_pid_result):
+        def lookup(_name):
+            if isinstance(vid_pid_result, Exception):
+                raise vid_pid_result
+            return vid_pid_result
+
+        monkeypatch.setattr("esptool.loader.get_port_vid_pid", lookup)
+        port = MagicMock()
+        port.name = "/dev/ttyUSB0"
+        port.port = "/dev/ttyUSB0"
+        return esptool.CHIP_DEFS[chip](port)
+
+    def _assert_rom_ram_capped_stub_uncapped(self, esp):
+        assert esp.use_usb_otg_block()
+        esp._post_connect()
+        assert esp.ESP_RAM_BLOCK == esp.USB_OTG_BLOCK_SIZE
+
+        stub = esp.STUB_CLASS(esp)
+        assert not stub.use_usb_otg_block()
+        assert stub.ESP_RAM_BLOCK == ESPLoader.ESP_RAM_BLOCK
+        assert stub.FLASH_WRITE_SIZE == 0x4000
+
+    @pytest.mark.skipif(os.name == "nt", reason="Needs a pty, Linux/MacOS only")
+    def test_usb_otg_capable_chip_lowers_rom_ram_block(self, pty_port):
+        with esptool.CHIP_DEFS["esp32s3"](pty_port) as esp:
+            assert esp.get_usb_vid_pid() == (None, None)
+            self._assert_rom_ram_capped_stub_uncapped(esp)
+
+    @pytest.mark.skipif(os.name == "nt", reason="Needs a pty, Linux/MacOS only")
+    def test_chip_without_usb_otg_keeps_block_size(self, pty_port):
+        with esptool.CHIP_DEFS["esp32c3"](pty_port) as esp:
+            assert esp.get_usb_vid_pid() == (None, None)
+            assert not esp.use_usb_otg_block()
+            esp._post_connect()
+            assert esp.ESP_RAM_BLOCK == ESPLoader.ESP_RAM_BLOCK
+
+    def test_usb_otg_chip_caps_rom_ram_only_without_descriptors(self, monkeypatch):
+        esp = self._mocked_chip(
+            "esp32s2",
+            monkeypatch,
+            PortVidPidNotFoundError("/dev/ttyUSB0 is not listed by pyserial"),
+        )
+        self._assert_rom_ram_capped_stub_uncapped(esp)
+
+    def test_detected_usb_otg_caps_rom_ram_only(self, monkeypatch):
+        chip = esptool.CHIP_DEFS["esp32s2"]
+        esp = self._mocked_chip(
+            "esp32s2",
+            monkeypatch,
+            (ESPLoader.ESPRESSIF_VID, chip.IMAGE_CHIP_ID),
+        )
+        self._assert_rom_ram_capped_stub_uncapped(esp)
+
+    def test_non_otg_chip_does_not_cap_block_size(self, monkeypatch):
+        esp = self._mocked_chip(
+            "esp32c3",
+            monkeypatch,
+            PortVidPidNotFoundError("/dev/ttyUSB0 is not listed by pyserial"),
+        )
+        assert not esp.use_usb_otg_block()
+        assert esp.ESP_RAM_BLOCK == ESPLoader.ESP_RAM_BLOCK
+
+
+@pytest.mark.skipif(
+    arg_chip != "esp32s3" or os.environ.get("ESPTOOL_TEST_USB_OTG") != "1",
+    reason="ESP32-S3 in USB-OTG mode only",
+)
+class TestMissingUsbDescriptorsUsbOtg(EsptoolTestCase):
+    """Flashing over USB-OTG has to work when the VID/PID cannot be resolved.
+
+    A board attached to the host always has USB descriptors, so the lookup
+    failure of a port exposed by a hypervisor or a socat bridge is emulated.
+    """
+
+    def test_write_flash_without_usb_descriptors(self, monkeypatch):
+        def no_vid_pid(port_name):
+            raise PortVidPidNotFoundError(f"{port_name!r} is not listed by pyserial")
+
+        monkeypatch.setattr("esptool.loader.get_port_vid_pid", no_vid_pid)
+        image = os.path.join(TEST_DIR, "images", "fifty_kb.bin")
+        with patch("sys.stdout", new=StringIO()) as fake_out:
+            esptool.main(
+                [
+                    "--port",
+                    arg_port,
+                    "--baud",
+                    str(arg_baud),
+                    "--after",
+                    "no-reset-stub",
+                    "write-flash",
+                    "0x0",
+                    image,
+                ]
+            )
+            output = fake_out.getvalue()
+        print(output)
+        sleep(0.5)  # Wait for the port to enumerate between tests
+
+        # USB-OTG is not detected; stub upload still uses the smaller RAM block.
+        assert "Failed to get VID/PID" in output
+        assert "Stub flasher running." in output
+        assert "Hash of data verified." in output
+        self.verify_readback(0, 50 * 1024, "images/fifty_kb.bin")

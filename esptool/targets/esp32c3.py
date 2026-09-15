@@ -238,6 +238,7 @@ class ESP32C3ROM(ESP32ROM):
             self.write_reg(self.RTC_CNTL_SWD_WPROTECT_REG, 0)
 
     def _post_connect(self):
+        super()._post_connect()
         if not self.secure_download_mode and not self.sync_stub_detected:
             # Don't run if stub is reused
             self.disable_watchdogs()

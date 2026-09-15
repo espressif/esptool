@@ -75,7 +75,7 @@ class ESP32P4ROM(ESP32ROM):
     PURPOSE_VAL_XTS_AES256_KEY_2 = 3
     PURPOSE_VAL_XTS_AES128_KEY = 4
 
-    USB_RAM_BLOCK = 0x800  # Max block size USB-OTG is used
+    USB_OTG_SUPPORTED = True
 
     GPIO_STRAP_REG = 0x500E0038
     GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
@@ -242,8 +242,7 @@ class ESP32P4ROM(ESP32ROM):
         ESPLoader.change_baud(self, baud)
 
     def _post_connect(self):
-        if self.uses_usb_otg():
-            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
+        super()._post_connect()
         if not self.secure_download_mode:
             if not self.sync_stub_detected:  # Don't run if stub is reused
                 self.disable_watchdogs()
@@ -368,12 +367,6 @@ class ESP32P4ROM(ESP32ROM):
 
 class ESP32P4StubLoader(StubMixin, ESP32P4ROM):
     """Stub loader for ESP32-P4, runs on top of ROM."""
-
-    def __init__(self, rom_loader):
-        super().__init__(rom_loader)  # Initialize the mixin
-        if rom_loader.uses_usb_otg():
-            self.ESP_RAM_BLOCK = self.USB_RAM_BLOCK
-            self.FLASH_WRITE_SIZE = self.USB_RAM_BLOCK
 
     def stub_json_name(self):
         if self.get_chip_revision() < 300:

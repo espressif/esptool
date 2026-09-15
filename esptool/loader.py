@@ -36,6 +36,7 @@ from .util import (
     NANDProgramFailed,
     NotImplementedInROMError,
     NotSupportedError,
+    PrintOnce,
     UnsupportedCommandError,
     byte,
     get_key_from_value,
@@ -355,6 +356,10 @@ class ESPLoader:
 
     FLASH_WRITE_SIZE = 0x400
 
+    # Maximum download block size when the internal USB-OTG peripheral is used.
+    USB_OTG_BLOCK_SIZE = 0x800
+    USB_OTG_SUPPORTED = False
+
     # Default baudrate. The ROM auto-bauds, so we can use more or less whatever we want.
     # Alias from esp-pylib for backward compatibility.
     ESP_ROM_BAUD = ESP_ROM_BAUD
@@ -429,6 +434,8 @@ class ESPLoader:
         self.secure_download_mode = False
         # True if esptool detects conditions which require the stub to be disabled
         self.stub_is_disabled = False
+        # Deduplicate USB warnings for this connection when VID/PID is not available.
+        self._warn_usb_no_vid = PrintOnce(log.note)
 
         # Device-and-runtime-specific cache
         self.cache = {
@@ -736,9 +743,10 @@ class ESPLoader:
         try:
             vid, pid = get_port_vid_pid(active_port)
         except PortVidPidNotFoundError as exc:
-            log.print(
-                f"\nFailed to get VID/PID of a device on {escape(str(active_port))}: "
-                f"{escape(str(exc))} Using standard reset sequence."
+            self._warn_usb_no_vid(
+                "Failed to get VID/PID of a device on "
+                f"{escape(str(active_port))}: {escape(str(exc))} "
+                "Using standard reset sequence.",
             )
             return None, None
         self.cache["usb_vid"] = vid
@@ -986,9 +994,11 @@ class ESPLoader:
     def _post_connect(self):
         """
         Additional initialization hook, may be overridden by the chip-specific class.
-        Gets called after connect, and after auto-detection.
+        Gets called after connect, and after auto-detection. Overrides of
+        USB-OTG capable chips have to chain to this implementation.
         """
-        pass
+        if self.use_usb_otg_block():
+            self.ESP_RAM_BLOCK = self.USB_OTG_BLOCK_SIZE
 
     def read_reg(self, addr, timeout=DEFAULT_TIMEOUT):
         """Read memory address in target"""
@@ -1342,6 +1352,26 @@ class ESPLoader:
         True if the host sees this port as Espressif USB-OTG (VID/PID match).
         """
         return self.get_usb_vid_pid() == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID)
+
+    def use_usb_otg_block(self):
+        """
+        True if ROM data transfers have to be capped to ``USB_OTG_BLOCK_SIZE``.
+
+        The USB-OTG ROM cannot take the larger RAM block sizes used to
+        upload the stub. The cap is applied when USB-OTG is detected, and also
+        when the VID/PID of the port is unavailable (serial devices exposed
+        without USB descriptors, e.g. by a hypervisor or a socat bridge),
+        because USB-OTG can't be ruled out then. UART bridges and USB-Serial/JTAG
+        accept the smaller blocks as well, so the fallback only costs transfer
+        speed. The stub can receive larger blocks, so flash writes after it is
+        running are not capped. Only apply if the chip supports USB-OTG.
+        """
+        if not self.USB_OTG_SUPPORTED or self.IS_STUB:
+            return False
+        # equivalent to uses_usb_otg() and getting VID/PID again for None checks
+        vid_pid = self.get_usb_vid_pid()
+        no_vid_pid = vid_pid == (None, None)
+        return vid_pid == (self.ESPRESSIF_VID, self.IMAGE_CHIP_ID) or no_vid_pid
 
     def get_usb_mode(self):
         """
@@ -2200,6 +2230,7 @@ class StubMixin:
         self.secure_download_mode = rom_loader.secure_download_mode
         self._port = rom_loader._port
         self._trace_enabled = rom_loader._trace_enabled
+        self._warn_usb_no_vid = rom_loader._warn_usb_no_vid
         self.cache = rom_loader.cache
         self.flush_input()  # resets _slip_reader
 
