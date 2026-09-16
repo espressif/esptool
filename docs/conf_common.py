@@ -74,14 +74,18 @@ def conf_setup(app, config):
     if not target:
         return
 
-    from target_capabilities import get_doc_substitutions
+    from target_capabilities import get_doc_substitutions, get_doc_tags
 
     from esptool.targets import CHIP_DEFS
 
     if target not in CHIP_DEFS:
         raise ValueError(f"Unknown documentation target: {target}")
 
-    app.emit("format-esp-target-add-sub", get_doc_substitutions(CHIP_DEFS[target]))
+    chip_class = CHIP_DEFS[target]
+    for tag in get_doc_tags(chip_class):
+        app.tags.add(tag)
+
+    app.emit("format-esp-target-add-sub", get_doc_substitutions(chip_class))
 
 
 user_setup_callback = conf_setup

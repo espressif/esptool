@@ -3,7 +3,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-
 from ..loader import StubMixin
 from ..logger import log
 from ..util import FatalError
@@ -13,6 +12,12 @@ from .esp32h2 import ESP32H2ROM
 class ESP32H21ROM(ESP32H2ROM):
     CHIP_NAME = "ESP32-H21"
     IMAGE_CHIP_ID = 25
+
+    USB_OTG_SUPPORTED = False
+    USB_SERIAL_JTAG_SUPPORTED = True
+    WATCHDOG_RESET_SUPPORTED = False
+    SECURITY_INFO_SUPPORTED = True
+    USES_MAGIC_VALUE = False
 
     UF2_FAMILY_ID = 0xB6DD00AF
 

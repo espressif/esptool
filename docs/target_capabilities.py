@@ -2,9 +2,21 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""Derive Sphinx substitutions from esptool ROM loader classes."""
+"""Derive Sphinx tags and substitutions from esptool ROM loader classes."""
 
 from esptool.loader import ESPLoader
+
+DOC_CAPABILITY_TAGS = (
+    "USB_OTG_SUPPORTED",
+    "USB_SERIAL_JTAG_SUPPORTED",
+    "WATCHDOG_RESET_SUPPORTED",
+    "SECURITY_INFO_SUPPORTED",
+)
+
+
+def get_doc_tags(chip_class: type[ESPLoader]) -> list[str]:
+    """Return Sphinx tags enabled for the given ROM loader class."""
+    return [tag for tag in DOC_CAPABILITY_TAGS if getattr(chip_class, tag, False)]
 
 
 def _flash_freq_mhz(freq_key: str) -> str:
