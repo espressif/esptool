@@ -197,6 +197,13 @@ target_esp32h4:
     TARGET: esp32h4
   tags: [esptool-esp32h4]
 
+target_esp32h21:
+  extends: .target_test
+  variables:
+    PORT: esp32h21
+    TARGET: esp32h21
+  tags: [esptool-esp32h21]
+
 target_esp32s31:
   extends: .target_test
   variables:

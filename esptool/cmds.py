@@ -2844,9 +2844,8 @@ def run_stub(esp: ESPLoader, plugins: list[str] | None = None) -> ESPLoader:
             "set --no-stub to suppress this warning."
         )
     elif esp.CHIP_NAME in [
-        "ESP32-H21",
         "ESP32-E22",
-    ]:  # TODO: [ESP32H21] IDF-11509
+    ]:
         log.warn(
             f"Stub flasher is not yet supported on {esp.CHIP_NAME}, "
             "it has been disabled. Set --no-stub to suppress this warning."
