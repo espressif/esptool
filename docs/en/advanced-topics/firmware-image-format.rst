@@ -1,14 +1,4 @@
-{IDF_TARGET_FLASH_FREQ_F:default="80", esp32c2="60", esp32h2="48", esp32h21="48", esp32h4="48"}
-
-{IDF_TARGET_FLASH_FREQ_0:default="40", esp32c2="30", esp32h2="24", esp32h21="24", esp32h4="24"}
-
-{IDF_TARGET_FLASH_FREQ_1:default="26", esp32c2="20", esp32h2="16", esp32h21="16", esp32h4="16"}
-
-{IDF_TARGET_FLASH_FREQ_2:default="20", esp32c2="15", esp32h2="12", esp32h21="12", esp32h4="12"}
-
 {IDF_TARGET_FLASH_SIZE_ENC_EXTRA:default="", esp32s2=", ``5`` = 32MB, ``6`` = 64MB, ``7`` = 128MB", esp32s3=", ``5`` = 32MB, ``6`` = 64MB, ``7`` = 128MB", esp32p4=", ``5`` = 32MB, ``6`` = 64MB", esp32c5=", ``5`` = 32MB", esp32c61=", ``5`` = 32MB", esp32h4=", ``5`` = 32MB", esp32s31=", ``5`` = 32MB, ``6`` = 64MB, ``7`` = 128MB"}
-
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32s31="0x2000"}
 
 
 .. _image-format:

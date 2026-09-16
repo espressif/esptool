@@ -24,11 +24,14 @@ build_docs:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
-    - changes:
+    - changes: &docs_changes
       - "docs/**/*"
       - ".gitlab/deploy_docs.yml"
       - "CONTRIBUTING.rst"
       - "esptool/cmds.py"
+      # required for target_capabilities.py
+      - "esptool/loader.py"
+      - "esptool/targets/**/*"
   needs: []
   artifacts:
     when: always
@@ -49,11 +52,7 @@ deploy_docs_preview:
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
-    - changes:
-      - "docs/**/*"
-      - ".gitlab/deploy_docs.yml"
-      - "CONTRIBUTING.rst"
-      - "esptool/cmds.py"
+    - changes: *docs_changes
   variables:
     TYPE: "preview"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
@@ -70,11 +69,7 @@ deploy_docs_production:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes:
-      - "docs/**/*"
-      - ".gitlab/deploy_docs.yml"
-      - "CONTRIBUTING.rst"
-      - "esptool/cmds.py"
+      changes: *docs_changes
   variables:
     TYPE: "production"
     DOCS_BUILD_DIR: "${CI_PROJECT_DIR}/docs/_build/"
