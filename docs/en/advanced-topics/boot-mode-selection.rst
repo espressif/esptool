@@ -244,41 +244,18 @@ Depending on the kind of hardware you have, it may also be possible to manually 
       rst:0x1 (POWERON_RESET),boot:0x3 (DOWNLOAD_BOOT(UART0/UART1/SDIO_REI_REO_V2))
 
 
-   ``rst:0xNN (REASON)`` is an enumerated value (and description) of the reason for the reset. A mapping between the hex value and each reason can be found in the `ESP-IDF source under RESET_REASON enum <https://github.com/espressif/esp-idf/blob/release/v5.2/components/esp_rom/include/{IDF_TARGET_PATH_NAME}/rom/rtc.h>`__.
-   The value can be read in {IDF_TARGET_NAME} code via the `get_reset_reason() ROM function <https://github.com/espressif/esp-idf/blob/release/v5.2/components/esp_rom/include/{IDF_TARGET_PATH_NAME}/rom/rtc.h>`__.
+   ``rst:0xNN (REASON)`` is an enumerated value (and description) of the reason for the reset. A mapping between the hex value and each reason can be found in the `ESP-IDF source under RESET_REASON enum <https://github.com/espressif/esp-idf/blob/release/v6.1/components/esp_rom/{IDF_TARGET_PATH_NAME}/include/{IDF_TARGET_PATH_NAME}/rom/rtc.h>`__.
+   The value can be read in {IDF_TARGET_NAME} code via the `get_reset_reason() ROM function <https://github.com/espressif/esp-idf/blob/release/v6.1/components/esp_rom/{IDF_TARGET_PATH_NAME}/include/{IDF_TARGET_PATH_NAME}/rom/rtc.h>`__.
 
-   ``boot:0xNN (DESCRIPTION)`` is the hex value of the strapping pins, as represented in the `GPIO_STRAP register <https://github.com/espressif/esp-idf/blob/release/v5.2/components/soc/{IDF_TARGET_PATH_NAME}/include/soc/gpio_reg.h>`__.
+   ``boot:0xNN (DESCRIPTION)`` is the hex value of the strapping pins, as represented in the `GPIO_STRAP register <https://github.com/espressif/esp-idf/blob/release/v6.1/components/soc/{IDF_TARGET_PATH_NAME}/register/soc/gpio_reg.h>`__. Each bit corresponds to one strapping pin: set if that pin was high on reset, cleared if it was low. Note that not all strapping pins affect the boot mode.
 
-   The individual bit values are as follows:
+   A number of boot mode strings can be shown depending on the strapping pins:
 
-   .. only:: esp32
-
-      -  ``0x01`` - GPIO5
-      -  ``0x02`` - MTDO (GPIO15)
-      -  ``0x04`` - GPIO4
-      -  ``0x08`` - GPIO2
-      -  ``0x10`` - GPIO0
-      -  ``0x20`` - MTDI (GPIO12)
-
-   .. only:: not esp32
-
-      - ``0x04`` - {IDF_TARGET_STRAP_BOOT_2_GPIO}
-      - ``0x08`` - {IDF_TARGET_STRAP_BOOT_GPIO}
-
-   If the pin was high on reset, the bit value will be set. If it was low on reset, the bit will be cleared.
-
-   A number of boot mode strings can be shown depending on which bits are set:
-
-   -  ``DOWNLOAD_BOOT(UART0/UART1/SDIO_REI_REO_V2)`` or ``DOWNLOAD(USB/UART0)`` - {IDF_TARGET_NAME} is in download flashing mode (suitable for esptool)
+   -  ``DOWNLOAD_BOOT(UART0/UART1/SDIO_REI_REO_V2)`` or ``DOWNLOAD(USB/UART0)`` or similar - {IDF_TARGET_NAME} is in download flashing mode (suitable for esptool)
    -  ``SPI_FAST_FLASH_BOOT`` - This is the normal SPI flash boot mode.
    -  Other modes (including ``SPI_FLASH_BOOT``, ``SDIO_REI_FEO_V1_BOOT``, ``ATE_BOOT``) may be shown here. This indicates an unsupported boot mode has been selected.
-      Consult the strapping pins shown above (in most cases, one of these modes is selected if {IDF_TARGET_STRAP_BOOT_2_GPIO} has been pulled high when {IDF_TARGET_STRAP_BOOT_GPIO} is low).
 
-   .. only:: esp32
-
-      .. note::
-
-         ``GPIO_STRAP`` register includes GPIO 4 but this pin is not used by any supported boot mode and be set either high or low for all supported boot modes.
+   For the ``GPIO_STRAP`` bit mapping and strapping pin functions, see the `{IDF_TARGET_NAME} Technical Reference Manual <{IDF_TARGET_TRM_EN_URL}>`__.
 
 
    Later Boot Messages
