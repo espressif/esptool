@@ -391,6 +391,9 @@ def summary(esp, efuses, args):
     elif args.format == "json":
         json.dump(json_efuse, args.file, sort_keys=True, indent=4)
         print("")
+        if args.file != sys.stdout:
+            args.file.close()
+            print("Done")
 
 
 def dump(esp, efuses, args):
