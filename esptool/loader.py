@@ -359,6 +359,9 @@ class ESPLoader:
     # Maximum download block size when the internal USB-OTG peripheral is used.
     USB_OTG_BLOCK_SIZE = 0x800
     USB_OTG_SUPPORTED = False
+    USB_SERIAL_JTAG_SUPPORTED = False
+    WATCHDOG_RESET_SUPPORTED = False
+    SECURITY_INFO_SUPPORTED = False
 
     # Default baudrate. The ROM auto-bauds, so we can use more or less whatever we want.
     # Alias from esp-pylib for backward compatibility.

@@ -433,7 +433,7 @@ Gaps between the files will be filled with `0x00` bytes.
     esptool --chip {IDF_TARGET_NAME} merge-bin --format uf2 -o merged-flash.uf2 --flash-mode dio --flash-size 4MB 0x1000 bootloader.bin 0x8000 partition-table.bin 0x10000 app.bin
 
 
-.. only:: not esp8266 and not esp32
+.. only:: SECURITY_INFO_SUPPORTED
 
     Commands Supported in Secure Download Mode
     ------------------------------------------
@@ -466,4 +466,4 @@ The following commands are less commonly used, or only of interest to advanced u
     :esp32s31: *  :ref:`read-sdc-chip-info`
     :esp8266: *  :ref:`chip-id`
     :esp8266: *  :ref:`run`
-    :not esp8266 and not esp32: *  :ref:`get-security-info`
+    :SECURITY_INFO_SUPPORTED: *  :ref:`get-security-info`

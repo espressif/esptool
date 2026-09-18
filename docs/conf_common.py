@@ -69,3 +69,23 @@ versions_url = "./_static/esptool_versions.js"
 
 def conf_setup(app, config):
     config.html_baseurl = f"https://docs.espressif.com/projects/esptool/{config.language}/stable/{config.idf_target}/"
+
+    target = config.idf_target
+    if not target:
+        return
+
+    from target_capabilities import get_doc_substitutions, get_doc_tags
+
+    from esptool.targets import CHIP_DEFS
+
+    if target not in CHIP_DEFS:
+        raise ValueError(f"Unknown documentation target: {target}")
+
+    chip_class = CHIP_DEFS[target]
+    for tag in get_doc_tags(chip_class):
+        app.tags.add(tag)
+
+    app.emit("format-esp-target-add-sub", get_doc_substitutions(chip_class))
+
+
+user_setup_callback = conf_setup

@@ -2,8 +2,6 @@
 
 {IDF_TARGET_STRAP_BOOT_2_GPIO:default="GPIO8", esp32="GPIO2", esp32s2="GPIO46", esp32s3="GPIO46", esp32p4="GPIO36", esp32c5="GPIO27", esp32h21="GPIO13", esp32h4="GPIO13", esp32s31="GPIO60"}
 
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32s31="0x2000"}
-
 .. _boot-mode:
 
 Boot Mode Selection

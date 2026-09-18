@@ -1,5 +1,3 @@
-{IDF_TARGET_BOOTLOADER_OFFSET:default="0x0", esp32="0x1000", esp32s2="0x1000", esp32p4="0x2000", esp32c5="0x2000", esp32s31="0x2000"}
-
 .. _troubleshooting:
 
 Troubleshooting
@@ -111,7 +109,7 @@ Early Stage Crash
 
    Use any of `serial terminal programs`_ to view the boot log. ({IDF_TARGET_NAME} baud rate is 115200bps). See if the program is crashing during early startup or outputting an error message.
 
-.. only:: not esp8266 and not esp32 and not esp32c2
+.. only:: USB_OTG_SUPPORTED or USB_SERIAL_JTAG_SUPPORTED
 
    Issues and Debugging in USB-Serial/JTAG or USB-OTG modes
    --------------------------------------------------------
@@ -343,7 +341,7 @@ When Secure Download Mode is enabled, the available serial protocol commands are
    - It is recommended to only enable the Secure Download Mode if working with <16MB apps, if the app development is successfully finished, or if other ways to update the >16MB regions are available.
    - Esptool prints a warning about this whenever possible.
 
-.. only:: not esp8266 and not esp32
+.. only:: SECURITY_INFO_SUPPORTED
 
    See the :ref:`supported-in-sdm` section for more details.
 
