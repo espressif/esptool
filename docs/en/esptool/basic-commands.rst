@@ -91,10 +91,10 @@ Use the ``-e/--erase-all`` option to erase all flash sectors (not just the write
     Flashing an Incompatible Image
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    ``esptool.py`` checks every binary before flashing. If a valid firmware image is detected, the ``Chip ID`` and ``Minimum chip revision`` fields in its :ref:`header <image-format>` are compared against the actually connected chip.
-    If the image turns out to be incompatible with the chip in use or requires a newer chip revision, flashing is stopped.
+    ``esptool.py`` checks valid firmware images before flashing by comparing the ``Chip ID``, ``Minimum chip revision``, and ``Maximum chip revision`` fields in their :ref:`headers <image-format>` against the connected chip.
+    If an incompatible image is flashed at the target's bootloader offset, flashing is stopped. At other offsets, ``esptool.py`` reports the incompatibility and continues because the image may be data, such as firmware stored for a co-processor.
 
-    This behavior can be overridden with the ``--force`` option.
+    The bootloader compatibility check can be overridden with the ``--force`` option.
 
 Read Flash Contents: read_flash
 --------------------------------

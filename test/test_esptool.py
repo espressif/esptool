@@ -767,13 +767,26 @@ class TestFlashing(EsptoolTestCase):
         arg_chip == "esp32s3", reason="This is a valid ESP32-S3 image, would pass"
     )
     def test_write_image_for_another_target(self):
+        bl_offset = esptool.CHIP_DEFS[arg_chip].BOOTLOADER_FLASH_OFFSET
+        padding_offset = bl_offset + 0x1000
         output = self.run_esptool_error(
-            "write_flash 0x0 images/esp32s3_header.bin 0x1000 images/one_kb.bin"
+            f"write_flash {bl_offset:#x} images/esp32s3_header.bin "
+            f"{padding_offset:#x} images/one_kb.bin"
         )
-        assert "Unexpected chip id in image." in output
-        assert "value was 9. Is this image for a different chip model?" in output
         assert "images/esp32s3_header.bin is not an " in output
         assert "image. Use --force to flash anyway." in output
+
+    @pytest.mark.skipif(
+        arg_chip in ["esp8266", "esp32s3"],
+        reason="Requires a foreign ESP32-S3 image",
+    )
+    def test_write_image_for_another_target_outside_bootloader(self):
+        """Foreign chip image outside the bootloader: note printed, flash verified"""
+        output = self.run_esptool("write_flash 0x10000 images/esp32s3_header.bin")
+        expected_chip = esptool.CHIP_DEFS[arg_chip].CHIP_NAME
+        assert (
+            f"Note: images/esp32s3_header.bin is not an {expected_chip} image" in output
+        )
 
     @pytest.mark.skipif(
         arg_chip == "esp8266", reason="chip_id field exist in ESP32 and later images"
@@ -782,20 +795,37 @@ class TestFlashing(EsptoolTestCase):
         arg_chip != "esp32s3", reason="This check happens only on a valid image"
     )
     def test_write_image_for_another_revision(self):
+        bl_offset = esptool.CHIP_DEFS[arg_chip].BOOTLOADER_FLASH_OFFSET
+        padding_offset = bl_offset + 0x1000
         output = self.run_esptool_error(
-            "write_flash 0x0 images/one_kb.bin 0x1000 images/esp32s3_header.bin"
+            f"write_flash {bl_offset:#x} images/esp32s3_header.bin "
+            f"{padding_offset:#x} images/one_kb.bin"
         )
         assert "images/esp32s3_header.bin requires chip revision 10" in output
         assert "or higher (this chip is revision" in output
         assert "Use --force to flash anyway." in output
 
     @pytest.mark.skipif(
+        arg_chip != "esp32s3", reason="Requires a valid image with a newer revision"
+    )
+    def test_write_image_for_another_revision_outside_bootloader(self):
+        """Wrong revision image outside the bootloader: note printed, flash verified"""
+        output = self.run_esptool("write_flash 0x10000 images/esp32s3_header.bin")
+        assert (
+            "Note: images/esp32s3_header.bin requires chip revision 10 or higher "
+            "(this chip is revision" in output
+        )
+
+    @pytest.mark.skipif(
         arg_chip != "esp32c3", reason="This check happens only on a valid image"
     )
     def test_flash_with_min_max_rev(self):
         """Use min/max_rev_full field to specify chip revision"""
+        bl_offset = esptool.CHIP_DEFS[arg_chip].BOOTLOADER_FLASH_OFFSET
+        padding_offset = bl_offset + 0x1000
         output = self.run_esptool_error(
-            "write_flash 0x0 images/one_kb.bin 0x1000 images/esp32c3_header_min_rev.bin"
+            f"write_flash {bl_offset:#x} images/esp32c3_header_min_rev.bin "
+            f"{padding_offset:#x} images/one_kb.bin"
         )
         assert (
             "images/esp32c3_header_min_rev.bin "
