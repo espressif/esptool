@@ -1016,13 +1016,6 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.hd_drv, self.wp_drv = split_byte(fields[3])
 
         self.chip_id = fields[4]
-        if self.chip_id != self.ROM_LOADER.IMAGE_CHIP_ID:
-            log.warn(
-                f"Unexpected chip ID in image. Expected {self.ROM_LOADER.IMAGE_CHIP_ID}"
-                f" but value was {self.chip_id}. Is this image for a different "
-                "chip model?"
-            )
-
         self.min_rev = fields[5]
         self.min_rev_full = fields[6]
         self.max_rev_full = fields[7]
