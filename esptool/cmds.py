@@ -2781,6 +2781,7 @@ def reset_chip(esp: ESPLoader, reset_mode: str = "hard-reset") -> None:
         esp: Initiated esp object connected to a real device.
         reset_mode: Reset mode to use (
             ``"hard-reset"``: perform a hard reset using the RTS control line,
+            or the custom hard reset sequence if one is configured,
             ``"soft-reset"``: perform a soft reset,
             ``"no-reset"``: stay in bootloader,
             ``"no-reset-stub"``: stay in flasher stub,

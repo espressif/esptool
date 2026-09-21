@@ -121,6 +121,8 @@ Complete list of configurable options:
 
     On the other hand, ``open_port_attempts`` is the number of attempts to look for a port to open. When starting the command, the port does not have to be available. This can be useful when the chip is in deep sleep and is connected using USB-Serial/JTAG. In such cases, the port can disappear.
 
+.. _custom-reset-sequences:
+
 Custom Reset Sequences
 ----------------------
 
@@ -128,7 +130,9 @@ The ``custom_reset_sequence`` configuration option allows you to define a reset 
 used when an :ref:`automatic reset into the serial bootloader <automatic-bootloader>` is performed.
 
 The ``custom_hard_reset_sequence`` option allows you to define a reset sequence which will get
-used when a hard reset (a reset out of the bootloader) is performed.
+used when a hard reset (a reset out of the bootloader) is performed. It replaces the default
+:ref:`hard reset <after-reset>` sequence, and esptool prints the executed sequence instead of
+the usual ``Hard resetting via RTS pin...`` message.
 
 A sequence is defined with a string in the following format:
 
