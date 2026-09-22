@@ -245,6 +245,7 @@ class EsptoolTestCase:
                 "esp32s3",
                 "esp32c6",
                 "esp32h2",
+                "esp32h21",
                 "esp32p4",
                 "esp32c5",
                 "esp32c61",
@@ -1733,6 +1734,10 @@ class TestKeepImageSettings(EsptoolTestCase):
         self.run_esptool_error(f"verify-flash {self.flash_offset:#x} {self.BL_IMAGE}")
 
 
+@pytest.mark.skipif(
+    arg_chip == "esp32h21",
+    reason="No RAM helloworld binary available for ESP32-H21.",
+)
 @pytest.mark.skipif(
     arg_chip in ["esp32s2", "esp32s3", "esp32p4"],
     reason="Not supported on targets with USB-OTG.",
