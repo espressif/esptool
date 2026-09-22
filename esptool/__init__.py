@@ -207,12 +207,19 @@ click.rich_click.COMMAND_GROUPS = {
 
 
 def add_spi_connection_arg(function):
+    supported_chips = ", ".join(
+        chip.CHIP_NAME
+        for chip in CHIP_DEFS.values()
+        if chip.CUSTOM_SPI_FLASH_PINS_SUPPORTED
+    )
     function = click.option(
         "--spi-connection",
         "-sc",
         help="Override default SPI flash memory connection. "
         "Value can be SPI, HSPI or a comma-separated list of 5 I/O numbers "
-        "to use for SPI flash (CLK,Q,D,HD,CS). Not supported with ESP8266.",
+        "to use for SPI flash (CLK,Q,D,HD,CS). Target chips with built-in "
+        "custom pin mapping support: "
+        f"{supported_chips}.",
         type=SpiConnectionType(),
     )(function)
     return function

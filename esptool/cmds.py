@@ -2035,8 +2035,12 @@ def attach_flash(
         if spi_connection == "SPI":
             value = 0
         elif spi_connection == "HSPI":
+            if esp.CHIP_NAME != "ESP32":
+                raise NotSupportedError(esp, "Using --spi-connection HSPI")
             value = 1
         else:
+            if not esp.CUSTOM_SPI_FLASH_PINS_SUPPORTED:
+                raise NotSupportedError(esp, "Setting custom --spi-connection pins")
             esp.check_spi_connection(spi_connection)
             # Encode the pin numbers as a 32-bit integer with packed 6-bit values,
             # the same way the ESP ROM takes them

@@ -53,54 +53,62 @@ By default, ``espefuse`` will ask you to type ``BURN`` before it permanently set
     Checking efuses...
     Successful
 
-.. _espefuse-spi-flash-pins:
+.. only:: CUSTOM_SPI_FLASH_PINS_SUPPORTED
 
-SPI Flash Pins
---------------
+    .. _espefuse-spi-flash-pins:
 
-The following efuses configure the SPI flash pins which are used to boot:
+    SPI Flash Pins
+    --------------
 
-.. only:: esp32
+    The following efuses configure the SPI flash pins which are used to boot:
 
-    .. code-block:: none
+    .. only:: esp32
 
-        SPI_PAD_CONFIG_CLK     Override SD_CLK pad (GPIO6/SPICLK)                = 0 R/W (0x0)
-        SPI_PAD_CONFIG_Q       Override SD_DATA_0 pad (GPIO7/SPIQ)               = 0 R/W (0x0)
-        SPI_PAD_CONFIG_D       Override SD_DATA_1 pad (GPIO8/SPID)               = 0 R/W (0x0)
-        SPI_PAD_CONFIG_HD      Override SD_DATA_2 pad (GPIO9/SPIHD)              = 0 R/W (0x0)
-        SPI_PAD_CONFIG_CS0     Override SD_CMD pad (GPIO11/SPICS0)               = 0 R/W (0x0)
+        .. code-block:: none
 
-.. only:: not esp32
+            SPI_PAD_CONFIG_CLK     Override SD_CLK pad (GPIO6/SPICLK)                = 0 R/W (0x0)
+            SPI_PAD_CONFIG_Q       Override SD_DATA_0 pad (GPIO7/SPIQ)               = 0 R/W (0x0)
+            SPI_PAD_CONFIG_D       Override SD_DATA_1 pad (GPIO8/SPID)               = 0 R/W (0x0)
+            SPI_PAD_CONFIG_HD      Override SD_DATA_2 pad (GPIO9/SPIHD)              = 0 R/W (0x0)
+            SPI_PAD_CONFIG_CS0     Override SD_CMD pad (GPIO11/SPICS0)               = 0 R/W (0x0)
 
-    .. code-block:: none
+    .. only:: not esp32
 
-        Spi_Pad_Config fuses:
-        SPI_PAD_CONFIG_CLK (BLOCK1)              SPI CLK pad                                        = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_Q (BLOCK1)                SPI Q (D1) pad                                     = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_D (BLOCK1)                SPI D (D0) pad                                     = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_CS (BLOCK1)               SPI CS pad                                         = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_HD (BLOCK1)               SPI HD (D3) pad                                    = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_WP (BLOCK1)               SPI WP (D2) pad                                    = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_DQS (BLOCK1)              SPI DQS pad                                        = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_D4 (BLOCK1)               SPI D4 pad                                         = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_D5 (BLOCK1)               SPI D5 pad                                         = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_D6 (BLOCK1)               SPI D6 pad                                         = 0 R/W (0b000000)
-        SPI_PAD_CONFIG_D7 (BLOCK1)               SPI D7 pad                                         = 0 R/W (0b000000)
+        .. code-block:: none
 
-On {IDF_TARGET_NAME} chips without integrated SPI flash, these eFuses are left zero at the factory. This causes the default GPIO pins (shown in the summary output above) to be used for the SPI flash.
+            Spi_Pad_Config fuses:
+            SPI_PAD_CONFIG_CLK (BLOCK1)              SPI CLK pad                                        = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_Q (BLOCK1)                SPI Q (D1) pad                                     = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_D (BLOCK1)                SPI D (D0) pad                                     = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_CS (BLOCK1)               SPI CS pad                                         = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_HD (BLOCK1)               SPI HD (D3) pad                                    = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_WP (BLOCK1)               SPI WP (D2) pad                                    = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_DQS (BLOCK1)              SPI DQS pad                                        = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_D4 (BLOCK1)               SPI D4 pad                                         = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_D5 (BLOCK1)               SPI D5 pad                                         = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_D6 (BLOCK1)               SPI D6 pad                                         = 0 R/W (0b000000)
+            SPI_PAD_CONFIG_D7 (BLOCK1)               SPI D7 pad                                         = 0 R/W (0b000000)
 
-On {IDF_TARGET_NAME} chips with integrated internal SPI flash, these eFuses are burned in the factory to the GPIO numbers where the flash is connected. These values override the defaults on boot.
+    On {IDF_TARGET_NAME} chips without integrated SPI flash, these eFuses are left zero at the factory. This causes the default GPIO pins (shown in the summary output above) to be used for the SPI flash.
 
-In order to change the SPI flash pin configuration, these eFuses can be burned to the GPIO numbers where the flash is connected. If at least one of these eFuses is burned, all of them must be set to the correct values.
+    On {IDF_TARGET_NAME} chips with integrated internal SPI flash, these eFuses are burned in the factory to the GPIO numbers where the flash is connected. These values override the defaults on boot.
 
-If these eFuses are burned, GPIO1 (U0TXD pin) is no longer consulted to set the boot mode from SPI to HSPI flash on reset.
+    In order to change the SPI flash pin configuration, these eFuses can be burned to the GPIO numbers where the flash is connected. If at least one of these eFuses is burned, all of them must be set to the correct values.
 
-These pins can be set to any GPIO number in the range 0-29, 32 or 33. Values 30 and 31 cannot be set. The "raw" hex value for pins 32, 33 is 30, 31 (this is visible in the summary output if these pins are configured for any SPI I/Os.)
+    .. only:: esp32
 
-For example:
+        If these eFuses are burned, GPIO1 (U0TXD pin) is no longer consulted to set the boot mode from SPI to HSPI flash on reset.
 
-.. code-block:: none
+        These pins can be set to any GPIO number in the range 0-29, 32 or 33. Values 30 and 31 cannot be set. The "raw" hex value for pins 32 and 33 is 30 and 31, respectively (this is visible in the summary output if these pins are configured for any SPI I/Os).
 
-    SPI_PAD_CONFIG_CS0     Override SD_CMD pad (GPIO11/SPICS0)               = 32 R/W (0x1e)
+        For example:
 
-If using the ``burn-efuse`` command to configure these pins, always specify the actual GPIO number you wish to set.
+        .. code-block:: none
+
+            SPI_PAD_CONFIG_CS0     Override SD_CMD pad (GPIO11/SPICS0)               = 32 R/W (0x1e)
+
+    .. only:: not esp32
+
+        GPIO numbers are stored directly in these eFuses. Valid GPIOs are target- and package-specific; consult the target datasheet.
+
+    When using the ``burn-efuse`` command to configure these pins, always specify the actual GPIO number you wish to set.
