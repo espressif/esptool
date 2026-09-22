@@ -18,11 +18,43 @@ class ESP32H21ROM(ESP32H2ROM):
     CUSTOM_SPI_FLASH_PINS_SUPPORTED = False
     USES_MAGIC_VALUE = False
 
+    IROM_MAP_START = 0x42000000
+    IROM_MAP_END = 0x43000000
+    DROM_MAP_START = 0x42000000
+    DROM_MAP_END = 0x43000000
+
+    UART_DATE_REG_ADDR = 0x60000000 + 0x8C
+
+    FLASH_FREQUENCY = {
+        "48m": 0xF,
+        "24m": 0x0,
+    }
+
+    PCR_SYSCLK_CONF_REG = 0x6009610C
+    PCR_SYSCLK_XTAL_FREQ_V = 0x7F << 24
+    PCR_SYSCLK_XTAL_FREQ_S = 24
+
+    MEMORY_MAP = [
+        [0x00000000, 0x00010000, "PADDING"],
+        [0x42000000, 0x43000000, "DROM"],
+        [0x40800000, 0x40850000, "DRAM"],
+        [0x40800000, 0x40850000, "BYTE_ACCESSIBLE"],
+        [0x40000000, 0x40020000, "DROM_MASK"],
+        [0x40000000, 0x40020000, "IROM_MASK"],
+        [0x42000000, 0x43000000, "IROM"],
+        [0x40800000, 0x40850000, "IRAM"],
+        [0x50000000, 0x50001000, "RTC_IRAM"],
+        [0x50000000, 0x50001000, "RTC_DRAM"],
+        [0x40800000, 0x40850000, "MEM_INTERNAL"],
+    ]
+
     UF2_FAMILY_ID = 0xB6DD00AF
 
     DR_REG_LP_WDT_BASE = 0x600B1C00
     RTC_CNTL_WDTCONFIG0_REG = DR_REG_LP_WDT_BASE + 0x0  # LP_WDT_RWDT_CONFIG0_REG
+    RTC_CNTL_WDTCONFIG1_REG = DR_REG_LP_WDT_BASE + 0x0004  # LP_WDT_RWDT_CONFIG1_REG
     RTC_CNTL_WDTWPROTECT_REG = DR_REG_LP_WDT_BASE + 0x001C  # LP_WDT_RWDT_WPROTECT_REG
+    RTC_CNTL_WDT_WKEY = 0x50D83AA1
 
     RTC_CNTL_SWD_CONF_REG = DR_REG_LP_WDT_BASE + 0x0020  # LP_WDT_SWD_CONFIG_REG
     RTC_CNTL_SWD_AUTO_FEED_EN = 1 << 18
@@ -83,16 +115,43 @@ class ESP32H21ROM(ESP32H2ROM):
         num_word = 5
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 8) & 0x03
 
+    def get_flash_cap(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x07
+
+    def get_flash_vendor(self):
+        num_word = 3
+        vendor_id = (
+            self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 27
+        ) & 0x07
+        return {1: "FM", 2: "XMC"}.get(vendor_id, "")
+
+    def get_temp(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 30) & 0x03
+
     def get_chip_description(self):
-        chip_name = {
-            0: "ESP32-H21",
-        }.get(self.get_pkg_version(), "Unknown ESP32-H21")
+        chip_name = "ESP32-H21"
+        chip_name += {0: "N", 1: "H"}.get(self.get_temp(), "?")
+        chip_name += {0: "", 1: "F4", 2: "F2"}.get(self.get_flash_cap(), "F?")
+
+        if "?" in chip_name:
+            chip_name = "Unknown " + chip_name
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["BT 5 (LE)", "IEEE802.15.4", "Single Core", "96MHz"]
+        features = ["BT 5 (LE)", "IEEE802.15.4", "Single Core", "96MHz"]
+
+        flash = {
+            0: None,
+            1: "Embedded Flash 4MB",
+            2: "Embedded Flash 2MB",
+        }.get(self.get_flash_cap(), "Unknown Embedded Flash")
+        if flash is not None:
+            features += [flash + f" ({self.get_flash_vendor()})"]
+        return features
 
     def get_crystal_freq(self):
         # ESP32H21 XTAL is fixed to 32MHz
