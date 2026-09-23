@@ -85,8 +85,9 @@ that `--chip` takes, for example `esp32c61`. The tests open
      the addresses written in the image, so it does not report these overlaps.
    - The two segments do not overlap each other.
 
-   The ESP32-C61 entry meets all of these conditions. Several older entries do
-   not, so do not copy another chip's addresses without checking them.
+   The ESP32-C2, ESP32-C3, ESP32-C61 and ESP32-S3 entries meet all of these
+   conditions. Several older entries do not, so do not copy another chip's
+   addresses without checking them.
 
 Then check the image and enable its tests:
 
