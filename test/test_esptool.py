@@ -502,27 +502,41 @@ class TestFlashEncryption(EsptoolTestCase):
         if self.valid_key_present() is True:
             pytest.skip("Valid encryption key already programmed, aborting the test")
 
-        output = self.run_esptool(
-            f"write-flash --encrypt --ignore-flash-enc-efuse --{compression} "
-            "0x10000 images/ram_helloworld/helloworld-esp32_edit.bin"
-        )
+        # A copy of the image with the same length and one byte of its appended
+        # SHA-256 changed, so that the readback cannot match the original
+        image_path = IMAGES_FIXTURES_DIR / "ram_helloworld" / "helloworld-esp32.bin"
+        image = bytearray(image_path.read_bytes())
+        image[-1] ^= 0xFF
+        edited_bin = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+        try:
+            edited_bin.write(image)
+            edited_bin.close()
 
-        if compression == "compress":
-            # Verify that compression was actually used
-            assert "compressed" in output, (
-                "Compression was not used - output should contain 'compressed'"
-            )
-            # Check for the pattern "Wrote X bytes (Y compressed)"
-            # which indicates compression was used
-            match = re.search(r"Wrote (\d+) bytes \((\d+) compressed\)", output)
-            assert match is not None, (
-                "Compression output format not found. "
-                "Expected pattern: 'Wrote X bytes (Y compressed)'"
+            output = self.run_esptool(
+                f"write-flash --encrypt --ignore-flash-enc-efuse --{compression} "
+                f"0x10000 {edited_bin.name}"
             )
 
-        self._read_and_compare_encrypted_file(
-            0x10000, "images/ram_helloworld/helloworld-esp32.bin", should_match=False
-        )
+            if compression == "compress":
+                # Verify that compression was actually used
+                assert "compressed" in output, (
+                    "Compression was not used - output should contain 'compressed'"
+                )
+                # Check for the pattern "Wrote X bytes (Y compressed)"
+                # which indicates compression was used
+                match = re.search(r"Wrote (\d+) bytes \((\d+) compressed\)", output)
+                assert match is not None, (
+                    "Compression output format not found. "
+                    "Expected pattern: 'Wrote X bytes (Y compressed)'"
+                )
+
+            self._read_and_compare_encrypted_file(
+                0x10000,
+                "images/ram_helloworld/helloworld-esp32.bin",
+                should_match=False,
+            )
+        finally:
+            os.unlink(edited_bin.name)
 
 
 class TestFlashing(EsptoolTestCase):
@@ -1768,9 +1782,7 @@ class TestLoadRAM(EsptoolTestCase):
         "Hello world!\n" to the serial port.
         """
         self.run_esptool(f"load-ram images/ram_helloworld/helloworld-{arg_chip}.bin")
-        self.verify_output(
-            [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
-        )
+        self.verify_output([b"Hello world!"])
 
     def test_load_ram_hex(self):
         """Verify load-ram command with hex file as input
@@ -1787,9 +1799,7 @@ class TestLoadRAM(EsptoolTestCase):
             # make sure file is closed before running next command (mainly for Windows)
             os.close(fd)
             self.run_esptool(f"load-ram {f}")
-            self.verify_output(
-                [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
-            )
+            self.verify_output([b"Hello world!"])
         finally:
             os.unlink(f)
 

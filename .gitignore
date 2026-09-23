@@ -23,4 +23,7 @@ test/images/onebyte.bin
 test/images/one_kb_all_ef.bin
 test/images/aes_key.bin
 
+# Assembled by test/ram_helloworld_builder.py before pytest (not committed)
+test/images/ram_helloworld/*.bin
+
 docs/_build/
