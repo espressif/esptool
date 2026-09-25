@@ -66,7 +66,10 @@ class EspEfuses(base_fields.EspEfusesBase):
         self.Blocks = EfuseDefineBlocks()
         chip_revision = 300 if skip_connect else esp.get_chip_revision()
         revision_file = "esp32p4_v3.0" if chip_revision >= 300 else None
-        log.print(f"Loading eFuses for {esp.CHIP_NAME} v{chip_revision / 100:.1f}...")
+        log.print(
+            f"Loading eFuses for {esp.CHIP_NAME} "
+            f"v{chip_revision // 100}.{chip_revision % 100}..."
+        )
         self.Fields = EfuseDefineFields(extend_efuse_table, revision=revision_file)
         self.REGS = EfuseDefineRegisters
         self.BURN_BLOCK_DATA_NAMES = self.Blocks.get_burn_block_data_names()
@@ -245,6 +248,35 @@ class EspEfuses(base_fields.EspEfusesBase):
         if (self.debug or ret_fail) and not silent:
             self.print_status_regs()
         return ret_fail
+
+    def is_efuses_incompatible_for_burn(self):
+        # Since v3.1 the flash is off in download mode and Secure Download Mode
+        # prevents esptool from powering it on. Only v3.2+ ROM supports XPD_ON.
+        rev = self._esp.get_chip_revision()
+        if rev < 301:
+            return False
+
+        def is_set(name):
+            return self[name].get() or self[name].get(from_read=False)
+
+        chip = f"ESP32-P4 v{rev // 100}.{rev % 100}"
+        if rev == 301 and self["DOWNLOAD_MODE_XPD_ON"].get(from_read=False):
+            log.warning(f"DOWNLOAD_MODE_XPD_ON has no effect on {chip}.")
+
+        if self["ENABLE_SECURITY_DOWNLOAD"].get(from_read=False) and not is_set(
+            "DIS_DOWNLOAD_MODE"
+        ):
+            if rev == 301:
+                log.warning(
+                    f"Flash will not be writable in Secure Download Mode on {chip} "
+                    "unless it is powered externally."
+                )
+            elif not is_set("DOWNLOAD_MODE_XPD_ON"):
+                log.warning(
+                    f"Flash will not be writable in Secure Download Mode on {chip} "
+                    "unless DOWNLOAD_MODE_XPD_ON is burned or it is powered externally."
+                )
+        return False
 
     def summary(self):
         # TODO add support set_flash_voltage - "Flash voltage (VDD_SPI)"
