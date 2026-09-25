@@ -279,9 +279,11 @@ def main(argv=None, esp=None):
                 choices=extra_keep_args
                 + [
                     "80m",
+                    "64m",
                     "60m",
                     "48m",
                     "40m",
+                    "32m",
                     "30m",
                     "26m",
                     "24m",
