@@ -26,6 +26,7 @@ Serial Port: ``--port``, ``-p``
 *  The serial port is selected using the ``-p`` option, like ``-p /dev/ttyUSB0`` (Linux and macOS) or ``-p COM1`` (Windows).
 *  A default serial port can be specified by setting the ``ESPTOOL_PORT`` environment variable.
 *  If no ``-p`` option or ``ESPTOOL_PORT`` value is specified, ``esptool`` will enumerate all connected serial ports and try each one until it finds an Espressif device connected.
+*  Alternatively, pass ``--pick`` to choose the port from a list of connected serial ports. It only prompts when ``esptool`` runs in a terminal, and it respects :ref:`--port-filter <filtering_serial_ports>`.
 
 .. note::
 

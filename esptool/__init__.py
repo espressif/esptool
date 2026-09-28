@@ -50,9 +50,10 @@ import rich_click as click
 import serial
 from esp_pylib.cli_options import MutuallyExclusiveOption, OptionEatAll
 from esp_pylib.cli_types import AnyIntType, AutoSizeType, BaudRateType, SerialPortType
+from esp_pylib.errors import NoSerialPortFoundError
 from esp_pylib.excepthook import install_exception_reporting
 from esp_pylib.logger import EspLog
-from esp_pylib.serial_ports import get_port_names, parse_port_filters
+from esp_pylib.serial_ports import get_port_names, parse_port_filters, pick_port
 from rich.markup import escape
 
 from esptool.cli_util import (
@@ -423,6 +424,13 @@ def check_flash_size(esp: ESPLoader, address: int, size: int) -> None:
     "serial=SUBSTRING.",
 )
 @click.option(
+    "--pick",
+    is_flag=True,
+    default=False,
+    help="If --port is not set, choose the port from a list of connected ports "
+    "instead of trying each of them. Ignored when not running in a terminal.",
+)
+@click.option(
     "--before",
     type=ResetModeType(["default-reset", "usb-reset", "no-reset", "no-reset-no-sync"]),
     default=os.environ.get("ESPTOOL_BEFORE", "default-reset"),
@@ -551,6 +559,15 @@ def prepare_esp_object(ctx):
     esp = ctx.obj.get("esp", None)
     ctx.obj["external_esp"] = esp is not None
     if not ctx.obj["external_esp"]:
+        if ctx.obj["port"] is None and ctx.obj["pick"]:
+            try:
+                ctx.obj["port"] = pick_port(
+                    **parse_port_filters(tuple(ctx.obj["port_filter"] or []))
+                )
+            except ValueError as exc:
+                raise FatalError(str(exc)) from exc
+            except NoSerialPortFoundError:
+                pass  # connect_esp reports the missing ports as usual
         log.stage()
         esp = connect_esp(
             port=ctx.obj["port"],

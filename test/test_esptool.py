@@ -2551,6 +2551,21 @@ class TestPortFilter(EsptoolTestCase):
         output = self.run_esptool_error("--port-filter name123 flash-id", port=None)
         assert "Expected key=value" in output
 
+    def test_pick_no_matching_ports(self):
+        """Test CLI with --pick when no port matches the filters"""
+        output = self.run_esptool_error(
+            "--pick --port-filter name=NonExistentChip flash-id", port=None
+        )
+        assert "Traceback" not in output
+        assert "Found 0 serial ports..." in output
+
+    def test_pick_invalid_filter(self):
+        """Test CLI with --pick and an invalid --port-filter"""
+        output = self.run_esptool_error(
+            "--pick --port-filter invalidkey=123 flash-id", port=None
+        )
+        assert "Unknown port filter key" in output
+
 
 @pytest.mark.host_test
 class TestSlipReaderRead:
