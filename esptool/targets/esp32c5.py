@@ -150,12 +150,11 @@ class ESP32C5ROM(ESP32C6ROM):
         ESPLoader.hard_reset(self, self.uses_usb_jtag_serial())
 
     def change_baud(self, baud):
-        if self.secure_download_mode:  # ESPTOOL-1231
-            log.warn(
-                "Baud rate change is not supported in secure download mode. "
-                "Keeping 115200 baud."
-            )
-        elif not self.IS_STUB:
+        if self.secure_download_mode or self.IS_STUB:
+            # Registers can't be read in SDM, assume 48 MHz XTAL
+            # (the only one supported in mass production)
+            ESPLoader.change_baud(self, baud)
+        else:
             crystal_freq_rom_expect = self.get_crystal_freq_rom_expect()
             crystal_freq_detect = self.get_crystal_freq()
             log.print(
@@ -181,8 +180,6 @@ class ESP32C5ROM(ESP32C6ROM):
             self._set_port_baudrate(baud)
             time.sleep(0.05)  # get rid of garbage sent during baud rate change
             self.flush_input()
-        else:
-            ESPLoader.change_baud(self, baud)
 
     def get_key_block_purpose(self, key_block):
         if key_block < 0 or key_block > self.EFUSE_MAX_KEY:
