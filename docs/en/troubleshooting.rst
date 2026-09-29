@@ -322,7 +322,7 @@ When Secure Download Mode is enabled, the available serial protocol commands are
 
    - Writing a binary with purely ``0xFF`` bytes can be used as a workaround to essentially erase flash if necessary, but this is slow and achieves the same result as ``erase-region``.
 
-- The baud rate cannot be :ref:`changed <baud-rate>` with the ``--baud`` option on ESP32-C5 and ESP32-C2.
+- The baud rate cannot be :ref:`changed <baud-rate>` with the ``--baud`` option on ESP32-C2.
 
    - Esptool needs to read specific registers to first detect the crystal frequency, which is then used to calculate the baud rate parameter for the ``CHANGE_BAUDRATE`` (``0x0F``) command. This is not possible in Secure Download Mode, because reading any registers is disabled.
    - The baud rate can be changed manually when using the :ref:`esptool API <scripting>` by sending the ``CHANGE_BAUDRATE`` command with the desired baud rate based on trial and error (e.g., seeing if the data is scrambled or not in a serial terminal program).
