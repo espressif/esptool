@@ -70,17 +70,7 @@ The image header is 8 bytes long:
         * - 3
           - High four bits - Flash size (``0`` = 1MB, ``1`` = 2MB, ``2`` = 4MB, ``3`` = 8MB, ``4`` = 16MB{IDF_TARGET_FLASH_SIZE_ENC_EXTRA})
 
-            .. only:: not (esp32c5 or esp32c61 or esp32c6 or esp32s31)
-
-                Low four bits - Flash frequency (``0`` = {IDF_TARGET_FLASH_FREQ_0}MHz, ``1`` = {IDF_TARGET_FLASH_FREQ_1}MHz, ``2`` = {IDF_TARGET_FLASH_FREQ_2}MHz, ``0xf`` = {IDF_TARGET_FLASH_FREQ_F}MHz)
-
-            .. only:: esp32c5 or esp32c61 or esp32s31
-
-                Low four bits - Flash frequency (``0xf`` = {IDF_TARGET_FLASH_FREQ_F}MHz, ``0`` = {IDF_TARGET_FLASH_FREQ_0}MHz, ``2`` = {IDF_TARGET_FLASH_FREQ_2}MHz)
-
-            .. only:: esp32c6
-
-                Low four bits - Flash frequency (``0`` = 80MHz or 40MHz, ``2`` = 20MHz)
+            Low four bits - Flash frequency ({IDF_TARGET_FLASH_FREQ_ENCODING})
         * - 4-7
           - Entry point address
 
