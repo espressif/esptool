@@ -1267,6 +1267,8 @@ def write_flash(
             Requires diff_with. Mutually exclusive with skip_flashed.
         skip_flashed: bool: Skip flashing if the new binary is already in flash.
             Only for use when diff_with is not specified (mutually exclusive).
+        no_verify: bool: Skip the MD5 verification of written data. With diff_with,
+            this also skips the full reflash that a failed verification would trigger.
     """
     # Check if NAND flash mode is requested
     if flash_type == "nand":
@@ -1290,6 +1292,7 @@ def write_flash(
     diff_with: list[ImageSource | None] = list(kwargs.get("diff_with", []))
     no_diff_verify: bool = kwargs.get("no_diff_verify", False)
     skip_flashed: bool = kwargs.get("skip_flashed", False)
+    no_verify: bool = kwargs.get("no_verify", False)
 
     # set compress based on default behaviour:
     # -> if either "compress" or "no_compress" is set, honour that
@@ -1900,6 +1903,8 @@ def write_flash(
                         f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
                     )
 
+            if no_verify:
+                break
             log.stage()
             log.print("Verifying written data...")
             if not encrypted and not esp.secure_download_mode:
