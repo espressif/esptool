@@ -11,6 +11,7 @@ import struct
 import sys
 import time
 import zlib
+from contextlib import nullcontext
 from typing import cast
 
 import serial
@@ -1717,188 +1718,241 @@ def write_flash(
             # Save so we restore on full-image retry; a small chunk may have set
             # compress = False but the full image might still compress well.
             compress_for_retry = compress
-            for cur_cycle, (image, address, name, reflashing) in enumerate(cycles):
-                uncsize = image_size = len(image)
-                if reflashing:
-                    no_of_sectors = image_size // esp.FLASH_SECTOR_SIZE
-                    log.print(
-                        f"Reflashing {no_of_sectors} changed sector"
-                        f"{'s' if no_of_sectors > 1 else ''} at {address:#010x}..."
-                    )
-                    orig_address = address
+            # Several regions of one file (fast reflashing) share one progress bar and
+            # one summary instead of each drawing and reporting its own.
+            shared = len(cycles) > 1
+            shared_written = 0
+            shared_t = time.time()
+            with (
+                log.progress(
+                    total=sum(len(cycle[0]) for cycle in cycles),
+                    disable=no_progress,
+                    unit="B",
+                )
+                if shared
+                else nullcontext()
+            ) as shared_progress:
+                for cur_cycle, (image, address, name, reflashing) in enumerate(cycles):
+                    uncsize = image_size = len(image)
+                    if reflashing and not shared:
+                        no_of_sectors = image_size // esp.FLASH_SECTOR_SIZE
+                        log.print(
+                            f"Reflashing {no_of_sectors} changed sector"
+                            f"{'s' if no_of_sectors > 1 else ''} at {address:#010x}..."
+                        )
+                        orig_address = address
 
-                if not erase_all:
-                    write_end = address + image_size
-                    bytes_over = orig_address % esp.FLASH_SECTOR_SIZE
-                    if bytes_over != 0:
-                        log.note(
-                            f"Flash address {orig_address:#010x} is not aligned "
-                            f"to a {esp.FLASH_SECTOR_SIZE:#x} byte flash sector. "
-                            f"{bytes_over:#x} bytes before this address will be erased."
-                        )
-                    # Print the address range of to-be-erased flash memory region
-                    log.print(
-                        "Flash will be erased from {:#010x} to {:#010x}...".format(
-                            orig_address - bytes_over,
-                            div_roundup(write_end, esp.FLASH_SECTOR_SIZE)
-                            * esp.FLASH_SECTOR_SIZE
-                            - 1,
-                        )
-                    )
-                if compress:
-                    compressed_image = zlib.compress(image, 9)
-                    compsize = len(compressed_image)
-                    # Only use compression if it actually reduces the data size
-                    if compsize < uncsize:
-                        image = compressed_image
-                        image_size = compsize
-                    else:
-                        # Compression didn't help, disable it for this file
-                        source = (
-                            "changed data"
-                            if reflashing
-                            else "input image"
-                            if name is None
-                            else f"file '{escape(str(name))}'"
-                        )
-                        log.note(
-                            f"Cannot compress {source} more than the original size, "
-                            f"will flash uncompressed. Compressed size {compsize} bytes"
-                            f" >= uncompressed {uncsize} bytes."
-                        )
-                        compress = False
-
-                original_image = image  # Save the whole image in case retry is needed
-                # Try again if reconnect was successful
-                log.stage()
-                for attempt in range(1, esp.WRITE_FLASH_ATTEMPTS + 1):
-                    try:
-                        if not esp.IS_STUB:
-                            log.print("Erasing flash...")
-                        if compress:
-                            # Decompress the compressed binary a block at a time, to
-                            # dynamically calculate the timeout based on the write size
-                            decompress = zlib.decompressobj()
-                            esp.flash_defl_begin(
-                                uncsize, image_size, address, encrypted_write=encrypted
+                    if not erase_all and not shared:
+                        write_end = address + image_size
+                        bytes_over = orig_address % esp.FLASH_SECTOR_SIZE
+                        if bytes_over != 0:
+                            log.note(
+                                f"Flash address {orig_address:#010x} is not aligned "
+                                f"to a {esp.FLASH_SECTOR_SIZE:#x} byte flash sector. "
+                                f"{bytes_over:#x} bytes before this address will be "
+                                "erased."
                             )
+                        # Print the address range of to-be-erased flash memory region
+                        log.print(
+                            "Flash will be erased from {:#010x} to {:#010x}...".format(
+                                orig_address - bytes_over,
+                                div_roundup(write_end, esp.FLASH_SECTOR_SIZE)
+                                * esp.FLASH_SECTOR_SIZE
+                                - 1,
+                            )
+                        )
+                    if compress:
+                        compressed_image = zlib.compress(image, 9)
+                        compsize = len(compressed_image)
+                        # Only use compression if it actually reduces the data size
+                        if compsize < uncsize:
+                            image = compressed_image
+                            image_size = compsize
                         else:
-                            esp.flash_begin(uncsize, address, encrypted_write=encrypted)
-                        seq = 0
-                        bytes_sent = 0  # bytes sent on wire
-                        bytes_written = 0  # bytes written to flash
-                        t = time.time()
+                            # Compression didn't help, disable it for this file
+                            source = (
+                                "changed data"
+                                if reflashing
+                                else "input image"
+                                if name is None
+                                else f"file '{escape(str(name))}'"
+                            )
+                            log.note(
+                                f"Cannot compress {source} more than the original "
+                                "size, will flash uncompressed. "
+                                f"Compressed size {compsize} bytes"
+                                f" >= uncompressed {uncsize} bytes."
+                            )
+                            compress = False
 
-                        timeout = DEFAULT_TIMEOUT
-                        with log.progress(
-                            total=image_size, disable=no_progress, unit="B"
-                        ) as progress:
-                            while len(image) > 0:
-                                block = image[0 : esp.FLASH_WRITE_SIZE]
-                                block_len = len(block)
-                                if compress:
-                                    # feeding each compressed block into the
-                                    # decompressor lets us see block-by-block how
-                                    # much will be written
-                                    block_uncompressed = len(
-                                        decompress.decompress(block)
-                                    )
-                                    if not esp.IS_STUB:
-                                        timeout = _get_flash_defl_block_timeout(
-                                            esp, block_uncompressed
-                                        )
-                                    # For compressed data, encryption is handled
-                                    # via encrypted_write flag
-                                    esp.flash_defl_block(block, seq, timeout=timeout)
-                                    if esp.IS_STUB:
-                                        # The stub ACKs this block immediately, then
-                                        # processes it while receiving the next one.
-                                        timeout = _get_flash_defl_block_timeout(
-                                            esp, block_uncompressed
-                                        )
-                                    bytes_written += block_uncompressed
-                                else:
-                                    # Pad the last block
-                                    block = block + b"\xff" * (
-                                        esp.FLASH_WRITE_SIZE - block_len
-                                    )
-                                    esp.flash_block(block, seq, encrypted=encrypted)
-                                    bytes_written += (
-                                        block_len  # Count without added padding
-                                    )
-                                bytes_sent += block_len
-                                image = image[esp.FLASH_WRITE_SIZE :]
-                                seq += 1
-                                progress.update(
-                                    advance=block_len,
-                                    description="Writing at "
-                                    f"{address + bytes_written:#010x}",
+                    original_image = (
+                        image  # Save the whole image in case retry is needed
+                    )
+                    # Try again if reconnect was successful
+                    if not shared:
+                        log.stage()
+                    for attempt in range(1, esp.WRITE_FLASH_ATTEMPTS + 1):
+                        try:
+                            if not esp.IS_STUB:
+                                log.print("Erasing flash...")
+                            if compress:
+                                # Decompress the compressed binary a block at a time, to
+                                # dynamically calculate the timeout based on the write
+                                # size
+                                decompress = zlib.decompressobj()
+                                esp.flash_defl_begin(
+                                    uncsize,
+                                    image_size,
+                                    address,
+                                    encrypted_write=encrypted,
                                 )
-                        break
-                    except SerialException:
-                        if attempt == esp.WRITE_FLASH_ATTEMPTS or encrypted:
-                            # Already retried once or encrypted mode is disabled
-                            # because of security reasons
-                            raise
-                        log.print("\nLost connection, retrying...")
-                        esp._port.close()
-                        log.print("Waiting for the chip to reconnect", end="")
-                        for _ in range(DEFAULT_CONNECT_ATTEMPTS):
-                            try:
-                                time.sleep(1)
-                                esp._port.open()
-                                # Print new line (was suppressed by print("."))
-                                log.print()
-                                esp.connect()
-                                if esp.IS_STUB:
-                                    # Hack to bypass the stub overwrite check
-                                    esp.IS_STUB = False
-                                    # Reflash stub because chip was reset
-                                    esp = esp.run_stub()
-                                image = original_image
-                                break
-                            except SerialException:
-                                log.print(".", end="")
-                        else:
-                            raise  # Reconnect limit reached
+                            else:
+                                esp.flash_begin(
+                                    uncsize, address, encrypted_write=encrypted
+                                )
+                            seq = 0
+                            bytes_sent = 0  # bytes sent on wire
+                            bytes_written = 0  # bytes written to flash
+                            t = time.time()
 
-                # Skip sending flash_finish to ROM loader here,
-                # as it causes the loader to exit and run user code
-                if esp.IS_STUB:
-                    # Get the "encrypted" flag for the last file flashed
-                    # Note: all_files list contains tuples like:
-                    # (address: int, data:
-                    # bytes, name: str | None,
-                    # encrypted: bool,
-                    # diff_data: bytes | None)
-                    last_file_encrypted = all_files[-1][3]
+                            timeout = DEFAULT_TIMEOUT
+                            with (
+                                nullcontext(shared_progress)
+                                if shared_progress is not None
+                                else log.progress(
+                                    total=image_size, disable=no_progress, unit="B"
+                                )
+                            ) as progress:
+                                while len(image) > 0:
+                                    block = image[0 : esp.FLASH_WRITE_SIZE]
+                                    block_len = len(block)
+                                    written_before = bytes_written
+                                    if compress:
+                                        # feeding each compressed block into the
+                                        # decompressor lets us see block-by-block how
+                                        # much will be written
+                                        block_uncompressed = len(
+                                            decompress.decompress(block)
+                                        )
+                                        if not esp.IS_STUB:
+                                            timeout = _get_flash_defl_block_timeout(
+                                                esp, block_uncompressed
+                                            )
+                                        # For compressed data, encryption is handled
+                                        # via encrypted_write flag
+                                        esp.flash_defl_block(
+                                            block, seq, timeout=timeout
+                                        )
+                                        if esp.IS_STUB:
+                                            # The stub ACKs this block immediately, then
+                                            # processes it while receiving the next one.
+                                            timeout = _get_flash_defl_block_timeout(
+                                                esp, block_uncompressed
+                                            )
+                                        bytes_written += block_uncompressed
+                                    else:
+                                        # Pad the last block
+                                        block = block + b"\xff" * (
+                                            esp.FLASH_WRITE_SIZE - block_len
+                                        )
+                                        esp.flash_block(block, seq, encrypted=encrypted)
+                                        bytes_written += (
+                                            block_len  # Count without added padding
+                                        )
+                                    bytes_sent += block_len
+                                    image = image[esp.FLASH_WRITE_SIZE :]
+                                    seq += 1
+                                    progress.update(
+                                        # The shared bar counts flash bytes, as its
+                                        # total is the uncompressed size.
+                                        advance=bytes_written - written_before
+                                        if shared
+                                        else block_len,
+                                        description="Writing at "
+                                        f"{address + bytes_written:#010x}",
+                                    )
+                            break
+                        except SerialException:
+                            if attempt == esp.WRITE_FLASH_ATTEMPTS or encrypted:
+                                # Already retried once or encrypted mode is disabled
+                                # because of security reasons
+                                raise
+                            log.print("\nLost connection, retrying...")
+                            esp._port.close()
+                            log.print("Waiting for the chip to reconnect", end="")
+                            for _ in range(DEFAULT_CONNECT_ATTEMPTS):
+                                try:
+                                    time.sleep(1)
+                                    esp._port.open()
+                                    # Print new line (was suppressed by print("."))
+                                    log.print()
+                                    esp.connect()
+                                    if esp.IS_STUB:
+                                        # Hack to bypass the stub overwrite check
+                                        esp.IS_STUB = False
+                                        # Reflash stub because chip was reset
+                                        esp = esp.run_stub()
+                                    image = original_image
+                                    break
+                                except SerialException:
+                                    log.print(".", end="")
+                            else:
+                                raise  # Reconnect limit reached
 
-                    # Stub only writes each block to flash after 'ack'ing the receive,
-                    # so do a final operation which will not be 'ack'ed
-                    # until the last block has actually been written out to flash
-                    if cur_cycle == len(cycles) - 1:  # Only end once, after last cycle
-                        if compress and not last_file_encrypted:
-                            esp.flash_defl_finish(reboot=False, timeout=timeout)
-                        else:
-                            esp.flash_finish(reboot=False, timeout=timeout)
+                    # Skip sending flash_finish to ROM loader here,
+                    # as it causes the loader to exit and run user code
+                    if esp.IS_STUB:
+                        # Get the "encrypted" flag for the last file flashed
+                        # Note: all_files list contains tuples like:
+                        # (address: int, data:
+                        # bytes, name: str | None,
+                        # encrypted: bool,
+                        # diff_data: bytes | None)
+                        last_file_encrypted = all_files[-1][3]
 
-                t = time.time() - t
-                speed_msg = ""
-                log.stage(finish=True)
-                if compress:
-                    if t > 0.0:
-                        speed_msg = f" ({uncsize / t * 8 / 1000:.1f} kbit/s)"
-                    log.print(
-                        f"Wrote {uncsize} bytes ({bytes_sent} compressed) "
-                        f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
-                    )
-                else:
-                    if t > 0.0:
-                        speed_msg = f" ({bytes_written / t * 8 / 1000:.1f} kbit/s)"
-                    log.print(
-                        f"Wrote {bytes_written} bytes "
-                        f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
-                    )
+                        # Stub only writes each block to flash after 'ack'ing the
+                        # receive, so do a final operation which will not be 'ack'ed
+                        # until the last block has actually been written out to flash
+                        if (
+                            cur_cycle == len(cycles) - 1
+                        ):  # Only end once, after last cycle
+                            if compress and not last_file_encrypted:
+                                esp.flash_defl_finish(reboot=False, timeout=timeout)
+                            else:
+                                esp.flash_finish(reboot=False, timeout=timeout)
+
+                    t = time.time() - t
+                    speed_msg = ""
+                    if shared:
+                        shared_written += bytes_written
+                        continue
+                    log.stage(finish=True)
+                    if compress:
+                        if t > 0.0:
+                            speed_msg = f" ({uncsize / t * 8 / 1000:.1f} kbit/s)"
+                        log.print(
+                            f"Wrote {uncsize} bytes ({bytes_sent} compressed) "
+                            f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
+                        )
+                    else:
+                        if t > 0.0:
+                            speed_msg = f" ({bytes_written / t * 8 / 1000:.1f} kbit/s)"
+                        log.print(
+                            f"Wrote {bytes_written} bytes "
+                            f"at {orig_address:#010x} in {t:.1f} seconds{speed_msg}."
+                        )
+
+            if shared:
+                shared_t = time.time() - shared_t
+                speed_msg = (
+                    f" ({shared_written / shared_t * 8 / 1000:.1f} kbit/s)"
+                    if shared_t > 0.0
+                    else ""
+                )
+                log.print(
+                    f"Wrote {shared_written} bytes in {len(cycles)} regions "
+                    f"in {shared_t:.1f} seconds{speed_msg}."
+                )
 
             log.stage()
             log.print("Verifying written data...")
