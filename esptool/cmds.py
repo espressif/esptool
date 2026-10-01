@@ -827,6 +827,26 @@ def _update_image_flash_params(esp, address, flash_freq, flash_mode, flash_size,
     return image
 
 
+# Size of each MD5 comparison: small enough to stop early on a mismatch, large enough
+# that the per-command overhead stays around 1% of a full comparison.
+FLASH_COMPARE_CHUNK = 0x10000
+
+
+def _flash_matches(esp: ESPLoader, address: int, data: bytes) -> bool:
+    """
+    Check whether flash at address already holds data, comparing on-device MD5s
+    chunk by chunk and stopping at the first mismatch.
+    """
+    offset = 0
+    while offset < len(data):
+        chunk = data[offset : offset + FLASH_COMPARE_CHUNK]
+        flash_md5 = esp.flash_md5sum(address + offset, len(chunk))
+        if flash_md5 != hashlib.md5(chunk).hexdigest():
+            return False
+        offset += len(chunk)
+    return True
+
+
 def _diff_flash_regions(
     old_image: bytes,
     new_image: bytes,
@@ -1658,9 +1678,9 @@ def write_flash(
         if skip_flashed:
             log.stage()
             log.print("Comparing flash contents against new data...")
-            flash_md5 = esp.flash_md5sum(address, image_size)
+            already_flashed = _flash_matches(esp, address, image)
             log.stage(finish=True)
-            if flash_md5 == image_md5:
+            if already_flashed:
                 source = "Input bytes" if name is None else f"'{escape(str(name))}'"
                 log.print(
                     f"{source} at {orig_address:#010x} already in flash, "
@@ -1691,9 +1711,9 @@ def write_flash(
                 log.print("No changed sectors found, verifying if data is in flash...")
                 if not encrypted and not esp.secure_download_mode:
                     try:
-                        flash_md5 = esp.flash_md5sum(address, image_size)
+                        already_flashed = _flash_matches(esp, address, image)
                         log.stage(finish=True)
-                        if flash_md5 == image_md5:
+                        if already_flashed:
                             source = (
                                 "Input bytes"
                                 if name is None
