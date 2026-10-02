@@ -1220,6 +1220,83 @@ def _get_flash_defl_block_timeout(esp: ESPLoader, uncompressed_size: int) -> flo
     )
 
 
+def _validate_image_compatibility(
+    esp: ESPLoader,
+    norm_addr_data: list[tuple[int, tuple[bytes, str | None]]],
+) -> None:
+    """Check image chip and revision compatibility with the connected target."""
+
+    for address, (data, name) in norm_addr_data:
+        try:
+            image = LoadFirmwareImage(esp.CHIP_NAME, data)
+        except (FatalError, struct.error, RuntimeError):
+            continue
+
+        if image.chip_id != esp.IMAGE_CHIP_ID:
+            msg = "Input does not contain" if name is None else f"'{name}' is not"
+            error_str = f"{msg} an {esp.CHIP_NAME} image"
+            if address == esp.BOOTLOADER_FLASH_OFFSET:
+                raise FatalError(f"{error_str}. Use --force to flash anyway.")
+            log.note(escape(error_str))
+            continue
+
+        # this logic below decides which min_rev to use, min_rev or min/max_rev_full
+        if image.max_rev_full == 0:  # image does not have max/min_rev_full fields
+            use_rev_full_fields = False
+        elif image.max_rev_full == 65535:  # image has default value of max_rev_full
+            use_rev_full_fields = True
+            if (
+                image.min_rev_full == 0 and image.min_rev != 0
+            ):  # min_rev_full is not set, min_rev is used
+                use_rev_full_fields = False
+        else:  # max_rev_full set to a version
+            use_rev_full_fields = True
+
+        if use_rev_full_fields:
+            rev = esp.get_chip_revision()
+            if rev < image.min_rev_full or rev > image.max_rev_full:
+                if image.max_rev_full == 65535:
+                    requirement = (
+                        f"v{image.min_rev_full // 100}."
+                        f"{image.min_rev_full % 100} or higher"
+                    )
+                elif image.min_rev_full == 0:
+                    requirement = (
+                        f"v{image.max_rev_full // 100}."
+                        f"{image.max_rev_full % 100} or lower"
+                    )
+                else:
+                    requirement = (
+                        f"in range v{image.min_rev_full // 100}."
+                        f"{image.min_rev_full % 100} - "
+                        f"v{image.max_rev_full // 100}."
+                        f"{image.max_rev_full % 100}"
+                    )
+                error_str = (
+                    f"'{name}' requires chip revision {requirement} "
+                    f"(this chip is revision v{rev // 100}.{rev % 100})"
+                )
+                if address == esp.BOOTLOADER_FLASH_OFFSET:
+                    raise FatalError(f"{error_str}. Use --force to flash anyway.")
+                log.note(escape(error_str))
+        else:
+            # In IDF, image.min_rev is set based on Kconfig option.
+            # For C3 chip, image.min_rev is the Minor revision
+            # while for the rest chips it is the Major revision.
+            if esp.CHIP_NAME == "ESP32-C3":
+                rev = esp.get_minor_chip_version()
+            else:
+                rev = esp.get_major_chip_version()
+            if rev < image.min_rev:
+                error_str = (
+                    f"'{name}' requires chip revision "
+                    f"{image.min_rev} or higher (this chip is revision {rev})"
+                )
+                if address == esp.BOOTLOADER_FLASH_OFFSET:
+                    raise FatalError(f"{error_str}. Use --force to flash anyway.")
+                log.note(escape(error_str))
+
+
 def write_flash(
     esp: ESPLoader,
     addr_data: list[tuple[int, ImageSource]],
@@ -1358,64 +1435,7 @@ def write_flash(
                         "Use the force argument to override, "
                         "please use with caution, otherwise it may brick your device!"
                     )
-        # Check if chip_id and min_rev in image are valid for the target in use
-        for _, (data, name) in norm_addr_data:
-            try:
-                image = LoadFirmwareImage(esp.CHIP_NAME, data)
-            except (FatalError, struct.error, RuntimeError):
-                continue
-            if image.chip_id != esp.IMAGE_CHIP_ID:
-                msg = (
-                    "Input does not contain" if name is None else f"'{name}' is not an"
-                )
-                raise FatalError(
-                    f"{msg} an {esp.CHIP_NAME} image. "
-                    "Use the force argument to flash anyway."
-                )
-
-            # this logic below decides which min_rev to use, min_rev or min/max_rev_full
-            if image.max_rev_full == 0:  # image does not have max/min_rev_full fields
-                use_rev_full_fields = False
-            elif image.max_rev_full == 65535:  # image has default value of max_rev_full
-                use_rev_full_fields = True
-                if (
-                    image.min_rev_full == 0 and image.min_rev != 0
-                ):  # min_rev_full is not set, min_rev is used
-                    use_rev_full_fields = False
-            else:  # max_rev_full set to a version
-                use_rev_full_fields = True
-
-            if use_rev_full_fields:
-                rev = esp.get_chip_revision()
-                if rev < image.min_rev_full or rev > image.max_rev_full:
-                    error_str = f"'{name}' requires chip revision in range "
-                    error_str += (
-                        f"[v{image.min_rev_full // 100}.{image.min_rev_full % 100} - "
-                    )
-                    if image.max_rev_full == 65535:
-                        error_str += "max rev not set] "
-                    else:
-                        error_str += (
-                            f"v{image.max_rev_full // 100}.{image.max_rev_full % 100}] "
-                        )
-                    error_str += f"(this chip is revision v{rev // 100}.{rev % 100})"
-                    raise FatalError(
-                        f"{error_str}. Use the force argument to flash anyway."
-                    )
-            else:
-                # In IDF, image.min_rev is set based on Kconfig option.
-                # For C3 chip, image.min_rev is the Minor revision
-                # while for the rest chips it is the Major revision.
-                if esp.CHIP_NAME == "ESP32-C3":
-                    rev = esp.get_minor_chip_version()
-                else:
-                    rev = esp.get_major_chip_version()
-                if rev < image.min_rev:
-                    raise FatalError(
-                        f"'{name}' requires chip revision "
-                        f"{image.min_rev} or higher (this chip is revision {rev}). "
-                        "Use the force argument to flash anyway."
-                    )
+        _validate_image_compatibility(esp, norm_addr_data)
 
     # In case we have encrypted files to write,
     # we first do few sanity checks before actual flash

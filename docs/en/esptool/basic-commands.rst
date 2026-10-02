@@ -156,19 +156,22 @@ Fast reflashing is not available in the following scenarios:
 
 In these cases, esptool will automatically fall back to full re-flashing.
 
-.. only:: esp32
+.. only:: not esp8266
 
     Bootloader Protection
     ^^^^^^^^^^^^^^^^^^^^^
 
-    Flashing into the bootloader region (``0x0`` -> ``0x8000``) is disabled by default if active `Secure Boot V1 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v1.html>`_ is detected.
-    This is because Secure Boot V1 stores the signing key digest in eFuse, making the bootloader irreplaceable without the original key.
-    This is a safety measure to prevent accidentally overwriting the secure bootloader, which **can ultimately lead to bricking the device**.
+    .. only:: esp32
 
-    `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html>`_ (available on ESP32 revision 3 and later) and all newer chips use a standardized scheme where the private signing key remains outside the chip, allowing safe bootloader updates.
+        Flashing into the bootloader region (``0x0`` -> ``0x8000``) is disabled by default if active `Secure Boot V1 <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v1.html>`_ is detected.
+        This is because Secure Boot V1 stores the signing key digest in eFuse, making the bootloader irreplaceable without the original key.
+        This is a safety measure to prevent accidentally overwriting the secure bootloader, which **can ultimately lead to bricking the device**.
 
-    This behavior can be overridden with the ``--force`` option. **Use this only at your own risk and only if you know what you are doing!**
+    `Secure Boot V2 <https://docs.espressif.com/projects/esp-idf/en/latest/{IDF_TARGET_PATH_NAME}/security/secure-boot-v2.html>`_ (available on ESP32 revision 3 and later) and all newer chips use a standardized scheme where the private signing key remains outside the chip, allowing safe bootloader updates.
 
+    .. only:: esp32
+
+        This behavior can be overridden with the ``--force`` option. **Use this only at your own risk and only if you know what you are doing!**
 
     Encrypted Flash Protection
     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -191,10 +194,10 @@ In these cases, esptool will automatically fall back to full re-flashing.
     Flashing an Incompatible Image
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    ``esptool`` checks every binary before flashing. If a valid firmware image is detected, the ``Chip ID`` and ``Minimum chip revision`` fields in its :ref:`header <image-format>` are compared against the actually connected chip.
-    If the image turns out to be incompatible with the chip in use or requires a newer chip revision, flashing is stopped.
+    ``esptool`` checks valid firmware images before flashing by comparing the ``Chip ID``, ``Minimum chip revision``, and ``Maximum chip revision`` fields in their :ref:`headers <image-format>` against the connected chip.
+    If an incompatible image is flashed at the target's bootloader offset, flashing is stopped. At other offsets, ``esptool`` reports the incompatibility and continues because the image may be data, such as firmware stored for a co-processor.
 
-    This behavior can be overridden with the ``--force`` option.
+    The bootloader compatibility check can be overridden with the ``--force`` option.
 
 Read Flash Contents: ``read-flash``
 -----------------------------------
