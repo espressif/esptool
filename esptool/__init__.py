@@ -796,6 +796,12 @@ def write_mem_cli(ctx, address, value, mask):
     cls=MutuallyExclusiveOption,
 )
 @click.option(
+    "--no-verify",
+    is_flag=True,
+    help="Skip the MD5 verification of written data. Saves time, but a corrupted "
+    "write goes unnoticed (and --diff-with does not fall back to a full reflash).",
+)
+@click.option(
     "--force",
     is_flag=True,
     help="Force write, skip security and compatibility checks. Use with caution!",

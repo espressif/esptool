@@ -156,6 +156,11 @@ Fast reflashing is not available in the following scenarios:
 
 In these cases, esptool will automatically fall back to full re-flashing.
 
+Skipping Verification
+^^^^^^^^^^^^^^^^^^^^^
+
+After writing, esptool compares an MD5 checksum of the written flash region with the data it sent. Use ``--no-verify`` to skip this check when flashing time matters more than catching a corrupted write. With ``--diff-with``, this also skips the automatic full reflash that a failed check would trigger.
+
 .. only:: esp32
 
     Bootloader Protection
