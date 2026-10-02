@@ -363,6 +363,7 @@ class ESPLoader:
     WATCHDOG_RESET_SUPPORTED = False
     SECURITY_INFO_SUPPORTED = False
     CUSTOM_SPI_FLASH_PINS_SUPPORTED = False
+    FLASH_32BIT_ADDR_SUPPORTED = False
 
     # Default baudrate. The ROM auto-bauds, so we can use more or less whatever we want.
     # Alias from esp-pylib for backward compatibility.

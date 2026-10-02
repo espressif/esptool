@@ -2211,11 +2211,11 @@ def _set_flash_parameters(esp, flash_size="keep"):
         esp.flash_set_parameters(flash_size_bytes(flash_size))
         # Check if stub/ROM supports chosen flash size
         if (
-            not (esp.IS_STUB and esp.CHIP_NAME in ["ESP32-S3", "ESP32-P4", "ESP32-C5"])
+            not (esp.IS_STUB and esp.FLASH_32BIT_ADDR_SUPPORTED)
             and flash_size_bytes(flash_size) > 16 * 1024 * 1024
         ):
             log.note(
-                "Flash sizes larger than than 16MB are not fully supported. "
+                "Flash sizes larger than 16MB are not fully supported. "
                 "Change the flash size argument in case of a failure."
             )
 

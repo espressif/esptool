@@ -298,18 +298,22 @@ Flash and External Memory Support Limitations
 
 esptool has the following limitations when working with external flash and memory devices:
 
-- NAND flash is currently not supported. Only NOR flash chips are supported.
-- PSRAM access is not supported - esptool cannot read from or write to PSRAM.
-- Octal (OPI) flash is supported only on ESP32-S3 devices.
-- Accessing flash chip areas beyond 16MB (32-bit addressing) is supported only if **all** of the following conditions are met:
+.. list::
 
-   - The :ref:`flasher stub <stub>` is used, as the ROM bootloader does not support 32-bit addressing.
-   - The target chip is ESP32-S3, ESP32-C5, ESP32-P4, ESP32-C61, or ESP32-S31.
-   - The flash chip is one of the following supported models:
+   - NAND flash is currently not supported. Only NOR flash chips are supported.
+   - PSRAM access is not supported - esptool cannot read from or write to PSRAM.
+   - Octal (OPI) flash is supported only on ESP32-S3 devices.
+   :not FLASH_32BIT_ADDR_SUPPORTED: - Accessing flash chip areas beyond 16MB (32-bit addressing) is not supported on {IDF_TARGET_NAME}.
+   :FLASH_32BIT_ADDR_SUPPORTED: - Accessing flash chip areas beyond 16MB (32-bit addressing) is supported only if **all** of the following conditions are met:
 
-      - W25Q256
-      - GD25Q256
-      - XM25QH256D
+      .. only:: FLASH_32BIT_ADDR_SUPPORTED
+
+         - The :ref:`flasher stub <stub>` is used, as the ROM bootloader does not support 32-bit addressing.
+         - The flash chip is one of the following supported models:
+
+            - W25Q256
+            - GD25Q256
+            - XM25QH256D
 
 .. _sdm-limitations:
 
@@ -337,13 +341,15 @@ When Secure Download Mode is enabled, the available serial protocol commands are
       - The flash size must be set manually using the ``--flash-size`` :ref:`option <flash-modes>` in CLI mode, or by calling the ``flash_set_parameters`` function when using the :ref:`esptool API <scripting>`.
       - Esptool prints a warning about this whenever possible.
 
-   - Accessing SPI flash memory regions larger than 16MB is not possible when Secure Download Mode is enabled.
+   :FLASH_32BIT_ADDR_SUPPORTED: - Accessing SPI flash memory regions larger than 16MB is not possible when Secure Download Mode is enabled.
 
-      - This is only possible if the :ref:`flasher stub <stub>` is used as described in `Flash and External Memory Support Limitations`_, but stub flasher cannot be used in Secure Download Mode.
-      - Any data written beyond the 16MB boundary will wrap around to the beginning of the flash because the 4-byte address gets truncated to 3 bytes.
-      - An application running on the ESP device itself can still access data beyond 16MB (for example, during an OTA update).
-      - It is recommended to only enable the Secure Download Mode if working with <16MB apps, if the app development is successfully finished, or if other ways to update the >16MB regions are available.
-      - Esptool prints a warning about this whenever possible.
+      .. only:: FLASH_32BIT_ADDR_SUPPORTED
+
+         - This is only possible if the :ref:`flasher stub <stub>` is used as described in `Flash and External Memory Support Limitations`_, but stub flasher cannot be used in Secure Download Mode.
+         - Any data written beyond the 16MB boundary will wrap around to the beginning of the flash because the 4-byte address gets truncated to 3 bytes.
+         - An application running on the ESP device itself can still access data beyond 16MB (for example, during an OTA update).
+         - It is recommended to only enable the Secure Download Mode if working with <16MB apps, if the app development is successfully finished, or if other ways to update the >16MB regions are available.
+         - Esptool prints a warning about this whenever possible.
 
 .. only:: SECURITY_INFO_SUPPORTED
 
