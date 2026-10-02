@@ -318,28 +318,32 @@ Secure Download Mode Limitations
 
 When Secure Download Mode is enabled, the available serial protocol commands are restricted. In addition to being unable to read flash data or read/write RAM, the following limitations apply:
 
-- The entire flash cannot be :ref:`erased <erase-flash>` using ``erase-flash``. Only flash regions aligned to multiples of ``4096`` (flash sector size) can be erased using ``erase-region``.
+.. list::
 
-   - Writing a binary with purely ``0xFF`` bytes can be used as a workaround to essentially erase flash if necessary, but this is slow and achieves the same result as ``erase-region``.
+   - The entire flash cannot be :ref:`erased <erase-flash>` using ``erase-flash``. Only flash regions aligned to multiples of ``4096`` (flash sector size) can be erased using ``erase-region``.
 
-- The baud rate cannot be :ref:`changed <baud-rate>` with the ``--baud`` option on ESP32-C2.
+      - Writing a binary with purely ``0xFF`` bytes can be used as a workaround to essentially erase flash if necessary, but this is slow and achieves the same result as ``erase-region``.
 
-   - Esptool needs to read specific registers to first detect the crystal frequency, which is then used to calculate the baud rate parameter for the ``CHANGE_BAUDRATE`` (``0x0F``) command. This is not possible in Secure Download Mode, because reading any registers is disabled.
-   - The baud rate can be changed manually when using the :ref:`esptool API <scripting>` by sending the ``CHANGE_BAUDRATE`` command with the desired baud rate based on trial and error (e.g., seeing if the data is scrambled or not in a serial terminal program).
+   :esp32c2: - The baud rate cannot be :ref:`changed <baud-rate>` with the ``--baud`` option.
 
-- Flash write or erase operations might fail with the ``0164`` or ``0106`` error codes.
+      .. only:: esp32c2
 
-   - This is usually caused by incorrect flash size settings. Since the actual flash size cannot be detected in Secure Download Mode, the ROM bootloader defaults to a flash size of 2MB. Trying to access flash regions larger than 2MB will then fail.
-   - The flash size must be set manually using the ``--flash-size`` :ref:`option <flash-modes>` in CLI mode, or by calling the ``flash_set_parameters`` function when using the :ref:`esptool API <scripting>`.
-   - Esptool prints a warning about this whenever possible.
+         - Esptool needs to read specific registers to first detect the crystal frequency, which is then used to calculate the baud rate parameter for the ``CHANGE_BAUDRATE`` (``0x0F``) command. This is not possible in Secure Download Mode, because reading any registers is disabled.
+         - The baud rate can be changed manually when using the :ref:`esptool API <scripting>` by sending the ``CHANGE_BAUDRATE`` command with the desired baud rate based on trial and error (e.g., seeing if the data is scrambled or not in a serial terminal program).
 
-- Accessing SPI flash memory regions larger than 16MB is not possible when Secure Download Mode is enabled.
+   - Flash write or erase operations might fail with the ``0164`` or ``0106`` error codes.
 
-   - This is only possible if the :ref:`flasher stub <stub>` is used as described in `Flash and External Memory Support Limitations`_, but stub flasher cannot be used in Secure Download Mode.
-   - Any data written beyond the 16MB boundary will wrap around to the beginning of the flash because the 4-byte address gets truncated to 3 bytes.
-   - An application running on the ESP device itself can still access data beyond 16MB (for example, during an OTA update).
-   - It is recommended to only enable the Secure Download Mode if working with <16MB apps, if the app development is successfully finished, or if other ways to update the >16MB regions are available.
-   - Esptool prints a warning about this whenever possible.
+      - This is usually caused by incorrect flash size settings. Since the actual flash size cannot be detected in Secure Download Mode, the ROM bootloader defaults to a flash size of 2MB. Trying to access flash regions larger than 2MB will then fail.
+      - The flash size must be set manually using the ``--flash-size`` :ref:`option <flash-modes>` in CLI mode, or by calling the ``flash_set_parameters`` function when using the :ref:`esptool API <scripting>`.
+      - Esptool prints a warning about this whenever possible.
+
+   - Accessing SPI flash memory regions larger than 16MB is not possible when Secure Download Mode is enabled.
+
+      - This is only possible if the :ref:`flasher stub <stub>` is used as described in `Flash and External Memory Support Limitations`_, but stub flasher cannot be used in Secure Download Mode.
+      - Any data written beyond the 16MB boundary will wrap around to the beginning of the flash because the 4-byte address gets truncated to 3 bytes.
+      - An application running on the ESP device itself can still access data beyond 16MB (for example, during an OTA update).
+      - It is recommended to only enable the Secure Download Mode if working with <16MB apps, if the app development is successfully finished, or if other ways to update the >16MB regions are available.
+      - Esptool prints a warning about this whenever possible.
 
 .. only:: SECURITY_INFO_SUPPORTED
 
