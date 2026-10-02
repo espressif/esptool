@@ -250,32 +250,30 @@ class EspEfuses(base_fields.EspEfusesBase):
         return ret_fail
 
     def is_efuses_incompatible_for_burn(self):
-        # Since v3.1 the flash is off in download mode and Secure Download Mode
-        # prevents esptool from powering it on. Only v3.2+ ROM supports XPD_ON.
+        # Since v3.1 flash is off in download mode and Secure Download Mode prevents
+        # esptool from powering it on. Only v3.2+ ROM honors DOWNLOAD_MODE_XPD_ON.
         rev = self._esp.get_chip_revision()
         if rev < 301:
             return False
 
-        def is_set(name):
-            return self[name].get() or self[name].get(from_read=False)
-
-        chip = f"ESP32-P4 v{rev // 100}.{rev % 100}"
+        chip = f"{self._esp.CHIP_NAME} v{rev // 100}.{rev % 100}"
         if rev == 301 and self["DOWNLOAD_MODE_XPD_ON"].get(from_read=False):
-            log.warning(f"DOWNLOAD_MODE_XPD_ON has no effect on {chip}.")
+            log.warning(f"DOWNLOAD_MODE_XPD_ON is ignored by the ROM on {chip}.")
 
-        if self["ENABLE_SECURITY_DOWNLOAD"].get(from_read=False) and not is_set(
-            "DIS_DOWNLOAD_MODE"
+        rom_powers_flash = rev >= 302 and (
+            self["DOWNLOAD_MODE_XPD_ON"].get()
+            or self["DOWNLOAD_MODE_XPD_ON"].get(from_read=False)
+        )
+        if (
+            self["ENABLE_SECURITY_DOWNLOAD"].get(from_read=False)
+            and not self["DIS_DOWNLOAD_MODE"].get(from_read=False)
+            and not rom_powers_flash
         ):
-            if rev == 301:
-                log.warning(
-                    f"Flash will not be writable in Secure Download Mode on {chip} "
-                    "unless it is powered externally."
-                )
-            elif not is_set("DOWNLOAD_MODE_XPD_ON"):
-                log.warning(
-                    f"Flash will not be writable in Secure Download Mode on {chip} "
-                    "unless DOWNLOAD_MODE_XPD_ON is burned or it is powered externally."
-                )
+            hint = "" if rev == 301 else "DOWNLOAD_MODE_XPD_ON is burned or "
+            log.warning(
+                f"Flash will not be writable in Secure Download Mode on {chip} "
+                f"unless {hint}it is powered externally."
+            )
         return False
 
     def summary(self):
