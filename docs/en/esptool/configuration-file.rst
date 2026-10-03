@@ -105,6 +105,10 @@ Complete list of configurable options:
 +------------------------------+-----------------------------------------------------------+----------+
 | write_block_attempts         | Number of times to try writing a data block               | 3        |
 +------------------------------+-----------------------------------------------------------+----------+
+| read_flash_attempts          | Number of times to try reading a chunk of flash (stub)    | 8        |
++------------------------------+-----------------------------------------------------------+----------+
+| read_flash_chunk_size        | Size in bytes of the chunks a flash read is split into    | 32768    |
++------------------------------+-----------------------------------------------------------+----------+
 | reset_delay                  | Time to wait before the boot pin is released after reset  | 0.05 s   |
 +------------------------------+-----------------------------------------------------------+----------+
 | open_port_attempts           | Number of attempts to open the port (0 - infinite)        | 1        |

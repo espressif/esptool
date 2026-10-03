@@ -33,6 +33,8 @@ from .loader import (
     ERASE_WRITE_TIMEOUT_PER_MB,
     NAND_BLOCK_SIZE,
     NAND_PAGES_PER_BLOCK,
+    READ_FLASH_ATTEMPTS,
+    READ_FLASH_CHUNK_SIZE,
     ESPLoader,
     StubFlasher,
     timeout_per_mb,
@@ -2483,6 +2485,72 @@ def read_flash_sfdp(esp: ESPLoader, address: int, bytes: int = 1) -> None:
     log.print()
 
 
+def _resync_stub_after_failed_read(esp: ESPLoader) -> None:
+    """
+    Bring the stub back to command mode after an aborted ``read_flash`` command.
+
+    The stub keeps streaming (and then waits for acknowledgements) until it has
+    sent the whole requested range, so drain whatever is still in flight and
+    keep poking it until it answers a command again.
+    """
+    for _ in range(10):
+        time.sleep(0.5)
+        esp.flush_input()
+        try:
+            esp.sync()
+            return
+        except FatalError:
+            continue
+    raise FatalError("Failed to resynchronize with the stub after a read error.")
+
+
+def _read_flash_stub_with_retries(
+    esp: ESPLoader,
+    address: int,
+    size: int,
+    progress_fn,
+    chunk_size: int,
+    attempts: int,
+) -> bytes:
+    """
+    Read flash through the stub in chunks, retrying a chunk if its transfer fails.
+
+    The stub has no per-frame resend, so a single lost or corrupted serial byte
+    would otherwise abort (and discard) the whole read.
+    """
+    data = bytearray()
+    retries = 0
+    while len(data) < size:
+        chunk_len = min(chunk_size, size - len(data))
+        chunk_address = address + len(data)
+        chunk_done = len(data)
+
+        def chunk_progress(read_bytes, _length, _offset):
+            progress_fn(chunk_done + read_bytes, size, address)
+
+        for attempt in range(1, attempts + 1):
+            try:
+                data += esp.read_flash(
+                    chunk_address, chunk_len, chunk_progress if progress_fn else None
+                )
+                break
+            except FatalError as e:
+                if attempt == attempts:
+                    raise FatalError(
+                        f"Failed to read {chunk_len:#x} bytes at {chunk_address:#010x} "
+                        f"after {attempts} attempts: {e}"
+                    ) from e
+                retries += 1
+                log.warning(
+                    f"Read error at {chunk_address:#010x} ({escape(str(e))}), "
+                    f"retrying (attempt {attempt + 1}/{attempts})..."
+                )
+                _resync_stub_after_failed_read(esp)
+    if retries:
+        log.print(f"Recovered from {retries} read error(s) by retrying chunks.")
+    return bytes(data)
+
+
 def read_flash(
     esp: ESPLoader,
     address: int,
@@ -2492,6 +2560,8 @@ def read_flash(
     no_progress: bool = False,
     flash_type: str = "nor",
     nand_end_address: int | None = None,
+    read_attempts: int | None = None,
+    read_chunk_size: int | None = None,
 ) -> bytes | None:
     """
     Read a specified region of SPI flash memory of an ESP device
@@ -2510,6 +2580,11 @@ def read_flash(
             Explicit size: use the specified flash size.
         no_progress: Disable printing progress.
         flash_type: Type of flash - "nor" (default) or "nand".
+        read_attempts: Stub only: number of attempts to read each chunk before
+            failing. Defaults to the ``read_flash_attempts`` config option (8).
+        read_chunk_size: Stub only: size in bytes of the chunks the read is
+            split into, a multiple of 4096. Defaults to the
+            ``read_flash_chunk_size`` config option (32768).
 
     Returns:
         The read flash data as bytes if output is None; otherwise,
@@ -2517,6 +2592,18 @@ def read_flash(
     """
     if flash_type != "nand":
         _set_flash_parameters(esp, flash_size)
+
+    read_attempts = READ_FLASH_ATTEMPTS if read_attempts is None else read_attempts
+    read_chunk_size = (
+        READ_FLASH_CHUNK_SIZE if read_chunk_size is None else read_chunk_size
+    )
+    if read_attempts < 1:
+        raise FatalError("The number of read attempts must be at least 1.")
+    if read_chunk_size <= 0 or read_chunk_size % esp.FLASH_SECTOR_SIZE:
+        raise FatalError(
+            f"The read chunk size must be a positive multiple of "
+            f"{esp.FLASH_SECTOR_SIZE:#x} bytes."
+        )
 
     log.stage()
     t = time.time()
@@ -2541,6 +2628,10 @@ def read_flash(
             _warn_nand_experimental(_NAND_EXPERIMENTAL_MSG)
             data = _read_flash_nand_with_skip(
                 esp, address, size, flash_progress, nand_end_address=nand_end_address
+            )
+        elif esp.IS_STUB:
+            data = _read_flash_stub_with_retries(
+                esp, address, size, flash_progress, read_chunk_size, read_attempts
             )
         else:
             data = esp.read_flash(address, size, flash_progress)

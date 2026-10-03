@@ -116,6 +116,10 @@ DEFAULT_SERIAL_WRITE_TIMEOUT = cfg.getfloat("serial_write_timeout", 10)
 DEFAULT_CONNECT_ATTEMPTS = cfg.getint("connect_attempts", 7)
 # Number of times to try writing a data block
 WRITE_BLOCK_ATTEMPTS = cfg.getint("write_block_attempts", 3)
+# Number of times to try reading a chunk of flash through the stub
+READ_FLASH_ATTEMPTS = cfg.getint("read_flash_attempts", 8)
+# Size of the chunks a stub flash read is split into (a failed chunk is retried)
+READ_FLASH_CHUNK_SIZE = cfg.getint("read_flash_chunk_size", 0x8000)
 # Number of times to try opening the serial port
 DEFAULT_OPEN_PORT_ATTEMPTS = cfg.getint("open_port_attempts", 1)
 
@@ -1708,7 +1712,9 @@ class ESPLoader:
             if data_len < length and len(p) < self.FLASH_SECTOR_SIZE:
                 raise FatalError(
                     f"Corrupt data, expected {self.FLASH_SECTOR_SIZE:#x} "
-                    f"bytes but received {len(p):#x} bytes."
+                    f"bytes but received {len(p):#x} bytes "
+                    f"(frame {len(data) // self.FLASH_SECTOR_SIZE} "
+                    f"of {length // self.FLASH_SECTOR_SIZE})."
                 )
             self.write(struct.pack("<I", data_len))
             if progress_fn and (data_len % 1024 == 0 or data_len == length):
