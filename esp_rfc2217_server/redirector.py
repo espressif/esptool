@@ -10,7 +10,14 @@ from esp_rfc2217_server.esp_port_manager import EspPortManager
 
 
 class Redirector:
-    def __init__(self, serial_instance, socket, debug=False, esp32r0delay=False):
+    def __init__(
+        self,
+        serial_instance,
+        socket,
+        debug=False,
+        esp32r0delay=False,
+        no_reset=False,
+    ):
         self.serial = serial_instance
         self.socket = socket
         self._write_lock = threading.Lock()
@@ -19,6 +26,7 @@ class Redirector:
             self,
             esp32r0delay,
             logger=logging.getLogger("rfc2217.server") if debug else None,
+            no_reset=no_reset,
         )
         self.log = logging.getLogger("redirector")
         self.force_exit = False
