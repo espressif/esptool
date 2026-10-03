@@ -1061,6 +1061,21 @@ def write_flash_status_cli(ctx, value, bytes, **kwargs):
 @click.argument("size", type=AutoSizeType())
 @click.argument("output", type=click.Path())
 @click.option("--no-progress", "-p", is_flag=True, help="Suppress progress output.")
+@click.option(
+    "--read-attempts",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Stub only: number of attempts to read each chunk before failing "
+    "(config: read_flash_attempts, default 8).",
+)
+@click.option(
+    "--read-chunk-size",
+    type=AnyIntType(),
+    default=None,
+    help="Stub only: size in bytes of the chunks the read is split into, "
+    "a multiple of 4096. A chunk that fails is read again "
+    "(config: read_flash_chunk_size, default 32768).",
+)
 @add_spi_flash_options(allow_keep=True, auto_detect=True, size_only=True)
 @add_flash_type_arg
 @add_spi_connection_arg

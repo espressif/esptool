@@ -19,6 +19,8 @@ CONFIG_OPTIONS = [
     "serial_write_timeout",
     "connect_attempts",
     "write_block_attempts",
+    "read_flash_attempts",
+    "read_flash_chunk_size",
     "reset_delay",
     "open_port_attempts",
     "custom_reset_sequence",
