@@ -2139,9 +2139,13 @@ def attach_flash(
         esp.run_spiflash_command(0xAB)  # Release Power-Down
         time.sleep(0.00002)
         # Check for success
-        if not is_xmc_chip_strict():
-            log.warn("XMC flash boot-up fix failed.")
-        log.print("XMC flash chip boot-up fix successful!")
+        if is_xmc_chip_strict():
+            log.print("XMC flash chip boot-up fix successful!")
+        else:
+            log.warn(
+                "Could not confirm XMC flash chip boot-up fix. "
+                "The flash chip may not work."
+            )
 
     # Check if XMC SPI flash chip booted-up successfully, fix if not
     if not esp.secure_download_mode:
