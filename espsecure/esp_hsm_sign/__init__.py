@@ -89,7 +89,13 @@ def get_privkey_info(
 
 def _get_ec_curve(key: pkcs11.Key) -> EC.EllipticCurve:
     """Read the named curve from the HSM's public or private key metadata."""
-    parameters = key[pkcs11.Attribute.EC_PARAMS]
+    try:
+        parameters = key[pkcs11.Attribute.EC_PARAMS]
+    except pkcs11.exceptions.AttributeTypeInvalid:
+        log.die(
+            "The HSM did not return the CKA_EC_PARAMS attribute of the ECDSA key, "
+            "so its curve cannot be determined."
+        )
     for curve in (EC.SECP192R1(), EC.SECP256R1(), EC.SECP384R1()):
         if parameters == encode_named_curve_parameters(curve.name):
             return curve
