@@ -1,20 +1,30 @@
-<!-- Fill in a description of the change here, at least 100 characters.
-Make sure other people will be able to understand what your pull request is about.
-Delete any sections which don't apply, including the section header. -->
+<!-- Follow the contributions guide: https://docs.espressif.com/projects/esptool/en/latest/contributing.html
+Write outside the comment markers.
+Do not list changed files or functions, and do not restate the diff.
+State only facts you verified. -->
 
-# This change fixes the following bug(s):
-<!-- If your change fixes any bugs, list them in this section.
+## Motivation
 
-Please include the issue URL or the # issue number here. -->
+<!-- The problem this pull request solves and why it needs solving.
+If the change was discussed in an issue, name it, for example #123. -->
 
-# I have tested this change with the following hardware & software combinations:
-<!-- In this section, describe the hardware and software combinations with which you tested the PR change - operating system(s), development board name(s), ESP8266 and/or ESP32 series.
+## Cause
 
-If you did not perform any testing, write "NO TESTING" in this section. -->
+<!-- A bug fix must state why the bug happens. If you have not confirmed the cause, say that it is a guess.
+For other changes, delete the Cause heading and this comment. -->
 
-# I have run the esptool automated integration tests with this change and the above hardware:
-<!-- In this section, post the results of running the automatic integration tests of esptool with this change and the above hardware.
+## Goal
 
-Details here: https://docs.espressif.com/projects/esptool/en/latest/contributing.html#automated-integration-tests
+<!-- The behaviour after this change. If the approach is not obvious from the diff, explain why you chose it. -->
 
-If you did not perform any testing, write "NO TESTING" in this section. -->
+## Testing
+
+<!-- The commands you ran, for example `pytest -m host_test`, the operating system, and the chip and board you used, if any.
+List only tests that ran. Paste commands and any output as text, not as screenshots.
+If you changed chip communication and did not run the hardware tests, say so. -->
+
+## Checklist
+
+- [ ] The maintainers agreed on the goal in an issue, or the contributions guide does not require an issue for this change.
+- [ ] The pre-commit hooks are installed and `pre-commit run --all-files` passes.
+- [ ] The host tests pass: `pytest -m host_test`, or `pytest -m "host_test and not linux_host_test"` on Windows.
