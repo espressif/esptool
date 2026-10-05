@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import binascii
 import configparser
 import hashlib
 import os
@@ -15,6 +14,7 @@ from esptool.logger import log
 
 try:
     import pkcs11
+    from pkcs11.util.ec import encode_named_curve_parameters
 
     from .exceptions import handle_exceptions
 except ImportError:
@@ -87,6 +87,21 @@ def get_privkey_info(
         log.die("Failed to get the private key.")
 
 
+def _get_ec_curve(key: pkcs11.Key) -> EC.EllipticCurve:
+    """Read the named curve from the HSM's public or private key metadata."""
+    try:
+        parameters = key[pkcs11.Attribute.EC_PARAMS]
+    except pkcs11.exceptions.AttributeTypeInvalid:
+        log.die(
+            "The HSM did not return the CKA_EC_PARAMS attribute of the ECDSA key, "
+            "so its curve cannot be determined."
+        )
+    for curve in (EC.SECP192R1(), EC.SECP256R1(), EC.SECP384R1()):
+        if parameters == encode_named_curve_parameters(curve.name):
+            return curve
+    log.die("Unsupported HSM ECDSA curve. Supported curves: P-192, P-256, P-384.")
+
+
 def get_pubkey(
     session: pkcs11.Session, config: configparser.SectionProxy
 ) -> EC.EllipticCurvePublicKey | RSA.RSAPublicKey:
@@ -125,7 +140,7 @@ def get_pubkey(
             length = ec_point_der[1]
             ecpoints = ec_point_der[2 : 2 + length]
             public_key = EC.EllipticCurvePublicKey.from_encoded_point(
-                EC.SECP256R1(), ecpoints
+                _get_ec_curve(public_key), ecpoints
             )
 
         else:
@@ -144,7 +159,9 @@ def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
         log.print("Signing payload using the HSM...")
         key_type = private_key.key_type
         mechanism, mechanism_params = get_mechanism(key_type)
-        hashed_payload = hashlib.sha256(payload).digest()
+        curve = _get_ec_curve(private_key) if key_type == pkcs11.KeyType.EC else None
+        digest = hashlib.sha384 if curve and curve.key_size == 384 else hashlib.sha256
+        hashed_payload = digest(payload).digest()
         signature: bytes = private_key.sign(
             data=hashed_payload, mechanism=mechanism, mechanism_param=mechanism_params
         )
@@ -152,9 +169,12 @@ def sign_payload(private_key: pkcs11.Key, payload: bytes) -> bytes:
         if len(signature) != 0:
             log.print("Signature generation successful.")
 
-        if key_type == pkcs11.mechanisms.KeyType.EC:
-            r = int(binascii.hexlify(signature[:32]), 16)
-            s = int(binascii.hexlify(signature[32:]), 16)
+        if curve is not None:
+            component_size = (curve.key_size + 7) // 8
+            if len(signature) != 2 * component_size:
+                log.die("Invalid HSM ECDSA signature length for the selected curve.")
+            r = int.from_bytes(signature[:component_size], "big")
+            s = int.from_bytes(signature[component_size:], "big")
 
             # ECDSA signature is encoded as a DER sequence
             signature = utils.encode_dss_signature(r, s)

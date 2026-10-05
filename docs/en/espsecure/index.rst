@@ -34,6 +34,8 @@ Remote Signing Using an External HSM
 
 An external Hardware Security Module (HSM) can be used for remote signing of images in secure boot v2 scheme.
 
+HSM signing supports RSA-3072 and ECDSA P-192, P-256, and P-384 keys. For ECDSA, the curve is read from the key's PKCS #11 ``EC_PARAMS`` attribute. P-384 uses SHA-384; P-192 and P-256 use SHA-256. Choose a signing scheme supported by the target chip.
+
 You must install ``esptool`` package with the ``hsm`` extra using the command ``pip install 'esptool[hsm]'`` to use this feature. ``esp_hsm_sign`` provides a PKCS #11 interface to communicate with the external HSM and is integrated in ``espsecure``.
 
 The following command should be used to get an image signed using an external HSM. ::

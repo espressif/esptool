@@ -10,12 +10,17 @@ import tempfile
 
 import pytest
 from conftest import SECURE_FIXTURES_DIR
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 
 pytestmark = [pytest.mark.host_test, pytest.mark.linux_host_test]
 
 pkcs11 = pytest.importorskip("pkcs11")
 
+from pkcs11.util.ec import encode_ec_public_key, encode_named_curve_parameters
+
 import espsecure
+from espsecure import esp_hsm_sign
 
 SECURE_IMAGES_DIR = str(SECURE_FIXTURES_DIR)
 
@@ -125,8 +130,10 @@ class EspSecureHSMTestCase:
 
         session.close()
 
-    # ECDSA P-256 token
-    def softhsm_setup_ecdsa_token(self, filename, token_label):
+    # ECDSA token
+    def softhsm_setup_ecdsa_token(
+        self, filename, token_label, curve="secp256r1", key_size=256
+    ):
         self.pkcs11_lib = self.get_pkcs11lib()
         if self.pkcs11_lib is None:
             print("PKCS11 lib does not exist")
@@ -169,8 +176,7 @@ class EspSecureHSMTestCase:
                 except Exception:
                     pass
 
-        # OID for secp256r1 (1.2.840.10045.3.1.7)
-        ec_params = b"\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07"
+        ec_params = encode_named_curve_parameters(curve)
 
         pubTemplate = [
             (pkcs11.Attribute.TOKEN, True),
@@ -191,7 +197,7 @@ class EspSecureHSMTestCase:
         ]
         session.generate_keypair(
             pkcs11.KeyType.EC,
-            256,
+            key_size,
             private_template=privTemplate,
             public_template=pubTemplate,
         )
@@ -216,6 +222,53 @@ class EspSecureHSMTestCase:
 
 
 class TestSigning(EspSecureHSMTestCase):
+    @pytest.mark.parametrize(
+        "curve,key_size", [("secp192r1", 192), ("secp256r1", 256), ("secp384r1", 384)]
+    )
+    def test_sign_v2_hsm_ecdsa(self, curve, key_size):
+        self.softhsm_setup_ecdsa_token(
+            "softhsm_ec.ini", "softhsm-sdc-token", curve, key_size
+        )
+        with (
+            tempfile.NamedTemporaryFile() as output_file,
+            open(os.path.join(SECURE_IMAGES_DIR, "softhsm_ec.ini")) as config_file,
+        ):
+            espsecure.sign_data(
+                version="2",
+                keyfile=None,
+                output=output_file.name,
+                append_signatures=False,
+                hsm=True,
+                hsm_config=config_file,
+                pub_key=[],
+                signature=[],
+                datafile=self._open("bootloader_unsigned_v2.bin"),
+            )
+            config_file.seek(0)
+            espsecure.verify_signature("2", True, config_file, None, output_file)
+
+    @pytest.mark.parametrize(
+        "curve,key_size", [("secp192r1", 192), ("secp256r1", 256), ("secp384r1", 384)]
+    )
+    def test_hsm_ecdsa_payload(self, curve, key_size):
+        self.softhsm_setup_ecdsa_token(
+            "softhsm_ec.ini", "softhsm-sdc-token", curve, key_size
+        )
+        with open(os.path.join(SECURE_IMAGES_DIR, "softhsm_ec.ini")) as config_file:
+            config = esp_hsm_sign.read_hsm_config(config_file)
+        with esp_hsm_sign.establish_session(config) as session:
+            private_key = esp_hsm_sign.get_privkey_info(session, config)
+            public_key = session.get_key(
+                object_class=pkcs11.ObjectClass.PUBLIC_KEY, label=config["label_pubkey"]
+            )
+            public_key = serialization.load_der_public_key(
+                encode_ec_public_key(public_key)
+            )
+            payload = b"HSM curve-specific digest and signature regression"
+            signature = esp_hsm_sign.sign_payload(private_key, payload)
+            hash_algorithm = hashes.SHA384() if key_size == 384 else hashes.SHA256()
+            public_key.verify(signature, payload, ec.ECDSA(hash_algorithm))
+
     def test_sign_v2_hsm(self):
         # Sign using SoftHSMv2 + Verify
         self.softhsm_setup_token("softhsm_v2.ini", "softhsm-test-token")
