@@ -829,7 +829,7 @@ class TestFlashing(EsptoolTestCase):
         )
         assert (
             "images/esp32c3_header_min_rev.bin "
-            "requires chip revision in range [v2.55 - max rev not set]" in output
+            "requires chip revision v2.55 or higher" in output
         )
         assert "Use --force to flash anyway." in output
 
@@ -1426,6 +1426,25 @@ class TestLoadRAM(EsptoolTestCase):
             # make sure file is closed before running next command (mainly for Windows)
             os.close(fd)
             self.run_esptool(f"load_ram {f}")
+            self.verify_output(
+                [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
+            )
+        finally:
+            os.unlink(f)
+
+    @pytest.mark.skipif(arg_chip == "esp8266", reason="ESP8266 images have no chip ID")
+    def test_load_ram_for_another_target(self):
+        """Image with a foreign chip ID: warning printed, image still loaded"""
+        with open(f"images/ram_helloworld/helloworld-{arg_chip}.bin", "rb") as f:
+            image = bytearray(f.read())
+        image[12:14] = struct.pack("<H", 0xFFFF)  # chip ID field, unused by any chip
+        fd, f = tempfile.mkstemp(suffix=".bin")
+        try:
+            os.write(fd, image)
+            os.close(fd)
+            output = self.run_esptool(f"load_ram {f}")
+            expected_chip = esptool.CHIP_DEFS[arg_chip].CHIP_NAME
+            assert f"is not an {expected_chip} image" in output
             self.verify_output(
                 [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
             )
