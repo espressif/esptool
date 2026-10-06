@@ -1831,6 +1831,23 @@ class TestLoadRAM(EsptoolTestCase):
         finally:
             os.unlink(f)
 
+    @pytest.mark.skipif(arg_chip == "esp8266", reason="ESP8266 images have no chip ID")
+    def test_load_ram_for_another_target(self):
+        """Image with a foreign chip ID: warning printed, image still loaded"""
+        with open(f"images/ram_helloworld/helloworld-{arg_chip}.bin", "rb") as f:
+            image = bytearray(f.read())
+        image[12:14] = struct.pack("<H", 0xFFFF)  # chip ID field, unused by any chip
+        fd, f = tempfile.mkstemp(suffix=".bin")
+        try:
+            os.write(fd, image)
+            os.close(fd)
+            output = self.run_esptool(f"load-ram {f}")
+            expected_chip = esptool.CHIP_DEFS[arg_chip].CHIP_NAME
+            assert f"is not an {expected_chip} image" in output
+            self.verify_output([b"Hello world!"])
+        finally:
+            os.unlink(f)
+
 
 class TestDeepSleepFlash(EsptoolTestCase):
     @pytest.mark.skipif(arg_chip != "esp8266", reason="ESP8266 only")
