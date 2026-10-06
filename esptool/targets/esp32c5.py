@@ -110,22 +110,73 @@ class ESP32C5ROM(ESP32C6ROM):
         num_word = 2
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 4) & 0x03
 
+    def get_flash_cap(self):
+        num_word = 2
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 13) & 0x07
+
+    def get_flash_vendor(self):
+        num_word = 2
+        vendor_id = (
+            self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 16
+        ) & 0x07
+        return {1: "XMC"}.get(vendor_id, "")
+
+    def get_psram_cap(self):
+        num_word = 2
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 19) & 0x07
+
+    def get_psram_vendor(self):
+        num_word = 2
+        vendor_id = (
+            self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 22
+        ) & 0x03
+        return {1: "AP_3v3"}.get(vendor_id, "")
+
+    def get_temp(self):
+        num_word = 2
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x03
+
     def get_chip_description(self):
-        chip_name = {
-            0: "ESP32-C5",
-        }.get(self.get_pkg_version(), "unknown ESP32-C5")
+        # ESP32-C5 + temperature (N/H) + in-package flash + PSRAM
+        chip_name = "ESP32-C5"
+        chip_name += {0: "N", 1: "H"}.get(self.get_temp(), "?")
+        chip_name += {0: "", 1: "F4"}.get(self.get_flash_cap(), "F?")
+        chip_name += {0: "", 1: "R4", 2: "R8"}.get(self.get_psram_cap(), "R?")
+
+        if "?" in chip_name:
+            chip_name = "Unknown " + chip_name
+
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return [
+        features = [
             "Wi-Fi 6 (dual-band)",
             "BT 5 (LE)",
             "IEEE802.15.4",
             "Single Core + LP Core",
             "240MHz",
         ]
+
+        flash_version = {
+            0: "No Embedded Flash",
+            1: "Embedded Flash 4MB",
+        }.get(self.get_flash_cap(), "Unknown Embedded Flash")
+        if self.get_flash_cap() == 1:
+            flash_version += f" ({self.get_flash_vendor()})"
+        features += [flash_version]
+
+        psram_version = {
+            0: "No Embedded PSRAM",
+            1: "Embedded PSRAM 4MB",
+            2: "Embedded PSRAM 8MB",
+        }.get(self.get_psram_cap(), "Unknown Embedded PSRAM")
+        if self.get_psram_cap() in (1, 2):
+            psram_version += f" ({self.get_psram_vendor()})"
+        features += [psram_version]
+
+        return features
 
     def get_crystal_freq(self):
         # The crystal detection algorithm of ESP32/ESP8266
