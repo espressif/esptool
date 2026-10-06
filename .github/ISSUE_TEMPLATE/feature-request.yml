@@ -5,30 +5,30 @@ body:
   - type: markdown
     attributes:
       value: |
-        * We welcome any ideas or feature requests! It’s helpful if you can explain exactly why the feature would be useful.
-        * There are usually some outstanding feature requests in the [existing issues list](https://github.com/espressif/esptool/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement), feel free to add comments to them.
-        * If you would like to contribute, please read the [contributions guide](https://docs.espressif.com/projects/esptool/en/latest/contributing.html).
+        * Search the [open feature requests](https://github.com/espressif/esptool/issues?q=is%3Aissue+is%3Aopen+label%3A%22Type%3A+Feature+Request%22) first and comment on a matching one.
+        * Request one feature per issue.
+        * State only facts you verified.
+        * Paste commands and logs as text, not as screenshots.
+        * Agree on the feature here before you open a pull request.
   - type: textarea
-    id: problem-related
+    id: motivation
     attributes:
-      label: Is your feature request related to a problem?
-      description: Please provide a clear and concise description of what the problem is.
-      placeholder: ex. I'm always frustrated when ...
+      label: Motivation
+      description: The problem this feature solves and why you need it. Describe your use case.
+      placeholder: ex. I flash 50 boards a day from one PC. esptool flashes one board at a time, so each batch takes an hour.
+    validations:
+      required: true
   - type: textarea
-    id: solution
+    id: goal
     attributes:
-      label: Describe the solution you'd like
-      description: Please provide a clear and concise description of what you want to happen.
-      placeholder: ex. When connecting to an Espressif chip ...
+      label: Goal
+      description: What you want to achieve with the feature. Leave a proposed solution for the Alternatives and Other Information field.
+      placeholder: ex. Flash several boards connected to the same PC with one command.
+    validations:
+      required: true
   - type: textarea
-    id: alternatives
+    id: more-info
     attributes:
-      label: Describe alternatives you've considered
-      description: Please provide a clear and concise description of any alternative solutions or features you've considered.
-      placeholder: ex. Choosing other approach wouldn't work, because ...
-  - type: textarea
-    id: context
-    attributes:
-      label: Additional context
-      description: Please add any other context or screenshots about the feature request here.
-      placeholder: ex. This would work only when ...
+      label: Alternatives and Other Information
+      description: A proposed solution, alternatives or workarounds you considered, and any other context.
+      placeholder: ex. Running one esptool process per port works, but the output of the processes is mixed.
