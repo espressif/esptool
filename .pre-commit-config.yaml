@@ -18,7 +18,7 @@ repos:
       - id: mixed-line-ending
         args: [-f=lf]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
+    rev: v0.16.10
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -30,7 +30,7 @@ repos:
         name: Lint RST files in docs folder using Sphinx Lint
         files: ^((docs/en)/.*\.(rst|inc))|CONTRIBUTING.rst$
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+    rev: v2.4.0
     hooks:
       - id: mypy
         additional_dependencies:
@@ -39,7 +39,7 @@ repos:
         # ignore wrapper scripts because of name colision with efuse/__init__.py etc.
         exclude: test/|docs/|espefuse.py|espsecure.py|esptool.py|esp_rfc2217_server.py
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.2
+    rev: v2.4.3
     hooks:
       - id: codespell
         additional_dependencies:
