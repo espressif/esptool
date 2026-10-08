@@ -460,6 +460,14 @@ target_esp32h4:
   script:
     - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/esp32h4 --chip esp32h4 --baud 115200
 
+# ESP32H21
+target_esp32h21:
+  extends: .target_esptool_test
+  tags:
+    - esptool-esp32h21
+  script:
+    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_esptool.py --port /dev/serial_ports/esp32h21 --chip esp32h21 --baud 115200
+
 .windows_test:
   stage: test
   variables:
