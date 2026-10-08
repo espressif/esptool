@@ -27,6 +27,7 @@ build_internal_sdist:
 publish_internal_sdist:
   image: $PYTHON_IMAGE_LATEST
   stage: deploy_development_package
+  interruptible: false
   tags:
     - host_test
   needs:
