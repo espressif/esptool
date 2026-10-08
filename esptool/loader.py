@@ -119,11 +119,40 @@ WRITE_BLOCK_ATTEMPTS = cfg.getint("write_block_attempts", 3)
 # Number of times to try opening the serial port
 DEFAULT_OPEN_PORT_ATTEMPTS = cfg.getint("open_port_attempts", 1)
 
-# Pages per NAND flash block for the supported NAND chip (W25N01GV).
-# Sent to the stub as part of the NAND read-flash parameter block.
+# The flasher stub programs 2 KB pages and erases 128 KB blocks. A caller can
+# override the block size (see flash_spi_nand_attach); pages per block follow
+# from that. NAND_PAGES_PER_BLOCK is the default sent in the read parameter block.
+NAND_PAGE_SIZE = 2048
 NAND_PAGES_PER_BLOCK = 64
 # Size of one NAND block in bytes (64 pages × 2 KB page = 128 KB).
-NAND_BLOCK_SIZE = 0x20000
+NAND_BLOCK_SIZE = NAND_PAGE_SIZE * NAND_PAGES_PER_BLOCK
+# Block count used before a chip is identified, and when --nand-device-id
+# accepts a chip without --nand-block-count. The Winbond part has this many.
+NAND_BLOCK_COUNT = 1024
+
+
+def _nand_block_size(esp) -> int:
+    """Bytes per erase block. The module default until a chip is attached."""
+    size = getattr(esp, "nand_block_size", None)
+    if isinstance(size, int):
+        return size
+    return NAND_BLOCK_SIZE
+
+
+def _nand_pages_per_block(esp) -> int:
+    pages = getattr(esp, "nand_pages_per_block", None)
+    if isinstance(pages, int):
+        return pages
+    return NAND_PAGES_PER_BLOCK
+
+
+# (manufacturer, device_id) → name and block count.
+# device_id is the 16-bit value SPI_NAND_ATTACH returns. Winbond puts its
+# two-byte device ID there. A chip that is not listed is accepted when the
+# caller passes that same packed ID (manufacturer << 16 | device_id).
+NAND_CHIPS = {
+    (0xEF, 0xAA21): {"name": "Winbond W25N01GV (1Gbit)", "blocks": 1024},
+}
 
 # Documentation page linked from connection/serial error messages.
 TROUBLESHOOTING_GUIDE_URL = (
@@ -1739,7 +1768,11 @@ class ESPLoader:
             "read NAND flash",
             self.ESP_CMDS["SPI_NAND_READ_FLASH"],
             struct.pack(
-                "<IIII", offset, length, self.FLASH_SECTOR_SIZE, NAND_PAGES_PER_BLOCK
+                "<IIII",
+                offset,
+                length,
+                self.FLASH_SECTOR_SIZE,
+                _nand_pages_per_block(self),
             ),
         )
 
@@ -1778,7 +1811,7 @@ class ESPLoader:
     def write_flash_nand_begin(self, size, offset):
         """Start NAND flash write (stub command). Same as flash_begin but for NAND."""
         params = struct.pack(
-            "<IIII", offset, size, NAND_BLOCK_SIZE, self.FLASH_WRITE_SIZE
+            "<IIII", offset, size, _nand_block_size(self), self.FLASH_WRITE_SIZE
         )
         self.check_command(
             "enter NAND flash download mode",
@@ -1837,12 +1870,43 @@ class ESPLoader:
             arg += struct.pack("BBBB", is_legacy, 0, 0, 0)
         self.check_command("configure SPI flash pins", self.ESP_CMDS["SPI_ATTACH"], arg)
 
-    def flash_spi_nand_attach(self, hspi_arg):
+    def flash_spi_nand_attach(
+        self,
+        hspi_arg,
+        expected_id=None,
+        block_size=None,
+        block_count=None,
+        page_size=None,
+    ):
         """Send SPI NAND attach command to enable the SPI NAND flash pins
 
-        Similar to flash_spi_attach but for NAND flash.
+        Similar to flash_spi_attach but for NAND flash. expected_id is the
+        packed ID (manufacturer << 16) | device. A chip that is not built in
+        is accepted only when it matches. page_size is 2048 or 4096. block_size
+        defaults to 64 pages and must be a multiple of the page. block_count
+        defaults to the built-in chip, or 1024 when the ID is not built in.
+        The stub programs and erases with these sizes.
         """
-        arg = struct.pack("<I", hspi_arg)
+        if page_size is None:
+            page_size = NAND_PAGE_SIZE
+        if page_size not in (2048, 4096):
+            raise FatalError(
+                f"NAND page size {page_size:#x} is not 2048 or 4096 bytes."
+            )
+        if block_size is None:
+            block_size = page_size * NAND_PAGES_PER_BLOCK
+        if block_size <= 0 or block_size % page_size != 0:
+            raise FatalError(
+                f"NAND block size {block_size:#x} is not a multiple of the "
+                f"{page_size:#x}-byte page."
+            )
+        if block_count is not None and block_count <= 0:
+            raise FatalError(f"NAND block count must be positive, got {block_count}.")
+        # The stub learns the geometry from this packet. A built-in chip's block
+        # count is applied below when the caller did not pass one; Winbond's
+        # count matches this default.
+        wire_blocks = NAND_BLOCK_COUNT if block_count is None else block_count
+        arg = struct.pack("<IIII", hspi_arg, page_size, block_size, wire_blocks)
         if not self.IS_STUB:
             is_legacy = 0
             arg += struct.pack("BBBB", is_legacy, 0, 0, 0)
@@ -1867,18 +1931,38 @@ class ESPLoader:
         mfr_id = (val >> 16) & 0xFF
         dev_id = val & 0xFFFF
         prot_reg = data[0]
-        # Known/tested NAND JEDEC IDs: (manufacturer, device) → description
-        KNOWN_NAND_IDS = {
-            (0xEF, 0xAA21): "Winbond W25N01GV (1Gbit)",
-        }
-        chip_desc = KNOWN_NAND_IDS.get((mfr_id, dev_id))
-        if chip_desc:
-            log.print(f"Detected NAND chip: {chip_desc}")
-        else:
+        packed_id = (mfr_id << 16) | dev_id
+        if expected_id is not None and packed_id != expected_id:
+            raise FatalError(
+                f"NAND ID mismatch: chip reports mfr={mfr_id:#04x} "
+                f"dev={dev_id:#06x} ({packed_id:#x}), expected {expected_id:#x}."
+            )
+        chip = NAND_CHIPS.get((mfr_id, dev_id))
+        if chip is None and expected_id is None:
+            supported = ", ".join(entry["name"] for entry in NAND_CHIPS.values())
             raise FatalError(
                 f"Unrecognized NAND JEDEC ID (mfr={mfr_id:#04x}, dev={dev_id:#06x}).\n"
-                f"Only Winbond W25N01GV is supported."
+                f"Supported: {supported}. Pass --nand-device-id {packed_id:#x} "
+                "to accept this chip."
             )
+        if chip is None:
+            blocks = NAND_BLOCK_COUNT if block_count is None else block_count
+            name = f"id {packed_id:#x}"
+        else:
+            blocks = chip["blocks"] if block_count is None else block_count
+            name = chip["name"]
+        if block_count is None and chip is None:
+            log.warn(
+                "NAND block count was not given; assuming "
+                f"{blocks} blocks. Pass --nand-block-count for this chip."
+            )
+        # Callers size erase and the bad-block window from these.
+        self.nand_page_size = page_size
+        self.nand_block_size = block_size
+        self.nand_pages_per_block = block_size // page_size
+        self.nand_blocks = blocks
+        self.nand_size = blocks * block_size
+        log.print(f"Detected NAND chip: {name}")
         self.trace(
             f"NAND debug: status={status_reg:#04x}, JEDEC ID: "
             f"mfr={mfr_id:#04x} dev={dev_id:#06x}, prot={prot_reg:#04x}"

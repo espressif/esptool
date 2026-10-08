@@ -324,11 +324,8 @@ class TestNANDBadBlockPolicy:
         esp.write_nand_spare.assert_not_called()
 
     def test_chip_erase_failed_marks_bad(self):
-        from esptool.cmds import (
-            NAND_BLOCK_SIZE,
-            NAND_PAGES_PER_BLOCK,
-            erase_region,
-        )
+        from esptool.cmds import NAND_BLOCK_SIZE, erase_region
+        from esptool.loader import NAND_PAGES_PER_BLOCK
         from esptool.util import FatalError
 
         def erase_efail(addr, size):

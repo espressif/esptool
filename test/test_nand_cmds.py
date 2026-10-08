@@ -151,11 +151,8 @@ class TestWriteFlashNandRecovery:
         return esp
 
     def test_program_failed_marks_bad_retries_next_block(self):
-        from esptool.cmds import (
-            NAND_BLOCK_SIZE,
-            NAND_PAGES_PER_BLOCK,
-            _write_flash_nand,
-        )
+        from esptool.cmds import NAND_BLOCK_SIZE, _write_flash_nand
+        from esptool.loader import NAND_PAGES_PER_BLOCK
 
         esp = self._setup_basic_esp(2048)
         # spare: all blocks good for pre-scan (3 calls) + write loop spare checks
@@ -208,11 +205,8 @@ class TestWriteFlashNandRecovery:
 
     def test_verify_mismatch_persists_marks_bad(self):
         """Both reads mismatch → block marked bad and chunk retried on next block."""
-        from esptool.cmds import (
-            NAND_BLOCK_SIZE,
-            NAND_PAGES_PER_BLOCK,
-            _write_flash_nand,
-        )
+        from esptool.cmds import NAND_BLOCK_SIZE, _write_flash_nand
+        from esptool.loader import NAND_PAGES_PER_BLOCK
 
         esp = self._setup_basic_esp(2048)
         esp.read_nand_spare.return_value = 0xFF
@@ -264,7 +258,8 @@ class TestEraseFlashNand:
     """erase_flash(flash_type='nand') iterates all blocks and marks bad on E_FAIL."""
 
     def test_efail_marks_block_bad(self):
-        from esptool.cmds import NAND_PAGES_PER_BLOCK, erase_flash
+        from esptool.cmds import erase_flash
+        from esptool.loader import NAND_PAGES_PER_BLOCK
 
         esp = _make_esp()
 
@@ -396,6 +391,10 @@ class TestFlashSpiNandAttach:
         ESPLoader.flash_spi_nand_attach(esp, 0)
 
         esp.command.assert_called_once()
+        assert esp.command.call_args[0][1] == struct.pack(
+            "<IIII", 0, 2048, 0x20000, 1024
+        )
+        assert esp.nand_page_size == 2048
 
     def test_unknown_jedec_raises(self):
         esp = _make_esp()
@@ -404,6 +403,59 @@ class TestFlashSpiNandAttach:
 
         with pytest.raises(FatalError, match="Unrecognized NAND JEDEC ID"):
             ESPLoader.flash_spi_nand_attach(esp, 0)
+
+    def test_expected_id_accepts_unknown_chip(self):
+        esp = _make_esp()
+        val = self._val_for(0x00, 0xC8, 0x95C8)
+        esp.command.return_value = (val, bytes([0x00, 0x00, 0x00]))
+
+        ESPLoader.flash_spi_nand_attach(esp, 0, expected_id=0xC895C8, block_count=4096)
+
+        assert esp.command.call_args[0][1] == struct.pack(
+            "<IIII", 0, 2048, 0x20000, 4096
+        )
+        assert esp.nand_blocks == 4096
+        assert esp.nand_block_size == 0x20000
+        assert esp.nand_pages_per_block == 64
+        assert esp.nand_size == 4096 * 0x20000
+
+    def test_expected_id_mismatch_raises(self):
+        esp = _make_esp()
+        val = self._val_for(0x00, 0xC8, 0x95C8)
+        esp.command.return_value = (val, bytes([0x00, 0x00, 0x00]))
+
+        with pytest.raises(FatalError, match="NAND ID mismatch"):
+            ESPLoader.flash_spi_nand_attach(esp, 0, expected_id=0xEFAA21)
+
+    def test_block_size_sets_pages_and_must_be_a_page_multiple(self):
+        esp = _make_esp()
+        val = self._val_for(0x00, 0xEF, 0xAA21)
+        esp.command.return_value = (val, bytes([0x00, 0x00, 0x00]))
+
+        with pytest.raises(FatalError, match="multiple"):
+            ESPLoader.flash_spi_nand_attach(esp, 0, block_size=1000)
+
+        ESPLoader.flash_spi_nand_attach(esp, 0, block_size=0x40000, block_count=8)
+        assert esp.nand_block_size == 0x40000
+        assert esp.nand_pages_per_block == 128
+        assert esp.nand_blocks == 8
+        assert esp.command.call_args[0][1] == struct.pack("<IIII", 0, 2048, 0x40000, 8)
+
+    def test_page_size_selects_block_and_is_sent(self):
+        esp = _make_esp()
+        val = self._val_for(0x00, 0xEF, 0xAA21)
+        esp.command.return_value = (val, bytes([0x00, 0x00, 0x00]))
+
+        with pytest.raises(FatalError, match="page size"):
+            ESPLoader.flash_spi_nand_attach(esp, 0, page_size=1024)
+
+        ESPLoader.flash_spi_nand_attach(esp, 0, page_size=4096)
+        assert esp.nand_page_size == 4096
+        assert esp.nand_block_size == 4096 * 64
+        assert esp.nand_pages_per_block == 64
+        assert esp.command.call_args[0][1] == struct.pack(
+            "<IIII", 0, 4096, 4096 * 64, 1024
+        )
 
     def test_short_response_raises(self):
         esp = _make_esp()
@@ -477,7 +529,8 @@ class TestDumpBbm:
         assert all(b == 0x01 for b in data)
 
     def test_page_numbers_are_block_times_pages_per_block(self, tmp_path):
-        from esptool.cmds import NAND_PAGES_PER_BLOCK, dump_bbm
+        from esptool.cmds import dump_bbm
+        from esptool.loader import NAND_PAGES_PER_BLOCK
 
         esp = _make_esp()
         esp.read_nand_spare.return_value = 0xFF
@@ -646,3 +699,58 @@ class TestCliValidation:
         result = self._run(["--chip", "esp32s3", "read-nand-spare", "0"])
         assert result.exit_code != 0
         assert "--spi-connection" in result.output
+
+    def test_nand_chip_options_are_accepted(self, tmp_path):
+        dummy = tmp_path / "fw.bin"
+        dummy.write_bytes(b"\xff" * 4)
+        result = self._run(
+            [
+                "--chip",
+                "esp32s3",
+                "write-flash",
+                "--flash-type",
+                "nand",
+                "--nand-device-id",
+                "0xC895C8",
+                "--nand-page-size",
+                "4096",
+                "--nand-block-size",
+                "0x40000",
+                "--nand-block-count",
+                "4096",
+                "0",
+                str(dummy),
+            ]
+        )
+        assert result.exit_code != 0
+        assert "No such option" not in result.output
+        assert "--spi-connection" in result.output
+
+
+@pytest.mark.host_test
+class TestNandChipTable:
+    """JEDEC IDs and the size esptool uses once a chip is attached."""
+
+    def test_known_chips(self):
+        from esptool.loader import NAND_BLOCK_SIZE, NAND_CHIPS
+
+        assert NAND_CHIPS[(0xEF, 0xAA21)]["blocks"] == 1024
+        assert (0xC8, 0x95C8) not in NAND_CHIPS
+        assert 1024 * NAND_BLOCK_SIZE == 128 * 1024 * 1024
+
+    def test_erase_flash_uses_attached_block_count(self):
+        from esptool.cmds import erase_flash
+
+        esp = _make_esp()
+        esp.nand_blocks = 4
+        erase_flash(esp, flash_type="nand")
+        assert esp.erase_nand_region.call_count == 4
+
+    def test_write_window_defaults_to_attached_chip(self):
+        from esptool.cmds import NAND_BLOCK_SIZE, _write_flash_nand
+
+        esp = _make_esp()
+        esp.nand_blocks = 2
+        esp.read_nand_spare.return_value = 0x00  # every block bad
+        with pytest.raises(FatalError, match="0x40000"):
+            _write_flash_nand(esp, [(0, b"\x00" * NAND_BLOCK_SIZE)])

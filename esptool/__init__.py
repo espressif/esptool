@@ -68,7 +68,6 @@ from esptool.cli_util import (
     parse_size_arg,
 )
 from esptool.cmds import (
-    NAND_BLOCK_COUNT,
     attach_flash,
     chip_id,
     connect_esp,
@@ -233,6 +232,55 @@ def _require_spi_connection_for_nand(flash_type: str, kwargs: dict) -> None:
         )
 
 
+def add_nand_chip_args(function):
+    """Hidden options for accepting a NAND chip that is not built in.
+
+    --nand-device-id is the packed ID the stub returns, (manufacturer << 16) |
+    device. A built-in chip is still checked against it when it is set.
+    --nand-page-size is 2048 or 4096. --nand-block-size defaults to 64 pages.
+    The stub programs and erases with those sizes.
+    --nand-block-count defaults to the built-in chip, or 1024 for an unknown ID.
+    """
+    function = click.option(
+        "--nand-block-count",
+        type=AnyIntType(),
+        default=None,
+        hidden=True,
+        help="Number of NAND blocks. Defaults to the built-in chip, or 1024.",
+    )(function)
+    function = click.option(
+        "--nand-block-size",
+        type=AnyIntType(),
+        default=None,
+        hidden=True,
+        help="NAND erase block size in bytes (default: 64 pages).",
+    )(function)
+    function = click.option(
+        "--nand-page-size",
+        type=AnyIntType(),
+        default=None,
+        hidden=True,
+        help="NAND page size in bytes (2048 or 4096, default 2048).",
+    )(function)
+    function = click.option(
+        "--nand-device-id",
+        type=AnyIntType(),
+        default=None,
+        hidden=True,
+        help="Packed NAND ID to accept: (manufacturer << 16) | device.",
+    )(function)
+    return function
+
+
+def _pop_nand_chip_args(kwargs):
+    return {
+        "nand_device_id": kwargs.pop("nand_device_id", None),
+        "nand_block_size": kwargs.pop("nand_block_size", None),
+        "nand_block_count": kwargs.pop("nand_block_count", None),
+        "nand_page_size": kwargs.pop("nand_page_size", None),
+    }
+
+
 def nand_command(function):
     """Decorator for hidden NAND-only commands.
 
@@ -251,7 +299,7 @@ def nand_command(function):
         ctx.obj["plugins"] = ["nand"]
         return function(ctx, *args, **kwargs)
 
-    return wrapper
+    return add_nand_chip_args(wrapper)
 
 
 def add_flash_type_arg(function):
@@ -274,7 +322,7 @@ def add_flash_type_arg(function):
         expose_value=True,
         callback=_flash_type_callback,
     )(function)
-    return function
+    return add_nand_chip_args(function)
 
 
 def add_spi_flash_options(
@@ -864,6 +912,7 @@ def write_flash_cli(ctx, addr_filename, **kwargs):
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        **_pop_nand_chip_args(kwargs),
     )
     write_flash(ctx.obj["esp"], addr_filename, **kwargs)
 
@@ -1074,6 +1123,7 @@ def read_flash_cli(ctx, address, size, output, **kwargs):
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        **_pop_nand_chip_args(kwargs),
     )
     size = parse_size_arg(ctx.obj["esp"], size)
     if flash_type == "nor":
@@ -1093,6 +1143,7 @@ def read_nand_spare_cli(ctx, page_number, **kwargs):
         ctx.obj["esp"],
         spi_connection,
         flash_type="nand",
+        **_pop_nand_chip_args(kwargs),
     )
     read_nand_spare(ctx.obj["esp"], page_number)
 
@@ -1110,6 +1161,7 @@ def write_nand_spare_cli(ctx, page_number, is_bad, **kwargs):
         ctx.obj["esp"],
         spi_connection,
         flash_type="nand",
+        **_pop_nand_chip_args(kwargs),
     )
     write_nand_spare(ctx.obj["esp"], page_number, is_bad)
 
@@ -1119,9 +1171,9 @@ def write_nand_spare_cli(ctx, page_number, is_bad, **kwargs):
 @click.option(
     "--block-count",
     type=int,
-    default=NAND_BLOCK_COUNT,
+    default=None,
     hidden=True,
-    help="Number of blocks to scan",
+    help="Number of blocks to scan (default: the whole attached chip)",
 )
 @add_spi_connection_arg
 @nand_command
@@ -1133,6 +1185,7 @@ def dump_bbm_cli(ctx, output, block_count, **kwargs):
         ctx.obj["esp"],
         spi_connection,
         flash_type="nand",
+        **_pop_nand_chip_args(kwargs),
     )
     dump_bbm(ctx.obj["esp"], output, block_count)
 
@@ -1153,6 +1206,7 @@ def verify_flash_cli(ctx, addr_filename, diff, **kwargs):
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        **_pop_nand_chip_args(kwargs),
     )
     verify_flash(
         ctx.obj["esp"], addr_filename, diff=diff, flash_type=flash_type, **kwargs
@@ -1176,6 +1230,7 @@ def erase_flash_cli(ctx, force, flash_type, **kwargs):
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        **_pop_nand_chip_args(kwargs),
     )
     erase_flash(ctx.obj["esp"], force, flash_type=flash_type)
 
@@ -1199,6 +1254,7 @@ def erase_region_cli(ctx, address, size, force, flash_type, **kwargs):
         ctx.obj["esp"],
         kwargs.pop("spi_connection", None),
         flash_type=flash_type,
+        **_pop_nand_chip_args(kwargs),
     )
     size = parse_size_arg(ctx.obj["esp"], size)
     if flash_type != "nand":
