@@ -72,10 +72,10 @@ Optional arguments:
         :esp32c5: - ECDSA_KEY_P384_H. Upper 32 bytes of the 48-byte ECDSA_P384 key (last 16 bytes of key + 16 padding bytes).
         :esp32c5: - ECDSA_KEY_P384_L. Lower 32 bytes of the 48-byte ECDSA_P384 key.
         - XTS_AES_128_KEY. 256 bit flash encryption key.
-        - HMAC_DOWN_ALL.
-        - HMAC_DOWN_JTAG.
-        - HMAC_DOWN_DIGITAL_SIGNATURE.
-        - HMAC_UP.
+        :not esp32c61: - HMAC_DOWN_ALL.
+        :not esp32c61: - HMAC_DOWN_JTAG.
+        :not esp32c61: - HMAC_DOWN_DIGITAL_SIGNATURE.
+        :not esp32c61: - HMAC_UP.
         - SECURE_BOOT_DIGEST0. 1 secure boot key.
         - SECURE_BOOT_DIGEST1. 2 secure boot key.
         - SECURE_BOOT_DIGEST2. 3 secure boot key.
