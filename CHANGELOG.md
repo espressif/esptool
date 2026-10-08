@@ -1,3 +1,46 @@
+## v5.5.0 (2026-10-08)
+
+### ✨ New Features
+
+- **stub_flasher**: Update flasher stub to v1.4.0 *(Jaroslav Burian - 3fa0a3c)*
+- **cli**: accept 64m and 32m flash frequencies *(Jaroslav Burian - bf85060)*
+- **esp32h21**: Add support for flasher stub *(Vojtech Piroch - 7f5da4d)*
+- **stub_flasher**: Update flasher stub to 1.3.0 *(Vojtech Piroch - f14941e)*
+- **espefuse**: Add efuse calibration data for esp32s31 *(Konstantin Kondrashov - cbabcc6)*
+
+### 🐛 Bug Fixes
+
+- **load-ram**: Warn when the image is incompatible with the chip *(Jaroslav Burian - 8041d2b)*
+- **esp32s31**: Fix addresses for disabling watchdogs when using USB-Serial/JTAG *(Peter Dragun - 3c4c026)*
+- **xmc**: Print boot-up fix success only when the re-check passes *(Jaroslav Burian - 04783ea)*
+- **espsecure**: report missing EC_PARAMS attribute of HSM ECDSA key *(Jaroslav Burian - 184699a)*
+- **espsecure**: select HSM ECDSA parameters from key curve *(Shubham-Padkonde - 30ff22a)*
+- **espefuse**: Warn when ESP32-P4 Secure Download Mode leaves flash unwritable *(Jaroslav Burian - b4b4c58)*
+- **write-flash**: Only reject incompatible bootloader images *(Jaroslav Burian - d2c6246)*
+- **esp32c5**: Identify chip variant and embedded flash/PSRAM in chip description *(Jan Beran - 679f8be)*
+- **esp32c5**: Enable baud rate change in Secure Download Mode *(Jaroslav Burian - 470f0b3)*
+- **esp32h4**: correct target definitions *(Jaroslav Burian - 5a3b860)*
+- **esp32h21**: Correct target definitions *(Vojtech Piroch - 605c7fd)*
+- **usb-otg**: Limit block size to 0x800 for uploading stub without VID/PID *(Peter Dragun - e781a1c)*
+- Reject custom --spi-connection pins on unsupported chips *(Jaroslav Burian - 88d0213)*
+- Mimic how ROM computes crystal freq when stub enabled in ESP32 *(Jan Beran - 6fcb061)*
+
+### 📖 Documentation
+
+- **contributing**: Rewrite the contributions guide and add AGENTS.md *(Roland Dobai - b6d1bb4)*
+- **sdm**: Show baud rate change limitation only for ESP32-C2 *(Jaroslav Burian - ef38b3e)*
+- **test**: License fixtures under CC0 and document their origin *(Jakub Kocka - b08d06b)*
+- Generate flash frequency encodings from target classes *(Jaroslav Burian - 8aefcac)*
+- expose USB and reset capabilities from target classes *(Peter Dragun - d1f8230)*
+- derive bootloader offset and flash frequency from target classes *(Peter Dragun - b669113)*
+- Remove boot pins values and fix IDF links *(Vojtech Piroch - 2d7c29b)*
+
+### 🔧 Code Refactoring
+
+- **targets**: Add FLASH_32BIT_ADDR_SUPPORTED target capability *(Jaroslav Burian - 589c349)*
+- **espefuse**: Generalize calibration efuse naming *(Konstantin Kondrashov - 9d52132)*
+
+
 ## v5.4.0 (2026-09-02)
 
 ### ✨ New Features

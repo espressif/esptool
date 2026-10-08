@@ -38,7 +38,7 @@ __all__ = [
     "write_nand_spare",
 ]
 
-__version__ = "5.4.0"
+__version__ = "5.5.0"
 
 import os
 import shlex
