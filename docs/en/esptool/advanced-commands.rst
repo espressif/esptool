@@ -14,7 +14,7 @@ Verify Flash Data: ``verify-flash``
 
 The ``verify-flash`` command allows you to verify that data in flash matches a local file.
 
-The ``write-flash`` command always verifies the MD5 hash of data which is written to flash, so additional verification is not usually needed. However, if you wish to perform a byte-by-byte verification of the flash contents (and optionally print the differences to the console) then you can do so with this command:
+The ``write-flash`` command verifies the MD5 hash of data which is written to flash (unless ``--no-verify`` is used), so additional verification is not usually needed. However, if you wish to perform a byte-by-byte verification of the flash contents (and optionally print the differences to the console) then you can do so with this command:
 
 ::
 
