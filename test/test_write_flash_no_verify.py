@@ -66,3 +66,38 @@ class TestNoVerify:
         self._write(esp, no_verify=True, diff_with=[b"\xff" * 0x2000])
         assert "without verification" in capsys.readouterr().err
         esp.flash_md5sum.assert_not_called()
+
+
+@pytest.mark.host_test
+class TestNoVerifyCli:
+    def _run(self, tmp_path, *extra):
+        from click.testing import CliRunner
+
+        import esptool
+        from esptool import cli
+
+        fw = tmp_path / "fw.bin"
+        fw.write_bytes(b"\xa5" * 0x2000)
+        cli._esp = None  # required by Group.parse_args when not called via cli(esp=...)
+        with (
+            patch.object(esptool, "prepare_esp_object"),
+            patch.object(esptool, "attach_flash"),
+            patch.object(esptool, "write_flash") as write_flash,
+        ):
+            result = CliRunner().invoke(
+                cli,
+                ["--chip", "esp32s3", "write-flash", *extra, "0x10000", str(fw)],
+                catch_exceptions=False,
+            )
+        assert result.exit_code == 0
+        return result, write_flash
+
+    def test_no_verify_warns(self, tmp_path):
+        result, write_flash = self._run(tmp_path, "--no-verify")
+        assert "--no-verify" in result.output
+        assert write_flash.call_args.kwargs["no_verify"] is True
+
+    def test_default_does_not_warn(self, tmp_path):
+        result, write_flash = self._run(tmp_path)
+        assert "--no-verify" not in result.output
+        assert write_flash.call_args.kwargs["no_verify"] is False
