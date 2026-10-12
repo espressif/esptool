@@ -65,16 +65,54 @@ class ESP32H2ROM(ESP32C6ROM):
         num_word = 3
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 21) & 0x03
 
+    def get_flash_cap(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 24) & 0x07
+
+    def get_flash_vendor(self):
+        num_word = 3
+        vendor_id = (
+            self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 29
+        ) & 0x07
+        return {1: "XMC", 2: "GD", 3: "FM", 4: "TT"}.get(vendor_id, "")
+
+    def get_temp(self):
+        num_word = 3
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 27) & 0x03
+
     def get_chip_description(self):
-        chip_name = {
-            0: "ESP32-H2",
-        }.get(self.get_pkg_version(), "Unknown ESP32-H2")
+        # ESP32-H2 + in-package flash + temperature (H/N) + flash size
+        chip_name = "ESP32-H2"
+        if self.get_flash_cap():
+            chip_name += "F"
+            chip_name += {1: "H", 2: "N"}.get(self.get_temp(), "?")
+            chip_name += {1: "4", 2: "2", 3: "1"}.get(self.get_flash_cap(), "?")
+        chip_name += {0: ""}.get(self.get_pkg_version(), "?")
+
+        if "?" in chip_name:
+            chip_name = "Unknown " + chip_name
+
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
+        # Security-enhanced variants have an S suffix since revision v1.2.
+        if self.get_flash_cap() and (major_rev, minor_rev) >= (1, 2):
+            chip_name += "S"
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return ["BT 5 (LE)", "IEEE802.15.4", "Single Core", "96MHz"]
+        features = ["BT 5 (LE)", "IEEE802.15.4", "Single Core", "96MHz"]
+
+        flash_version = {
+            0: "No Embedded Flash",
+            1: "Embedded Flash 4MB",
+            2: "Embedded Flash 2MB",
+            3: "Embedded Flash 1MB",
+        }.get(self.get_flash_cap(), "Unknown Embedded Flash")
+        if self.get_flash_cap() in (1, 2, 3):
+            flash_version += f" ({self.get_flash_vendor()})"
+        features += [flash_version]
+
+        return features
 
     def get_crystal_freq(self):
         # ESP32H2 XTAL is fixed to 32MHz
