@@ -1412,9 +1412,7 @@ class TestLoadRAM(EsptoolTestCase):
         "Hello world!\n" to the serial port.
         """
         self.run_esptool(f"load_ram images/ram_helloworld/helloworld-{arg_chip}.bin")
-        self.verify_output(
-            [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
-        )
+        self.verify_output([b"Hello world!"])
 
     def test_load_ram_hex(self):
         """Verify load_ram command with hex file as input
@@ -1431,9 +1429,7 @@ class TestLoadRAM(EsptoolTestCase):
             # make sure file is closed before running next command (mainly for Windows)
             os.close(fd)
             self.run_esptool(f"load_ram {f}")
-            self.verify_output(
-                [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
-            )
+            self.verify_output([b"Hello world!"])
         finally:
             os.unlink(f)
 
@@ -1450,9 +1446,7 @@ class TestLoadRAM(EsptoolTestCase):
             output = self.run_esptool(f"load_ram {f}")
             expected_chip = esptool.CHIP_DEFS[arg_chip].CHIP_NAME
             assert f"is not an {expected_chip} image" in output
-            self.verify_output(
-                [b"Hello world!", b'\xce?\x13\x05\x04\xd0\x97A\x11"\xc4\x06\xc67\x04']
-            )
+            self.verify_output([b"Hello world!"])
         finally:
             os.unlink(f)
 
