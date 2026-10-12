@@ -5,8 +5,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import reedsolo
-from bitstring import BitStream
 
+from espefuse.efuse.bitstring import BitStream
 from espefuse.efuse.mem_definition_base import BlockDefinition
 from esptool import FatalError
 

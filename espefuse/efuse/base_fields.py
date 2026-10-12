@@ -9,10 +9,10 @@ import sys
 import typing as t
 from abc import ABC, abstractmethod
 
-from bitstring import BitArray, Bits, BitStream, CreationError
 from rich.markup import escape
 
 import esptool
+from espefuse.efuse.bitstring import BitArray, BitStream, CreationError
 from espefuse.efuse.mem_definition_base import (
     BlockDefinition,
     EfuseBlocksBase,
@@ -234,9 +234,9 @@ class EfuseBlockBase(EfuseProtectBase):
 
     def get_raw(self, from_read: bool = True) -> bytes:
         if from_read:
-            return self.bitarray.bytes  # type: ignore
+            return self.bitarray.bytes
         else:
-            return self.wr_bitarray.bytes  # type: ignore
+            return self.wr_bitarray.bytes
 
     def get(self, from_read: bool = True) -> BitStream:
         return self.get_bitstring(from_read=from_read)
@@ -637,7 +637,7 @@ class EspEfusesBase(ABC):
             efuses_list.append("SPI_BOOT_CRYPT_CNT")
             efuses_list.append("SECURE_BOOT_EN")
 
-        def get_raw_value_from_write(efuse_name: str) -> BitStream | Bits:
+        def get_raw_value_from_write(efuse_name: str) -> BitStream:
             return self[efuse_name].get_bitstring(from_read=False)
 
         for efuse_name in efuses_list:
@@ -942,7 +942,7 @@ class EfuseFieldBase(EfuseProtectBase):
         wr_bitarray_temp.overwrite(bitarray_field, pos=position)
         block.wr_bitarray |= wr_bitarray_temp
 
-    def save(self, new_value: int | bytes | BitArray) -> None:
+    def save(self, new_value: int | bytes | str | BitArray) -> None:
         bitarray_field = self.convert_to_bitstring(new_value)
         self.check_new_value(bitarray_field)
         self.save_to_block(bitarray_field)
@@ -1018,7 +1018,7 @@ class EfuseFieldBase(EfuseProtectBase):
                 pass
         return self.get(from_read)
 
-    def get_bitstring(self, from_read: bool = True) -> BitStream | Bits:
+    def get_bitstring(self, from_read: bool = True) -> BitStream:
         if from_read:
             self.bitarray.pos = 0
             return self.bitarray
@@ -1075,7 +1075,7 @@ class EfuseWaferBase(EfuseFieldBase):
     def get(self, from_read: bool = True) -> int:
         pass
 
-    def save(self, new_value: int | bytes | BitArray) -> None:
+    def save(self, new_value: int | bytes | str | BitArray) -> None:
         raise esptool.FatalError(f"Burning {self.name} is not supported.")
 
 
@@ -1146,7 +1146,7 @@ class EfuseMacFieldBase(EfuseFieldBase):
             mac = self.get_raw(from_read)
         return " ".join([util.hexify(mac, ":"), self.check()])
 
-    def save(self, new_value: int | bytes | BitArray) -> None:
+    def save(self, new_value: int | bytes | str | BitArray) -> None:
         def print_field(e: EfuseFieldBase, new_value: t.Any) -> None:
             log.print(
                 f"    - '{e.name}' ({escape(str(e.description))}) "

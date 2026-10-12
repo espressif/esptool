@@ -8,9 +8,9 @@ import re
 from abc import ABC, abstractmethod
 from typing import Any
 
-from bitstring import BitStream
 from esp_pylib.constants import USB_JTAG_SERIAL_PID
 
+from espefuse.efuse.bitstring import BitStream
 from espefuse.efuse.mem_definition_base import (
     BlockDefinition,
     EfuseBlocksBase,

@@ -4,9 +4,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from bitstring import Bits
-
 import esptool
+from espefuse.efuse.bitstring import Bits
 
 
 def hexify(bitstring, separator=""):
