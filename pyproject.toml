@@ -34,7 +34,7 @@
     dynamic = ["version", "scripts"]
 
     dependencies = [
-        "bitstring>=3.1.6,!=4.2.0",
+        "bitstring>=3.1.6,!=4.2.0,<5",
         "cryptography>=2.1.4",
         "ecdsa>=0.16.0",
         "cryptography<49.0.0; platform_system == 'Darwin' and platform_machine == 'x86_64'",
