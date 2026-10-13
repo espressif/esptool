@@ -91,7 +91,8 @@ The ``--verify`` option for the :ref:`write-flash <write-flash>` command has bee
 **Behavior:**
 
 - Verification occurs by default after flashing completes.
-- No action is needed to enable verification - it is mandatory when possible.
+- No action is needed to enable verification - it is performed whenever possible.
+- Verification can be skipped with the ``--no-verify`` option (see :ref:`write-flash <write-flash>`).
 - Verification is **skipped** if Secure Download Mode (SDM) is active or during encrypted writes (using ``--encrypt``).
 
 **Migration Steps:**

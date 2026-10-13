@@ -791,6 +791,13 @@ def write_mem_cli(ctx, address, value, mask):
     cls=MutuallyExclusiveOption,
 )
 @click.option(
+    "--no-verify",
+    is_flag=True,
+    help="Skip the MD5 verification of written data. Saves time, but a corrupted "
+    "write goes unnoticed. With --diff-with, flash content that does not match the "
+    "--diff-with files is not fixed by a full reflash. Use with caution!",
+)
+@click.option(
     "--force",
     is_flag=True,
     help="Force write, skip security and compatibility checks. Use with caution!",
@@ -838,6 +845,11 @@ def write_flash_cli(ctx, addr_filename, **kwargs):
         )
     if kwargs["trust_flash_content"] and not kwargs.get("diff_with"):
         raise FatalError("Option --trust-flash-content requires --diff-with.")
+    if kwargs["no_verify"]:
+        log.warn(
+            "Option --no-verify is set, written data will not be verified. "
+            "A corrupted or incomplete write will not be detected."
+        )
     # Map CLI name to internal name for write_flash
     kwargs["no_diff_verify"] = kwargs.pop("trust_flash_content", False)
     # Expand HEX file splits in diff_with if any
