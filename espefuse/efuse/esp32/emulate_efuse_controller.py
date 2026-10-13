@@ -6,8 +6,7 @@
 
 import time
 
-from bitstring import BitStream
-
+from espefuse.efuse.bitstring import BitStream
 from espefuse.efuse.mem_definition_base import BlockDefinition
 from esptool import FatalError
 from esptool.logger import log

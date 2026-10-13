@@ -33,8 +33,6 @@ import sys
 import tempfile
 import time
 
-from bitstring import BitStream
-
 # Make command line options --port, --reset-port and --chip available
 from conftest import (
     IMAGES_FIXTURES_DIR,
@@ -55,6 +53,7 @@ import pytest
 
 try:
     from espefuse import SUPPORTED_CHIPS
+    from espefuse.efuse.bitstring import BitStream
 except ImportError:
     need_to_install_package_err()
 

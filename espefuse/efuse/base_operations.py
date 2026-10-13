@@ -13,11 +13,11 @@ from collections.abc import Callable
 from typing import Any, BinaryIO, TextIO, cast
 
 import rich_click as click
-from bitstring import BitStream
 from rich.markup import escape
 
 import espsecure
 import esptool
+from espefuse.efuse.bitstring import BitStream
 from esptool.logger import log
 
 from . import base_fields, util
@@ -860,17 +860,17 @@ class BaseCommands(ABC):
                 be printed to the console.
         """
         to_console = file_name is None
-        dump_file: BinaryIO | TextIO = sys.stdout
 
         def output_block_to_file(
-            block: base_fields.EfuseBlockBase, f: BinaryIO | TextIO, to_console: bool
-        ):
+            block: base_fields.EfuseBlockBase, f: BinaryIO | None
+        ) -> None:
+            # f is None for the console
             block_dump = BitStream(block.get_bitstring())
             block_dump.byteswap()
-            if to_console:
-                f.write(block_dump.hex + "\n")
+            if f is None:
+                sys.stdout.write(block_dump.hex + "\n")
             else:
-                block_dump.tofile(f)  # type: ignore
+                block_dump.tofile(f)
 
         if format == "default":
             if to_console:
@@ -886,23 +886,24 @@ class BaseCommands(ABC):
         if format == "split":
             # each eFuse block is placed into its own file
             for block in self.efuses.blocks:
-                if not to_console:
-                    fname, fextension = os.path.splitext(file_name)  # type: ignore
+                if file_name is None:
+                    output_block_to_file(block, None)
+                else:
+                    fname, fextension = os.path.splitext(file_name)
                     file_dump_name = f"{fname}{block.id}{fextension}"
                     log.print(f"Dump eFuse block{block.id} -> {escape(file_dump_name)}")
-                    dump_file = open(file_dump_name, "wb")
-                output_block_to_file(block, dump_file, to_console)
-                if not to_console:
-                    dump_file.close()
+                    with open(file_dump_name, "wb") as dump_file:
+                        output_block_to_file(block, dump_file)
         elif format == "joint":
             # all eFuse blocks are stored in one file
-            if not to_console:
-                log.print(f"Dump eFuse blocks -> {escape(str(file_name))}")
-                dump_file = open(file_name, "wb")  # type: ignore
-            for block in self.efuses.blocks:
-                output_block_to_file(block, dump_file, to_console)
-            if not to_console:
-                dump_file.close()
+            if file_name is None:
+                for block in self.efuses.blocks:
+                    output_block_to_file(block, None)
+            else:
+                log.print(f"Dump eFuse blocks -> {escape(file_name)}")
+                with open(file_name, "wb") as dump_file:
+                    for block in self.efuses.blocks:
+                        output_block_to_file(block, dump_file)
         elif format == "token":
             errors_regs = self.efuses.REGS.ERRORS
             token = EfsToken.build(
@@ -1040,13 +1041,13 @@ class BaseCommands(ABC):
                     "Read back the burn value is not possible."
                 )
             else:
-                new_value = efuse.convert_to_bitstring(new_value)
+                new_bitstring = efuse.convert_to_bitstring(new_value)
                 burned_value = efuse.get_bitstring()
-                if burned_value != new_value:
+                if burned_value != new_bitstring:
                     log.print(
                         burned_value,
                         "->",
-                        new_value,
+                        new_bitstring,
                         f"Efuse {efuse.name} failed to burn. Protected?",
                     )
                     raise_error = True

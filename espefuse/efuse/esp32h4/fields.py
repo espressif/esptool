@@ -8,9 +8,9 @@ import struct
 import time
 
 import reedsolo
-from bitstring import BitArray
 
 import esptool
+from espefuse.efuse.bitstring import BitArray
 from esptool.logger import log
 
 from .. import base_fields
