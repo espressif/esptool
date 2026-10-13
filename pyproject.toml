@@ -10,7 +10,6 @@
         {name = "Espressif Systems"}
     ]
     readme = {file = "README.md", content-type = "text/markdown"}
-    license = {text = "GPLv2+"}
     description = "A serial utility to communicate & flash code to Espressif chips."
     classifiers = [
         "Development Status :: 5 - Production/Stable",
@@ -21,7 +20,6 @@
         "Operating System :: MacOS :: MacOS X",
         "Topic :: Software Development :: Embedded Systems",
         "Environment :: Console",
-        "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
@@ -31,7 +29,7 @@
         "Programming Language :: Python :: 3.13",
     ]
     requires-python = ">=3.7"
-    dynamic = ["version", "scripts"]
+    dynamic = ["version", "scripts", "license"]
 
     dependencies = [
         "bitstring>=3.1.6,!=4.2.0,<5",
