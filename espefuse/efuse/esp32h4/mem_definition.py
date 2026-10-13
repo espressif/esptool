@@ -148,6 +148,22 @@ class EfuseDefineFields(EfuseFieldsBase):
 
         for i, efuse in enumerate(self.ALL_EFUSES):
             if efuse.name in [
+                "PVT_DRVB",
+                "ADJUST_1V2",
+                "ADJUST_1V8",
+                "ACTIVE_DCDC_1V25",
+                "ACTIVE_DCDC_1V35",
+                "SLP_DCDC",
+                "VDD_3V4_DOUT",
+                "INITCODE_DIFF_1P8_3P3",
+                "HI_DOUT_DIFF_1P8_3P3",
+                "RXIQ_VERSION",
+                "RXIQ_0",
+                "RXIQ_1",
+            ]:
+                efuse.category = "calibration"
+
+            if efuse.name in [
                 "BLOCK_USR_DATA",
                 "BLOCK_KEY0",
                 "BLOCK_KEY1",
