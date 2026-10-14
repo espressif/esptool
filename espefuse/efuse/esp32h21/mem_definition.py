@@ -109,7 +109,7 @@ class EfuseDefineBlocks(EfuseBlocksBase):
         ("BLOCK_KEY3",      ["BLOCK7"],  7,  __base_rd_regs + 0x0FC, __base_wr_regs, 26,   3,    8, "KEY_PURPOSE_3"),
         ("BLOCK_KEY4",      ["BLOCK8"],  8,  __base_rd_regs + 0x11C, __base_wr_regs, 27,   4,    8, "KEY_PURPOSE_4"),
         ("BLOCK_KEY5",      ["BLOCK9"],  9,  __base_rd_regs + 0x13C, __base_wr_regs, 28,   5,    8, "KEY_PURPOSE_5"),
-        ("BLOCK_SYS_DATA2", ["BLOCK10"], 10, __base_rd_regs + 0x15C, __base_wr_regs, 29,   6,    8, None),
+        ("BLOCK_SYS_DATA2", ["BLOCK10"], 10, __base_rd_regs + 0x15C, __base_wr_regs, 29,   None, 8, None),
     ]
     # fmt: on
 
@@ -143,6 +143,19 @@ class EfuseDefineFields(EfuseFieldsBase):
         super().__init__(e_desc, extend_efuse_table)
 
         for i, efuse in enumerate(self.ALL_EFUSES):
+            if efuse.name in [
+                "PVT_DRVB",
+                "TEMP_CALI",
+                "VDD_3V4_DOUT",
+                "ACTIVE_DCDC_1V25",
+                "ACTIVE_DCDC_1V55",
+                "SLP_DCDC",
+                "RXIQ_VERSION",
+                "RXIQ_0",
+                "RXIQ_1",
+            ]:
+                efuse.category = "calibration"
+
             if efuse.name in [
                 "BLOCK_USR_DATA",
                 "BLOCK_KEY0",
