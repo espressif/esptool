@@ -8,6 +8,7 @@ import rich_click as click
 from click.parser import OptionParser, _unpack_args
 
 from espefuse.efuse_interface import (
+    DEPRECATED_COMMAND_ALIASES,
     DEPRECATED_COMMANDS,
     SUPPORTED_BURN_COMMANDS,
     SUPPORTED_COMMANDS,
@@ -18,15 +19,25 @@ from esptool.cli_util import EsptoolCommand, EsptoolContext, EsptoolGroup
 from esptool.logger import log
 
 click.rich_click.USE_CLICK_SHORT_HELP = True
+# rich-click can display hidden commands explicitly listed in command groups.
+# Exclude deprecated aliases from help while keeping them callable.
 click.rich_click.COMMAND_GROUPS = {
     "*": [
         {
             "name": "Burn commands",
-            "commands": SUPPORTED_BURN_COMMANDS,
+            "commands": [
+                cmd
+                for cmd in SUPPORTED_BURN_COMMANDS
+                if cmd not in DEPRECATED_COMMAND_ALIASES
+            ],
         },
         {
             "name": "Read commands",
-            "commands": SUPPORTED_READ_COMMANDS,
+            "commands": [
+                cmd
+                for cmd in SUPPORTED_READ_COMMANDS
+                if cmd not in DEPRECATED_COMMAND_ALIASES
+            ],
         },
     ]
 }
@@ -152,6 +163,16 @@ class EspefuseGroup(EsptoolGroup):
 
     command_class = ChainingCommand
     context_class = EfuseContext
+
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
+        # Avoid duplicate deprecation warnings for adc_info.
+        if cmd_name == "adc_info":
+            log.warn(
+                "Deprecated: Command 'adc_info' is deprecated. "
+                "Use 'calib-info' instead."
+            )
+            cmd_name = "calib-info"
+        return super().get_command(ctx, cmd_name)
 
     @staticmethod
     def _split_to_groups(args: list[str]) -> tuple[list[list[str]], list[str]]:

@@ -186,7 +186,7 @@ Common Read Commands
 
 .. autofunction:: espefuse.BaseCommands.get_custom_mac
 
-.. autofunction:: espefuse.BaseCommands.adc_info
+.. autofunction:: espefuse.BaseCommands.calib_info
 
 .. autofunction:: espefuse.BaseCommands.check_error
 

@@ -160,7 +160,7 @@ class ESP32Commands(BaseCommands):
             return
         log.print("Successful.")
 
-    def adc_info(self):
+    def calib_info(self):
         adc_vref = self.efuses["ADC_VREF"]
         blk3_reserve = self.efuses["BLK3_PART_RESERVE"]
 

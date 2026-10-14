@@ -332,11 +332,12 @@ class TestReadCommands(EfuseTestCase):
             right_msg = "Custom MAC Address: 00:00:00:00:00:00 (OK)"
         self.espefuse_py("get-custom-mac", check_msg=right_msg)
 
-    def test_adc_info(self):
-        self.espefuse_py("adc-info -h")
-        self.espefuse_py("adc-info")
+    @pytest.mark.parametrize("command", ["calib-info", "adc-info"])
+    def test_calib_info(self, command):
+        self.espefuse_py(f"{command} -h")
+        self.espefuse_py(command)
 
-    def test_adc_info_2(self):
+    def test_calib_info_2(self):
         if arg_chip == "esp32":
             self.espefuse_py("burn-efuse BLK3_PART_RESERVE 1")
         elif arg_chip in ["esp32c3", "esp32s3"]:
@@ -345,7 +346,7 @@ class TestReadCommands(EfuseTestCase):
             self.espefuse_py("burn-efuse BLK_VERSION_MINOR 1")
         elif arg_chip in ["esp32h2", "esp32s31"]:
             self.espefuse_py("burn-efuse BLK_VERSION_MINOR 2")
-        output = self.espefuse_py("adc-info")
+        output = self.espefuse_py("calib-info")
         if arg_chip in ["esp32h4", "esp32h21"]:
             assert "Block version:" in output
         if arg_chip == "esp32s31":
@@ -2094,6 +2095,14 @@ class TestPublicAPI(EfuseTestCase):
         args.update(kwargs)
         return init_commands(**args)
 
+    def test_public_api_calib_info(self, capsys):
+        with self._init_commands() as espefuse:
+            capsys.readouterr()
+            espefuse.calib_info()
+            output = capsys.readouterr().out
+            espefuse.adc_info()
+            assert capsys.readouterr().out == output
+
     def test_public_api_summary_json_to_file(self):
         tmp_file = tempfile.NamedTemporaryFile(delete=False)
         tmp_file.close()
@@ -2393,7 +2402,7 @@ class TestMultipleCommands(EfuseTestCase):
             "summary \
             dump \
             get-custom-mac \
-            adc-info \
+            calib-info \
             check-error"
         )
 

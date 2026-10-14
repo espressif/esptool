@@ -39,7 +39,7 @@ Supported Commands
    burn-key-digest <burn-key-digest-cmd>
    burn-custom-mac <burn-custom-mac-cmd>
    get-custom-mac <get-custom-mac-cmd>
-   adc-info <adc-info-cmd>
+   calib-info <adc-info-cmd>
    set-flash-voltage <set-flash-voltage-cmd>
    check-error <check-error-cmd>
 

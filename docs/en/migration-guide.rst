@@ -340,6 +340,19 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
     1. Replace all underscores in the command names with ``-`` in your scripts.
 
 
+    Calibration Command Renaming
+    ############################
+
+    Starting with esptool v5.7.0, the ``adc-info`` command is renamed to ``calib-info`` to reflect that it also displays calibration data beyond ADC. The corresponding Python API is now ``calib_info()``.
+
+    The old ``adc-info`` command and ``adc_info()`` Python method remain available for backward compatibility and print a deprecation warning when called. The old command is hidden from the general ``--help`` output.
+
+    **Migration Steps:**
+
+    1. Replace ``adc-info`` (or the legacy ``adc_info`` spelling) with ``calib-info`` in command-line scripts.
+    2. Replace ``adc_info()`` with ``calib_info()`` in Python scripts.
+
+
     ``--port`` Option is Required
     #############################
 
@@ -378,7 +391,7 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
         efuses.burn_all()
 
         espefuse(esp, efuses, args, "summary")
-        espefuse(esp, efuses, args, "adc_info")
+        espefuse(esp, efuses, args, "adc_info")  # Legacy v4 command name
         espefuse(esp, efuses, args, "get_custom_mac")
 
         if not efuses["BLOCK1"].is_readable() or not efuses["BLOCK1"].is_writeable():
@@ -402,7 +415,7 @@ Choices for the ``--before`` and ``--after`` options have been renamed to use ``
             espefuse.burn_all()
 
             espefuse.summary()
-            espefuse.adc_info()
+            espefuse.calib_info()
             espefuse.get_custom_mac()
 
             if not espefuse.efuses["BLOCK1"].is_readable() or not espefuse.efuses["BLOCK1"].is_writeable():

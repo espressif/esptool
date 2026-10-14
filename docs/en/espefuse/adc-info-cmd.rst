@@ -1,26 +1,28 @@
 .. _adc-info-cmd:
+.. _calib-info-cmd:
 
-Adc Info
-========
+Calibration Info
+================
 
-The ``espefuse adc-info`` command displays information about ADC calibration data stored in eFuse.
+The ``espefuse calib-info`` command displays calibration data stored in eFuse.
+This includes ADC and other calibration data supported by the chip.
 
 .. only:: esp32
 
     .. code-block:: none
 
-        > espefuse adc-info
+        > espefuse calib-info
 
-        === Run "adc-info" command ===
+        === Run "calib-info" command ===
         ADC VRef calibration: 1121mV
 
 .. only:: esp32c3 or esp32s2 or esp32s3
 
     .. code-block:: none
 
-        > espefuse adc-info
+        > espefuse calib-info
 
-        === Run "adc-info" command ===
+        === Run "calib-info" command ===
         Temperature Sensor Calibration = -2.1C
 
         ADC1 readings stored in efuse BLOCK2:
@@ -47,9 +49,9 @@ The ``espefuse adc-info`` command displays information about ADC calibration dat
 
     .. code-block:: none
 
-        > espefuse adc-info
+        > espefuse calib-info
 
-        === Run "adc-info" command ===
+        === Run "calib-info" command ===
             RF_REF_I_BIAS_CONFIG:        0
             LDO_VOL_BIAS_CONFIG_LOW:     0
             LDO_VOL_BIAS_CONFIG_HIGH:    0

@@ -450,13 +450,21 @@ class BaseCommands(ABC):
             self.check_error(recovery, ctx.obj["do_not_confirm"])
 
         @cli.command(
-            "adc-info",
-            short_help="Display information about ADC calibration data "
-            "stored in eFuse.",
-            help="Display information about ADC calibration data stored in eFuse.",
+            "calib-info",
+            short_help="Display calibration data stored in eFuse.",
+            help="Display calibration data stored in eFuse.",
         )
+        def calib_info_cli():
+            self.calib_info()
+
+        # Hidden backward-compatible alias for calib-info.
+        @cli.command("adc-info", hidden=True)
         def adc_info_cli():
-            self.adc_info()
+            log.warn(
+                "Deprecated: Command 'adc-info' is deprecated. "
+                "Use 'calib-info' instead."
+            )
+            self.calib_info()
 
         @cli.command(
             "burn-custom-mac",
@@ -1371,9 +1379,14 @@ class BaseCommands(ABC):
         """
         raise esptool.FatalError("set_flash_voltage is not supported for this chip")
 
+    def calib_info(self):
+        """Display calibration data stored in eFuse."""
+        raise NotImplementedError("calib-info is not implemented for this chip")
+
     def adc_info(self):
-        """Display information about ADC calibration data stored in eFuse."""
-        raise NotImplementedError("adc-info is not implemented for this chip")
+        """Deprecated alias for :meth:`calib_info`."""
+        log.warn("Deprecated: adc_info() is deprecated. Use calib_info() instead.")
+        return self.calib_info()
 
     @abstractmethod
     def burn_key(self, *args, **kwargs):
