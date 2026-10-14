@@ -1,6 +1,6 @@
 MEMORY {
-  iram : org = 0x403DFD00, len = 0x100
-  dram : org = 0x3FCDFD00, len = 0x100
+  iram : org = 0x403B0000, len = 0x100
+  dram : org = 0x3FCB0100, len = 0x100
 }
 
 ENTRY(ram_main)
@@ -23,4 +23,4 @@ SECTIONS {
   } > dram
 }
 
-INCLUDE "../../../../flasher_stub/ld/rom_32c3.ld"
+PROVIDE ( ets_printf = 0x40000040 );

@@ -7,6 +7,7 @@
 import binascii
 import struct
 import time
+from typing import List, Optional, Tuple
 
 from bitstring import BitArray
 
@@ -239,8 +240,6 @@ class EspEfuses(base_fields.EspEfusesBase):
                 "The eFuse supports only xtal=32M (xtal was %d)" % apb_freq
             )
 
-        # TODO: [ESP32H4] IDF-12268
-
     def get_coding_scheme_warnings(self, silent=False):
         """Check if the coding scheme has detected any errors."""
         old_addr_reg = 0
@@ -248,10 +247,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         ret_fail = False
         for block in self.blocks:
             if block.id == 0:
-                words = [
-                    self.read_reg(self.REGS.EFUSE_RD_REPEAT_ERR0_REG + offs * 4)
-                    for offs in range(5)
-                ]
+                words = [self.read_reg(reg) for reg in self.REGS.BLOCK0_ERRORS]
                 block.err_bitarray.pos = 0
                 for word in reversed(words):
                     block.err_bitarray.overwrite(BitArray("uint:32=%d" % word))
@@ -296,10 +292,6 @@ class EfuseField(base_fields.EfuseFieldBase):
 
 
 class EfuseWafer(EfuseField):
-    def get(self, from_read=True):
-        # TODO: [ESP32H4] IDF-12268
-        return 0
-
     def save(self, new_value):
         raise esptool.FatalError("Burning %s is not supported" % self.name)
 
@@ -390,10 +382,14 @@ class EfuseMacField(EfuseField):
 
 # fmt: off
 class EfuseKeyPurposeField(EfuseField):
-    # TODO: [ESP32H4] IDF-12268 need check
-    KEY_PURPOSES = [
+    key_purpose_len = 5  # bits for key purpose
+    KeyPurposeType = Tuple[str, int, Optional[str], Optional[str], str]
+    KEY_PURPOSES: List[KeyPurposeType] = [
         ("USER",                         0,  None,       None,      "no_need_rd_protect"),   # User purposes (software-only use)
-        ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key
+        ("ECDSA_KEY_P256",               1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key P256 (NIST P-256)
+        ("ECDSA_KEY",                    1,  None,       "Reverse", "need_rd_protect"),      # ECDSA key (alias for P256)
+        ("XTS_AES_256_KEY_1",            2,  None,       "Reverse", "need_rd_protect"),      # Flash encryption key (XTS-AES-256 low/first half)
+        ("XTS_AES_256_KEY_2",            3,  None,       "Reverse", "need_rd_protect"),      # Flash encryption key (XTS-AES-256 high/second half)
         ("XTS_AES_128_KEY",              4,  None,       "Reverse", "need_rd_protect"),      # XTS_AES_128_KEY (flash/PSRAM encryption)
         ("HMAC_DOWN_ALL",                5,  None,       None,      "need_rd_protect"),      # HMAC Downstream mode
         ("HMAC_DOWN_JTAG",               6,  None,       None,      "need_rd_protect"),      # JTAG soft enable key (uses HMAC Downstream mode)
@@ -403,7 +399,24 @@ class EfuseKeyPurposeField(EfuseField):
         ("SECURE_BOOT_DIGEST1",          10, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST1 (Secure Boot key digest)
         ("SECURE_BOOT_DIGEST2",          11, "DIGEST",   None,      "no_need_rd_protect"),   # SECURE_BOOT_DIGEST2 (Secure Boot key digest)
         ("KM_INIT_KEY",                  12, None,       None,      "need_rd_protect"),      # init key that is used for the generation of AES/ECDSA key
+        ("XTS_AES_256_PSRAM_KEY_1",      13, None,       "Reverse", "need_rd_protect"),      # PSRAM encryption key (XTS-AES-256 low/first half)
+        ("XTS_AES_256_PSRAM_KEY_2",      14, None,       "Reverse", "need_rd_protect"),      # PSRAM encryption key (XTS-AES-256 high/second half)
+        ("XTS_AES_128_PSRAM_KEY",        15, None,       "Reverse", "need_rd_protect"),      # PSRAM encryption key (XTS-AES-128)
+        ("ECDSA_KEY_P192",               16, None,       "Reverse", "need_rd_protect"),      # ECDSA key P192 (NIST P-192)
+        ("ECDSA_KEY_P384_L",             17, None,       "Reverse", "need_rd_protect"),      # ECDSA key P384 low half
+        ("ECDSA_KEY_P384_H",             18, None,       "Reverse", "need_rd_protect"),      # ECDSA key P384 high half
+        ("XTS_AES_256_KEY",              -1, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_KEY_1 and XTS_AES_256_KEY_2
+        ("XTS_AES_256_PSRAM_KEY",        -2, "VIRTUAL",  None,      "no_need_rd_protect"),   # Virtual purpose splits to XTS_AES_256_PSRAM_KEY_1 and XTS_AES_256_PSRAM_KEY_2
+        ("ECDSA_KEY_P384",               -3, "VIRTUAL",  None,      "need_rd_protect"),      # Virtual: one key file -> ECDSA_KEY_P384_L + ECDSA_KEY_P384_H
     ]
+    CUSTOM_KEY_PURPOSES: List[KeyPurposeType] = []
+    for id in range(0, 1 << key_purpose_len):
+        if id not in [p[1] for p in KEY_PURPOSES]:
+            CUSTOM_KEY_PURPOSES.append((f"CUSTOM_{id}", id, None, None, "no_need_rd_protect"))
+            CUSTOM_KEY_PURPOSES.append((f"CUSTOM_DIGEST_{id}", id, "DIGEST", None, "no_need_rd_protect"))
+    CUSTOM_KEY_PURPOSES.append(("CUSTOM_MAX", (1 << key_purpose_len) - 1, None, None, "no_need_rd_protect"))
+    CUSTOM_KEY_PURPOSES.append(("CUSTOM_DIGEST_MAX", (1 << key_purpose_len) - 1, "DIGEST", None, "no_need_rd_protect"))
+    KEY_PURPOSES += CUSTOM_KEY_PURPOSES
 # fmt: on
 
     KEY_PURPOSES_NAME = [name[0] for name in KEY_PURPOSES]

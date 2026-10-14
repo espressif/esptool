@@ -279,9 +279,11 @@ def main(argv=None, esp=None):
                 choices=extra_keep_args
                 + [
                     "80m",
+                    "64m",
                     "60m",
                     "48m",
                     "40m",
+                    "32m",
                     "30m",
                     "26m",
                     "24m",
@@ -859,15 +861,6 @@ def main(argv=None, esp=None):
                     "setting --no-stub"
                 )
                 args.no_stub = True
-            elif esp.CHIP_NAME in [
-                "ESP32-H21",
-                "ESP32-H4",
-            ]:  # TODO: [ESP32H21] IDF-11509   [ESP32H4] IDF-12271
-                print(
-                    f"WARNING: Stub loader is not yet supported on {esp.CHIP_NAME}, "
-                    "setting --no-stub"
-                )
-                args.no_stub = True
             else:
                 try:
                     esp = esp.run_stub()
@@ -1047,7 +1040,8 @@ def main(argv=None, esp=None):
                 # Check if stub supports chosen flash size
                 if (
                     esp.IS_STUB
-                    and esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4", "ESP32-C5"]
+                    and esp.CHIP_NAME
+                    not in ["ESP32-S3", "ESP32-P4", "ESP32-C5", "ESP32-H4"]
                     and flash_size_bytes(flash_size) > 16 * 1024 * 1024
                 ):
                     print(
@@ -1074,7 +1068,7 @@ def main(argv=None, esp=None):
 
         if esp.IS_STUB and hasattr(args, "address") and hasattr(args, "size"):
             if (
-                esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4", "ESP32-C5"]
+                esp.CHIP_NAME not in ["ESP32-S3", "ESP32-P4", "ESP32-C5", "ESP32-H4"]
                 and args.address + args.size > 0x1000000
             ):
                 print(
