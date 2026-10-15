@@ -104,8 +104,11 @@ class ESP32H21Commands(BaseCommands):
     ###################################### Commands ######################################
 
     def adc_info(self):
-        # TODO: [ESP32H21] IDF-11506
-        log.print("Not supported yet.")
+        log.print("Block version:", self.efuses.get_block_version())
+        if self.efuses.get_block_version() >= 1:
+            for efuse in self.efuses:
+                if efuse.category == "calibration":
+                    log.print(f"{efuse.name:<30} = ", self.efuses[efuse.name].get())
 
     def burn_key(
         self,
