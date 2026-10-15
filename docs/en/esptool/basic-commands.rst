@@ -64,9 +64,9 @@ Use the ``-e/--erase-all`` option to erase all flash sectors (not just the write
 Skipping Unchanged Content
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-By default, esptool is set to erase the flash and try to flash the whole content of the provided binaries into flash. However, you can enable a check to skip flashing to save time if the new binary is already present in flash by using the ``--skip-flashed`` (or ``-s``) option. When enabled, esptool computes an MD5 checksum of the flash content and compares it with the new binary. If they match exactly, flashing is skipped entirely and a message is displayed indicating that the content is already in flash.
+By default, esptool is set to erase the flash and try to flash the whole content of the provided binaries into flash. However, you can enable a check to skip flashing to save time if the new binary is already present in flash by using the ``--skip-flashed`` (or ``-s``) option. When enabled, esptool compares MD5 checksums of the flash content and the new binary in 64 KB chunks and stops at the first chunk that differs. If everything matches, flashing is skipped entirely and a message is displayed indicating that the content is already in flash.
 
-For larger binaries, checksumming the flash content can take significant time. If you are certain the content needs to be rewritten (e.g., after a flash erase or when you know the content has changed), omit ``--skip-flashed`` to proceed directly to flashing without performing MD5 checks in order to save time.
+For larger binaries that are already in flash, checksumming the flash content can take significant time. If you are certain the content needs to be rewritten (e.g., after a flash erase or when you know the content has changed), omit ``--skip-flashed`` to proceed directly to flashing without performing MD5 checks in order to save time.
 
 Fast Reflashing
 ^^^^^^^^^^^^^^^
