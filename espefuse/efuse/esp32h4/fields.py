@@ -89,7 +89,7 @@ class EspEfuses(base_fields.EspEfusesBase):
         if skip_connect:
             self.efuses += self._convert_efuse_defs(self.Fields.CALIBRATION_EFUSES)
         else:
-            if False:  # self["BLK_VERSION_MINOR"].get() == 1:
+            if self.get_block_version() >= 1:
                 self.efuses += self._convert_efuse_defs(self.Fields.CALIBRATION_EFUSES)
             self.efuses += self._convert_efuse_defs(self.Fields.CALC)
 
