@@ -1,3 +1,19 @@
+## v5.6.0 (2026-10-15)
+
+### ✨ New Features
+
+- **stub_flasher**: Update flasher stub to v1.4.1 *(Peter Dragun - 0ffcfea)*
+- **espefuse**: Adds ADC weight efuse fields for ESP32-S31 *(Konstantin Kondrashov - 62fdad2)*
+
+### 🐛 Bug Fixes
+
+- **espefuse**: Update ESP32-H21 eFuse definitions for ECO3 *(Konstantin Kondrashov - bcfd059)*
+- **espefuse**: Update ESP32-H4 eFuse definitions to V0.5 *(Konstantin Kondrashov - 4f53ac6)*
+- **esp32h2**: Identify chip variant and embedded flash *(Konstantin Kondrashov - a6a4ea0)*
+- **espefuse**: Replace the bitstring dependency with a minimal local module *(Roland Dobai - 402ec4b)*
+- Declare the license as an SPDX expression *(Peter Dragun - ea9a60d)*
+
+
 ## v5.5.0 (2026-10-08)
 
 ### ✨ New Features
