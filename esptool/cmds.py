@@ -1489,7 +1489,7 @@ def write_flash(
         # Determine which files list contain the ones to encrypt
         files_to_encrypt = (
             norm_addr_data
-            if encrypt is not None
+            if encrypt
             else [(addr, get_bytes(data)) for addr, data in encrypt_files]
         )
 
