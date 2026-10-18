@@ -1487,22 +1487,21 @@ def write_flash(
                 do_write = False
 
         # Determine which files list contain the ones to encrypt
-        files_to_encrypt = (
-            norm_addr_data
-            if encrypt is not None
-            else [(addr, get_bytes(data)) for addr, data in encrypt_files]
-        )
+        files_to_encrypt = []
+        if encrypt:
+            files_to_encrypt = norm_addr_data
+        elif encrypt_files is not None:
+            files_to_encrypt = [(addr, get_bytes(data)) for addr, data in encrypt_files]
 
-        if files_to_encrypt is not None:
-            for address, (data, name) in files_to_encrypt:
-                if address % esp.FLASH_ENCRYPTED_WRITE_ALIGN:
-                    source = "Input image" if name is None else f"'{escape(str(name))}'"
-                    log.warn(
-                        f"{source} (address {address:#x}) is not "
-                        f"{esp.FLASH_ENCRYPTED_WRITE_ALIGN} byte aligned, "
-                        "can't flash encrypted."
-                    )
-                    do_write = False
+        for address, (data, name) in files_to_encrypt:
+            if address % esp.FLASH_ENCRYPTED_WRITE_ALIGN:
+                source = "Input image" if name is None else f"'{escape(str(name))}'"
+                log.warn(
+                    f"{source} (address {address:#x}) is not "
+                    f"{esp.FLASH_ENCRYPTED_WRITE_ALIGN} byte aligned, "
+                    "can't flash encrypted."
+                )
+                do_write = False
 
         if not do_write and not ignore_flash_enc_efuse:
             raise FatalError(
