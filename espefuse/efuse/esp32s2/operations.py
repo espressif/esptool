@@ -162,7 +162,7 @@ class ESP32S2Commands(BaseCommands):
             return
         log.print("Successful.")
 
-    def adc_info(self):
+    def calib_info(self):
         log.print("Block version:", self.efuses.get_block_version())
         if self.efuses.get_block_version() >= 1:
             # fmt: off

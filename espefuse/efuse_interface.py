@@ -51,11 +51,15 @@ SUPPORTED_READ_COMMANDS = [
     "summary",
     "dump",
     "get-custom-mac",
+    "calib-info",
     "adc-info",
     "check-error",
 ]
 
 DEPRECATED_COMMANDS = ["execute-scripts"]
+
+# Unlike removed commands, these aliases still connect and run normally.
+DEPRECATED_COMMAND_ALIASES = ["adc-info"]
 
 SUPPORTED_COMMANDS = (
     SUPPORTED_READ_COMMANDS + SUPPORTED_BURN_COMMANDS + DEPRECATED_COMMANDS
