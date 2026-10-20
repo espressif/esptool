@@ -781,6 +781,12 @@ class TestFlashing(EsptoolTestCase):
         esp = MagicMock()
         esp.get_flash_encryption_enabled.return_value = flash_encryption_enabled
         esp.get_encrypted_download_disabled.return_value = encrypted_download_disabled
+        esp.get_flash_crypt_config.return_value = None
+        esp.is_flash_encryption_key_valid.return_value = True
+        esp.FLASH_ENCRYPTED_WRITE_ALIGN = 16
+        esp.FLASH_SECTOR_SIZE = 0x1000
+        esp.FLASH_WRITE_SIZE = 0x4000
+        esp.WRITE_FLASH_ATTEMPTS = 2
         esp.CHIP_NAME = "esp32"
         esp.IMAGE_CHIP_ID = 0
         esp.secure_download_mode = False
@@ -833,6 +839,44 @@ class TestFlashing(EsptoolTestCase):
             assert "download manual encrypt disabled" not in str(e)
         except Exception:
             pass
+
+    @pytest.mark.quick_test
+    @pytest.mark.host_test
+    def test_write_flash_encrypt_files_checks_encrypted_addresses(self, capsys):
+        """
+        --encrypt-files must validate the files that are actually encrypted:
+        an encrypted write requires a 16-byte aligned flash address.
+        """
+        esp = self._esp_mock_for_encryption_check(False, False)
+        with pytest.raises(FatalError, match="Can't perform encrypted flash write"):
+            write_flash(
+                esp,
+                [(0x1000, b"\x00" * 16)],
+                encrypt_files=[(0x2001, b"\x00" * 16)],
+            )
+        # the rejected file must be the encrypted one, not the plaintext one
+        assert "0x2001" in capsys.readouterr().err
+
+    @pytest.mark.quick_test
+    @pytest.mark.host_test
+    def test_write_flash_encrypt_files_allows_unaligned_plaintext(self, capsys):
+        """
+        A plaintext file at a non-16-byte-aligned address is allowed (esptool
+        pads it), so it must not trigger the encrypted-write alignment check
+        when --encrypt-files is used.
+        """
+        esp = self._esp_mock_for_encryption_check(False, False)
+        try:
+            write_flash(
+                esp,
+                [(0x1001, b"\x00" * 16)],
+                encrypt_files=[(0x2000, b"\x00" * 16)],
+            )
+        except FatalError as e:
+            assert "Can't perform encrypted flash write" not in str(e)
+        except Exception:
+            pass  # the flash protocol itself needs a real device
+        assert "not 16 byte aligned" not in capsys.readouterr().err
 
     def test_write_no_overlap(self):
         output = self.run_esptool(
