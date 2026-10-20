@@ -102,7 +102,8 @@ class EspEfuses(base_fields.EspEfusesBase):
                 for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES
             ]
         else:
-            if self.get_block_version() >= 2:
+            # Calibration data is present starting with BLK version 0.1.
+            if self.get_block_version() >= 1:
                 self.efuses += [
                     EfuseField.convert(self, efuse)
                     for efuse in self.Fields.BLOCK2_CALIBRATION_EFUSES

@@ -315,11 +315,13 @@ class TestReadCommands(EfuseTestCase):
             self.espefuse_py("burn_efuse BLK3_PART_RESERVE 1")
         elif arg_chip in ["esp32c3", "esp32s3", "esp32s3beta2"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MAJOR 1")
-        elif arg_chip in ["esp32c2", "esp32s2", "esp32c6"]:
+        elif arg_chip in ["esp32c2", "esp32s2", "esp32c6", "esp32h21"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MINOR 1")
         elif arg_chip in ["esp32h2", "esp32h2beta1"]:
             self.espefuse_py("burn_efuse BLK_VERSION_MINOR 2")
-        self.espefuse_py("adc_info")
+        output = self.espefuse_py("adc_info")
+        if arg_chip == "esp32h21":
+            assert "Block version:" in output
 
     def test_check_error(self):
         self.espefuse_py("check_error -h")
@@ -384,7 +386,8 @@ class TestReadProtectionCommands(EfuseTestCase):
         assert count_protects == output.count("is already read protected")
 
     @pytest.mark.skipif(
-        arg_chip == "esp32p4", reason="BLOCK_SYS_DATA2 is used by ADC calib"
+        arg_chip in ["esp32p4", "esp32h21"],
+        reason="BLOCK_SYS_DATA2 is used for calibration data",
     )
     def test_read_protect_efuse2(self):
         self.espefuse_py("write_protect_efuse RD_DIS")
@@ -1446,8 +1449,8 @@ class TestBurnBlockDataCommands(EfuseTestCase):
         ) in output
         self.check_data_block_in_log(output, f"{IMAGES_DIR}/256bit")
 
-        if arg_chip != "esp32p4":
-            # BLOCK10 is free. In P4 it is used for ADC calib data.
+        if arg_chip not in ["esp32p4", "esp32h21"]:
+            # BLOCK10 is used for calibration data on P4 and H21.
             self.espefuse_py(
                 f"burn_block_data \
                 BLOCK10 {IMAGES_DIR}/256bit_3"
