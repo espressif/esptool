@@ -43,7 +43,7 @@ variables:
   PIP_EXTRA_INDEX_URL: https://dl.espressif.com/pypi
   PIP_NO_CACHE_DIR: "1"
   PYTHON_IMAGE_MIN: python:3.10-bookworm
-  PYTHON_IMAGE_LATEST: python:3.14-trixie
+  PYTHON_IMAGE_LATEST: python:3.15-trixie
   CANARY_IMAGE: ubuntu:24.04
 
 # Shared by host_tests_windows and target_tests_windows (see host_tests.yml / target_tests.yml)
