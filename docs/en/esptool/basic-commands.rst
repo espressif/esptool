@@ -156,6 +156,20 @@ Fast reflashing is not available in the following scenarios:
 
 In these cases, esptool will automatically fall back to full re-flashing.
 
+Skipping Verification
+^^^^^^^^^^^^^^^^^^^^^
+
+After writing, esptool compares an MD5 checksum of the written flash region with the data it sent. Use ``--no-verify`` to skip this check when the flash contents will be verified in another way, for example:
+
+* By a separate :ref:`verify-flash <verify-flash>` call.
+* By booting the device: by default, the ESP-IDF bootloader verifies the checksum and SHA-256 hash of an app image before running it. This covers only app images, not other data such as the partition table or data partitions.
+
+.. warning::
+
+    With ``--no-verify``, a corrupted or incomplete write is not detected by esptool and the device may be left with invalid flash contents.
+
+    With ``--diff-with``, fast reflashing relies on this check to detect flash contents that differ from the ``--diff-with`` file and to reflash the whole file. With ``--no-verify``, esptool only rewrites the sectors that differ between the ``--diff-with`` file and the new file, so any other difference in flash is left in place.
+
 .. only:: not esp8266
 
     Bootloader Protection
