@@ -2654,3 +2654,20 @@ class TestTokenDump(EfuseTestCase):
 
         assert extracted_write_token == write_token
         assert extracted_read_token == read_token
+
+
+@pytest.mark.skipif(reset_port is not None, reason="Runs on a virtual chip only")
+class TestCallsInOneProcess(EfuseTestCase):
+    def _main(self, cmd):
+        import espefuse
+
+        espefuse.main(
+            f"--chip {arg_chip} --virt --path-efuse-file {self.efuse_file.name} "
+            f"--do-not-confirm {cmd}".split()
+        )
+
+    def test_batch_burn_runs_once(self):
+        # Two burn commands in one call burn in batch mode. A later call in the
+        # same process must not run that batch again.
+        self._main("burn-bit BLOCK3 0 burn-bit BLOCK3 1")
+        self._main("summary")

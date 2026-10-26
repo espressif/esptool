@@ -201,7 +201,10 @@ def cli(
     ctx.obj["efuses"] = commands.efuses
     ctx.obj["do_not_confirm"] = do_not_confirm
 
-    @cli.result_callback()
+    # cli() runs on every main() call, and the group is module-level. Without
+    # replace=True click chains this callback onto those of earlier calls, which
+    # then run again with their own commands.
+    @cli.result_callback(replace=True)
     def process_result(result, *args, **kwargs):
         if multiple_burn_commands:
             if not commands.burn_all(check_batch_mode=True):
