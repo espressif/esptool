@@ -2190,6 +2190,7 @@ class ESPLoader:
                 self._port,
                 uses_usb,
                 flow_control=uses_hardware_flow_control(self.get_usb_vid_pid()),
+                usb_jtag_serial=self.uses_usb_jtag_serial(),
             )()
 
     def soft_reset(self, stay_in_bootloader):
