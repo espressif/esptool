@@ -83,7 +83,7 @@ class ESP32P4ROM(ESP32ROM):
 
     GPIO_STRAP_REG = 0x500E0038
     GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
-    RTC_CNTL_OPTION1_REG = 0x50110008
+    RTC_CNTL_OPTION1_REG = 0x50110008  # LP_SYSTEM_REG_SYS_CTRL_REG
     RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x4  # Is download mode forced over USB?
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
@@ -270,6 +270,25 @@ class ESP32P4ROM(ESP32ROM):
             )
             self.write_reg(self.RTC_CNTL_SWD_WPROTECT_REG, 0)
 
+    def clear_force_download_boot(self):
+        """
+        Clear LP_SYSTEM_REG_FORCE_DOWNLOAD_BOOT so a reset boots the app.
+
+        A USB 1200-baud touch (Arduino core, TinyUF2) sets this bit to enter
+        download mode. It survives an RTS (USB-Serial/JTAG) reset, so leaving it
+        set sends the chip straight back into the ROM bootloader.
+        Same workaround as ESP32-S3, see:
+        https://github.com/espressif/arduino-esp32/issues/6762
+        """
+        try:
+            self.write_reg(
+                self.RTC_CNTL_OPTION1_REG, 0, self.RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK
+            )
+        except Exception:
+            # Skip invalid response and continue reset (can happen when monitoring
+            # during reset)
+            pass
+
     def watchdog_reset(self):
         log.print("Hard resetting with a watchdog...")
         self.write_reg(self.RTC_CNTL_WDTWPROTECT_REG, self.RTC_CNTL_WDT_WKEY)  # unlock
@@ -281,6 +300,7 @@ class ESP32P4ROM(ESP32ROM):
         sleep(0.5)  # wait for reset to take effect
 
     def hard_reset(self):
+        self.clear_force_download_boot()
         if self.uses_usb_otg():
             self.watchdog_reset()
         else:
