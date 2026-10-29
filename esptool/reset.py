@@ -13,6 +13,7 @@ from esp_pylib.serial_reset import (
     execute_custom_reset,
     hard_reset,
     parse_custom_reset_sequence,
+    set_dtr_rts,
     unix_tight_bootloader_reset,
     usb_jtag_bootloader_reset,
 )
@@ -123,12 +124,39 @@ class HardReset(ResetStrategy):
     """Pulse EN to restart the chip."""
 
     def __init__(
-        self, port: serial.Serial, uses_usb: bool = False, flow_control: bool = False
+        self,
+        port: serial.Serial,
+        uses_usb: bool = False,
+        flow_control: bool = False,
+        usb_jtag_serial: bool = False,
     ):
         super().__init__(port, flow_control=flow_control)
         self.uses_usb = uses_usb
+        self.usb_jtag_serial = usb_jtag_serial
+
+    def _release_lines(self) -> None:
+        """Deassert DTR and RTS together before pulsing RTS on USB-Serial/JTAG.
+
+        On POSIX, pyserial opens the port with DTR and RTS asserted, and with
+        ``--before no-reset`` nothing releases them. USB-Serial/JTAG ignores an
+        RTS pulse while DTR is asserted, and dropping DTR first while RTS is
+        asserted is its download-mode entry, so both lines have to go idle in
+        one write. Windows ports already open with both lines deasserted.
+        """
+        if not (self.port.dtr or self.port.rts):
+            return
+        try:
+            set_dtr_rts(self.port, dtr=False, rts=False)
+        except (NotImplementedError, OSError):
+            return
+        # Sync pyserial's cached state, set_rts() re-applies the cached DTR value
+        self.port.dtr = False
+        self.port.rts = False
+        time.sleep(0.1)
 
     def reset(self) -> None:
+        if self.usb_jtag_serial:
+            self._release_lines()
         if self.uses_usb:
             # Chips talking over their internal USB peripheral disappear from
             # the bus during reset; ``post_release_delay=0.2`` gives the
