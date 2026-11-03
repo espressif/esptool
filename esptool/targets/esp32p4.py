@@ -313,14 +313,16 @@ class ESP32P4ROM(ESP32ROM):
             raise NotSupportedError(self, "Powering on flash in secure download mode")
 
         revision = self.get_chip_revision()
-        # Flash defaults off on ECO6/ECO7 after the 1.8 V → 3.3 V default change
+        # Flash defaults off on ECO6/ECO7/ECO8 after the 1.8 V → 3.3 V default change
         # (protects 1.8 V parts, board voltage must be set in eFuse). Other silicon
         # revisions do not need this sequence.
-        if revision not in [301, 302]:
+        if revision < 301:
             return
 
         # On ECO7, also skip when DOWNLOAD_MODE_XPD_ON is programmed: ROM already
         # asserts flash XPD in download mode, so esptool must not run this path.
+        # On ECO8, the issue caused by asserts flash XPD twice is resolved, so no
+        # need to skip
         if revision == 302 and (
             self.read_reg(self.EFUSE_RD_REPEAT_DATA1_REG)
             & self.EFUSE_DOWNLOAD_MODE_XPD_ON_MASK
