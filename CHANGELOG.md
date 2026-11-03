@@ -1,3 +1,40 @@
+## v4.13.0 (2026-11-02)
+
+### New Features
+
+- **esptool**: Adds efuse version and pkg efuses for ESP32H4
+- **espefuse**: Update efuse table for ESP32H4
+- **espefuse**: Enable ecdsa keys burning support for ESP32-H4
+- **stub_flasher**: Update flasher stub to v1.4.0
+- **cli**: accept 64m and 32m flash frequencies
+- **espefuse**: Update efuse table for ESP32-H21
+- **espefuse**: Add calib efuse fields for ESP32C5
+- **efuse**: Adds eFuse for ESP32-H2 revision 1.2
+
+### Bug Fixes
+
+- **espefuse**: Update ESP32-H4 eFuse definitions to V0.5
+- **espefuse**: Update ESP32-H21 eFuse definitions for ECO3
+- **espefuse**: Hide sensitive info by default in burn_key on ESP32-H4
+- **esp32h4**: Do not warn about flash beyond 16MB with the flasher stub
+- **load-ram**: Warn when the image is incompatible with the chip
+- **write-flash**: Only reject incompatible bootloader images
+- **espefuse**: Warn when ESP32-P4 Secure Download Mode leaves flash unwritable
+- **esp32c5**: Enable baud rate change in Secure Download Mode
+- **esp32h4**: correct target definitions
+- **esp32-h4**: Fix memory map and disable unsupported watchdog reset
+- **esp32h21**: Correct target definitions
+- **espefuse**: Correct eFuse error and date register offsets
+- **esp32-c61**: Identify in-package flash and PSRAM variants
+- Fix operations over USB-Serial/JTAG transport in Secure Download Mode
+- **esp32h2**: Identify chip variant and embedded flash
+- **espefuse**: Restrict bitstring dependency to versions below 5
+- **espefuse**: Remove non-existent HMAC key purposes for ESP32-C61
+- **esp32c5**: Identify chip variant and embedded flash/PSRAM in chip description
+- **espefuse**: Close the summary file after writing the JSON output
+- Budget stub erase work in compressed flash timeouts
+- Raise default erase_region_timeout_per_mb to 40s
+
 ## v4.12.0 (2026-07-13)
 
 ### New Features
