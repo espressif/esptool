@@ -9,6 +9,7 @@ import serial
 import serial.rfc2217
 from serial.rfc2217 import (
     COM_PORT_OPTION,
+    SERVER_SET_CONTROL,
     SET_CONTROL,
     SET_CONTROL_DTR_OFF,
     SET_CONTROL_DTR_ON,
@@ -36,13 +37,34 @@ class EspPortManager(serial.rfc2217.PortManager):
     and not sent to the serial port.
     """
 
-    def __init__(self, serial_port, connection, esp32r0_delay, logger=None):
+    def __init__(
+        self, serial_port, connection, esp32r0_delay, logger=None, no_reset=False
+    ):
         self.esp32r0_delay = esp32r0_delay
+        self.no_reset = no_reset
         self.is_download_mode = False
         super().__init__(serial_port, connection, logger)
 
     def _telnet_process_subnegotiation(self, suboption):
-        if suboption[0:1] == COM_PORT_OPTION and suboption[1:2] == SET_CONTROL:
+        if (
+            self.no_reset
+            and suboption[0:1] == COM_PORT_OPTION
+            and suboption[1:2] == SET_CONTROL
+            and suboption[2:3]
+            in (
+                SET_CONTROL_DTR_OFF,
+                SET_CONTROL_DTR_ON,
+                SET_CONTROL_RTS_OFF,
+                SET_CONTROL_RTS_ON,
+            )
+        ):
+            self.rfc2217_send_subnegotiation(SERVER_SET_CONTROL, suboption[2:3])
+            return
+        if (
+            not self.no_reset
+            and suboption[0:1] == COM_PORT_OPTION
+            and suboption[1:2] == SET_CONTROL
+        ):
             if suboption[2:3] == SET_CONTROL_DTR_OFF:
                 self.is_download_mode = False
                 self.serial.dtr = False
