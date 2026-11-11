@@ -137,22 +137,53 @@ class ESP32S31ROM(ESP32C5ROM):
         num_word = 3  # EFUSE_RD_MAC_SYS3_REG
         return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 22) & 0x03
 
+    def get_psram_cap(self):
+        low_num_word = 3  # EFUSE_RD_MAC_SYS3_REG
+        low = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * low_num_word)) >> 31) & 0x01
+        high_num_word = 4  # EFUSE_RD_MAC_SYS4_REG
+        high = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * high_num_word)) >> 0) & 0x03
+        return (high << 1) | low
+
+    def get_psram_vendor(self):
+        num_word = 4  # EFUSE_RD_MAC_SYS4_REG
+        vendor_id = (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 4) & 0x03
+        return {1: "UniIC", 2: "AP"}.get(vendor_id, "")
+
+    def get_temp(self):
+        num_word = 4  # EFUSE_RD_MAC_SYS4_REG
+        return (self.read_reg(self.EFUSE_BLOCK1_ADDR + (4 * num_word)) >> 2) & 0x03
+
     def get_chip_description(self):
-        chip_name = {
-            0: "ESP32-S31",
-        }.get(self.get_pkg_version(), "unknown ESP32-S31")
+        chip_name = "ESP32-S31"
+        chip_name += {1: "N"}.get(self.get_temp(), "?")
+        chip_name += {0: "", 1: "RV16", 2: "RV32"}.get(self.get_psram_cap(), "RV?")
+
+        if "?" in chip_name:
+            chip_name = "Unknown " + chip_name
+
         major_rev = self.get_major_chip_version()
         minor_rev = self.get_minor_chip_version()
         return f"{chip_name} (revision v{major_rev}.{minor_rev})"
 
     def get_chip_features(self):
-        return [
+        features = [
             "Wi-Fi 6",
             "BT 5.4 (LE)",
             "IEEE802.15.4",
             "Dual Core + LP Core",
             "300MHz",
         ]
+
+        cap = self.get_psram_cap()
+        psram_version = {
+            0: "No Embedded PSRAM",
+            1: "Embedded PSRAM 16MB",
+            2: "Embedded PSRAM 32MB",
+        }.get(cap, "Unknown Embedded PSRAM")
+        if cap in (1, 2):
+            psram_version += f" ({self.get_psram_vendor()})"
+
+        return features + [psram_version]
 
     def get_crystal_freq(self):
         # ESP32-S31 XTAL is fixed to 40MHz
