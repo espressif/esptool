@@ -1474,7 +1474,8 @@ class ESPLoader:
             return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
 
         secure_boot_workflow = (
-            self.CHIP_NAME == "ESP32-S3" and self.get_secure_boot_enabled()
+            (self.CHIP_NAME == "ESP32-S3" or self.CHIP_NAME == "ESP32-C3")
+            and self.get_secure_boot_enabled()
         )
 
         # Upload
@@ -1492,13 +1493,25 @@ class ESPLoader:
         if not secure_boot_workflow:
             self.mem_finish(stub.entry)
         else:
-            # Bug in ESP32-S3 ROM prevents stub execution if secure boot is enabled
+            # Bug in ESP32-S3 and ESP32-C3 ROM prevents stub execution if secure boot is enabled
             # Hijack the `read` function in ROM to point to the stub entrypoint
             # got with GDB - p &rom_spiflash_legacy_funcs.read
-            rom_spiflash_legacy_funcs_read_ptr = 0x3FCEF688
             self.mem_finish(0)  # Finish uploading to RAM but don't run the stub yet
-            stored_read_pointer = self.read_reg(rom_spiflash_legacy_funcs_read_ptr)
-            self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stub.entry)
+            if self.CHIP_NAME == "ESP32-S3":
+                rom_spiflash_legacy_funcs_read_ptr = 0x3FCEF688
+                stored_read_pointer = self.read_reg(rom_spiflash_legacy_funcs_read_ptr)
+                self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stub.entry)
+            elif self.CHIP_NAME == "ESP32-C3":
+                # On the ESP32-C3, the ROM region pointed to by `rom_spiflash_legacy_funcs` cannot be modified.
+                # Therefore, `rom_spiflash_legacy_funcs` must be configured to point to a modifiable RAM region.
+                rom_spiflash_legacy_funcs_ptr = 0x3FCDFFF4
+                rom_spiflash_legacy_data_ptr = 0x3FCDFFF0
+                stored_funcs_pointer = self.read_reg(rom_spiflash_legacy_funcs_ptr)
+                stored_data_pointer = self.read_reg(rom_spiflash_legacy_data_ptr)
+                # read pointer is 20 bytes after the funcs pointer
+                self.write_reg(rom_spiflash_legacy_funcs_ptr, rom_spiflash_legacy_data_ptr - 20)
+                self.write_reg(rom_spiflash_legacy_data_ptr, stub.entry)
+
             self.command(  # Trigger the `read` in ROM to jump to the stub entrypoint
                 self.ESP_CMDS["READ_FLASH_SLOW"],
                 struct.pack("<II", 0, 0),
@@ -1520,8 +1533,13 @@ class ESPLoader:
         if p != b"OHAI":
             raise FatalError(f"Failed to start stub flasher. Unexpected response: {p}")
         if secure_boot_workflow:
-            # Restore the original `read` function pointer
-            self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stored_read_pointer)
+            if self.CHIP_NAME == "ESP32-S3":
+                # Restore the original `read` function pointer
+                self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stored_read_pointer)
+            elif self.CHIP_NAME == "ESP32-C3":
+                # Restore the original `funcs` and `data`
+                self.write_reg(rom_spiflash_legacy_funcs_ptr, stored_funcs_pointer)
+                self.write_reg(rom_spiflash_legacy_data_ptr, stored_data_pointer)
         log.stage(finish=True)
         log.print("Stub flasher running.")
         return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
