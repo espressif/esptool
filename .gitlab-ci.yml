@@ -12,6 +12,7 @@ stages:
   - deploy_docs
   - deploy_development_package
   - canary_post
+  - canary_report
 default:
   interruptible: true
 workflow:

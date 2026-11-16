@@ -4,11 +4,39 @@
 # test suite against them.
 #
 # Attribution scope: the canary tracks esp-stub-lib only. esp-flasher-stub is
-# rebuilt from its current master on every run; if a failure is caused by
-# esp-flasher-stub drift rather than esp-stub-lib, the issue title will still
-# blame esp-stub-lib. This is accepted because the canary only runs nightly,
-# both SHAs are recorded in the issue body, and esp-flasher-stub is maintained
-# by the same team as esptool.
+# rebuilt from its current master on every run, so a test failure can come
+# from either repository. The issue title names neither; the body records both
+# SHAs. This is accepted because the canary only runs nightly and
+# esp-flasher-stub is maintained by the same team as esptool.
+#
+# Failure reporting: canary_on_failure sits alone in the last stage
+# (canary_report) and has no `needs:`, so `when: on_failure` sees every
+# failed job of the pipeline, canary_record included. A job with `needs:`
+# would only react to the jobs it lists, and a skipped need would skip it.
+# The reporter reads the failed jobs from the GitLab API to decide what
+# broke; it does not rely on a phase marker written by earlier jobs.
+#
+# Test failures: in the canary, the test jobs run ci/canary_pytest.py. Failed
+# tests are rerun with the fresh stubs, and the tests that fail again are
+# rerun with the committed stubs. The job exits with 75, listed in its
+# allow_failure:exit_codes, when the tests fail with both stub sets (offline
+# board, busy port); it passes when the rerun passes (serial link errors).
+# Neither case triggers canary_on_failure, and the pipeline ends green with
+# warnings, so canary_record still saves the SHA.
+#
+# A test job still fails without the comparison when its before_script fails,
+# when pytest does not complete a test run, or when the tests run out of job
+# time; ci/canary_pytest.py stops them before GitLab's job timeout so that a
+# slow stub fails the job instead of having it killed. The script writes its
+# outcome to test/canary-outcome.txt. The reporter reads that artifact of each
+# failed test job. Only the outcome "breakage" (a test passed with the
+# committed stubs) is reported as stub breakage. The outcomes "no-time" and
+# "error", and a missing file, get their own issue titles. An outcome that
+# cannot be downloaded gets the "cause not determined" title unless another
+# test job found breakage. Jobs that fail because
+# of the CI infrastructure (GitLab's job timeout, no runner) never get to the
+# comparison; the reporter only logs them and opens no issue. Failures of
+# canary_poll, canary_build_stubs and canary_patch are always reported.
 #
 # Quiet-night behaviour: when LAST_TESTED_STUB_LIB_SHA is unchanged,
 # canary_poll calls the GitLab API to cancel the running pipeline
@@ -91,9 +119,10 @@ canary_build_stubs:
     - apt-get update
     - apt-get install -y git python3 python3-pyelftools wget xz-utils build-essential cmake ninja-build
   script:
-    - echo "CANARY_PHASE=build" > canary_build.env
+    # Placeholder so the dotenv report exists even if the clone fails.
+    - echo "FLASHER_STUB_SHA=unknown" > canary_build.env
     - git clone --depth 1 --recurse-submodules "$FLASHER_STUB_REPO" esp-flasher-stub
-    - git -C esp-flasher-stub rev-parse HEAD | awk '{print "FLASHER_STUB_SHA=" $1}' >> canary_build.env
+    - git -C esp-flasher-stub rev-parse HEAD | awk '{print "FLASHER_STUB_SHA=" $1}' > canary_build.env
     - cd esp-flasher-stub/esp-stub-lib
     - git fetch --depth 1 origin "$STUB_LIB_SHA"
     - git checkout "$STUB_LIB_SHA"
@@ -137,14 +166,11 @@ canary_patch:
     - ls -la esptool/targets/stub_flasher/2/
     - echo "=== Stub set diff against committed v2 stubs ==="
     - git diff --stat -- esptool/targets/stub_flasher/2/
-    - echo "CANARY_PHASE=test" > canary_patch.env
   artifacts:
     when: on_success
     paths:
       - "esptool/targets/stub_flasher/2/*.json"
     expire_in: 1 week
-    reports:
-      dotenv: canary_patch.env
 
 canary_record:
   stage: canary_post
@@ -155,7 +181,6 @@ canary_record:
   before_script:
     - apt-get update && apt-get install -y curl
   script:
-    - echo "CANARY_PHASE=record" > canary_record.env
     - |
       if [ -z "$GITLAB_API_TOKEN" ]; then
         echo "ERROR: GITLAB_API_TOKEN is not available in this pipeline."
@@ -192,31 +217,18 @@ canary_record:
         cat /tmp/resp.json || true
         exit 1
       fi
-  artifacts:
-    reports:
-      dotenv: canary_record.env
 
 canary_on_failure:
-  stage: canary_post
+  # Last stage and no `needs:`: see "Failure reporting" at the top of this file.
+  stage: canary_report
   image: $CANARY_IMAGE
   tags: [host_test]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $STUB_CANARY == "1"'
       when: on_failure
-  # Optional needs: run even when upstream jobs fail; fetch dotenv for the issue.
-  needs:
-    - job: canary_poll
-      artifacts: true
-      optional: true
-    - job: canary_build_stubs
-      artifacts: true
-      optional: true
-    - job: canary_patch
-      artifacts: true
-      optional: true
-    - job: canary_record
-      artifacts: true
-      optional: true
+  # Only the dotenv reports with STUB_LIB_SHA and FLASHER_STUB_SHA; the
+  # default would download every test job's artifacts.
+  dependencies: [canary_poll, canary_build_stubs]
   before_script:
     - apt-get update && apt-get install -y python3
   script:

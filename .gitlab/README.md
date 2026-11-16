@@ -20,7 +20,7 @@ pre-check → check → test → report
 
 Optional: `build_docs` → `deploy_docs`, `deploy_development_package`.
 
-Canary adds `canary_prep` before and `canary_post` after.
+Canary adds `canary_prep` before and `canary_post`, `canary_report` after.
 
 ## Files
 
@@ -53,12 +53,40 @@ Nightly job that builds fresh v2 stubs from **esp-stub-lib** and runs the full t
 
 1. `canary_poll` — skip if SHA unchanged (cancels pipeline)
 2. `canary_build_stubs` → `canary_patch` — build stubs, patch into tree
-3. Normal test jobs (after `canary_prep` via stage order; patched stubs passed as artifacts)
-4. `canary_record` — save SHA on success; `canary_on_failure` — open issue on failure
+3. Normal test jobs (after `canary_prep` via stage order; patched stubs passed as artifacts), with failed tests rerun to separate stub breakage from other failures
+4. `canary_record` — save SHA on success
+5. `canary_on_failure` (own last stage `canary_report`) — open or update an issue when a job fails
+
+**Failure reporting:** `canary_on_failure` has no `needs:`. A job with `needs:` reacts only to the jobs it lists and is skipped when one of them is skipped, so it would miss test-job failures and every failure that skips `canary_record`. It sits in a stage after `canary_post` because `when: on_failure` ignores failures in its own stage. The script lists the pipeline's failed jobs through the API and picks the issue title from them: a prep job failed (`canary_poll`, `canary_build_stubs`, `canary_patch`), a test job found stub breakage, a test job ran out of time, a test job failed before the comparison, a check-stage install job's script failed (no stub was tested), or `canary_record` failed. The jobs API does not give a job's exit code, so for each test job whose script failed the reporter downloads the outcome that `canary_pytest.py` writes to the artifact `test/canary-outcome.txt` (see below). The body lists every failed job with its failure reason and, for test jobs, that outcome. When the outcome file exists but cannot be downloaded after a retry, the issue gets the "cause not determined" title unless another test job found breakage, because the job may have found stub breakage. When test jobs only hit CI infrastructure problems (timeouts, missing runners, runner errors), the script logs them and opens no issue: those jobs never compared the stubs, and the same SHA is tested again the next night.
+
+**Test failures:** most canary test failures are serial link errors or offline boards, not stub breakage. In the canary, the host and hardware test jobs run [`ci/canary_pytest.py`](../ci/canary_pytest.py) instead of plain pytest:
+
+| Failure | Rerun with fresh stubs | Rerun with committed stubs | Job result | Outcome |
+|---|---|---|---|---|
+| Random hardware failure | passes | not run | passes | `pass` |
+| Board offline, port busy | fails | fails | exit code 75, allowed failure | `not-the-stubs` |
+| Stub breakage | fails | passes | fails, reported as stub breakage | `breakage` |
+| Tests too slow for the job time (first run or rerun not finished) | not run or not finished | not run | fails, reported as out of time | `no-time` |
+| Failed tests too slow to compare | fails | not run, or not finished with no test passed | fails, reported as out of time | `no-time` |
+| `before_script` error | not run | not run | fails, reported as failed before the comparison | no file |
+| pytest error (exit 2–5), git or JUnit report error | any | any | fails, reported as failed before the comparison | `error` |
+
+Only the failed tests are rerun (`pytest --lf`). The committed stubs are restored with `git checkout`, which takes effect because the jobs install esptool in editable mode. Exit code 75 is listed in `allow_failure:exit_codes`, so it does not trigger `canary_on_failure`; the pipeline ends green with warnings and `canary_record` saves the SHA. `test/report.xml` holds the last run with the fresh stubs; `test/report-first.xml`, `test/report-committed.xml` and `test/canary-outcome.txt` are kept as artifacts.
+
+A job killed by the 1 h job timeout counts as CI infrastructure and is not reported, and the next night would test the same SHA and time out again. `canary_pytest.py` therefore interrupts each pytest run 5 minutes before the job timeout and fails the job with the outcome `no-time`. The interrupt is repeated every 15 s, because one that arrives while a test runs `esptool.main()` in the pytest process only fails that test; pytest is killed after 60 s. When more than 5 tests fail, the rerun with the fresh stubs is skipped; random failures hit 1–3 tests per job. Before the rerun with the committed stubs, the script estimates its time as twice the sum of the failed tests' durations, taking for each test the longer of its durations in the runs with the fresh stubs; when less time is left, the job fails with `no-time` without the comparison. A test that passes with the committed stubs before an interruption still counts as stub breakage.
+
+Known limits:
+
+- A stub bug that breaks communication only sometimes passes the rerun and is not reported.
+- A test that fails twice with the fresh stubs for another reason and then passes with the committed stubs (a random failure, a board that comes back) is reported as stub breakage.
+- When more than 5 tests fail, a test that fails once at random with the fresh stubs and passes with the committed stubs is reported as stub breakage.
+- The `no-time` outcome does not show that the fresh stubs are at fault: slow boards or runners cause it too.
+- A job whose `before_script` runs into GitLab's job timeout is still killed by GitLab and only logged.
+- The time limits apply only when GitLab sets `CI_JOB_TIMEOUT` and `CI_JOB_STARTED_AT`.
 
 **Quiet nights:** if `LAST_TESTED_STUB_LIB_SHA` is unchanged, `canary_poll` cancels the pipeline before build/tests run. `canary_on_failure` does not run on cancel, so no spurious issues are opened.
 
-**Attribution:** only esp-stub-lib is tracked across runs; esp-flasher-stub is rebuilt from master each night. Issue titles blame esp-stub-lib, but both SHAs appear in the issue body.
+**Attribution:** only esp-stub-lib is tracked across runs; esp-flasher-stub is rebuilt from master each night, so a test failure can come from either. Issue titles name neither repository; both SHAs appear in the issue body.
 
 **CI variables:** `STUB_CANARY` (on the schedule, not project-wide), `LAST_TESTED_STUB_LIB_SHA` (auto-created by `canary_record`), `GITLAB_API_TOKEN` (api scope, Maintainer+ — cancel on quiet nights and record SHA), optional `MAINTAINERS`.
 

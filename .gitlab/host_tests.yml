@@ -5,14 +5,25 @@
     - pip install -e .[dev] --prefer-binary
   stage: test
   tags: [host_test]
+  # The canary branch of each script runs ci/canary_pytest.py, which exits
+  # with 75 when the failed tests also fail with the committed stubs. pytest
+  # and coverage never return 75.
+  allow_failure:
+    exit_codes: [75]
   artifacts:
     when: always
     paths:
       - "**/.coverage*"
       - ".coverage*"
+      - test/report-*.xml
+      # Read by ci/canary_open_issue.py; written only in the canary.
+      - test/canary-outcome.txt
     expire_in: 1 week
     reports:
       junit: test/report.xml
+
+# In the scripts below, the positional parameters keep the pytest arguments
+# in one place, so the canary branch runs the same tests as the normal one.
 
 host_tests:
   extends: .host_tests_template
@@ -26,7 +37,13 @@ host_tests:
     - pip install --upgrade pip
     - pip install -e .[dev,hsm] --prefer-binary
   script:
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test -m host_test --ignore=${CI_PROJECT_DIR}/test/test_espefuse.py
+    - |
+      set -- ${CI_PROJECT_DIR}/test -m host_test --ignore=${CI_PROJECT_DIR}/test/test_espefuse.py
+      if [ "$STUB_CANARY" = "1" ]; then
+        python ci/canary_pytest.py "$@"
+      else
+        coverage run --parallel-mode -m pytest "$@"
+      fi
     # some .coverage files in sub-directories are not collected on some runners, move them first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
 
@@ -53,7 +70,13 @@ host_tests_espefuse:
         - esp32e22
         - esp32s31
   script:
-    - coverage run --parallel-mode -m pytest ${CI_PROJECT_DIR}/test/test_espefuse.py --chip ${TARGET}
+    - |
+      set -- ${CI_PROJECT_DIR}/test/test_espefuse.py --chip ${TARGET}
+      if [ "$STUB_CANARY" = "1" ]; then
+        python ci/canary_pytest.py "$@"
+      else
+        coverage run --parallel-mode -m pytest "$@"
+      fi
     # some .coverage files in sub-directories are not collected on some runners, move them first
     - find . -mindepth 2 -type f -name ".coverage*" -print -exec mv --backup=numbered {} . \;
 
@@ -67,7 +90,13 @@ host_tests_latest_python:
     - pip install --upgrade pip
     - pip install -e .[dev,hsm] --prefer-binary
   script:
-    - pytest ${CI_PROJECT_DIR}/test -m host_test --chip esp32
+    - |
+      set -- ${CI_PROJECT_DIR}/test -m host_test --chip esp32
+      if [ "$STUB_CANARY" = "1" ]; then
+        python ci/canary_pytest.py "$@"
+      else
+        pytest "$@"
+      fi
 
 host_tests_windows:
   extends: .windows_test
