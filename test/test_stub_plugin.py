@@ -20,7 +20,6 @@ STUB_DIR = os.path.join(
     os.path.dirname(__file__), "..", "esptool", "targets", "stub_flasher"
 )
 ESP32S3_JSON_V2 = os.path.join(STUB_DIR, "2", "esp32s3.json")
-ESP32S3_JSON_V1 = os.path.join(STUB_DIR, "1", "esp32s3.json")
 
 
 def _make_target(json_name, chip_name="ESP32-S3"):
@@ -54,125 +53,44 @@ def _load_stub_v2_with_nand():
 class TestStubFlasherWithoutPlugin:
     """Verify StubFlasher loads correctly without any plugin."""
 
-    def test_v2_json_exists(self):
-        assert os.path.exists(ESP32S3_JSON_V2), "esp32s3 v2 JSON missing"
-
-    def test_no_plugin_segments(self, stub_v2_env):
-        stub = _load_stub_v2()
-        assert stub.plugin_segments == []
-
-    def test_text_and_data_decoded(self, stub_v2_env):
-        stub = _load_stub_v2()
-        assert len(stub.text) > 0
-        assert stub.text_start > 0
-        assert stub.data is not None
-        assert len(stub.data) > 0
-
-    def test_data_size_unchanged_without_plugin(self, stub_v2_env):
+    def test_stub_unchanged(self, stub_v2_env):
         with open(ESP32S3_JSON_V2) as f:
             raw = json.load(f)
-        expected_len = len(base64.b64decode(raw["data"]))
         stub = _load_stub_v2()
-        assert len(stub.data) == expected_len
+        assert stub.plugin_segments == []
+        assert stub.data == base64.b64decode(raw["data"])
 
 
 @pytest.mark.host_test
 class TestStubFlasherWithNandPlugin:
     """Verify StubFlasher correctly applies the NAND plugin."""
 
-    def test_plugin_segment_added(self, stub_v2_env):
-        stub = _load_stub_v2_with_nand()
-        assert len(stub.plugin_segments) == 1
-
-    def test_plugin_segment_address(self, stub_v2_env):
+    def test_nand_loaded(self, stub_v2_env):
         with open(ESP32S3_JSON_V2) as f:
             raw = json.load(f)
-        expected_addr = raw["plugins"]["nand"]["text_start"]
-        stub = _load_stub_v2_with_nand()
-        load_addr, _ = stub.plugin_segments[0]
-        assert load_addr == expected_addr
-
-    def test_plugin_text_4byte_aligned(self, stub_v2_env):
-        """Plugin text must be padded to 4-byte boundary (Xtensa IRAM constraint)."""
-        stub = _load_stub_v2_with_nand()
-        _, seg_bytes = stub.plugin_segments[0]
-        assert len(seg_bytes) % 4 == 0, (
-            f"Plugin text is {len(seg_bytes)} bytes — not 4-byte aligned"
-        )
-
-    def test_data_extended_by_bss_size(self, stub_v2_env):
-        with open(ESP32S3_JSON_V2) as f:
-            raw = json.load(f)
-        base_data_len = len(base64.b64decode(raw["data"]))
-        bss_size = raw["plugins"]["nand"]["bss_size"]
-        stub = _load_stub_v2_with_nand()
-        assert len(stub.data) == base_data_len + bss_size
-
-    def test_plugin_bss_zeros(self, stub_v2_env):
-        with open(ESP32S3_JSON_V2) as f:
-            raw = json.load(f)
-        base_data_len = len(base64.b64decode(raw["data"]))
-        stub = _load_stub_v2_with_nand()
-        # The appended BSS region must be all zeros
-        appended = stub.data[base_data_len:]
-        assert all(b == 0 for b in appended), "Plugin BSS zeros not zeroed"
-
-    def test_fpt_entries_patched(self, stub_v2_env):
-        with open(ESP32S3_JSON_V2) as f:
-            raw = json.load(f)
-        fpt_offset = raw["plugin_table_offset"]
-        first_opcode = raw.get("plugin_first_opcode", 0xD5)
         nand = raw["plugins"]["nand"]
-        text_start = nand["text_start"]
-
+        start_offset = raw["plugin_start_offset"]
+        raw_data = base64.b64decode(raw["data"])
         stub = _load_stub_v2_with_nand()
 
-        for opcode_str, handler_offset in nand["handlers"].items():
-            opcode = int(opcode_str, 16)
-            idx = opcode - first_opcode
-            entry_off = fpt_offset + idx * 4
-            expected_addr = text_start + handler_offset
-            actual_addr = struct.unpack_from("<I", stub.data, entry_off)[0]
-            assert actual_addr == expected_addr, (
-                f"FPT[{idx}] (opcode {opcode_str}): "
-                f"expected 0x{expected_addr:08x}, got 0x{actual_addr:08x}"
-            )
+        assert struct.unpack_from("<I", stub.data, start_offset)[0] == nand["entry"]
+        # Only the first slot may change
+        assert stub.data[:start_offset] == raw_data[:start_offset]
+        assert stub.data[start_offset + 4 :] == raw_data[start_offset + 4 :]
+        assert stub.plugin_segments == [
+            (nand["text_start"], base64.b64decode(nand["text"]))
+        ]
 
-    def test_unpatched_fpt_slots_unchanged(self, stub_v2_env):
-        """FPT slots not covered by the nand plugin must retain the default value."""
+    def test_plugin_data_uploaded(self, stub_v2_env):
+        """A plugin with .data gets a second segment at its data_start."""
         with open(ESP32S3_JSON_V2) as f:
             raw = json.load(f)
-        fpt_offset = raw["plugin_table_offset"]
-        first_opcode = raw.get("plugin_first_opcode", 0xD5)
-        n_entries = raw.get("plugin_table_entries", 27)
-        patched_indices = {
-            int(op, 16) - first_opcode for op in raw["plugins"]["nand"]["handlers"]
-        }
-
-        # Read the default FPT value from the raw data (before plugin patching)
-        raw_data = bytearray(base64.b64decode(raw["data"]))
-        # All unpatched slots should share the same default (s_plugin_unsupported addr)
-        default_values = set()
-        for i in range(n_entries):
-            if i not in patched_indices:
-                off = fpt_offset + i * 4
-                default_values.add(struct.unpack_from("<I", raw_data, off)[0])
-        # Expect at most one unique default value
-        assert len(default_values) == 1, (
-            f"Multiple default FPT values found: {default_values}"
-        )
-        default_val = default_values.pop()
-
-        # In stub with plugin, unpatched slots must still have the default value
-        stub = _load_stub_v2_with_nand()
-        for i in range(n_entries):
-            if i not in patched_indices:
-                off = fpt_offset + i * 4
-                actual = struct.unpack_from("<I", stub.data, off)[0]
-                assert actual == default_val, (
-                    f"FPT slot {i} was unexpectedly modified: "
-                    f"expected 0x{default_val:08x}, got 0x{actual:08x}"
-                )
+        spi = raw["plugins"]["spi"]
+        stub = StubFlasher(_make_target("esp32s3.json"), plugins=["spi"])
+        assert stub.plugin_segments == [
+            (spi["text_start"], base64.b64decode(spi["text"])),
+            (spi["data_start"], base64.b64decode(spi["data"])),
+        ]
 
     def test_unknown_plugin_raises(self, stub_v2_env):
         from esptool.util import FatalError
@@ -181,55 +99,13 @@ class TestStubFlasherWithNandPlugin:
             StubFlasher(_make_target("esp32s3.json"), plugins=["no_such_plugin"])
 
     def test_v1_stub_with_plugin_raises(self, monkeypatch):
-        """v1 stub has no plugin_table_offset → requesting plugins raises error."""
-        with open(ESP32S3_JSON_V1) as f:
-            raw = json.load(f)
-        assert "plugin_table_offset" not in raw, (
-            "v1 JSON should not have plugin_table_offset"
-        )
+        """v1 stub has no plugin_start_offset → requesting plugins raises error."""
         monkeypatch.setattr(StubFlasher, "STUB_SUBDIRS", ["1"])
         monkeypatch.setattr(StubFlasher, "STUB_VERSION_EXPLICIT", False)
         from esptool.util import FatalError
 
         with pytest.raises(FatalError, match="does not support plugins"):
             StubFlasher(_make_target("esp32s3.json"), plugins=["nand"])
-
-
-@pytest.mark.host_test
-class TestPluginChipSupport:
-    """Verify plugin errors for unsupported chips (no hardware needed)."""
-
-    @pytest.mark.parametrize(
-        "json_name,chip_name",
-        [
-            ("esp32.json", "ESP32"),
-            ("esp32s2.json", "ESP32-S2"),
-            ("esp32c3.json", "ESP32-C3"),
-            ("esp32c6.json", "ESP32-C6"),
-            ("esp32h2.json", "ESP32-H2"),
-        ],
-    )
-    def test_non_esp32s3_with_nand_raises(self, stub_v2_env, json_name, chip_name):
-        """Requesting NAND on a non-ESP32-S3 chip gives a clear error."""
-        from esptool.util import FatalError
-
-        with pytest.raises(FatalError, match="does not support plugins"):
-            StubFlasher(_make_target(json_name, chip_name=chip_name), plugins=["nand"])
-
-    def test_esp32s3_nand_succeeds(self, stub_v2_env):
-        """ESP32-S3 with NAND plugin loads without error (sanity check)."""
-        stub = _load_stub_v2_with_nand()
-        assert len(stub.plugin_segments) == 1
-
-    def test_no_plugins_loads_fine_on_any_chip(self, stub_v2_env):
-        """Without plugins, v2 stubs for any chip load without error."""
-        for json_name, chip_name in [
-            ("esp32.json", "ESP32"),
-            ("esp32s3.json", "ESP32-S3"),
-            ("esp32c3.json", "ESP32-C3"),
-        ]:
-            stub = StubFlasher(_make_target(json_name, chip_name=chip_name))
-            assert stub.plugin_segments == []
 
 
 @pytest.mark.host_test

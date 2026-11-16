@@ -189,8 +189,8 @@ class StubFlasher:
         self.entry = stub["entry"]
 
         try:
-            # bytearray: plugins patch the FPT in-place via struct.pack_into.
-            # Therefore, it cannot be immutable bytes.
+            # bytearray: plugin entries are written into plugin_start[] in-place via
+            # struct.pack_into. Therefore, it cannot be immutable bytes.
             self.data = bytearray(base64.b64decode(stub["data"]))
             self.data_start = stub["data_start"]
         except KeyError:
@@ -201,41 +201,29 @@ class StubFlasher:
 
         # Plugin support: list of (load_addr, bytes) segments to upload
         self.plugin_segments = []
-        if plugins:
-            chip_name = target.CHIP_NAME
-            if stub.get("plugin_table_offset") is not None:
-                self._apply_plugins(stub, plugins, chip_name)
-            else:
-                raise FatalError(f"{chip_name} stub does not support plugins.")
-
-    def _apply_plugins(self, stub, plugins, chip_name):
-        fpt_offset = stub["plugin_table_offset"]
-        first_opcode = stub.get("plugin_first_opcode", 0xD5)
-        plugin_text_kb = 0
-        for name in plugins:
-            pinfo = stub.get("plugins", {}).get(name)
-            if pinfo is None:
+        if not plugins:
+            return
+        chip_name = target.CHIP_NAME
+        start_offset = stub.get("plugin_start_offset")
+        if start_offset is None:
+            raise FatalError(f"{chip_name} stub does not support plugins.")
+        for slot, name in enumerate(plugins):
+            plugin = stub.get("plugins", {}).get(name)
+            if plugin is None:
                 raise FatalError(f"Plugin '{name}' not found in {chip_name} stub.")
-            ptext = base64.b64decode(pinfo["text"])
-            self.plugin_segments.append((pinfo["text_start"], bytes(ptext)))
-            plugin_text_kb += len(ptext) / 1024
-            for opcode_str, handler_offset in pinfo["handlers"].items():
-                opcode = int(opcode_str, 16)
-                idx = opcode - first_opcode
-                fpt_entry_addr = pinfo["text_start"] + handler_offset
-                entry_off = fpt_offset + idx * 4
-                struct.pack_into("<I", self.data, entry_off, fpt_entry_addr)
-            bss_size = pinfo.get("bss_size", 0)
-            if bss_size > 0:
-                self.data += bytearray(bss_size)
-        base_text_kb = len(self.text) / 1024
-        log.print(
-            f"Stub: {base_text_kb:.1f} KB (base)"
-            + (
-                f" + {plugin_text_kb:.1f} KB ({', '.join(plugins)})"
-                if self.plugin_segments
-                else ""
+            # The base stub calls the entry of every non-zero plugin_start[] slot
+            struct.pack_into("<I", self.data, start_offset + 4 * slot, plugin["entry"])
+            self.plugin_segments.append(
+                (plugin["text_start"], base64.b64decode(plugin["text"]))
             )
+            if "data" in plugin:
+                self.plugin_segments.append(
+                    (plugin["data_start"], base64.b64decode(plugin["data"]))
+                )
+        plugin_kb = sum(len(segment) for _, segment in self.plugin_segments) / 1024
+        log.print(
+            f"Stub: {len(self.text) / 1024:.1f} KB (base)"
+            f" + {plugin_kb:.1f} KB ({', '.join(plugins)})"
         )
 
     def _get_json_path(self, json_name, chip_name):
