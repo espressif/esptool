@@ -7,7 +7,7 @@ Also keep [`.github/workflows/test_esptool.yml`](../.github/workflows/test_espto
 ## Pipelines
 
 - **MR / branch push** — lint, install checks, tests, coverage report. Docs build/deploy when doc files change.
-- **`internal/dev_release` push** — above plus preview package build (manual publish).
+- **`internal/dev_release` push** — above plus preview package build (manual publish). The preview build does not wait on earlier jobs or use their artifacts, so a lint, test, or runner failure still leaves the manual publish available. Publish still downloads the sdist from that build.
 - **Nightly schedule** (`STUB_CANARY=1`) — stub canary only; see [Canary](#canary).
 
 Push pipelines are skipped when an open MR already exists for the branch.

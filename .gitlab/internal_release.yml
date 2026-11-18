@@ -1,11 +1,15 @@
 # Internal development releases for branch internal/dev_release: build a preview
 # sdist, publish to the project PyPI registry (manual), then verify install.
+#
+# The build does not wait on earlier stages. A failed lint, test, or runner
+# must not block the preview, and this job does not use those artifacts.
 
 build_internal_sdist:
   image: $PYTHON_IMAGE_LATEST
   stage: deploy_development_package
   tags:
     - host_test
+  needs: []
   rules:
     - if: '$CI_COMMIT_BRANCH == "internal/dev_release" && $CI_PIPELINE_SOURCE == "push"'
   before_script:
