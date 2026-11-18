@@ -34,7 +34,7 @@ STUBS = (
     {
         "STUB_SET_VERSION": "2",
         "URL": "https://github.com/espressif/esp-flasher-stub/",
-        "VERSION": "v1.4.1",
+        "VERSION": "v2.0.0",
         "FILE_LIST": (
             "esp32",
             "esp32c2",
