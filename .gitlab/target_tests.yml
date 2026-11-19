@@ -25,6 +25,14 @@
   # committed stubs. pytest and coverage never return 75.
   allow_failure:
     exit_codes: [75]
+  # These failures end within seconds and say nothing about the code. Timeouts
+  # are left out: the 60 min timeouts on esp32 and esp8266 came from boards
+  # dropping mid-run, and a retry costs another hour. Outside the stub canary,
+  # serial-link and port-lock test failures are rerun inside the job by the flaky
+  # marks in test_esptool.py (see .gitlab/README.md, Retries).
+  retry:
+    max: 1
+    when: [runner_system_failure, scheduler_failure, api_failure]
   artifacts:
     reports:
       junit: test/report.xml
