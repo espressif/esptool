@@ -1,3 +1,12 @@
+## v4.14.0 (2026-11-20)
+
+### New Features
+
+- **stub_flasher**: Update flasher stub to v2.0.0
+- **esp32-p4**: Support flash power-on on ECO8
+- **stub_flasher**: Update flasher stub to v1.4.1, use it by default for ESP32-C61
+- **esp32c5**: Use the new flasher stub by default
+
 ## v4.13.0 (2026-11-02)
 
 ### New Features
