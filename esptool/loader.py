@@ -1145,6 +1145,89 @@ class ESPLoader:
 
     def mem_finish(self, entrypoint=0):
         """Leave download mode and run the application"""
+        if entrypoint != 0 and not self.IS_STUB:
+            secure_boot_workflow = (
+                self.CHIP_NAME == "ESP32-C3" or self.CHIP_NAME == "ESP32-S3"
+            ) and self.get_secure_boot_enabled()
+            if secure_boot_workflow:
+                self.mem_finish(0)
+                # Hijack the `read` function in ROM to point to the jump program
+                # entrypoint
+                # The modified data is first restored by the jump program, which then
+                # redirects execution to the actual entry point.
+                # Temporary data and the jump program are written to the ROM program
+                # stack space and do not need to be restored.
+                if self.CHIP_NAME == "ESP32-C3":
+                    rom_spiflash_legacy_funcs_ptr = 0x3FCDFFF4
+                    stored_funcs_pointer = self.read_reg(rom_spiflash_legacy_funcs_ptr)
+                    # 0x3fcdc710 - 0x3fcde710: PRO CPU stack
+                    base_addr = 0x3FCDD000
+                    jump_enter = base_addr + 0x700000
+
+                    self.write_reg(base_addr - 16, jump_enter)
+                    self.write_reg(base_addr - 12, rom_spiflash_legacy_funcs_ptr)
+                    self.write_reg(base_addr - 8, stored_funcs_pointer)
+                    self.write_reg(base_addr - 4, entrypoint)
+
+                    # auipc  a0, 0xff900      # a0 = PC - 0x700000 = base_addr
+                    # c.addi a0, -12          # a0 = base_addr - 12
+                    # c.lw   a1, 0(a0)        # a1 = *(base_addr - 12) = funcs_ptr
+                    # c.lw   a2, 4(a0)        # a2 = *(base_addr - 8) = stored_pointer
+                    # c.sw   a2, 0(a1)        # restored rom_spiflash_legacy_funcs_ptr
+                    # c.lw   a1, 8(a0)        # entrypoint
+                    # c.jr   a1
+                    # Little-endian jump program at base_addr (16 bytes):
+                    # 17 05 90 ff  51 15  0c 41  50 41  90 c1  0c 45  82 85
+                    jump_program = (
+                        0xFF900517,
+                        0x410C1551,
+                        0xC1904150,
+                        0x8582450C,
+                    )
+                    for offset, word in enumerate(jump_program):
+                        self.write_reg(base_addr + offset * 4, word)
+
+                    self.write_reg(rom_spiflash_legacy_funcs_ptr, (base_addr - 16) - 20)
+
+                elif self.CHIP_NAME == "ESP32-S3":
+                    rom_spiflash_legacy_funcs_read_ptr = 0x3FCEF688
+                    stored_read_pointer = self.read_reg(
+                        rom_spiflash_legacy_funcs_read_ptr
+                    )
+                    # 0x3fce9710 - 0x3fceb710: PRO CPU stack
+                    base_addr = 0x3FCEA000
+                    jump_enter = base_addr + 0x6F0000
+
+                    self.write_reg(base_addr - 12, rom_spiflash_legacy_funcs_read_ptr)
+                    self.write_reg(base_addr - 8, stored_read_pointer)
+                    self.write_reg(base_addr - 4, entrypoint)
+
+                    #     .balign 4
+                    # 1:
+                    #     l32r    a2, 1b - 12     # a2 = *(base_addr - 12) = read_ptr
+                    #     l32r    a3, 1b - 8      # a3 = *(base_addr - 8) = stored_ptr
+                    #     s32i.n  a3, a2, 0       # restored read_ptr
+                    #     l32r    a0, 1b - 4      # entrypoint
+                    #     ret.n
+                    # Little-endian jump program at base_addr (13 bytes):
+                    # 21 fd ff  31 fd ff  39 02  01 fd ff  0d f0
+                    jump_program = (
+                        0x31FFFD21,
+                        0x0239FFFD,
+                        0x0DFFFD01,
+                        0x000000F0,
+                    )
+                    for offset, word in enumerate(jump_program):
+                        self.write_reg(base_addr + offset * 4, word)
+
+                    self.write_reg(rom_spiflash_legacy_funcs_read_ptr, jump_enter)
+
+                # Trigger the `read` in ROM to jump to the jump program entrypoint
+                return self.command(
+                    self.ESP_CMDS["READ_FLASH_SLOW"],
+                    struct.pack("<II", 0, 0),
+                    wait_response=False,
+                )
         # Sending MEM_END usually sends a correct response back, however sometimes
         # (with ROM loader) the executed code may reset the UART or change the baud rate
         # before the transmit FIFO is empty. So in these cases we set a short timeout
@@ -1480,13 +1563,30 @@ class ESPLoader:
         if not secure_boot_workflow:
             self.mem_finish(stub.entry)
         else:
-            # Bug in ESP32-S3 ROM prevents stub execution if secure boot is enabled
+            # Bug in ESP32-S3 and ESP32-C3 ROM prevents stub execution
+            # if secure boot is enabled
             # Hijack the `read` function in ROM to point to the stub entrypoint
             # got with GDB - p &rom_spiflash_legacy_funcs.read
-            rom_spiflash_legacy_funcs_read_ptr = 0x3FCEF688
             self.mem_finish(0)  # Finish uploading to RAM but don't run the stub yet
-            stored_read_pointer = self.read_reg(rom_spiflash_legacy_funcs_read_ptr)
-            self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stub.entry)
+            if self.CHIP_NAME == "ESP32-S3":
+                rom_spiflash_legacy_funcs_read_ptr = 0x3FCEF688
+                stored_read_pointer = self.read_reg(rom_spiflash_legacy_funcs_read_ptr)
+                self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stub.entry)
+            elif self.CHIP_NAME == "ESP32-C3":
+                # On the ESP32-C3, the ROM region pointed to by
+                # `rom_spiflash_legacy_funcs` cannot be modified.
+                # Therefore, `rom_spiflash_legacy_funcs` must be configured to point to
+                # a modifiable RAM region.
+                rom_spiflash_legacy_funcs_ptr = 0x3FCDFFF4
+                rom_spiflash_legacy_data_ptr = 0x3FCDFFF0
+                stored_funcs_pointer = self.read_reg(rom_spiflash_legacy_funcs_ptr)
+                stored_data_pointer = self.read_reg(rom_spiflash_legacy_data_ptr)
+                # read pointer is 20 bytes after the funcs pointer
+                self.write_reg(
+                    rom_spiflash_legacy_funcs_ptr, rom_spiflash_legacy_data_ptr - 20
+                )
+                self.write_reg(rom_spiflash_legacy_data_ptr, stub.entry)
+
             self.command(  # Trigger the `read` in ROM to jump to the stub entrypoint
                 self.ESP_CMDS["READ_FLASH_SLOW"],
                 struct.pack("<II", 0, 0),
@@ -1508,8 +1608,13 @@ class ESPLoader:
         if p != b"OHAI":
             raise FatalError(f"Failed to start stub flasher. Unexpected response: {p}")
         if secure_boot_workflow:
-            # Restore the original `read` function pointer
-            self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stored_read_pointer)
+            if self.CHIP_NAME == "ESP32-S3":
+                # Restore the original `read` function pointer
+                self.write_reg(rom_spiflash_legacy_funcs_read_ptr, stored_read_pointer)
+            elif self.CHIP_NAME == "ESP32-C3":
+                # Restore the original `funcs` and `data`
+                self.write_reg(rom_spiflash_legacy_funcs_ptr, stored_funcs_pointer)
+                self.write_reg(rom_spiflash_legacy_data_ptr, stored_data_pointer)
         log.stage(finish=True)
         log.print("Stub flasher running.")
         return self.STUB_CLASS(self) if self.STUB_CLASS is not None else self
