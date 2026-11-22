@@ -47,6 +47,17 @@ Python images: `PYTHON_IMAGE_MIN` and `PYTHON_IMAGE_LATEST` in `.gitlab-ci.yml`.
 
 **report** — `combine_reports` merges coverage from test jobs.
 
+## Retries
+
+Failures are retried at two levels:
+
+- **Job retry.** `.target_test` (`target_tests.yml`) and `.windows_test` (`.gitlab-ci.yml`) retry a job once on `runner_system_failure`, `scheduler_failure` or `api_failure`. This covers every `target_<chip>` job, `target_tests_windows` and `host_tests_windows`. Timeouts are not retried: the 60 min timeouts on `esp32` and `esp8266` came from boards dropping mid-run, and a retry costs another hour.
+- **Test rerun inside the job.** Outside the stub canary, a hardware test (a class derived from `EsptoolTestCase` in `test/test_esptool.py` or `test/test_esptool_sdm.py`) that fails on a serial-link or port error is rerun up to 2 times, 5 s apart (`flaky` mark with `only_rerun=TRANSPORT_ERRORS`). Assertion failures and boards that cannot be reached are not rerun, unless the assertion message quotes a matching esptool error. `TestReset::test_watchdog_reset` is the exception: its own mark reruns any failure, because its known failure on `esp32c5_32mb` is an assertion.
+
+The number of reruns per job has no cap. On a link that still connects but often fails, a slow job such as `target_esp32` or `target_esp8266` (about 30 min median) could rerun many tests and reach the 60 min timeout. pytest is then killed and writes no `test/report.xml`. This has not been observed.
+
+With pytest-rerunfailures, each attempt is written to `test/report.xml` as its own `<testcase>`. When a test passes on a rerun, every entry is marked passed. When every attempt fails, the earlier entries are marked passed and the last one failed. The GitLab test report view therefore shows rerun attempts as passed tests. The error of a rerun attempt is only in the job log: in the output printed while the attempt ran, and as a traceback in the "rerun test summary info" section (`-rR` lists the attempts, `--rerun-show-tracebacks` in `addopts` adds their tracebacks). The stub canary turns the in-job reruns off, so its reports hold no such entries.
+
 ## Canary
 
 Nightly job that builds fresh v2 stubs from **esp-stub-lib** and runs the full test suite against them. All canary jobs use `$CANARY_IMAGE` (`ubuntu:24.04`).
@@ -71,7 +82,7 @@ Nightly job that builds fresh v2 stubs from **esp-stub-lib** and runs the full t
 | `before_script` error | not run | not run | fails, reported as failed before the comparison | no file |
 | pytest error (exit 2–5), git or JUnit report error | any | any | fails, reported as failed before the comparison | `error` |
 
-Only the failed tests are rerun (`pytest --lf`). The committed stubs are restored with `git checkout`, which takes effect because the jobs install esptool in editable mode. Exit code 75 is listed in `allow_failure:exit_codes`, so it does not trigger `canary_on_failure`; the pipeline ends green with warnings and `canary_record` saves the SHA. `test/report.xml` holds the last run with the fresh stubs; `test/report-first.xml`, `test/report-committed.xml` and `test/canary-outcome.txt` are kept as artifacts.
+Only the failed tests are rerun (`pytest --lf`). The in-job reruns of the `flaky` marks in `test/test_esptool.py` (see [Retries](#retries)) are turned off when `STUB_CANARY=1`. The rerun above still hides a stub that fails only sometimes (see the known limits below). Without the in-job reruns, a stub that sometimes fails with a transport error is reported when both canary attempts fail; with them, all 6 runs would have to fail. First-run failures also stay in `test/report-first.xml`, and rerun time stays out of the duration estimate below. The committed stubs are restored with `git checkout`, which takes effect because the jobs install esptool in editable mode. Exit code 75 is listed in `allow_failure:exit_codes`, so it does not trigger `canary_on_failure`; the pipeline ends green with warnings and `canary_record` saves the SHA. `test/report.xml` holds the last run with the fresh stubs; `test/report-first.xml`, `test/report-committed.xml` and `test/canary-outcome.txt` are kept as artifacts.
 
 A job killed by the 1 h job timeout counts as CI infrastructure and is not reported, and the next night would test the same SHA and time out again. `canary_pytest.py` therefore interrupts each pytest run 5 minutes before the job timeout and fails the job with the outcome `no-time`. The interrupt is repeated every 15 s, because one that arrives while a test runs `esptool.main()` in the pytest process only fails that test; pytest is killed after 60 s. When more than 5 tests fail, the rerun with the fresh stubs is skipped; random failures hit 1–3 tests per job. Before the rerun with the committed stubs, the script estimates its time as twice the sum of the failed tests' durations, taking for each test the longer of its durations in the runs with the fresh stubs; when less time is left, the job fails with `no-time` without the comparison. A test that passes with the committed stubs before an interruption still counts as stub breakage.
 

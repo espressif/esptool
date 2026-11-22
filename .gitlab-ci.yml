@@ -58,6 +58,10 @@ variables:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: never
     - when: on_success
+  # These failures end within seconds and say nothing about the code.
+  retry:
+    max: 1
+    when: [runner_system_failure, scheduler_failure, api_failure]
   before_script:
     - pip install -e .[dev] --prefer-binary
   artifacts:

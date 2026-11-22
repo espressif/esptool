@@ -56,7 +56,7 @@
         "coverage~=6.0",
         "pre-commit",
         "pytest",
-        "pytest-rerunfailures",
+        "pytest-rerunfailures>=16.7",
         "requests",
         "czespressif",
     ]
@@ -160,4 +160,4 @@
     docstring-code-format = true
 
 [tool.pytest.ini_options]
-addopts = "-sv --junitxml=test/report.xml --color=yes"
+addopts = "-sv -rfER --rerun-show-tracebacks --junitxml=test/report.xml --color=yes"

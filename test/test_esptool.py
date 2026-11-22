@@ -20,6 +20,7 @@
 # options. The --preload-port needs to be connected to a USB-to-UART bridge,
 # while --port needs to be connected to the USB-Serial/JTAG peripheral.
 
+import contextlib
 import os
 import os.path
 import random
@@ -164,9 +165,96 @@ class ESPRFC2217Server:
         self.p.terminate()
 
 
-# Re-run all tests at least once if failure happens in USB-JTAG/Serial
-@pytest.mark.flaky(reruns=1, condition=arg_preload_port is not False)
-class EsptoolTestCase:
+class EsptoolRunError(subprocess.CalledProcessError):
+    # pytest-rerunfailures matches only_rerun against "<type>: <str(exception)>".
+    # CalledProcessError's text lacks the esptool error, so carry the tail of
+    # the output. The tail holds several lines because some esptool errors span
+    # more than one: the port-lock cause is the second line of the "Could not
+    # open" FatalError message. Subclassing keeps
+    # pytest.raises(CalledProcessError) working.
+    def __str__(self):
+        out = (self.output or b"").decode(errors="replace").splitlines()
+        tail = [ln for ln in out if ln.strip()][-5:]
+        return super().__str__() + " | " + " | ".join(tail)
+
+
+# Rerun serial-link and port faults only. Assertion errors (regressions) and
+# connect failures of an unreachable board ("Wrong boot mode", "Failed to
+# connect") are left out: an outage lasts hours and rerunning every test would
+# multiply the job time. A missing port device is left out for the same reason;
+# on the USB-Serial/JTAG jobs (--preload-port) the tests wait briefly for it
+# instead (wait_for_port). An assertion is still rerun when its message quotes
+# esptool output that matches. For run_esptool_error, this holds only when the
+# caller asserts on the returned output and pytest's shortened repr of that
+# output still contains the matching text. run_esptool_error accepts exit codes
+# 1 and 2, and esptool exits with one of them on every transport error. A
+# caller that ignores the output therefore passes on a port lock without
+# testing anything.
+#
+# "Digest mismatch" and "Corrupt data" come only from the stub's read-flash
+# checks. A stub bug that sometimes breaks read framing therefore looks the
+# same as line noise, and an MR pipeline can pass it on an in-job rerun. The
+# stub canary can also pass it on its own rerun (ci/canary_pytest.py).
+TRANSPORT_ERRORS = [
+    r"Could not exclusively lock port",
+    r"Input/output error",
+    r"Digest mismatch",
+    r"Checksum error",
+    r"Serial data stream stopped",
+    r"Invalid SLIP escape",
+    r"Corrupt data",
+    r"No more data to read",
+    # pySerial's SerialException when a USB device disconnects during a read
+    r"device reports readiness to read but returned no data",
+    # Anchored to the start of the error so that the connect-failure form of an
+    # outage ("occurred: Failed to connect to X: Invalid head of packet") does
+    # not match. "occurred:" is esptool's CLI prefix, "FatalError:" the
+    # in-process one, and attach_flash wraps the error as "Unable to verify
+    # flash chip connection (<error>)."
+    r"(occurred: |FatalError: |flash chip connection \()Invalid head of packet",
+    r"(occurred: |FatalError: |flash chip connection \()"
+    r"Packet content transfer stopped",
+]
+
+# The stub canary compares failed tests against the committed stubs itself
+# (ci/canary_pytest.py). When at most 5 tests failed, it reruns them once with
+# the fresh stubs. The in-job reruns are turned off there for three reasons. A
+# fresh stub that sometimes fails with a transport error is reported when both
+# canary attempts fail; with the in-job reruns, all 6 runs would have to fail.
+# First-run failures stay in report-first.xml. Rerun time stays out of the
+# duration estimate in canary_pytest.py.
+RERUN_ENABLED = os.environ.get("STUB_CANARY") != "1"
+# pytest-rerunfailures before 16.6.1 did not restore the finalizers it had
+# suspended for a rerun when condition was False, so teardown_class ran after
+# the first test of the next class. pyproject.toml requires 16.7, but an
+# existing environment can still hold an older plugin, so the count is set to
+# 0 as well.
+RERUNS = 2 if RERUN_ENABLED else 0
+
+# USB-Serial/JTAG ports disappear for a moment while the chip re-enumerates
+# after a reset. Kept short because during a board outage every test waits.
+PORT_WAIT_S = 3.0
+
+
+def wait_for_port(port):
+    # A USB-to-UART bridge port stays present across a chip reset, so a wait
+    # would only add time there and in host tests that pass a nonexistent port.
+    # USB-OTG jobs re-enumerate too, but pass no --preload-port. They rely on a
+    # fixed sleep after each run_esptool call and on skipping tests that reset
+    # the chip. Only device paths can be checked; COM ports and rfc2217:// URLs
+    # cannot.
+    if not arg_preload_port or not port or not str(port).startswith("/dev/"):
+        return
+    deadline = monotonic() + PORT_WAIT_S
+    while not os.path.exists(port) and monotonic() < deadline:
+        sleep(0.1)
+
+
+# Host test classes that need these helpers derive from this class instead of
+# EsptoolTestCase. pytest collects class marks along the MRO with the base
+# class first, so a flaky(reruns=0) on a subclass would not override the rerun
+# mark.
+class EsptoolHelpers:
     def run_espsecure(self, args):
         cmd = [sys.executable, "-m", "espsecure"] + args.split(" ")
         print("\nExecuting {}...".format(" ".join(cmd)))
@@ -209,8 +297,10 @@ class EsptoolTestCase:
                 )
                 return output.decode("utf-8")
             except subprocess.CalledProcessError as e:
-                print(e.output.decode("utf-8"))
-                raise e
+                print(e.output.decode("utf-8", errors="replace"))
+                # from None: the chained CalledProcessError would print the
+                # same failure twice in the -sv log.
+                raise EsptoolRunError(e.returncode, e.cmd, e.output, e.stderr) from None
 
         try:
             # Used for flasher_stub/run_tests_with_stub.sh
@@ -259,12 +349,14 @@ class EsptoolTestCase:
                 f"{IMAGES_FIXTURES_DIR}/ram_helloworld/helloworld-{arg_chip}.bin",
             ]
             print("\nPreloading dummy binary to disable RTC watchdog...")
+            wait_for_port(arg_preload_port)
             run_esptool_process(preload_cmd)
             print("Dummy binary preloaded successfully.")
             sleep(0.3)  # Wait for the app to run and port to appear
 
         # Run the command
         print(f'\nRunning the "{args}" command...')
+        wait_for_port(port)
         output = run_esptool_process(full_cmd)
         print(output)  # for more complete stdout logs on failure
 
@@ -272,6 +364,12 @@ class EsptoolTestCase:
             sleep(0.5)  # Wait for the port to enumerate between tests
 
         return output
+
+    def connect_esp(self, port=arg_port, **kwargs):
+        # esptool.connect_esp opens the port in the pytest process, where
+        # run_esptool's wait does not apply.
+        wait_for_port(port)
+        return esptool.connect_esp(port=port, **kwargs)
 
     def run_esptool_error(self, args, baud=arg_baud, chip=arg_chip, port=arg_port):
         """
@@ -358,6 +456,7 @@ class EsptoolTestCase:
         # when the port is opened by the following function.
         # As a result, if an app loaded to RAM, it has a chance to run and send
         # "Hello world" data without unwanted chip reset.
+        wait_for_port(arg_port)
         with serial.serial_for_url(arg_port, arg_baud, rtscts=True) as p:
             p.timeout = 5
             output = p.read(200)
@@ -365,11 +464,27 @@ class EsptoolTestCase:
             assert any(item in output for item in expected_out)
 
 
+# An immediate rerun hit the same port lock, so the rerun waits first. The 5 s
+# delay is a guess; its effect is not measured yet.
+@pytest.mark.flaky(
+    reruns=RERUNS,
+    reruns_delay=5,
+    only_rerun=TRANSPORT_ERRORS,
+    condition=RERUN_ENABLED,
+)
+class EsptoolTestCase(EsptoolHelpers):
+    pass
+
+
 @pytest.mark.skipif(arg_chip != "esp32", reason="ESP32 only")
 class TestFlashEncryption(EsptoolTestCase):
     def valid_key_present(self):
+        # Open the port outside try: if it fails, finally would raise
+        # UnboundLocalError, which pytest would report as the failure, with the
+        # port error only as its context.
+        wait_for_port(arg_port)
+        esp = esptool.ESP32ROM(arg_port)
         try:
-            esp = esptool.ESP32ROM(arg_port)
             esp.connect()
             efuse_cls = espefuse.init_commands(esp=esp)
             blk1_rd_en = efuse_cls.efuses["BLOCK1"].is_readable()
@@ -1069,6 +1184,7 @@ class TestFlashing(EsptoolTestCase):
         faster = re.search(r"(\d+(\.\d+)?)\s+seconds", output)
         assert faster, "Duration summary not found in the output"
 
+        wait_for_port(arg_port)
         with esptool.cmds.detect_chip(
             port=arg_port, connect_mode="no-reset"
         ) as reg_mod:
@@ -1098,6 +1214,7 @@ class TestFlashing(EsptoolTestCase):
     def test_flash_watchdogs(self):
         RTC_WDT_ENABLE = 0xC927FA00  # Valid only for ESP32-C3
 
+        wait_for_port(arg_port)
         with esptool.cmds.detect_chip(port=arg_port) as reg_mod:
             # Enable RTC WDT
             reg_mod.write_reg(
@@ -1125,6 +1242,7 @@ class TestFlashing(EsptoolTestCase):
 
         sleep(10)  # Wait if RTC WDT triggers
 
+        wait_for_port(arg_port)
         with esptool.cmds.detect_chip(
             port=arg_port, connect_mode="no-reset"
         ) as reg_mod:
@@ -1379,13 +1497,16 @@ class TestSecurityInfo(EsptoolTestCase):
         if arg_chip != "esp32c2":
             assert "Key Purposes" in res
         if arg_chip != "esp32s2":
+            # Connect outside try: if it fails, finally would raise
+            # UnboundLocalError, which pytest would report as the failure, with the
+            # connect error only as its context.
+            esp = self.connect_esp(
+                port=arg_port,
+                chip=arg_chip,
+                initial_baud=115200,
+                connect_attempts=10,
+            )
             try:
-                esp = esptool.connect_esp(
-                    port=arg_port,
-                    chip=arg_chip,
-                    initial_baud=115200,
-                    connect_attempts=10,
-                )
                 assert f"Chip ID: {esp.IMAGE_CHIP_ID}" in res
                 assert "API Version" in res
             finally:
@@ -1403,12 +1524,10 @@ class TestFlashSizes(EsptoolTestCase):
         self.run_esptool("write-flash -u -fs 4MB 0x300000 images/one_kb.bin")
         self.verify_readback(0x300000, 1024, "images/one_kb.bin")
 
-    @pytest.mark.flaky(reruns=1)
     def test_large_image(self):
         self.run_esptool("write-flash -fs 4MB 0x280000 images/one_mb.bin")
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
 
-    @pytest.mark.flaky(reruns=1)
     def test_large_no_compression(self):
         self.run_esptool("write-flash -u -fs 4MB 0x280000 images/one_mb.bin")
         self.verify_readback(0x280000, 0x100000, "images/one_mb.bin")
@@ -1840,6 +1959,7 @@ class TestLoadRAM(EsptoolTestCase):
         # when the port is opened by the following function.
         # As a result, the app loaded to RAM has a chance to run and send
         # "Hello world" data without unwanted chip reset.
+        wait_for_port(arg_port)
         with serial.serial_for_url(arg_port, arg_baud, rtscts=True) as p:
             p.timeout = 5
             output = p.read(100)
@@ -2056,7 +2176,6 @@ class TestUSBMode(EsptoolTestCase):
             assert expected_usb_mode in output
 
 
-@pytest.mark.flaky(reruns=5)
 @pytest.mark.skipif(
     "ESPTOOL_TEST_USB_OTG" in os.environ or arg_preload_port is not False,
     reason="USB-to-UART bridge only",
@@ -2152,25 +2271,31 @@ class TestReadWriteMemory(EsptoolTestCase):
             esp._port.close()
 
     def test_read_write_memory_rom(self):
+        # Connect outside try: if it fails, finally would raise
+        # UnboundLocalError, which pytest would report as the failure, with the
+        # connect error only as its context.
+        esp = self.connect_esp(
+            port=arg_port,
+            chip=arg_chip,
+            initial_baud=115200,
+            connect_attempts=10,
+        )
         try:
-            esp = esptool.connect_esp(
-                port=arg_port,
-                chip=arg_chip,
-                initial_baud=115200,
-                connect_attempts=10,
-            )
             self._test_read_write(esp)
         finally:
             esp._port.close()
 
     def test_read_write_memory_stub(self):
+        # Connect outside try: if it fails, finally would raise
+        # UnboundLocalError, which pytest would report as the failure, with the
+        # connect error only as its context.
+        esp = self.connect_esp(
+            port=arg_port,
+            chip=arg_chip,
+            initial_baud=115200,
+            connect_attempts=10,
+        )
         try:
-            esp = esptool.connect_esp(
-                port=arg_port,
-                chip=arg_chip,
-                initial_baud=115200,
-                connect_attempts=10,
-            )
             esp = esp.run_stub()
             self._test_read_write(esp)
         finally:
@@ -2190,27 +2315,32 @@ class TestReadWriteMemory(EsptoolTestCase):
         assert f"After flash memory status:   {match.group(1)}" in res
 
     def test_read_chip_description(self):
+        # Connect outside try: if it fails, finally would raise
+        # UnboundLocalError, which pytest would report as the failure, with the
+        # connect error only as its context.
+        esp = self.connect_esp(
+            port=arg_port,
+            chip=arg_chip,
+            initial_baud=115200,
+            connect_attempts=10,
+        )
         try:
-            esp = esptool.connect_esp(
-                port=arg_port,
-                chip=arg_chip,
-                initial_baud=115200,
-                connect_attempts=10,
-            )
             chip = esp.get_chip_description()
             assert "unknown" not in chip.lower()
         finally:
             esp._port.close()
 
     def test_read_get_chip_features(self):
+        # Connect outside try: if it fails, finally would raise
+        # UnboundLocalError, which pytest would report as the failure, with the
+        # connect error only as its context.
+        esp = self.connect_esp(
+            port=arg_port,
+            chip=arg_chip,
+            initial_baud=115200,
+            connect_attempts=10,
+        )
         try:
-            esp = esptool.connect_esp(
-                port=arg_port,
-                chip=arg_chip,
-                initial_baud=115200,
-                connect_attempts=10,
-            )
-
             if hasattr(esp, "get_flash_cap") and esp.get_flash_cap() == 0:
                 esp.get_flash_cap = MagicMock(return_value=1)
             if hasattr(esp, "get_psram_cap") and esp.get_psram_cap() == 0:
@@ -2229,6 +2359,11 @@ class TestReadWriteMemory(EsptoolTestCase):
     "can't reset out of bootloader",
 )
 class TestReset(EsptoolTestCase):
+    # On esp32c5_32mb the serial read after the watchdog reset sometimes gets no
+    # bytes, and a manual job retry passed in 9 of 9 cases. The cause is not
+    # known yet. The failure is an assertion, so it needs an unfiltered mark.
+    # A method mark replaces the class mark, including its delay and condition.
+    @pytest.mark.flaky(reruns=RERUNS, reruns_delay=5, condition=RERUN_ENABLED)
     def test_watchdog_reset(self):
         # Erase the bootloader to get "invalid header" output + test watchdog reset
         res = self.run_esptool("--after watchdog-reset erase-region 0x0 0x4000")
@@ -2395,6 +2530,7 @@ class TestESPObjectOperations(EsptoolTestCase):
     @pytest.mark.quick_test
     @capture_stdout
     def test_attach_flash(self, fake_out):
+        wait_for_port(arg_port)
         with esptool.CHIP_DEFS[arg_chip](port=arg_port) as esp:
             # Try communicating with the flash chip without attaching it
             esp.connect()
@@ -2423,7 +2559,7 @@ class TestESPObjectOperations(EsptoolTestCase):
     @pytest.mark.quick_test
     @capture_stdout
     def test_stub_run(self, fake_out):
-        with esptool.connect_esp(port=arg_port, chip=arg_chip) as esp:
+        with self.connect_esp(port=arg_port, chip=arg_chip) as esp:
             esp = esp.run_stub()
             read_mac(esp)
             reset_chip(esp, "hard-reset")
@@ -2433,7 +2569,7 @@ class TestESPObjectOperations(EsptoolTestCase):
 
     @capture_stdout
     def test_flash_operations(self, fake_out):
-        with esptool.connect_esp(port=arg_port) as esp:  # Test with chip autodetection
+        with self.connect_esp(port=arg_port) as esp:  # Test with chip autodetection
             esp = esp.run_stub()
             try:
                 attach_flash(esp)
@@ -2447,7 +2583,10 @@ class TestESPObjectOperations(EsptoolTestCase):
                 read_flash(esp, 0x0, 0x10, "output.bin")
             finally:
                 reset_chip(esp, "hard-reset")
-                os.remove("output.bin")
+                # output.bin is missing when an earlier step failed, and the
+                # FileNotFoundError would replace that error.
+                with contextlib.suppress(FileNotFoundError):
+                    os.remove("output.bin")
         output = fake_out.getvalue()
         assert "Stub flasher running" in output
         assert "Hash of data verified" in output
@@ -2498,7 +2637,7 @@ class TestESPObjectOperations(EsptoolTestCase):
 
             addr = 0x10000
             # Use API directly to flash old file first
-            with esptool.connect_esp(port=arg_port) as esp:
+            with self.connect_esp(port=arg_port) as esp:
                 esp = esp.run_stub()
                 try:
                     attach_flash(esp)
@@ -2524,7 +2663,7 @@ class TestESPObjectOperations(EsptoolTestCase):
                     reset_chip(esp, "hard-reset")
 
             # Test with no_diff_verify=True
-            with esptool.connect_esp(port=arg_port) as esp:
+            with self.connect_esp(port=arg_port) as esp:
                 esp = esp.run_stub()
                 try:
                     attach_flash(esp)
@@ -2558,7 +2697,7 @@ class TestESPObjectOperations(EsptoolTestCase):
         # connect_esp() opens the port at the ROM sync rate; the documented
         # follow-up is to run the stub and then esp.change_baud() to raise the
         # operational rate (ESP8266 ROM can't change baud, only the stub can).
-        with esptool.connect_esp(port=arg_port, chip=arg_chip) as esp:
+        with self.connect_esp(port=arg_port, chip=arg_chip) as esp:
             esp = esp.run_stub()
             esp.change_baud(460800)
             assert esp.get_baud() == 460800
@@ -2617,7 +2756,7 @@ class TestDeprecatedAliases:
 
 
 @pytest.mark.host_test
-class TestPortFilter(EsptoolTestCase):
+class TestPortFilter(EsptoolHelpers):
     def test_port_filter_name(self):
         """Test CLI with --port-filter non-existent name option"""
         output = self.run_esptool_error(
@@ -2732,7 +2871,7 @@ class TestSlipReaderRead:
 
 
 @pytest.mark.host_test
-class TestMissingUsbDescriptors(EsptoolTestCase):
+class TestMissingUsbDescriptors(EsptoolHelpers):
     """A pty is a real port that pySerial cannot resolve a VID/PID for, so it
     exercises the fallback decision without any hardware or mocking."""
 
