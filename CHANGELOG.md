@@ -1,3 +1,18 @@
+## v5.7.0 (2026-11-23)
+
+### ✨ New Features
+
+- **stub_flasher**: Update flasher stub to v2.0.0 *(Jaroslav Burian - 91b6c04)*
+- **esp32p4**: Support flash power-on on ECO8 *(wanglei - dd44383)*
+- **espefuse**: Rename adc-info to calib-info with compatibility aliases *(Konstantin Kondrashov - 46b2f10)*
+- Report ESP32-S31 variant information from eFuse *(Peter Dragun - 5a0183d)*
+
+### 🐛 Bug Fixes
+
+- **espefuse**: keep one result callback when main() is called more than once *(Harshal Patil - 0550543)*
+- validate the alignment of the files passed to --encrypt-files *(Peter Dragun - 3da1478)*
+
+
 ## v5.6.0 (2026-10-15)
 
 ### ✨ New Features
