@@ -83,7 +83,7 @@ class ESP32P4ROM(ESP32ROM):
 
     GPIO_STRAP_REG = 0x500E0038
     GPIO_STRAP_SPI_BOOT_MASK = 0x8  # Not download mode
-    RTC_CNTL_OPTION1_REG = 0x50110008
+    RTC_CNTL_OPTION1_REG = 0x50110008  # LP_SYSTEM_REG_SYS_CTRL_REG
     RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK = 0x4  # Is download mode forced over USB?
 
     FLASH_ENCRYPTED_WRITE_ALIGN = 16
@@ -281,6 +281,21 @@ class ESP32P4ROM(ESP32ROM):
         sleep(0.5)  # wait for reset to take effect
 
     def hard_reset(self):
+        try:
+            # Clear force download boot mode to avoid chip being stuck in download mode
+            # after reset.
+            # Firmware sets it to reboot into ROM download mode (e.g., the Arduino
+            # 1200-baud touch on FS OTG brings the ROM up on USB-Serial/JTAG), and
+            # the USB-Serial/JTAG reset is only a core reset, which does not clear it.
+            self.write_reg(
+                self.RTC_CNTL_OPTION1_REG,
+                0,
+                self.RTC_CNTL_FORCE_DOWNLOAD_BOOT_MASK,
+            )
+        except Exception:
+            # Skip invalid response and continue reset (can happen when monitoring
+            # during reset)
+            pass
         if self.uses_usb_otg():
             self.watchdog_reset()
         else:

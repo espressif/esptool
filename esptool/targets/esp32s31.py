@@ -53,6 +53,10 @@ class ESP32S31ROM(ESP32C5ROM):
     RTC_CNTL_SWD_WPROTECT_REG = DR_REG_LP_WDT_BASE + 0x20  # RTC_WDT_SWD_WPROTECT_REG
     RTC_CNTL_SWD_CONF_REG = DR_REG_LP_WDT_BASE + 0x1C  # RTC_WDT_SWD_CONFIG_REG
 
+    DR_REG_LP_SYS_BASE = 0x20700000
+    LP_SYSTEM_REG_SYS_CTRL_REG = DR_REG_LP_SYS_BASE + 0x8
+    LP_SYSTEM_REG_FORCE_DOWNLOAD_BOOT_MASK = 0x4  # Is download mode forced over USB?
+
     EFUSE_RD_REG_BASE = EFUSE_BASE + 0x030  # EFUSE_RD_REPEAT_DATA0_REG
 
     # KEY_PURPOSE_0..4 live in EFUSE_RD_REPEAT_DATA2_REG
@@ -259,6 +263,18 @@ class ESP32S31ROM(ESP32C5ROM):
         ESPLoader.change_baud(self, baud)
 
     def hard_reset(self):
+        try:
+            # Clear force download boot mode, because the USB-Serial/JTAG reset is only
+            # a core reset and would leave the chip stuck in download mode.
+            self.write_reg(
+                self.LP_SYSTEM_REG_SYS_CTRL_REG,
+                0,
+                self.LP_SYSTEM_REG_FORCE_DOWNLOAD_BOOT_MASK,
+            )
+        except Exception:
+            # Skip invalid response and continue reset (can happen when monitoring
+            # during reset)
+            pass
         (
             self.watchdog_reset()
             if (not self.secure_download_mode and self.uses_usb_otg())
